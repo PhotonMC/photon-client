@@ -44,6 +44,8 @@ struct Content {
     button_width: i32,
     /// `addAdditionalText`: a line between the message and the buttons.
     extra: Option<Component>,
+    /// `FriendsListConfirmScreen`: a dark panel behind, and a wider, padded message.
+    dark_panel: bool,
 }
 
 pub struct ConfirmScreen {
@@ -60,6 +62,8 @@ pub struct ConfirmScreen {
     focus: Option<usize>,
     background: ConfirmBackground,
     content: Content,
+    /// The layout's rectangle, when a dark panel stands behind it.
+    panel: Option<(i32, i32, i32, i32)>,
 }
 
 /// `Font.substrByWidth`: the start of `runs` that fits in `width`.
@@ -136,7 +140,29 @@ impl ConfirmScreen {
         size: (i32, i32),
         title: &Component,
         message: &Component,
+        labels: (&Component, &Component),
+    ) -> Self {
+        Self::two_buttons(font, lang, size, (title, message), labels, false)
+    }
+
+    /// `FriendsListConfirmScreen`: the same question over a dark panel.
+    pub fn friends(
+        font: &Font,
+        lang: &Lang,
+        size: (i32, i32),
+        (title, message): (&Component, &Component),
+        labels: (&Component, &Component),
+    ) -> Self {
+        Self::two_buttons(font, lang, size, (title, message), labels, true)
+    }
+
+    fn two_buttons(
+        font: &Font,
+        lang: &Lang,
+        size: (i32, i32),
+        (title, message): (&Component, &Component),
         (yes, no): (&Component, &Component),
+        dark_panel: bool,
     ) -> Self {
         Self::build(
             font,
@@ -151,6 +177,7 @@ impl ConfirmScreen {
                 ],
                 button_width: 150,
                 extra: None,
+                dark_panel,
             },
         )
     }
@@ -259,17 +286,18 @@ impl ConfirmScreen {
                         ..Style::default()
                     })
                 }),
+                dark_panel: false,
             },
         )
     }
 
     fn build(font: &Font, lang: &Lang, size: (i32, i32), content: Content) -> Self {
-        let (width, height) = size;
+        let width = size.0;
         let mut arena = Arena::default();
         let runs = |component: &Component| lang.runs(component, &Style::default());
         let title_text = runs(&content.title);
         let title_rect = arena.add(font.width_of_runs(&title_text), 9);
-        let max_width = width - 50;
+        let max_width = width - if content.dark_panel { 180 } else { 50 };
         let lines = message_lines(font, lang, &content.message, max_width);
         let widest = lines
             .iter()
@@ -300,31 +328,16 @@ impl ConfirmScreen {
                 )
             })
             .collect();
-        // A column spaced by 8, its cells centred; the buttons a row spaced
-        // by 4, each with 16 above.
-        let mut row = Grid::new();
-        row.column_spacing = 4;
-        for (index, (widget, _)) in buttons.iter().enumerate() {
-            row.add(
-                Item::Leaf(widget.rect),
-                (0, index),
-                (1, 1),
-                Settings::default().padding_top(16),
-            );
-        }
-        let centred = Settings::default().align_horizontally(0.5);
-        let mut column = Grid::new();
-        column.row_spacing = 8;
-        column.add(Item::Leaf(title_rect), (0, 0), (1, 1), centred);
-        column.add(Item::Leaf(message_rect), (1, 0), (1, 1), centred);
-        let mut next = 2;
-        if let Some(extra) = &extra {
-            column.add(Item::Leaf(extra.rect), (next, 0), (1, 1), centred);
-            next += 1;
-        }
-        column.add(Item::Grid(Box::new(row)), (next, 0), (1, 1), centred);
-        column.arrange(&mut arena);
-        column.align_in_rectangle(&mut arena, (0, 0, width, height), (0.5, 0.5));
+        let rects = Rects {
+            title: title_rect,
+            message: message_rect,
+            extra: extra.as_ref().map(|extra| extra.rect),
+            buttons: buttons.iter().map(|(widget, _)| widget.rect).collect(),
+        };
+        let column = arrange_column(&mut arena, &rects, size, content.dark_panel);
+        let panel = content
+            .dark_panel
+            .then_some((column.x, column.y, column.width, column.height));
         Self {
             title: Widget {
                 rect: title_rect,
@@ -341,6 +354,7 @@ impl ConfirmScreen {
             focus: None,
             background: ConfirmBackground::Menu { in_world: false },
             content,
+            panel,
         }
     }
 
@@ -406,6 +420,16 @@ impl ConfirmScreen {
             }
             ConfirmBackground::Death => death::draw_background(frame, atlas, self.size),
         }
+        if let Some((x, y, width, height)) = self.panel {
+            frame.nine_slice(
+                atlas,
+                "friends/background_dark",
+                (236, 34),
+                8,
+                false,
+                (x - 18, y - 18, width + 37, height + 37),
+            );
+        }
         self.title.draw(frame, atlas, font, &self.arena, false);
         if let Some(extra) = &self.extra {
             extra.draw(frame, atlas, font, &self.arena, false);
@@ -468,4 +492,50 @@ impl ConfirmScreen {
     pub fn escape(&self) -> Option<ConfirmAction> {
         (self.delay <= 0).then_some(ConfirmAction::No)
     }
+}
+
+/// The leaves of a screen's column.
+struct Rects {
+    title: usize,
+    message: usize,
+    extra: Option<usize>,
+    buttons: Vec<usize>,
+}
+
+/// A column spaced by 8, its cells centred; the buttons a row spaced by 4, each with 16 above.
+fn arrange_column(
+    arena: &mut Arena,
+    rects: &Rects,
+    (width, height): (i32, i32),
+    dark: bool,
+) -> Grid {
+    let mut row = Grid::new();
+    row.column_spacing = 4;
+    for (index, rect) in rects.buttons.iter().enumerate() {
+        row.add(
+            Item::Leaf(*rect),
+            (0, index),
+            (1, 1),
+            Settings::default().padding_top(16),
+        );
+    }
+    let centred = Settings::default().align_horizontally(0.5);
+    let message_cell = if dark {
+        centred.padding(10, 5, 10, 5)
+    } else {
+        centred
+    };
+    let mut column = Grid::new();
+    column.row_spacing = 8;
+    column.add(Item::Leaf(rects.title), (0, 0), (1, 1), centred);
+    column.add(Item::Leaf(rects.message), (1, 0), (1, 1), message_cell);
+    let mut next = 2;
+    if let Some(extra) = rects.extra {
+        column.add(Item::Leaf(extra), (next, 0), (1, 1), centred);
+        next += 1;
+    }
+    column.add(Item::Grid(Box::new(row)), (next, 0), (1, 1), centred);
+    column.arrange(arena);
+    column.align_in_rectangle(arena, (0, 0, width, height), (0.5, 0.5));
+    column
 }

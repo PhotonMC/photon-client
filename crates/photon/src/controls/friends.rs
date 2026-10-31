@@ -138,12 +138,11 @@ impl Controls {
             &Component::translatable("options.friendsList.confirm.turnOn"),
             &Component::translatable("options.friendsList.confirm.turnOff"),
         );
-        let screen = ConfirmScreen::new(
+        let screen = ConfirmScreen::friends(
             &assets.creative.font,
             &assets.lang,
             Self::gui_size(surface),
-            &title,
-            &message,
+            (&title, &message),
             buttons,
         )
         .with_background(ConfirmBackground::Menu { in_world: true });
