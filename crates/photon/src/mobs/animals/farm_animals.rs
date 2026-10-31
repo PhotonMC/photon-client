@@ -457,7 +457,7 @@ pub fn remote_farm_animals(
         else {
             continue;
         };
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let look = QuadrupedState {
@@ -505,7 +505,7 @@ pub fn gui_preview(
         .find(|(id, _)| *id == entity.type_id)
         .map(|(_, animal)| animal)?;
     // `createRenderState(entity, 1.0F)`.
-    let snapshot = world.entity_snapshot(entity.id(), 1.0)?;
+    let snapshot = world.entity_snapshot_of(entity, 1.0)?;
     let look = QuadrupedState {
         head_y_rot: view.head_yaw(),
         x_rot: view.pitch_degrees(),

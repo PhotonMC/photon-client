@@ -40,7 +40,7 @@ pub fn remote_foxes(
     for entity in world.drawn_mobs_where(|candidate| candidate == fox) {
         let baby = entity.is_baby();
         let own = entity.fox();
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let texture = photon_data::entity_type::fox_texture(own.variant(), own.is_sleeping(), baby);

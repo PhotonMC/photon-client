@@ -80,7 +80,7 @@ pub fn remote_felines(
         }) else {
             continue;
         };
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let name = match (is_cat, baby) {

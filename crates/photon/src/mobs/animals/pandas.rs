@@ -43,7 +43,7 @@ pub fn remote_pandas(
     for entity in world.drawn_mobs_where(|candidate| candidate == panda) {
         let baby = entity.is_baby();
         let own = entity.panda();
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let (Some(rect), Some(model)) = (

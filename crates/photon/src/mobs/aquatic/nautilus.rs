@@ -53,7 +53,7 @@ pub fn remote_nautiluses(
             continue;
         };
         let (Some(snapshot), Some(rect), Some(model)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(texture),
             models.model(layer),
         ) else {
@@ -180,7 +180,7 @@ pub fn gui_preview(
         registry_names.get(id).map(String::as_str)
     })?;
     // `createRenderState(entity, 1.0F)`.
-    let snapshot = world.entity_snapshot(entity.id(), 1.0)?;
+    let snapshot = world.entity_snapshot_of(entity, 1.0)?;
     let (rect, model) = (textures.rect(texture)?, models.model(layer)?);
     let state = pose_state(entity, &snapshot, view.head_yaw(), 1.0);
     model.setup_nautilus(&state);

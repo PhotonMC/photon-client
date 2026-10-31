@@ -62,7 +62,7 @@ pub fn remote_shulkers(
     };
     for entity in world.drawn_mobs_where(|candidate| candidate == type_id) {
         let (Some(snapshot), Some(rect), Some(model)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(texture_of(entity.shulker_color())),
             models.model("minecraft:shulker#main"),
         ) else {

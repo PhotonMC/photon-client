@@ -27,7 +27,7 @@ pub fn remote_players(
         if !is_avatar(entity) || entity.is_spectator() {
             continue;
         }
-        let Some(mut snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(mut snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         if flipped(session, entity) {
@@ -307,7 +307,7 @@ fn player_tags(
         };
         tag.runs = inputs.runs;
         let tag = tag.with_score(entity, viewer, inputs.score);
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let (x, y, z) = snapshot.position;
@@ -361,7 +361,7 @@ fn entity_tags(
             continue;
         };
         let tag = tag.with_score(entity, viewer, inputs.score);
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let mut tag = tag;
@@ -428,7 +428,7 @@ pub fn experience_orbs(
         .all()
         .filter(|entity| entity.type_id == orb_type)
     {
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let state = (

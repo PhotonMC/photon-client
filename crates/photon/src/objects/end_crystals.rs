@@ -42,7 +42,7 @@ pub fn remote_end_crystals(
         .filter(|entity| entity.type_id == crystal)
     {
         let (Some(snapshot), Some(rect), Some(beam_rect), Some(model)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(TEXTURE),
             textures.rect(BEAM_TEXTURE),
             models.model(LAYER),

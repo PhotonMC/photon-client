@@ -33,7 +33,7 @@ fn shadow_of(
         return None;
     }
     if entity.display().is_some() {
-        let snapshot = world.entity_snapshot(entity.id(), partial)?;
+        let snapshot = world.entity_snapshot_of(entity, partial)?;
         let at = (camera.position.x, camera.position.y, camera.position.z);
         return displays::display_shadow(entity, snapshot.position, at, partial);
     }
@@ -62,7 +62,7 @@ fn casters(
         let Some((radius, strength)) = shadow_of(world, camera, entity, partial) else {
             continue;
         };
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         casters.push(Caster {

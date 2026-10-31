@@ -53,6 +53,16 @@ impl ClientWorld {
             .entities
             .at(entity_id)
             .or_else(|| self.spawner_display_entity(entity_id))?;
+        self.entity_snapshot_of(entity, partial_tick)
+    }
+
+    /// [`Self::entity_snapshot`] of an entity the caller already holds a view of.
+    pub fn entity_snapshot_of(
+        &self,
+        entity: EntityView<'_>,
+        partial_tick: f32,
+    ) -> Option<EntitySnapshot> {
+        let entity_id = entity.id();
         let (yaw, pitch, head_yaw) = entity.interpolated_rotation(partial_tick);
         let body_yaw = entity.interpolated_body_y_rotation(partial_tick);
         let upside_down = entity.is_upside_down().then(|| entity.leash_size().height);

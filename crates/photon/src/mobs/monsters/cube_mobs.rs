@@ -66,7 +66,7 @@ pub fn remote_cube_mobs(
         let magma = name == MAGMA_CUBE;
         for entity in world.drawn_mobs_where(|candidate| candidate == type_id) {
             let (Some(snapshot), Some(rect)) = (
-                world.entity_snapshot(entity.id(), partial),
+                world.entity_snapshot_of(entity, partial),
                 textures.rect(texture_path),
             ) else {
                 continue;
@@ -138,7 +138,7 @@ pub fn remote_sulfur_cubes(
     for entity in world.drawn_mobs_where(|candidate| candidate == type_id) {
         let baby = usize::from(entity.is_baby());
         let (Some(snapshot), Some(outer_rect), Some(inner_rect)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(SULFUR_OUTER[baby]),
             textures.rect(SULFUR_INNER[baby]),
         ) else {

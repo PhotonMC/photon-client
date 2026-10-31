@@ -110,7 +110,7 @@ pub fn fishing_hooks(
             continue;
         }
         let (Some(snapshot), Some(rect)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(HOOK),
         ) else {
             continue;

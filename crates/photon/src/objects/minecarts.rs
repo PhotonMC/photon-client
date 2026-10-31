@@ -65,7 +65,7 @@ pub fn remote_minecarts(
         };
         let layer = format!("{name}#main");
         let (Some(snapshot), Some(rect), Some(model)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(TEXTURE),
             models.model(&layer),
         ) else {
@@ -148,7 +148,7 @@ pub fn remote_primed_tnt(session: &PlaySession, (view, held): (FrameView, &mut V
         .filter(|entity| entity.is_primed_tnt())
     {
         let (Some(snapshot), Some(own)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             entity.primed_tnt(),
         ) else {
             continue;

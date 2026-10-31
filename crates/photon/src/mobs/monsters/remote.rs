@@ -134,7 +134,7 @@ pub fn remote_monsters(
         let shake = creepy_shake(models, monster, entity);
         let texture = texture_of(monster, entity, partial);
         let (Some(snapshot), Some(rect), Some(model)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(texture),
             models.model(monster.layer),
         ) else {

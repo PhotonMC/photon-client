@@ -20,7 +20,7 @@ pub fn remote_lightning(session: &PlaySession, models: &mut MobModels, view: Fra
     {
         let (Some(state), Some(snapshot)) = (
             entity.lightning(),
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
         ) else {
             continue;
         };

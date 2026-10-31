@@ -37,7 +37,7 @@ pub fn thrown_items(
         }
         let (Some(stack), Some(snapshot)) = (
             entity.item_stack(),
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
         ) else {
             continue;
         };

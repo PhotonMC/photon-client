@@ -76,7 +76,7 @@ fn remote_fish(
     let world = session.world();
     let partial = view.partial as f32;
     for entity in world.drawn_mobs().filter(|entity| entity.is_fish()) {
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let age = entity.tick_count() as f32 + partial;

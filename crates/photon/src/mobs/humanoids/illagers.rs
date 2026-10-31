@@ -136,7 +136,7 @@ pub fn remote_illagers(
             continue;
         };
         let (Some(snapshot), Some(rect), Some(model)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(illager.texture),
             models.model(illager.layer),
         ) else {

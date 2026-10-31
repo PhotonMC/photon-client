@@ -22,7 +22,7 @@ pub(super) fn remote_humanoids(
             continue;
         };
         let baby = entity.is_baby();
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let (humanoid, holding_bow, arm_pose) =

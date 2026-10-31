@@ -80,7 +80,7 @@ pub fn falling_blocks(
         if world.block_state_at(at[0], at[1], at[2]) == Some(state) {
             continue;
         }
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         // `extractRenderState`: the block at the top of the bounding box, seeded by where it started.

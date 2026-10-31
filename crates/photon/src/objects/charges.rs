@@ -46,7 +46,7 @@ pub fn remote_charges(
         {
             continue;
         }
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let (x, y, z) = snapshot.position;

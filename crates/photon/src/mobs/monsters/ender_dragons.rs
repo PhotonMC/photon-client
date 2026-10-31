@@ -87,7 +87,7 @@ pub fn remote_ender_dragons(
     let mut mask_offset = None;
     for entity in world.drawn_mobs_where(|candidate| candidate == dragon) {
         let (Some(snapshot), Some(rect), Some(eyes), Some(model)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(TEXTURE),
             textures.rect(EYES_TEXTURE),
             models.model(LAYER),
@@ -163,7 +163,7 @@ fn crystal_beam_vertices(
     let crystal = world.entities().at(id)?;
     let rect = textures.rect(end_crystals::BEAM_TEXTURE)?;
     let (own, at) = (
-        world.entity_snapshot(entity.id(), partial)?,
+        world.entity_snapshot_of(entity, partial)?,
         world.entity_snapshot(id, partial)?,
     );
     let time = crystal.end_crystal().map_or(0, |state| state.time()) as f32;

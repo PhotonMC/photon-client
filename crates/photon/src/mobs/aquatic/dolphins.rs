@@ -37,7 +37,7 @@ pub fn remote_dolphins(
     for entity in world.drawn_mobs_where(|candidate| candidate == dolphin) {
         let index = usize::from(entity.is_baby());
         let (Some(snapshot), Some(rect), Some(model)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(TEXTURES[index]),
             models.model(LAYERS[index]),
         ) else {

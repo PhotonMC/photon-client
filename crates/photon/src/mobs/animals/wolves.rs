@@ -183,7 +183,7 @@ pub fn remote_wolves(
         let baby = entity.is_baby();
         let tame = entity.is_tame();
         let angry = entity.is_angry(game_time);
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let (Some(rect), Some(model)) = (

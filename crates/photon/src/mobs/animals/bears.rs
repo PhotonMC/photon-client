@@ -33,7 +33,7 @@ pub fn remote_bears(
     for entity in world.drawn_mobs_where(|candidate| candidate == polar_bear) {
         let baby = entity.is_baby();
         let (Some(snapshot), Some(rect), Some(model)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(POLAR_BEAR[usize::from(baby)]),
             models.model(if baby {
                 "minecraft:polar_bear_baby#main"

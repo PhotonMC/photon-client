@@ -50,7 +50,7 @@ pub fn remote_squids(
             let baby = entity.is_baby();
             let index = usize::from(baby);
             let (Some(snapshot), Some(rect), Some(model)) = (
-                world.entity_snapshot(entity.id(), partial),
+                world.entity_snapshot_of(entity, partial),
                 textures.rect(texture_paths[index]),
                 models.model(layers[index]),
             ) else {

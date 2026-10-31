@@ -45,7 +45,7 @@ pub fn dropped_items(
         }
         let (Some(stack), Some(snapshot)) = (
             entity.item_stack(),
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
         ) else {
             continue;
         };
@@ -103,7 +103,7 @@ fn ominous_spawners(
         let (true, Some(stack), Some(snapshot)) = (
             entity.type_id == spawner,
             entity.item_stack(),
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
         ) else {
             continue;
         };

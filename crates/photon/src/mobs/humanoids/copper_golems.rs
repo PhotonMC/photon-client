@@ -69,7 +69,7 @@ pub fn remote_copper_golems(
     for entity in world.drawn_mobs_where(|candidate| candidate == golem) {
         let (body, eyes) = TEXTURES[usize::from(entity.copper_golem_weather().min(3))];
         let (Some(snapshot), Some(rect), Some(model)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(body),
             models.model(LAYER),
         ) else {

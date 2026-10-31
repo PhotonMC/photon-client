@@ -194,7 +194,7 @@ pub fn leashes(session: &PlaySession, view: FrameView, vertices: &mut Vec<Vertex
         ) else {
             continue;
         };
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let Some(holder) = holder_of(session, holder_id, partial) else {

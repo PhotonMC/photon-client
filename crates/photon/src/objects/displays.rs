@@ -97,7 +97,7 @@ fn shown(session: &PlaySession, view: FrameView) -> Vec<Shown<'_>> {
         };
         let (Some(state), Some(snapshot)) = (
             display.render_state(),
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
         ) else {
             continue;
         };
@@ -274,7 +274,7 @@ pub fn display_texts(
         let (Some(state), Some((text, _)), Some(snapshot)) = (
             display.render_state(),
             display.text_render_state(),
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
         ) else {
             continue;
         };

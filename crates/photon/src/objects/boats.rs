@@ -80,7 +80,7 @@ pub fn remote_boats(
             continue;
         };
         let (Some(snapshot), Some(rect), Some(model)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(&texture),
             models.model(&layer),
         ) else {

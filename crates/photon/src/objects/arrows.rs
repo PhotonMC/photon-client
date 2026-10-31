@@ -52,7 +52,7 @@ pub fn remote_arrows(
         };
         let trident = texture == TRIDENT;
         let (Some(snapshot), Some(rect), Some(model)) = (
-            world.entity_snapshot(entity.id(), partial),
+            world.entity_snapshot_of(entity, partial),
             textures.rect(texture),
             models.model(if trident { TRIDENT_LAYER } else { LAYER }),
         ) else {

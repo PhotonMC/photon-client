@@ -32,7 +32,7 @@ pub fn flames(
         if !entity.displays_fire() {
             continue;
         }
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
         let size = entity.leash_size();
