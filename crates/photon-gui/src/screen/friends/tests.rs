@@ -151,3 +151,37 @@ fn a_barely_tall_list_has_a_long_scroller() {
     // 100 * 100 / 120 = 83, under the cap of 92.
     assert_eq!(super::entries::scroller(10, 20, (100, 120)), (8, 83));
 }
+
+#[test]
+fn the_scroller_follows_a_drag_and_lets_go() {
+    let entries = (0..12_u64)
+        .map(|index| Entry {
+            id: Uuid::new(0, index),
+            name: format!("Friend{index}"),
+            kind: EntryKind::Friend,
+            status: Vec::new(),
+        })
+        .collect();
+    let mut screen = overlay(true);
+    let mut shown = view(true);
+    shown.friends = Listing::Entries(entries);
+    screen.set_view(&Lang::new([]), shown);
+    let (x, y, width, _) = screen.list_area();
+    let font = Font::default();
+    // A press on the strip along the right edge takes the scroller.
+    assert_eq!(
+        screen.clicked((f64::from(x + width - 2), f64::from(y + 5)), &font),
+        None
+    );
+    assert!(screen.dragging);
+    screen.dragged(f64::from(y + 20), 6.0);
+    assert!(screen.scroll > 0 && screen.scroll <= screen.max_scroll());
+    // Above the list it goes to the top, below it to the end.
+    screen.dragged(f64::from(y - 5), 0.0);
+    assert_eq!(screen.scroll, 0);
+    screen.dragged(1000.0, 0.0);
+    assert_eq!(screen.scroll, screen.max_scroll());
+    screen.released();
+    screen.dragged(f64::from(y + 20), 6.0);
+    assert_eq!(screen.scroll, screen.max_scroll());
+}

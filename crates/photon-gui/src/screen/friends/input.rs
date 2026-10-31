@@ -60,16 +60,25 @@ impl FriendsOverlay {
         self.edit.set_value("", font);
     }
 
-    /// A press of the primary button at `mouse`.
-    pub fn clicked(&mut self, mouse: (f64, f64), font: &Font) -> Option<FriendsEvent> {
-        let at = (mouse.0.floor() as i32, mouse.1.floor() as i32);
+    /// A press on a tab, which shows it, or on the scroller, which takes it.
+    fn tab_or_scrollbar_pressed(&mut self, at: (i32, i32)) -> bool {
         for tab in [Tab::Friends, Tab::Pending] {
             if inside(at, self.tab_rect(tab)) {
                 crate::ui_sound::play_down_sound();
                 self.tab = tab;
                 self.scroll = 0;
-                return None;
+                return true;
             }
+        }
+        self.dragging = self.over_scrollbar(at);
+        self.dragging
+    }
+
+    /// A press of the primary button at `mouse`.
+    pub fn clicked(&mut self, mouse: (f64, f64), font: &Font) -> Option<FriendsEvent> {
+        let at = (mouse.0.floor() as i32, mouse.1.floor() as i32);
+        if self.tab_or_scrollbar_pressed(at) {
+            return None;
         }
         let rect = self.box_rect();
         if inside(at, rect) {

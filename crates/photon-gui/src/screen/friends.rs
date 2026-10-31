@@ -124,6 +124,8 @@ pub struct FriendsOverlay {
     texts: Texts,
     focused_at: Instant,
     scroll: i32,
+    /// The scroller is held by the primary button.
+    dragging: bool,
     pending_label: Vec<Run>,
 }
 
@@ -181,6 +183,7 @@ impl FriendsOverlay {
             pending_label: pending_label(lang, view.requests),
             focused_at: Instant::now(),
             scroll: 0,
+            dragging: false,
             size,
             tab: Tab::Friends,
             edit: EditBox::new(

@@ -206,7 +206,7 @@ impl Controls {
         use glfw::{Action, MouseButton, WindowEvent};
         let font = &assets.creative.font;
         if let WindowEvent::CursorPos(x, y) = event {
-            self.move_gui_mouse((x, y), surface);
+            self.drag_friends((x, y), surface);
             return;
         }
         let mouse = self.gui_mouse;
@@ -242,6 +242,12 @@ impl Controls {
                 }
                 None
             }
+            WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
+                if let Some(screen) = self.friends.as_mut() {
+                    screen.released();
+                }
+                None
+            }
             WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => self
                 .friends
                 .as_mut()
@@ -249,6 +255,16 @@ impl Controls {
             _ => None,
         };
         self.friends_asked(asked, surface, assets);
+    }
+
+    /// The cursor moved: the scroller follows it while it is held.
+    fn drag_friends(&mut self, at: (f64, f64), surface: &WindowSurface) {
+        let before = self.gui_mouse.1;
+        self.move_gui_mouse(at, surface);
+        let (now, dy) = (self.gui_mouse.1, self.gui_mouse.1 - before);
+        if let Some(screen) = self.friends.as_mut() {
+            screen.dragged(now, dy);
+        }
     }
 
     /// What the overlay asked the game for.

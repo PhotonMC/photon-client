@@ -91,6 +91,42 @@ impl FriendsOverlay {
         }
     }
 
+    /// `isOverScrollbar`: the strip along the list's right edge, when the list scrolls.
+    pub(super) fn over_scrollbar(&self, at: (i32, i32)) -> bool {
+        let (x, y, width, height) = self.list_area();
+        self.max_scroll() > 0
+            && at.0 >= x + width - SCROLLBAR_WIDTH
+            && at.0 <= x + width
+            && at.1 >= y
+            && at.1 < y + height
+    }
+
+    /// `AbstractScrollArea.mouseDragged`: the scroller follows the cursor by `dy`; above the list
+    /// it goes to the top and below it to the end.
+    pub fn dragged(&mut self, mouse_y: f64, dy: f64) {
+        if !self.dragging {
+            return;
+        }
+        let (_, y, _, height) = self.list_area();
+        let max = self.max_scroll();
+        let (_, content) = self.rows(self.shown());
+        self.scroll = if mouse_y < f64::from(y) {
+            0
+        } else if mouse_y > f64::from(y + height) {
+            max
+        } else {
+            let (_, bar) = scroller(0, max, (height, content));
+            let scale = (f64::from(max.max(1)) / f64::from(height - bar)).max(1.0);
+            (f64::from(self.scroll) + dy * scale).round() as i32
+        }
+        .clamp(0, max);
+    }
+
+    /// The primary button let go.
+    pub fn released(&mut self) {
+        self.dragging = false;
+    }
+
     /// The buttons of an entry at `(x, y)`.
     fn buttons_of(kind: EntryKind, x: i32, y: i32) -> Vec<(Button, (i32, i32, i32, i32))> {
         let top = y + (ENTRY_HEIGHT - ICON_BUTTON) / 2;
