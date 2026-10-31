@@ -80,13 +80,17 @@ impl Controls {
 
     /// The overlay replaces the menu (`Minecraft.toggleFriendsScreen` from the pause screen) but
     /// has it under it (`backgroundScreen`); closing it returns to the menu.
-    fn open_friends_from_pause(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {
-        let menu = self.pause.take();
+    pub(super) fn open_friends_from_pause(
+        &mut self,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        self.pause_under = self.pause.take();
+        self.friends_from_pause = true;
         self.toggle_friends(surface, assets);
-        self.friends_from_pause = self.friends.is_some();
-        if let Some(overlay) = self.friends.as_mut() {
-            overlay.set_over_screen(true);
-            self.pause_under = menu;
+        // Neither the overlay nor its question opened: the menu stays.
+        if self.friends.is_none() && self.link_confirm.is_none() {
+            self.restore_pause();
         }
     }
 

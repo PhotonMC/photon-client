@@ -459,6 +459,7 @@ mod advancements;
 mod debug_tests;
 mod faces;
 mod friends;
+mod friends_menu;
 mod screen_keys;
 mod social;
 mod stats;

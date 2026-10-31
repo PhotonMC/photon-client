@@ -6,7 +6,6 @@
 
 use super::*;
 use crate::social::{Action, Social};
-use photon_game::options::PresenceSharing;
 use photon_game::text::{Component, Lang, Run, Style};
 use photon_gui::options::online::FriendFacts;
 use photon_gui::screen::friends::{
@@ -59,6 +58,7 @@ impl Controls {
         let from_online = self.online_screen.is_some();
         let (mut toasts, turned_on) = collect_toasts(social);
         toasts.append(&mut self.pending_toasts);
+        let failed = !toasts.is_empty() && !turned_on && !open;
         if turned_on {
             // From the online settings the list only turns on; the key opens the overlay.
             self.friends_wanted = !from_online;
@@ -69,18 +69,8 @@ impl Controls {
                 overlay.set_view(lang, view);
             }
         }
+        self.menu_back_after_failure(failed);
         toasts
-    }
-
-    /// `PresenceHandler.getPublicPresenceStatus`: what the player's setting lets the friends see.
-    /// Photon only plays on servers, never a world of its own or a realm.
-    fn presence_status(&self) -> PresenceStatus {
-        match self.options.online.share_presence {
-            PresenceSharing::None => PresenceStatus::Offline,
-            PresenceSharing::Limited => PresenceStatus::Online,
-            PresenceSharing::All if self.title_host => PresenceStatus::Online,
-            PresenceSharing::All => PresenceStatus::PlayingServer,
-        }
     }
 
     /// What the overlay shows of the lists now.
@@ -117,6 +107,11 @@ impl Controls {
             }
             return;
         }
+        if self.pause.is_some() && !self.link_confirm.is_some() {
+            // `toggleFriendsScreen` takes the pause screen too: it stays under the overlay.
+            self.open_friends_from_pause(surface, assets);
+            return;
+        }
         if self.any_screen_open() {
             return;
         }
@@ -135,9 +130,10 @@ impl Controls {
         if let Some(social) = self.friends_list.as_mut() {
             social.want_presence();
         }
-        self.friends_from_pause = false;
+        // Opened from the pause menu (`backgroundScreen`), the overlay has it under it.
+        self.friends_from_pause &= self.pause_under.is_some();
         let mut overlay = FriendsOverlay::new(&assets.lang, &assets.creative.font, size, view);
-        overlay.set_over_screen(self.title_host);
+        overlay.set_over_screen(self.title_host || self.friends_from_pause);
         self.friends = Some(overlay);
         self.captured = false;
         self.last_cursor = None;
@@ -193,6 +189,8 @@ impl Controls {
         match (action, target) {
             (LinkAction::Yes, ConfirmTarget::RemoveFriend(id)) => self.remove_friend(*id),
             (LinkAction::Yes, _) => self.turn_on_friends(),
+            // `setScreen(lastScreen)`: the pause menu the question came from.
+            (_, ConfirmTarget::FriendsList) if self.friends_from_pause => self.restore_pause(),
             (_, ConfirmTarget::FriendsList) if self.online_screen.is_none() && !self.title_host => {
                 self.captured = true;
                 self.last_cursor = None;
@@ -562,6 +560,7 @@ fn notice_title(notice: &photon_net::friends::Notice) -> Component {
 mod tests {
     use super::*;
     use photon_core::binary::Uuid;
+    use photon_game::options::PresenceSharing;
 
     fn friend(name: &str) -> Friend {
         Friend {
