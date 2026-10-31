@@ -896,7 +896,7 @@
 "crates/photon/src/mobs/monsters/remote.rs::pose_monster" = 97
 "crates/photon/src/mobs/monsters/remote.rs::remote_monsters" = 76
 "crates/photon/src/mobs/pose.rs::remote_humanoids" = 92
-"crates/photon/src/objects/displays.rs::display_texts" = 75
+"crates/photon/src/objects/displays.rs::display_texts" = 71
 "crates/photon/src/objects/fishing_hooks.rs::fishing_hooks" = 69
 "crates/photon/src/objects/leashes.rs::leashes" = 86
 "crates/photon/src/objects/minecarts.rs::remote_minecarts" = 83

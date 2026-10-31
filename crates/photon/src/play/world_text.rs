@@ -18,12 +18,12 @@ impl Play {
         let opacity = self.controls.options.background_opacity(0.25);
         let (mut see_through, mut normal) =
             overlays::name_tags(&self.session, assets, camera, (view, opacity));
-        let (shown_through, shown) =
+        let (shown_through, shown, mut offset) =
             displays::display_texts(&self.session, assets, (view, opacity));
         see_through.extend(shown_through);
         normal.extend(shown);
         let first_person = self.controls.camera_type == CameraType::FirstPerson;
-        let (signs, offset) = crate::world::signs::sign_texts(
+        let (signs, outlined) = crate::world::signs::sign_texts(
             &self.session,
             assets,
             view,
@@ -36,6 +36,7 @@ impl Play {
             ),
         );
         normal.extend(signs);
+        offset.extend(outlined);
         (see_through, normal, offset)
     }
 }

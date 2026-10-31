@@ -179,13 +179,13 @@ pub fn text_submit(
 }
 
 /// A text display's triangles in the pose's world: the background box a hundredth behind the
-/// lines, then each line's glyphs (`Font.prepareText`), shadowed when the flag says, lit by `light`.
+/// lines, and apart from it each line's glyphs (`Font.prepareText`), shadowed when the flag says, lit by `light`.
 pub fn text_vertices(
     submit: &TextSubmit,
     lines: &[Vec<crate::gui::TextRun>],
     (font, atlas): (&crate::gui::font::Font, &crate::gui::GuiAtlas),
     light: i32,
-) -> Vec<crate::scene::Vertex> {
+) -> (Vec<crate::scene::Vertex>, Vec<crate::scene::Vertex>) {
     use crate::scene::Vertex;
     let light = crate::block::light::light_uv(light);
     let place = |x: f32, y: f32, z: f32, uv: [f32; 2], tint: [f32; 4]| {
@@ -210,15 +210,17 @@ pub fn text_vertices(
         let none = [-1.0, -1.0];
         push(corners.map(|[x, y, z]| place(x, y, z, none, tint)));
     }
+    let background = std::mem::take(&mut vertices);
+    let mut glyphs = Vec::new();
     for (runs, (x, y)) in lines.iter().zip(&submit.lines) {
         let at = (*x, *y);
         let colours = (submit.color as u32, submit.shadow);
         let mut quads = crate::gui::frame::glyph_quads(atlas, font, runs, at, colours.0, colours.1);
         let bars = crate::gui::text_effect::effects(font, runs, at, colours);
         quads.extend(crate::gui::frame::effect_quads(atlas, bars));
-        world_glyphs(&submit.pose, quads, light, &mut vertices);
+        world_glyphs(&submit.pose, quads, light, &mut glyphs);
     }
-    vertices
+    (background, glyphs)
 }
 
 /// Glyph quads laid out in a pose's plane (`z` 0) as world triangles, lit by `light` (the

@@ -252,8 +252,9 @@ fn display_lines(
         .collect()
 }
 
-/// The triangles of every text display the server added: the text seen through blocks and the text
-/// tested against the depth, each as triangles from the mesh origin.
+/// The triangles of every text display the server added: the text seen through blocks, the
+/// backgrounds and text tested against the depth, and the glyphs of the latter, which carry the
+/// polygon offset, each as triangles from the mesh origin.
 pub fn display_texts(
     session: &PlaySession,
     (lang, font, atlas): (
@@ -262,11 +263,11 @@ pub fn display_texts(
         &photon_render::gui::GuiAtlas,
     ),
     (view, default_background): (FrameView, f32),
-) -> (Vec<Vertex>, Vec<Vertex>) {
+) -> (Vec<Vertex>, Vec<Vertex>, Vec<Vertex>) {
     use photon_render::objects::display::text_submit;
     let world = session.world();
     let partial = view.partial as f32;
-    let (mut see_through, mut normal) = (Vec::new(), Vec::new());
+    let mut layers = (Vec::new(), Vec::new(), Vec::new());
     for entity in world.entities().drawn_of_kind(|e| e.display().is_some()) {
         let Some(display) = entity.display() else {
             continue;
@@ -320,15 +321,27 @@ pub fn display_texts(
             packed_light(world, Vec3::new(x, y, z)),
             state.brightness_override,
         );
-        let vertices =
+        let text =
             photon_render::objects::display::text_vertices(&submit, &lines, (font, atlas), light);
-        if submit.see_through {
-            see_through.extend(vertices);
-        } else {
-            normal.extend(vertices);
-        }
+        route_text(submit.see_through, text, &mut layers);
     }
-    (see_through, normal)
+    layers
+}
+
+/// `DisplayRenderer`: a text display's glyphs are seen through blocks, or drawn with the polygon
+/// offset over the background box, which is tested against the depth as it is.
+fn route_text(
+    see_through: bool,
+    (background, glyphs): (Vec<Vertex>, Vec<Vertex>),
+    (through, normal, offset): &mut (Vec<Vertex>, Vec<Vertex>, Vec<Vertex>),
+) {
+    if see_through {
+        through.extend(background);
+        through.extend(glyphs);
+    } else {
+        normal.extend(background);
+        offset.extend(glyphs);
+    }
 }
 
 /// Whether a block state is the conduit.
