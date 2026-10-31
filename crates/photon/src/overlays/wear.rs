@@ -6,6 +6,17 @@ use crate::equipment::held_items::HandActions;
 use photon_render::entity::tag_rules::{NameRules, entity_name_tag, rules_of};
 use photon_world::EntityView;
 
+/// A frozen level still moves its players (`TickRateManager.isEntityFrozen`), not a mannequin:
+/// the view a player is drawn from reads the running partial tick, which is also returned.
+fn view_of(entity: EntityView<'_>, view: FrameView) -> (FrameView, f32) {
+    let partial = if entity.is_player() {
+        view.real_partial
+    } else {
+        view.partial
+    };
+    (FrameView { partial, ..view }, partial as f32)
+}
+
 /// `LivingEntityRenderer` for the other players: each in its default skin
 /// (a profile's own would be downloaded), posed from where it is between
 /// two ticks, as the first-person renderer is for the local player's own
@@ -21,12 +32,12 @@ pub fn remote_players(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world.entities().drawn_of_kind(is_avatar) {
         // A player who only watches is not drawn; a mannequin is drawn as a player.
         if !is_avatar(entity) || entity.is_spectator() {
             continue;
         }
+        let (view, partial) = view_of(entity, view);
         let Some(mut snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
