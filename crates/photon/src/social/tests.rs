@@ -117,3 +117,22 @@ fn no_presence_is_posted_without_a_status() {
         assert!(!matches!(command, Command::Presence(_)));
     }
 }
+
+#[test]
+fn settings_that_worked_turn_the_list_on_and_every_result_is_kept() {
+    let (mut social, events, _commands) = social();
+    for (code, friends_list) in [(ResultCode::Success, true), (ResultCode::Forbidden, false)] {
+        events
+            .send(Event::Settings {
+                code,
+                friends_list,
+                invites: true,
+            })
+            .unwrap();
+    }
+    social.tick(Instant::now(), (false, true), None);
+    assert!(social.list_enabled());
+    assert_eq!(social.take_settings_result(), Some(ResultCode::Success));
+    assert_eq!(social.take_settings_result(), Some(ResultCode::Forbidden));
+    assert_eq!(social.take_settings_result(), None);
+}

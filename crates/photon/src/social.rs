@@ -41,6 +41,8 @@ pub(crate) struct Social {
     results: VecDeque<ResultCode>,
     /// Actions sent whose answer has not come yet.
     in_flight: u32,
+    /// What `updateFriendSettings` answered, oldest first.
+    settings_results: VecDeque<ResultCode>,
 }
 
 impl Social {
@@ -78,6 +80,7 @@ impl Social {
             changed: false,
             results: VecDeque::new(),
             in_flight: 0,
+            settings_results: VecDeque::new(),
         }
     }
 
@@ -118,6 +121,16 @@ impl Social {
     /// The code of a finished action or settings call, oldest first.
     pub(crate) fn take_result(&mut self) -> Option<ResultCode> {
         self.results.pop_front()
+    }
+
+    /// `updateFriendSettings`.
+    pub(crate) fn update_settings(&self, friends_list: bool, invites: bool) {
+        self.send(Command::Settings(friends_list, invites));
+    }
+
+    /// The code of a finished settings call, oldest first.
+    pub(crate) fn take_settings_result(&mut self) -> Option<ResultCode> {
+        self.settings_results.pop_front()
     }
 
     /// An action is on its way (`AddFriendWidget.State.SENDING`).
@@ -188,6 +201,17 @@ impl Social {
             Event::Action(code) => {
                 self.in_flight = self.in_flight.saturating_sub(1);
                 self.results.push_back(code);
+            }
+            Event::Settings {
+                code,
+                friends_list,
+                invites,
+            } => {
+                if code == ResultCode::Success {
+                    self.list_enabled = friends_list;
+                    self.allow_requests = invites;
+                }
+                self.settings_results.push_back(code);
             }
             Event::Presence { entries, hint } => {
                 self.presence_hint = hint;

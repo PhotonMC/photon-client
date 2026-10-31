@@ -158,6 +158,8 @@ pub struct Controls {
     pub(crate) friends_list: Option<crate::social::Social>,
     /// The name the local player joined with (the overlay's "My profile name").
     pub profile_name: String,
+    /// The friends list was just turned on: the overlay opens next tick.
+    friends_wanted: bool,
     /// The debug options screen (F3+F6), while it is open.
     pub debug_options: Option<DebugOptionsScreen>,
     /// The statistics screen over the pause menu, while it is open.

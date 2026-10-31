@@ -10,6 +10,10 @@ impl Play {
             self.controls.profile_name = self.session.local_name().to_owned();
             self.controls.start_friends(&self.session);
         }
+        if self.controls.take_friends_wanted() {
+            self.controls
+                .toggle_friends(&mut self.surface, &self.screen_assets);
+        }
         for title in self.controls.friends_tick(&self.screen_assets.lang) {
             self.gui.add_friend_toast(&title);
         }

@@ -21,6 +21,8 @@ pub(crate) enum Command {
     /// An update of the lists, which the service's own cooldown may answer from its cache.
     Refresh,
     Action(Action),
+    /// `updateFriendSettings`: the friends list, then the friend invites.
+    Settings(bool, bool),
     Presence(PresenceStatus),
 }
 
@@ -34,6 +36,11 @@ pub(crate) enum Event {
         hint: Option<Duration>,
     },
     Action(ResultCode),
+    Settings {
+        code: ResultCode,
+        friends_list: bool,
+        invites: bool,
+    },
     Presence {
         entries: Vec<PresenceEntry>,
         hint: Option<Duration>,
@@ -72,6 +79,11 @@ fn serve<T: Transport>(
             }
             answers
         }
+        Command::Settings(friends_list, invites) => vec![Event::Settings {
+            code: service.update_settings(friends_list, invites),
+            friends_list,
+            invites,
+        }],
         Command::Presence(status) => {
             let entries = service.presence(status);
             vec![Event::Presence {

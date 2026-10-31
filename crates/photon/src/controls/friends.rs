@@ -6,7 +6,7 @@
 
 use super::*;
 use crate::social::Social;
-use photon_game::text::{Component, Lang};
+use photon_game::text::{Component, Lang, Style};
 use photon_gui::screen::friends::{FriendsEvent, FriendsOverlay, FriendsView, Listing};
 use photon_net::friends::{FriendData, PresenceStatus, ResultCode, State};
 
@@ -29,6 +29,13 @@ impl Controls {
         let open = self.friends.is_some();
         social.tick(std::time::Instant::now(), (open, true), presence_status());
         let mut toasts = Vec::new();
+        while let Some(code) = social.take_settings_result() {
+            if code == ResultCode::Success {
+                self.friends_wanted = true;
+            } else {
+                toasts.push(Component::translatable("gui.friends.toast.generic_error"));
+            }
+        }
         while let Some(notice) = social.take_toast() {
             toasts.push(notice_title(&notice));
         }
@@ -74,14 +81,22 @@ impl Controls {
 
     /// `Minecraft.toggleFriendsScreen`: the overlay closes when it is open (unless its box is
     /// being typed in), and opens over the game when the friends list is on.
-    pub(super) fn toggle_friends(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {
+    pub(crate) fn toggle_friends(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {
         if let Some(overlay) = self.friends.as_ref() {
             if !overlay.typing() {
                 self.close_friends(surface);
             }
             return;
         }
-        if self.any_screen_open() || !self.friends_list.as_ref().is_some_and(Social::list_enabled) {
+        if self.any_screen_open() {
+            return;
+        }
+        if !self.friends_list.as_ref().is_some_and(Social::list_enabled) {
+            self.ask_friends_list(surface, assets);
+            self.captured = false;
+            self.last_cursor = None;
+            surface.set_cursor_captured(false);
+            self.release_keys();
             return;
         }
         let size = Self::gui_size(surface);
@@ -96,6 +111,66 @@ impl Controls {
         self.last_cursor = None;
         surface.set_cursor_captured(false);
         self.release_keys();
+    }
+
+    /// `confirmFriendsListEnabled` for a list that is off: the screen that asks to turn it on.
+    fn ask_friends_list(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        if self.friends_list.is_none() {
+            return;
+        }
+        let link = Component::translatable("options.friendsList.confirm.message.link").with_style(
+            &Style {
+                underlined: Some(true),
+                colour: Some(0x5555FF),
+                ..Style::default()
+            },
+        );
+        let title =
+            Component::translatable("options.friendsList.confirm.title").with_style(&Style {
+                underlined: Some(true),
+                ..Style::default()
+            });
+        let message =
+            Component::translatable_with("options.friendsList.confirm.message", vec![link]);
+        let buttons = (
+            &Component::translatable("options.friendsList.confirm.turnOn"),
+            &Component::translatable("options.friendsList.confirm.turnOff"),
+        );
+        let screen = ConfirmScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            Self::gui_size(surface),
+            &title,
+            &message,
+            buttons,
+        )
+        .with_background(ConfirmBackground::Menu { in_world: true });
+        self.link_confirm = Some((screen, ConfirmTarget::FriendsList));
+    }
+
+    /// The answer of the screen that asks to turn the list on: Turn OFF goes back to the game
+    /// (`setScreen(lastScreen)`).
+    pub(super) fn answer_friends_list(&mut self, action: LinkAction, surface: &mut WindowSurface) {
+        if action == LinkAction::Yes {
+            self.turn_on_friends();
+        } else {
+            self.captured = true;
+            self.last_cursor = None;
+            surface.set_cursor_captured(true);
+        }
+    }
+
+    /// The answer Turn ON: the account's friends flags are changed (`applyFriendSettings`), and
+    /// the overlay opens once the service said yes.
+    pub(super) fn turn_on_friends(&mut self) {
+        if let Some(social) = self.friends_list.as_ref() {
+            social.update_settings(true, true);
+        }
+    }
+
+    /// Whether the overlay should open now that the list was turned on.
+    pub(crate) fn take_friends_wanted(&mut self) -> bool {
+        std::mem::take(&mut self.friends_wanted)
     }
 
     fn close_friends(&mut self, surface: &mut WindowSurface) {

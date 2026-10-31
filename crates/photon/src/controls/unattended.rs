@@ -19,6 +19,8 @@ pub enum ConfirmTarget {
     Pack(String),
     /// `PackSelectionScreen.onFilesDrop`: the dropped paths, copied once the player agrees.
     Drop(Vec<std::path::PathBuf>),
+    /// `OnlineOptionsScreen.confirmFriendsListEnabled`: turning the friends list on.
+    FriendsList,
 }
 
 impl Controls {
@@ -145,6 +147,7 @@ impl Controls {
             (LinkAction::Yes, ConfirmTarget::Drop(paths)) => {
                 self.copy_confirmed_packs(paths, assets);
             }
+            (action, ConfirmTarget::FriendsList) => self.answer_friends_list(action, surface),
             _ => {}
         }
         Ok(())
