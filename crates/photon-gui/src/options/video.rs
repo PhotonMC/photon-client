@@ -48,6 +48,7 @@ const CLOUD_RANGE: u8 = CUSTOMISING | 14;
 const CUTOUT_LEAVES: u8 = CUSTOMISING | 15;
 const IMPROVED_TRANSPARENCY: u8 = CUSTOMISING | 16;
 const WEATHER_RADIUS: u8 = CUSTOMISING | 17;
+const FULLSCREEN_RESOLUTION: u8 = 10;
 /// `RESTART_REQUIRED`'s colour, `withColor(-2142128)`.
 const RESTART_COLOUR: u32 = 0xDF_5050;
 
@@ -199,11 +200,6 @@ fn gamma(caption: &Component, value: &f64) -> Component {
 
 fn graphics_preset(caption: &Component, value: &Named) -> Component {
     generic_value(caption, Component::translatable(*value))
-}
-
-/// The fullscreen resolutions of a monitor, of which there is none.
-fn fullscreen_resolution(_caption: &Component, _value: &i32) -> Component {
-    Component::translatable("options.fullscreen.unavailable")
 }
 
 fn toggle_text(value: &bool) -> Component {
@@ -547,8 +543,12 @@ pub struct VideoSettingsScreen {
     restart: (Vec<Run>, i32),
 }
 
+mod fullscreen;
 mod preset;
 mod size;
+
+pub use fullscreen::FullscreenModes;
+use fullscreen::fullscreen_resolution;
 
 #[cfg(test)]
 mod tests {
@@ -568,7 +568,7 @@ mod tests {
             (427, 240),
             true,
             (2, 2),
-            VideoValues::default(),
+            (VideoValues::default(), FullscreenModes::default()),
         );
         let mut asked = Vec::new();
         let mut resize = |scale: i32| {
@@ -594,7 +594,14 @@ mod tests {
             particles: photon_game::options::ParticleStatus::Minimal,
             ..VideoValues::default()
         };
-        let screen = VideoSettingsScreen::new(&font, &lang, (427, 240), true, (2, 2), shown);
+        let screen = VideoSettingsScreen::new(
+            &font,
+            &lang,
+            (427, 240),
+            true,
+            (2, 2),
+            (shown, FullscreenModes::default()),
+        );
         let back = screen.values(VideoValues::default());
         assert_eq!(back.gamma, 0.8);
         assert_eq!(
@@ -612,7 +619,7 @@ mod tests {
             (427, 240),
             true,
             (2, 2),
-            VideoValues::default(),
+            (VideoValues::default(), FullscreenModes::default()),
         );
         screen
             .screen
@@ -650,7 +657,14 @@ mod tests {
             quality: values.quality,
             ..VideoValues::default()
         };
-        let reopened = VideoSettingsScreen::new(&font, &lang, (427, 240), true, (2, 2), stored);
+        let reopened = VideoSettingsScreen::new(
+            &font,
+            &lang,
+            (427, 240),
+            true,
+            (2, 2),
+            (stored, FullscreenModes::default()),
+        );
         assert_eq!(
             reopened.values(VideoValues::default()).quality,
             values.quality

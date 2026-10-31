@@ -1,6 +1,23 @@
 use super::*;
 
 impl Options {
+    /// `Options.fullscreenVideoModeString`: the text of the fullscreen resolution the file holds.
+    pub fn fullscreen_resolution(&self) -> Option<&str> {
+        self.lines
+            .iter()
+            .find(|(known, _)| known == "fullscreenResolution")
+            .map(|(_, value)| value.as_str())
+    }
+
+    /// Keep the fullscreen resolution for the next save; none drops the line.
+    pub fn set_fullscreen_resolution(&mut self, mode: Option<String>) {
+        self.lines
+            .retain(|(known, _)| known != "fullscreenResolution");
+        if let Some(mode) = mode {
+            self.lines.push(("fullscreenResolution".to_owned(), mode));
+        }
+    }
+
     /// `Options.load`: `path` read over the defaults; a missing file leaves
     /// them, a line or a value that does not read is skipped.
     pub fn load(path: &Path) -> Self {
@@ -562,6 +579,16 @@ mod tests {
         let options = Options::load(&path);
         std::fs::remove_dir_all(&directory).unwrap();
         options
+    }
+
+    #[test]
+    fn the_fullscreen_resolution_is_kept_set_and_dropped() {
+        let mut options = loaded("fullscreenResolution:1920x1080@60:24\n");
+        assert_eq!(options.fullscreen_resolution(), Some("1920x1080@60:24"));
+        options.set_fullscreen_resolution(Some("2560x1440@144:24".to_owned()));
+        assert_eq!(options.fullscreen_resolution(), Some("2560x1440@144:24"));
+        options.set_fullscreen_resolution(None);
+        assert_eq!(options.fullscreen_resolution(), None);
     }
 
     #[test]

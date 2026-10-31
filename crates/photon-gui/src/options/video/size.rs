@@ -10,18 +10,18 @@ impl VideoSettingsScreen {
         size: (i32, i32),
         in_world: bool,
         (gui_scale, max_gui_scale): (i32, i32),
-        values: VideoValues,
+        (values, fullscreen): (VideoValues, FullscreenModes),
     ) -> Self {
         let screen = SubScreen::new(font, lang, size, "options.videoTitle", in_world, |list| {
             list.add_header(font, lang, "options.video.display.header");
             list.add_big(
                 lang,
-                PLAIN,
+                FULLSCREEN_RESOLUTION,
                 slider(
                     "options.fullscreen.resolution",
-                    IntRange::new(-1, -1),
+                    fullscreen.clone(),
                     fullscreen_resolution,
-                    -1,
+                    fullscreen.initial(),
                 ),
             );
             list.add_small(lang, display_options(gui_scale, max_gui_scale, &values));
@@ -98,6 +98,20 @@ impl VideoSettingsScreen {
 
     pub fn scroll_amount(&self) -> f64 {
         self.screen.list.scroll_amount()
+    }
+
+    /// `setPreferredFullscreenVideoMode`: what the fullscreen resolution slider asks for, if there
+    /// is a monitor.
+    pub fn fullscreen_mode(&self) -> Option<Option<photon_render::window::VideoMode>> {
+        self.screen
+            .list
+            .find(FULLSCREEN_RESOLUTION)
+            .and_then(|control| {
+                control
+                    .as_any()
+                    .downcast_ref::<OptionSlider<FullscreenModes>>()
+            })
+            .and_then(|slider| slider.value().preferred())
     }
 
     /// What the buttons and the slider say, over `fallback` for any that is missing.

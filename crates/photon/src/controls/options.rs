@@ -56,7 +56,9 @@ impl Controls {
             _ => {}
         }
         let shown = video.values(Self::video_values(&self.options));
+        let mode = video.fullscreen_mode();
         self.take_video_values(shown);
+        self.take_fullscreen_mode(mode, surface);
         if done {
             self.close_video();
         }
@@ -205,8 +207,30 @@ impl Controls {
                 self.options.gui_scale,
                 scale.calculate_scale(0, self.options.font.force_unicode),
             ),
-            Self::video_values(&self.options),
+            (
+                Self::video_values(&self.options),
+                FullscreenModes::new(
+                    surface.video_modes().map(<[VideoMode]>::to_vec),
+                    self.options
+                        .fullscreen_resolution()
+                        .and_then(VideoMode::read),
+                ),
+            ),
         ));
+    }
+
+    /// `setPreferredFullscreenVideoMode`: the window takes the resolution the slider shows, and
+    /// the options keep it.
+    fn take_fullscreen_mode(
+        &mut self,
+        mode: Option<Option<VideoMode>>,
+        surface: &mut WindowSurface,
+    ) {
+        let Some(mode) = mode else { return };
+        self.options
+            .set_fullscreen_resolution(mode.as_ref().map(VideoMode::write));
+        surface.set_preferred_video_mode(mode);
+        surface.apply_video_mode();
     }
 
     /// The options the video screen handed back.

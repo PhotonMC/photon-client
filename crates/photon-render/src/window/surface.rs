@@ -12,6 +12,7 @@ use std::fmt;
 use glfw::{WindowHint, WindowMode};
 
 use super::scale::{WindowScale, allowed_window_min_size, framebuffer_extent};
+use super::video_mode::VideoMode;
 
 /// Reference default window size, as shipped in the client's argument parser.
 pub const DEFAULT_WIDTH: i32 = 854;
@@ -70,6 +71,12 @@ pub struct WindowSurface {
     enforce_unicode: bool,
     /// Where and how big the window was before it went fullscreen.
     windowed: Option<(i32, i32, i32, i32)>,
+    /// `Window.preferredFullscreenVideoMode`: the mode fullscreen asks the monitor for, if it has it.
+    preferred_mode: Option<VideoMode>,
+    /// The modes the primary monitor listed when the window was made; none without a monitor.
+    monitor_modes: Option<Vec<VideoMode>>,
+    /// The preferred mode changed since fullscreen last took it (`Window.dirty`).
+    mode_dirty: bool,
 }
 
 impl WindowSurface {
@@ -92,6 +99,8 @@ impl WindowSurface {
 
         // Centre on the primary monitor's current video mode, as the reference
         // does from the monitor origin and mode size.
+        let monitor_modes =
+            glfw.with_primary_monitor(|_, monitor| monitor.as_deref().map(Self::listed_modes));
         let centre = glfw.with_primary_monitor(|_, monitor| {
             let monitor = monitor?;
             let mode = monitor.get_video_mode()?;
@@ -132,6 +141,9 @@ impl WindowSurface {
             gui_scale_option: 0,
             enforce_unicode: false,
             windowed: None,
+            preferred_mode: None,
+            monitor_modes,
+            mode_dirty: false,
         })
     }
 
@@ -219,23 +231,89 @@ impl WindowSurface {
         }
         let (x, y) = self.window.get_pos();
         let (width, height) = self.window.get_size();
+        let preferred = self.preferred_mode;
         let window = &mut self.window;
         let switched = self.glfw.with_primary_monitor(|_, monitor| {
             let monitor = monitor?;
-            let mode = monitor.get_video_mode()?;
+            let mode = Self::fullscreen_mode(monitor, preferred)?;
             window.set_monitor(
                 WindowMode::FullScreen(monitor),
                 0,
                 0,
-                mode.width,
-                mode.height,
-                Some(mode.refresh_rate),
+                mode.width as u32,
+                mode.height as u32,
+                Some(mode.refresh_rate as u32),
             );
             Some(())
         });
         if switched.is_some() {
             self.windowed = Some((x, y, width, height));
         }
+    }
+
+    /// `Monitor.getPreferredVidMode`: the preferred mode if the monitor lists it, else the mode the
+    /// monitor runs now.
+    fn fullscreen_mode(monitor: &glfw::Monitor, preferred: Option<VideoMode>) -> Option<VideoMode> {
+        if let Some(wanted) = preferred
+            && Self::listed_modes(monitor).contains(&wanted)
+        {
+            return Some(wanted);
+        }
+        monitor.get_video_mode().map(VideoMode::from)
+    }
+
+    /// `Monitor.tryCreate`'s list: the modes with eight bits or more per channel, last first.
+    fn listed_modes(monitor: &glfw::Monitor) -> Vec<VideoMode> {
+        monitor
+            .get_video_modes()
+            .into_iter()
+            .rev()
+            .map(VideoMode::from)
+            .filter(|mode| mode.red_bits >= 8 && mode.green_bits >= 8 && mode.blue_bits >= 8)
+            .collect()
+    }
+
+    /// The video modes the primary monitor offers, or none when there is no monitor
+    /// (`Window.findBestMonitor`).
+    pub fn video_modes(&self) -> Option<&[VideoMode]> {
+        self.monitor_modes.as_deref()
+    }
+
+    /// `Window.getPreferredFullscreenVideoMode`.
+    pub fn preferred_video_mode(&self) -> Option<VideoMode> {
+        self.preferred_mode
+    }
+
+    /// `Window.setPreferredFullscreenVideoMode`: fullscreen takes the mode at the next
+    /// [`Self::apply_video_mode`].
+    pub fn set_preferred_video_mode(&mut self, mode: Option<VideoMode>) {
+        if mode != self.preferred_mode {
+            self.mode_dirty = true;
+        }
+        self.preferred_mode = mode;
+    }
+
+    /// `Window.changeFullscreenVideoMode`: a fullscreen window changes to the mode now preferred.
+    pub fn apply_video_mode(&mut self) {
+        if !self.mode_dirty || self.windowed.is_none() {
+            return;
+        }
+        self.mode_dirty = false;
+        let preferred = self.preferred_mode;
+        let window = &mut self.window;
+        self.glfw.with_primary_monitor(|_, monitor| {
+            let monitor = monitor?;
+            let mode = Self::fullscreen_mode(monitor, preferred)?;
+            window.set_monitor(
+                WindowMode::FullScreen(monitor),
+                0,
+                0,
+                mode.width as u32,
+                mode.height as u32,
+                Some(mode.refresh_rate as u32),
+            );
+            Some(())
+        });
     }
 
     /// Hide and hold the cursor for mouse look, or give it back.

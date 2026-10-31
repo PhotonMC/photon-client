@@ -101,7 +101,7 @@ pub(super) fn video_settings_screen_case(
         (window.gui_scaled_width(), window.gui_scaled_height()),
         row["in_world"].as_bool().unwrap_or(false),
         (gui_scale, max_scale),
-        super::stored::stored_values(row),
+        (super::stored::stored_values(row), Default::default()),
     );
     let mut last = (0.0, 0.0);
     let mut clock = 0_u64;

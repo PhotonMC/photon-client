@@ -26,7 +26,8 @@ use photon_gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
 
 use photon_gui::options::sound::SoundOptionsScreen;
 
-use photon_gui::options::video::{VideoSettingsScreen, VideoValues};
+use photon_gui::options::video::{FullscreenModes, VideoSettingsScreen, VideoValues};
+use photon_render::window::VideoMode;
 
 use photon_gui::options::{OptionsAction, OptionsInput, OptionsScreen};
 
@@ -317,6 +318,19 @@ pub(crate) fn client_information(
 /// `Options.optionsFile`.
 pub(crate) fn options_path() -> std::path::PathBuf {
     game_directory().join("options.txt")
+}
+
+/// The window takes the stored fullscreen resolution, and `PHOTON_FULLSCREEN` starts it
+/// fullscreen, as F11 would switch.
+pub(crate) fn start_fullscreen(surface: &mut WindowSurface) {
+    surface.set_preferred_video_mode(
+        load_options()
+            .fullscreen_resolution()
+            .and_then(VideoMode::read),
+    );
+    if std::env::var_os("PHOTON_FULLSCREEN").is_some() {
+        surface.toggle_fullscreen();
+    }
 }
 
 /// `Options.load`: `options.txt` of the game directory, written when it

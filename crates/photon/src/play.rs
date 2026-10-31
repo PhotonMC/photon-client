@@ -383,9 +383,7 @@ fn open_window(width: i32, height: i32) -> Result<(WindowSurface, VulkanBackend,
     // SAFETY: the handles are the window's, and the caller holds the surface
     // beside the backend, declared first so it is dropped after it.
     let backend = unsafe { VulkanBackend::create(display_handle, window_handle, size.0, size.1) }?;
-    if env::var_os("PHOTON_FULLSCREEN").is_some() {
-        surface.toggle_fullscreen();
-    }
+    crate::controls::start_fullscreen(&mut surface);
     Ok((surface, backend, size))
 }
 
