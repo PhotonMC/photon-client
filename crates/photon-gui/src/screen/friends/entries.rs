@@ -1,7 +1,7 @@
 //! The entries of the friends overlay's lists: their layout, drawing and buttons
 //! (`FriendEntry`, `IncomingEntry`, `OutgoingEntry`).
 //!
-//! Not drawn: the buttons' tooltips and loading states, the status text scrolling
+//! Not drawn: the buttons' loading states, the status text scrolling
 //! when it is too long, and the skins other than a default one.
 
 use super::draw::inside;
@@ -9,6 +9,9 @@ use super::*;
 use crate::FrameRuns;
 use photon_render::entity::player_renderer::default_skin;
 use photon_render::gui::{GuiAtlas, GuiFrame};
+
+/// Left, top, width and height.
+pub(super) type Rect = (i32, i32, i32, i32);
 
 const ENTRY_WIDTH: i32 = OVERLAY_WIDTH - 16;
 const FACE_SIZE: i32 = 24;
@@ -21,7 +24,7 @@ const SCROLLBAR_WIDTH: i32 = 6;
 const GREY: u32 = 0xFFA0_A0A0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Button {
+pub(super) enum Button {
     Remove,
     Accept,
     Decline,
@@ -144,8 +147,22 @@ impl FriendsOverlay {
 
     /// The press of a button of an entry at `at`, as what the screen asks of the game.
     pub(super) fn entry_pressed(&self, at: (i32, i32)) -> Option<FriendsEvent> {
+        if self.view.sending {
+            return None;
+        }
+        let (button, id, _) = self.button_under(at)?;
+        Some(match button {
+            Button::Remove => FriendsEvent::Remove(id),
+            Button::Accept => FriendsEvent::Accept(id),
+            Button::Decline => FriendsEvent::Decline(id),
+            Button::Revoke => FriendsEvent::Revoke(id),
+        })
+    }
+
+    /// The button of an entry at `at`, and whose entry it is.
+    pub(super) fn button_under(&self, at: (i32, i32)) -> Option<(Button, Uuid, Rect)> {
         let area = self.list_area();
-        if !inside(at, area) || self.view.sending {
+        if !inside(at, area) {
             return None;
         }
         let entries = self.shown();
@@ -157,13 +174,8 @@ impl FriendsOverlay {
             };
             let entry = &entries[*index];
             let buttons = Self::buttons_of(entry.kind, left, area.1 + y - self.scroll);
-            let (button, _) = buttons.into_iter().find(|(_, rect)| inside(at, *rect))?;
-            Some(match button {
-                Button::Remove => FriendsEvent::Remove(entry.id),
-                Button::Accept => FriendsEvent::Accept(entry.id),
-                Button::Decline => FriendsEvent::Decline(entry.id),
-                Button::Revoke => FriendsEvent::Revoke(entry.id),
-            })
+            let (button, rect) = buttons.into_iter().find(|(_, rect)| inside(at, *rect))?;
+            Some((button, entry.id, rect))
         })
     }
 

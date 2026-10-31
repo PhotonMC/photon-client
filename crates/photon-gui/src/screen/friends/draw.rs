@@ -86,6 +86,7 @@ impl FriendsOverlay {
             }
             Listing::Entries(_) => self.draw_entries(frame, (atlas, font), mouse),
         }
+        self.draw_tooltip(frame, (atlas, font), mouse);
     }
 
     fn draw_tab(

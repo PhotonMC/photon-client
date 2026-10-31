@@ -185,3 +185,17 @@ fn the_scroller_follows_a_drag_and_lets_go() {
     screen.dragged(f64::from(y + 20), 6.0);
     assert_eq!(screen.scroll, screen.max_scroll());
 }
+
+#[test]
+fn a_tooltip_stands_over_the_send_button_and_over_nothing_else() {
+    let screen = overlay(true);
+    let font = Font::default();
+    let (x, y, ..) = screen.button_rect();
+    let (lines, rect) = screen
+        .tooltip_at((x + 3, y + 3), &font)
+        .expect("over the button");
+    assert_eq!(rect, screen.button_rect());
+    // The box is empty, so it is the empty name's text and not the send one.
+    assert_eq!(lines, screen.texts.tooltips.empty_name.as_slice());
+    assert!(screen.tooltip_at((0, 0), &font).is_none());
+}

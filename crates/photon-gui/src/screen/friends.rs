@@ -12,6 +12,7 @@ mod draw;
 mod empty;
 mod entries;
 mod input;
+mod tooltip;
 
 use std::time::Instant;
 
@@ -139,6 +140,7 @@ struct Texts {
     pending_empty: Vec<Run>,
     received: Vec<Run>,
     sent: Vec<Run>,
+    tooltips: tooltip::TooltipTexts,
 }
 
 impl FriendsOverlay {
@@ -178,6 +180,7 @@ impl FriendsOverlay {
                 &Component::translatable("gui.friends.pending.received").with_style(&heading),
             ),
             sent: runs(&Component::translatable("gui.friends.pending.sent").with_style(&heading)),
+            tooltips: tooltip::TooltipTexts::new(lang),
         };
         Self {
             pending_label: pending_label(lang, view.requests),
