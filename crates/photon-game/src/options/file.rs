@@ -608,6 +608,11 @@ mod tests {
         assert_eq!(options.play.sprint_window, 3);
         assert_eq!(options.write(Key::Play(PlayKey::SprintWindow)), "3");
         assert_eq!(options.write(Key::Play(PlayKey::Vignette)), "false");
+        let title = loaded(
+            "panoramaScrollSpeed:0.5\nhideSplashTexts:true\ndarkMojangStudiosBackground:true\n",
+        );
+        assert!(title.play.hide_splash_texts && title.play.dark_background);
+        assert_eq!(title.write(Key::Play(PlayKey::PanoramaSpeed)), "0.5");
         let refused = loaded("sprintWindow:11\nautoJump:1\nvignette:\"no\"\n");
         assert_eq!(refused.play, PlayOptions::default());
     }

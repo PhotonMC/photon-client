@@ -66,7 +66,7 @@ pub(super) enum Key {
     Play(PlayKey),
 }
 
-pub(super) const KEYS: [(&str, Key); 102] = [
+pub(super) const KEYS: [(&str, Key); 105] = [
     ("ao", Key::AmbientOcclusion),
     (
         "biomeBlendRadius",
@@ -172,6 +172,12 @@ pub(super) const KEYS: [(&str, Key); 102] = [
         "showAutosaveIndicator",
         Key::Play(PlayKey::AutosaveIndicator),
     ),
+    (
+        "darkMojangStudiosBackground",
+        Key::Play(PlayKey::DarkBackground),
+    ),
+    ("hideSplashTexts", Key::Play(PlayKey::HideSplashTexts)),
+    ("panoramaScrollSpeed", Key::Play(PlayKey::PanoramaSpeed)),
     ("saveChatDrafts", Key::SaveChatDrafts),
     ("attackIndicator", Key::AttackIndicator),
     ("tutorialStep", Key::TutorialStep),

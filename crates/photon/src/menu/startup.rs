@@ -34,7 +34,10 @@ impl Splash {
             return None;
         }
         Some(Self {
-            overlay: LoadingOverlay::new(false, false),
+            overlay: LoadingOverlay::new(
+                false,
+                crate::controls::load_options().play.dark_background,
+            ),
             atlas,
             started: Instant::now(),
         })

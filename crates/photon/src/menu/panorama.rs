@@ -13,8 +13,8 @@ impl Menu {
             now.duration_since(self.last_spin).as_secs_f32(),
         );
         self.last_spin = now;
-        // `panoramaScrollSpeed` is not read yet; its default is a full speed.
-        self.spin = photon_render::panorama::spin_after(self.spin, ticks, 1.0);
+        let speed = self.live_options().play.panorama_speed;
+        self.spin = photon_render::panorama::spin_after(self.spin, ticks, speed);
         let extent = client.backend.description().extent;
         // `Screen.extractBackground` blurs behind every screen but the title's, which draws no
         // background of its own.

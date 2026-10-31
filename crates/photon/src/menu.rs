@@ -207,7 +207,7 @@ impl Menu {
                     &root.to_string_lossy(),
                 )?))?;
         }
-        let splash = pick_splash(root);
+        let splash = pick_splash(root).filter(|_| !options.play.hide_splash_texts);
         let game_directory = crate::controls::game_directory();
         let screen = title_screen(
             gui.text_assets().0,

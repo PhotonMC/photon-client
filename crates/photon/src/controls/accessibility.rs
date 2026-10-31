@@ -46,6 +46,7 @@ impl Controls {
             return;
         };
         let choices = screen.choices();
+        self.options.play = screen.play_choices(self.options.play);
         let options = &mut self.options;
         options.show_subtitles = choices.subtitles;
         options.text_background_opacity = choices.text_background_opacity;

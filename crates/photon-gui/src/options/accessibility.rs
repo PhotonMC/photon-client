@@ -7,6 +7,7 @@
 //! rotation) hold a value on their widget.
 
 use photon_game::options::Options;
+use photon_game::options::PlayOptions;
 use photon_game::options::values::{IntRange, UnitDouble};
 use photon_game::text::{Component, Lang};
 
@@ -50,28 +51,11 @@ const SPLASH_TEXTS: u8 = 24;
 const NARRATOR_HOTKEY: u8 = 25;
 
 /// The options this client has no effect for yet, and what their widgets say.
-const STILL: [(u8, &str, &str); 4] = [
-    (
-        DARK_BACKGROUND,
-        "photon.accessibility.no_dark_background",
-        "The loading background is always the original colour.",
-    ),
-    (
-        PANORAMA_SPEED,
-        "photon.accessibility.no_panorama_speed",
-        "The title panorama always turns at its own speed.",
-    ),
-    (
-        SPLASH_TEXTS,
-        "photon.accessibility.no_splash_texts",
-        "The splash text is always shown.",
-    ),
-    (
-        NARRATOR_HOTKEY,
-        "photon.accessibility.no_narrator",
-        "There is no narrator on this client.",
-    ),
-];
+const STILL: [(u8, &str, &str); 1] = [(
+    NARRATOR_HOTKEY,
+    "photon.accessibility.no_narrator",
+    "There is no narrator on this client.",
+)];
 
 /// `notificationDisplayTime`'s value set: tenths of a second from 0.5 to 10.
 type TimeValues =
@@ -209,6 +193,26 @@ impl AccessibilityScreen {
     }
 
     /// What the options say now.
+    /// The title screen's flags and speed on the screen, over `play`.
+    pub fn play_choices(&self, play: PlayOptions) -> PlayOptions {
+        let list = &self.screen.list;
+        let flag = |tag: u8, own: bool| {
+            list.find(tag)
+                .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
+                .map_or(own, |button| *button.value())
+        };
+        let speed = list
+            .find(PANORAMA_SPEED)
+            .and_then(|control| control.as_any().downcast_ref::<OptionSlider<UnitDouble>>())
+            .map_or(play.panorama_speed, |slider| *slider.value());
+        PlayOptions {
+            dark_background: flag(DARK_BACKGROUND, play.dark_background),
+            hide_splash_texts: flag(SPLASH_TEXTS, play.hide_splash_texts),
+            panorama_speed: speed,
+            ..play
+        }
+    }
+
     pub fn choices(&self) -> AccessibilityChoices {
         let list = &self.screen.list;
         let share = |tag: u8| {
@@ -504,7 +508,7 @@ fn other_options(options: &Options) -> Vec<(u8, Build)> {
             DARK_BACKGROUND,
             boolean_tip(
                 "options.darkMojangStudiosBackgroundColor",
-                false,
+                options.play.dark_background,
                 "options.darkMojangStudiosBackgroundColor.tooltip",
             ),
         ),
@@ -514,14 +518,14 @@ fn other_options(options: &Options) -> Vec<(u8, Build)> {
                 "options.accessibility.panorama_speed",
                 UnitDouble,
                 percent,
-                1.0,
+                options.play.panorama_speed,
             ),
         ),
         (
             SPLASH_TEXTS,
             boolean_tip(
                 "options.hideSplashTexts",
-                false,
+                options.play.hide_splash_texts,
                 "options.hideSplashTexts.tooltip",
             ),
         ),

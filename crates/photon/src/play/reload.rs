@@ -341,8 +341,10 @@ impl Play {
                 });
                 // `reloadResourcePacks` fades the overlay in unless it is the recovery.
                 let fade_in = !matches!(stage, Stage::Recovery);
-                self.gui
-                    .set_loading(Some(LoadingOverlay::new(fade_in, false)));
+                self.gui.set_loading(Some(LoadingOverlay::new(
+                    fade_in,
+                    self.controls.options.play.dark_background,
+                )));
             }
             Err(error) => self.answer_reload(stage, Err(error.to_string())),
         }

@@ -1,7 +1,7 @@
 //! The play options of the controls, mouse, chat and video screens that `options.txt` keeps: the
 //! toggles of the keys, auto jump, the chat's links and suggestions, and the view's extras.
 
-use super::json::{Json, int_value};
+use super::json::{Json, double_value, int_value, java_double};
 
 /// An option of the group, by its name in the file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,10 +21,13 @@ pub(super) enum PlayKey {
     ReducedDebugInfo,
     Vignette,
     AutosaveIndicator,
+    DarkBackground,
+    HideSplashTexts,
+    PanoramaSpeed,
 }
 
 /// The flags and the sprint window of the group.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlayOptions {
     /// `toggleCrouch`, `toggleSprint`, `toggleAttack` and `toggleUse`: the key toggles instead of
     /// being held.
@@ -46,6 +49,12 @@ pub struct PlayOptions {
     pub vignette: bool,
     /// `showAutosaveIndicator`.
     pub autosave_indicator: bool,
+    /// `darkMojangStudiosBackground`: the loading overlay is black.
+    pub dark_background: bool,
+    /// `hideSplashTexts`.
+    pub hide_splash_texts: bool,
+    /// `panoramaScrollSpeed`, 0 to 1: how fast the title panorama turns.
+    pub panorama_speed: f64,
 }
 
 impl Default for PlayOptions {
@@ -66,6 +75,9 @@ impl Default for PlayOptions {
             reduced_debug_info: false,
             vignette: true,
             autosave_indicator: true,
+            dark_background: false,
+            hide_splash_texts: false,
+            panorama_speed: 1.0,
         }
     }
 }
@@ -93,6 +105,8 @@ impl PlayOptions {
             PlayKey::ReducedDebugInfo => Some(&mut self.reduced_debug_info),
             PlayKey::Vignette => Some(&mut self.vignette),
             PlayKey::AutosaveIndicator => Some(&mut self.autosave_indicator),
+            PlayKey::DarkBackground => Some(&mut self.dark_background),
+            PlayKey::HideSplashTexts => Some(&mut self.hide_splash_texts),
             _ => None,
         }
     }
@@ -106,6 +120,12 @@ impl PlayOptions {
                     self.sprint_window = value;
                 }
             }
+            (PlayKey::PanoramaSpeed, Json::Number(number)) => {
+                let value = double_value(number);
+                if (0.0..=1.0).contains(&value) {
+                    self.panorama_speed = value;
+                }
+            }
             (_, Json::Bool(value)) => {
                 if let Some(flag) = self.flag(key) {
                     *flag = *value;
@@ -117,9 +137,10 @@ impl PlayOptions {
 
     pub(super) fn write(&self, key: PlayKey) -> String {
         let mut own = *self;
-        match own.flag(key) {
-            Some(flag) => flag.to_string(),
-            None => self.sprint_window.to_string(),
+        match (key, own.flag(key)) {
+            (_, Some(flag)) => flag.to_string(),
+            (PlayKey::PanoramaSpeed, None) => java_double(self.panorama_speed),
+            (_, None) => self.sprint_window.to_string(),
         }
     }
 }
