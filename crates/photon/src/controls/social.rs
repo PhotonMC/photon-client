@@ -42,6 +42,7 @@ impl Controls {
             roster,
             Page::All,
         ));
+        self.social_key_char = true;
         self.captured = false;
         self.last_cursor = None;
         surface.set_cursor_captured(false);
@@ -60,8 +61,22 @@ impl Controls {
         surface.set_cursor_captured(true);
     }
 
+    /// An event for the open social interactions screen, but for the character of the key that
+    /// opened it, which is not text.
+    pub(super) fn social_input(
+        &mut self,
+        event: glfw::WindowEvent,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        let key_char = std::mem::take(&mut self.social_key_char);
+        if !(key_char && matches!(event, glfw::WindowEvent::Char(_))) {
+            self.social_event(event, surface, assets);
+        }
+    }
+
     /// An event for the open social interactions screen.
-    pub(super) fn social_event(
+    fn social_event(
         &mut self,
         event: glfw::WindowEvent,
         surface: &mut WindowSurface,

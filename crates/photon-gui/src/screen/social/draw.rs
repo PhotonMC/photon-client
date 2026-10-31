@@ -18,13 +18,14 @@ impl SocialInteractionsScreen {
             (0, 0, width, height),
         );
         let window_x = self.margin_x() + 3;
-        frame.sprite(
+        // A nine-slice sprite with a border of 8, which stretches only its middle.
+        frame.nine_slice(
             atlas,
             "social_interactions/background",
-            window_x,
-            64,
-            BACKGROUND_WIDTH,
-            self.window_height() + 16,
+            (236, 34),
+            8,
+            false,
+            (window_x, 64, BACKGROUND_WIDTH, self.window_height() + 16),
         );
         frame.sprite(atlas, "icon/search", window_x + 10, 76, 12, 12);
     }

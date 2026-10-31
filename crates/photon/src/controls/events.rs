@@ -92,7 +92,7 @@ impl Controls {
             Err(event) => event,
         };
         if self.social.is_some() {
-            self.social_event(event, surface, assets);
+            self.social_input(event, surface, assets);
             return Ok(());
         }
         if self.friends.is_some() {

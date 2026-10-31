@@ -152,6 +152,9 @@ pub struct Controls {
     pub credits: Option<CreditsScreen>,
     /// The social interactions screen, while it is open.
     pub social: Option<SocialInteractionsScreen>,
+    /// The social screen was opened by its key, whose character is still to come and is not text
+    /// for the box (the game opens screens in its tick, after the character is dropped).
+    pub(crate) social_key_char: bool,
     /// The friends overlay, while it is open.
     pub friends: Option<photon_gui::screen::friends::FriendsOverlay>,
     /// The account's friends and the thread that asks the service, once the account is known.
