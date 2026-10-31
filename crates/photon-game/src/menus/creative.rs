@@ -34,6 +34,7 @@ impl CreativeMenu {
             versions,
             operator: false,
             saved_hotbars: Vec::new(),
+            placeholders: Vec::new(),
         };
         menu.select_tab(tab);
         menu
@@ -70,8 +71,13 @@ impl CreativeMenu {
 
     /// The saved hotbars the hotbar tab lists (`None` for an empty one, which shows a
     /// placeholder), listed again when the tab is open.
-    pub fn set_saved_hotbars(&mut self, saved: Vec<Option<Vec<Option<Stack>>>>) {
+    pub fn set_saved_hotbars(
+        &mut self,
+        saved: Vec<Option<Vec<Option<Stack>>>>,
+        placeholders: Vec<Stack>,
+    ) {
         self.saved_hotbars = saved;
+        self.placeholders = placeholders;
         if self.kind() == TabKind::Hotbar {
             self.select_tab(self.tab);
         }
@@ -103,6 +109,8 @@ pub struct CreativeMenu {
     pub(super) operator: bool,
     /// `HotbarManager`: the nine saved hotbars the hotbar tab lists, `None` for an empty one.
     pub(super) saved_hotbars: Vec<Option<Vec<Option<Stack>>>>,
+    /// The placeholder of each empty hotbar (`hotbar::placeholder`); a plain paper without one.
+    pub(super) placeholders: Vec<Stack>,
 }
 
 mod clicks;
@@ -415,7 +423,7 @@ mod tests {
             None,
             None,
         ]);
-        creative.set_saved_hotbars(saved);
+        creative.set_saved_hotbars(saved, Vec::new());
         // Hotbar 1 lists its own stacks, unlocked; hotbar 0 is still the placeholder.
         let shown = creative.window_stack(9 + 3).expect("the saved stone");
         assert_eq!(shown.item_count(), 5);

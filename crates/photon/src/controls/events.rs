@@ -119,7 +119,7 @@ impl Controls {
                 self.creative_tab,
                 assets,
             );
-            self.show_saved_hotbars();
+            self.show_saved_hotbars(&assets.lang);
             self.captured = false;
             self.turning.inventory_opened = true;
             self.release_keys();
@@ -267,7 +267,7 @@ impl Controls {
         if open_tab.is_some() != creative.is_some() {
             self.creative_tab = open_tab.unwrap_or(self.creative_tab);
             self.screen = Some(assets.screen(creative, width, height, self.creative_tab));
-            self.show_saved_hotbars();
+            self.show_saved_hotbars(&assets.lang);
         }
         Ok(())
     }

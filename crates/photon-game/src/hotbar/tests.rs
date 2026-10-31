@@ -155,3 +155,24 @@ fn a_stack_with_the_wire_form_of_no_components_is_stored_whole() {
         Some(3)
     );
 }
+
+#[test]
+fn the_placeholder_is_named_after_the_two_keys() {
+    use crate::text::Component;
+    use photon_data::item::component_types::ITEM_NAME;
+    let stack = placeholder(Component::literal("C"), Component::literal("1"));
+    let values = crate::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes());
+    let name = values.raw(ITEM_NAME).expect("the placeholder has a name");
+    let tag = nbt::read_any_nbt(&mut &*name)
+        .ok()
+        .flatten()
+        .expect("a tag");
+    let read = Component::from_nbt(&tag).expect("a component");
+    assert_eq!(
+        read,
+        Component::translatable_with(
+            "inventory.hotbarInfo",
+            vec![Component::literal("C"), Component::literal("1")]
+        )
+    );
+}

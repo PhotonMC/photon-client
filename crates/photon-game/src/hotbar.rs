@@ -17,6 +17,8 @@ use photon_core::nbt::{self, Field, FieldValue};
 use photon_data::item::registry::AIR_ITEM;
 use photon_world::ClientItemStackState as Stack;
 
+use crate::text::{Component, Content};
+
 use crate::options::DATA_VERSION;
 
 /// `HotbarManager.NUM_HOTBAR_GROUPS`.
@@ -85,6 +87,48 @@ pub fn decode_entry(entry: &FieldValue) -> Option<Stack> {
     let id = ItemId(i32::try_from(index).ok()?);
     // The item codec leaves out air, which is no stack.
     (id != AIR_ITEM).then(|| Stack::new(count, id))
+}
+
+/// A component as the network's tag writes it (text and translations; no styles).
+fn component_nbt(component: &Component) -> FieldValue {
+    let text = |key: &str, value: &str| Field {
+        key: key.to_owned(),
+        value: FieldValue::Str(value.to_owned()),
+    };
+    match &component.content {
+        Content::Literal(literal) => FieldValue::Compound(vec![text("text", literal)]),
+        Content::Translatable { key, args, .. } => {
+            let mut fields = vec![text("translate", key)];
+            if !args.is_empty() {
+                fields.push(Field {
+                    key: "with".to_owned(),
+                    value: FieldValue::List(args.iter().map(component_nbt).collect()),
+                });
+            }
+            FieldValue::Compound(fields)
+        }
+    }
+}
+
+/// `Items.PAPER`.
+pub fn paper() -> ItemId {
+    crate::item::id_of("minecraft:paper").expect("paper is an item")
+}
+
+/// The creative hotbar tab's placeholder of an empty hotbar: a locked paper named
+/// `inventory.hotbarInfo` after the save activator's key and the hotbar's own key.
+pub fn placeholder(save_key: Component, hotbar_key: Component) -> Stack {
+    use photon_data::item::component_types::{CREATIVE_SLOT_LOCK, ITEM_NAME};
+    let paper = paper();
+    let name = Component::translatable_with("inventory.hotbarInfo", vec![save_key, hotbar_key]);
+    let mut bytes = Vec::new();
+    nbt::write_any_nbt(Some(&component_nbt(&name)), &mut bytes);
+    let patch = photon_data::item_components::Patch {
+        added: vec![(ITEM_NAME, bytes), (CREATIVE_SLOT_LOCK, Vec::new())],
+        removed: Vec::new(),
+    };
+    Stack::from_wire(1, paper, vec![ITEM_NAME, CREATIVE_SLOT_LOCK], Vec::new())
+        .with_patch_bytes(patch.trusted())
 }
 
 /// `Hotbar`: nine stacks, kept as the file's own entries so what is not understood stays as read.

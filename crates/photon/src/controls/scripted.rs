@@ -372,7 +372,7 @@ impl Controls {
                     self.creative_tab,
                     assets,
                 );
-                self.show_saved_hotbars();
+                self.show_saved_hotbars(&assets.lang);
             }
         }
         if held.advancements && self.advancements.is_none() {

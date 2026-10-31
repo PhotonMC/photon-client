@@ -26,25 +26,40 @@ impl CreativeMenu {
         self.scroll_to(0.0);
     }
 
-    /// The hotbar tab: an empty hotbar is a paper in the diagonal, any other lists its stacks.
+    /// The hotbar tab: an empty hotbar is a placeholder in the diagonal, any other lists its
+    /// stacks.
     fn list_saved_hotbars(&mut self) {
-        let paper = crate::item::id_of("minecraft:paper").expect("paper is an item");
         for hotbar in 0..COLUMNS {
-            let saved = self.saved_hotbars.get(hotbar).and_then(Option::as_ref);
-            for slot in 0..COLUMNS {
-                let shown = match saved {
-                    Some(stacks) => stacks.get(slot).cloned().flatten().map(|stack| Shown {
+            let row = self.hotbar_row(hotbar);
+            self.items.extend(row);
+        }
+    }
+
+    /// One hotbar's nine places in the tab.
+    fn hotbar_row(&self, hotbar: usize) -> Vec<Option<Shown>> {
+        if let Some(stacks) = self.saved_hotbars.get(hotbar).and_then(Option::as_ref) {
+            return (0..COLUMNS)
+                .map(|slot| {
+                    stacks.get(slot).cloned().flatten().map(|stack| Shown {
                         stack,
                         locked: false,
-                    }),
-                    None => (slot == hotbar).then(|| Shown {
-                        stack: Stack::new(1, paper),
-                        locked: true,
-                    }),
-                };
-                self.items.push(shown);
-            }
+                    })
+                })
+                .collect();
         }
+        let placeholder = self
+            .placeholders
+            .get(hotbar)
+            .cloned()
+            .unwrap_or_else(|| Stack::new(1, crate::hotbar::paper()));
+        (0..COLUMNS)
+            .map(|slot| {
+                (slot == hotbar).then(|| Shown {
+                    stack: placeholder.clone(),
+                    locked: true,
+                })
+            })
+            .collect()
     }
 
     /// `Slot.mayPickup` for what `slotClicked` asks it of.

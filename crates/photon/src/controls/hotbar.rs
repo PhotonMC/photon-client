@@ -11,10 +11,17 @@ impl Controls {
     }
 
     /// `selectTab` for the hotbar tab reads the saved hotbars: an open creative screen gets them.
-    pub(super) fn show_saved_hotbars(&mut self) {
+    pub(super) fn show_saved_hotbars(&mut self, lang: &Lang) {
         let saved = self.hotbars().saved();
+        let save_key = self.key_message("key.saveToolbarActivator", lang);
+        let placeholders = (1..=photon_game::hotbar::HOTBARS)
+            .map(|number| {
+                let key = self.key_message(&format!("key.hotbar.{number}"), lang);
+                photon_game::hotbar::placeholder(save_key.clone(), key)
+            })
+            .collect();
         if let Some(creative) = self.screen.as_mut().and_then(|open| open.as_creative_mut()) {
-            creative.set_saved_hotbars(saved);
+            creative.set_saved_hotbars(saved, placeholders);
         }
     }
 
