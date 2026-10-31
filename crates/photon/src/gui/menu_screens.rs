@@ -47,6 +47,8 @@ impl Gui {
         if controls.link_confirm.is_some()
             || controls.dialog.is_some()
             || controls.restrictions.is_some()
+            // The social interactions screen opened from the pause menu replaces it.
+            || controls.social.is_some()
         {
             return;
         }

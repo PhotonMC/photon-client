@@ -36,6 +36,8 @@ pub struct HeldKeys {
     pub advancements: bool,
     /// A scripted press of the friends key on this tick.
     pub friends: bool,
+    /// A scripted press of the social interactions key on this tick.
+    pub social: bool,
     /// The chat box opened or closed on this tick, and Enter pressed in it.
     pub chat: bool,
     pub enter: bool,
@@ -101,6 +103,7 @@ const FLAGS: &[Flag] = &[
     ("inventory", |keys| keys.inventory = true),
     ("advancements", |keys| keys.advancements = true),
     ("friends", |keys| keys.friends = true),
+    ("social", |keys| keys.social = true),
     ("chat", |keys| keys.chat = true),
     ("enter", |keys| keys.enter = true),
     ("escape", |keys| keys.escape = true),
