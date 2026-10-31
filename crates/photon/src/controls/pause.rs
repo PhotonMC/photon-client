@@ -13,12 +13,10 @@ impl Controls {
                 .clone()
                 .unwrap_or_else(|| common.title.clone())
         });
-        self.pause = Some(PauseScreen::new(
-            &assets.creative.font,
-            &assets.lang,
-            size,
-            custom.as_ref(),
-        ));
+        self.pause = Some(
+            PauseScreen::new(&assets.creative.font, &assets.lang, size, custom.as_ref())
+                .without_services(&assets.lang),
+        );
         self.captured = false;
         self.last_cursor = None;
         surface.set_cursor_captured(false);

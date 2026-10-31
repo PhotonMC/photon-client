@@ -30,10 +30,12 @@ const SPLASH_ANGLE: f32 = (-std::f64::consts::PI / 9.0) as f32;
 /// The place of the Singleplayer and Realms buttons among those added.
 const SINGLEPLAYER: usize = 0;
 const REALMS: usize = 2;
+const FRIENDS: usize = 3;
 
 /// What the stilled buttons say (ours: the reference has no such state).
 const MULTIPLAYER_ONLY: &str =
     "Photon 1.0 is multiplayer-only. Singleplayer and Realms are not available yet.";
+const NO_FRIENDS: &str = "Photon does not have the online services friends need yet.";
 
 pub struct TitleScreen {
     buttons: ButtonSet<TitleAction>,
@@ -166,6 +168,10 @@ impl TitleScreen {
             self.buttons.set_active(index, false);
             self.buttons.set_tooltip(index, lang, &reason);
         }
+        // The friends button needs a service of Photon's own (ADR 0014 leaves it out).
+        let friends = Component::translatable_or("photon.title.no_friends", NO_FRIENDS);
+        self.buttons.set_active(FRIENDS, false);
+        self.buttons.set_tooltip(FRIENDS, lang, &friends);
         self
     }
 
@@ -289,5 +295,19 @@ mod tests {
         assert_eq!(buttons.clicked(row(2)), None);
         let (x, y) = row(4);
         assert_eq!(buttons.clicked((x - 50, y)), Some(TitleAction::Options));
+    }
+
+    #[test]
+    fn multiplayer_only_stills_friends_and_keeps_language_and_accessibility() {
+        let screen = screen(true);
+        let buttons = &screen.buttons;
+        let (x, y) = row(3);
+        // Friends, Language and Accessibility are the three icons, twenty wide, four apart.
+        assert_eq!(buttons.clicked((x - 24, y)), None);
+        assert_eq!(buttons.clicked((x, y)), Some(TitleAction::Language));
+        assert_eq!(
+            buttons.clicked((x + 24, y)),
+            Some(TitleAction::Accessibility)
+        );
     }
 }

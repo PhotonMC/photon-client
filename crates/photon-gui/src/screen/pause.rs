@@ -48,6 +48,10 @@ pub struct PauseScreen {
     custom: Option<Component>,
 }
 
+/// What the stilled buttons say (ours: the reference has no such state).
+const NO_SERVICES: &str = "Photon does not have the online services this needs yet.";
+const NO_PAGES: &str = "Photon has no bug or feedback page of its own yet.";
+
 fn runs(lang: &Lang, key: &str) -> Vec<Run> {
     lang.runs(
         &photon_game::text::Component::translatable(key),
@@ -199,9 +203,39 @@ impl PauseScreen {
         }
     }
 
+    /// The menu of a client without the reference's links and services: the bug and feedback
+    /// buttons, friends and player reporting are shown but still, and say why. The reference's
+    /// menu has them active, so the parity cases build the menu without this.
+    pub fn without_services(mut self, lang: &Lang) -> Self {
+        for (index, (widget, action)) in self.widgets.iter_mut().enumerate() {
+            let (key, fallback) = match action {
+                Some(PauseAction::ReportBugs | PauseAction::Feedback) => {
+                    ("photon.pause.no_pages", NO_PAGES)
+                }
+                Some(PauseAction::Friends | PauseAction::PlayerReporting) => {
+                    ("photon.pause.no_services", NO_SERVICES)
+                }
+                _ => continue,
+            };
+            widget.active = false;
+            let reason = Component::translatable_or(key, fallback);
+            self.tooltips[index] = Some(Holder::of(lang, &reason));
+        }
+        self
+    }
+
     /// The screen again for another size, with the same button.
     pub fn resized(&self, font: &Font, lang: &Lang, size: (i32, i32)) -> Self {
-        Self::new(font, lang, size, self.custom.as_ref())
+        let screen = Self::new(font, lang, size, self.custom.as_ref());
+        let stilled = self
+            .widgets
+            .iter()
+            .any(|(widget, action)| *action == Some(PauseAction::Friends) && !widget.active);
+        if stilled {
+            screen.without_services(lang)
+        } else {
+            screen
+        }
     }
 
     /// The screen size the layout was made for.
@@ -350,5 +384,69 @@ impl PauseScreen {
                 .is_some_and(|(widget, _)| widget.is_active())
         })?;
         self.press(index)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The centre of the widget of `action`.
+    fn centre(screen: &PauseScreen, action: PauseAction) -> (i32, i32) {
+        let (widget, _) = screen
+            .widgets
+            .iter()
+            .find(|(_, found)| *found == Some(action))
+            .expect("the menu has the button");
+        let rect = screen.arena.0[widget.rect];
+        (rect.x + rect.width / 2, rect.y + rect.height / 2)
+    }
+
+    fn screen(without_services: bool) -> PauseScreen {
+        let (font, lang) = (Font::default(), Lang::default());
+        let screen = PauseScreen::new(&font, &lang, (427, 240), None);
+        if without_services {
+            screen.without_services(&lang)
+        } else {
+            screen
+        }
+    }
+
+    #[test]
+    fn the_reference_menu_has_every_button_active() {
+        let mut screen = screen(false);
+        for action in [
+            PauseAction::ReportBugs,
+            PauseAction::Feedback,
+            PauseAction::Friends,
+            PauseAction::PlayerReporting,
+        ] {
+            let at = centre(&screen, action);
+            assert_eq!(screen.clicked(at), Some(action));
+        }
+    }
+
+    #[test]
+    fn without_services_stills_the_buttons_that_need_them_only() {
+        let mut screen = screen(true);
+        for action in [
+            PauseAction::ReportBugs,
+            PauseAction::Feedback,
+            PauseAction::Friends,
+            PauseAction::PlayerReporting,
+        ] {
+            let at = centre(&screen, action);
+            assert_eq!(screen.clicked(at), None);
+        }
+        let at = centre(&screen, PauseAction::Options);
+        assert_eq!(screen.clicked(at), Some(PauseAction::Options));
+    }
+
+    #[test]
+    fn a_resized_menu_keeps_the_buttons_still() {
+        let (font, lang) = (Font::default(), Lang::default());
+        let mut screen = screen(true).resized(&font, &lang, (320, 180));
+        let at = centre(&screen, PauseAction::Friends);
+        assert_eq!(screen.clicked(at), None);
     }
 }
