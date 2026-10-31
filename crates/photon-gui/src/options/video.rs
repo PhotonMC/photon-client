@@ -249,7 +249,7 @@ fn display_options(gui_scale: i32, max_gui_scale: i32, display: &VideoValues) ->
                 gui_scale,
             ),
         ),
-        (FULLSCREEN, boolean("options.fullscreen", false)),
+        size::fullscreen_entry(display),
         (
             EXCLUSIVE_FULLSCREEN,
             cycle_tip(

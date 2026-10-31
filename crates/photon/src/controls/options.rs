@@ -57,7 +57,7 @@ impl Controls {
         }
         let shown = video.values(Self::video_values(&self.options));
         let mode = video.fullscreen_mode();
-        self.take_video_values(shown);
+        self.take_video_values(shown, surface);
         self.take_fullscreen_mode(mode, surface);
         if done {
             self.close_video();
@@ -197,6 +197,7 @@ impl Controls {
 
     /// `VideoSettingsScreen`, over the options screen.
     pub(super) fn open_video(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        self.options.play.fullscreen = surface.is_fullscreen();
         let scale = surface.scale();
         self.video_screen = Some(
             VideoSettingsScreen::new(
@@ -237,7 +238,10 @@ impl Controls {
     }
 
     /// The options the video screen handed back.
-    fn take_video_values(&mut self, shown: VideoValues) {
+    fn take_video_values(&mut self, shown: VideoValues, surface: &mut WindowSurface) {
+        if shown.play.fullscreen != self.options.play.fullscreen {
+            surface.toggle_fullscreen();
+        }
         self.options.attack_indicator = shown.attack_indicator;
         self.options.framerate_limit = shown.framerate_limit;
         self.options.ambient_occlusion = shown.ambient_occlusion;
@@ -250,6 +254,7 @@ impl Controls {
         self.options.quality = shown.quality;
         self.options.play.autosave_indicator = shown.play.autosave_indicator;
         self.options.play.vignette = shown.play.vignette;
+        self.options.play.fullscreen = shown.play.fullscreen;
     }
 
     /// The options the video screen shows, as the options hold them.

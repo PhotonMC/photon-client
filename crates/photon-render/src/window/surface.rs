@@ -227,6 +227,11 @@ impl WindowSurface {
         seen
     }
 
+    /// Whether the window is fullscreen.
+    pub fn is_fullscreen(&self) -> bool {
+        self.windowed.is_some()
+    }
+
     /// Switch between a window and fullscreen on the primary monitor at its
     /// current video mode, as the reference's fullscreen key does, and back
     /// to the window's old place and size.

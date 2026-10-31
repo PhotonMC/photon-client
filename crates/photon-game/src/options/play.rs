@@ -24,6 +24,7 @@ pub(super) enum PlayKey {
     DarkBackground,
     HideSplashTexts,
     PanoramaSpeed,
+    Fullscreen,
 }
 
 /// The flags and the sprint window of the group.
@@ -55,6 +56,8 @@ pub struct PlayOptions {
     pub hide_splash_texts: bool,
     /// `panoramaScrollSpeed`, 0 to 1: how fast the title panorama turns.
     pub panorama_speed: f64,
+    /// `fullscreen`: the window is fullscreen.
+    pub fullscreen: bool,
 }
 
 impl Default for PlayOptions {
@@ -78,6 +81,7 @@ impl Default for PlayOptions {
             dark_background: false,
             hide_splash_texts: false,
             panorama_speed: 1.0,
+            fullscreen: false,
         }
     }
 }
@@ -104,9 +108,16 @@ impl PlayOptions {
             PlayKey::AutoSuggestions => Some(&mut self.auto_suggestions),
             PlayKey::ReducedDebugInfo => Some(&mut self.reduced_debug_info),
             PlayKey::Vignette => Some(&mut self.vignette),
+            _ => self.title_flag(key),
+        }
+    }
+
+    fn title_flag(&mut self, key: PlayKey) -> Option<&mut bool> {
+        match key {
             PlayKey::AutosaveIndicator => Some(&mut self.autosave_indicator),
             PlayKey::DarkBackground => Some(&mut self.dark_background),
             PlayKey::HideSplashTexts => Some(&mut self.hide_splash_texts),
+            PlayKey::Fullscreen => Some(&mut self.fullscreen),
             _ => None,
         }
     }

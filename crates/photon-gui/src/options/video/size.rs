@@ -2,7 +2,7 @@ use super::*;
 use crate::FontRuns;
 
 /// The options this client has no effect for yet, and what their widgets say.
-const STILL: [(u8, &str, &str); 6] = [
+const STILL: [(u8, &str, &str); 5] = [
     (
         CUTOUT_LEAVES,
         "photon.video.no_cutout_leaves",
@@ -24,16 +24,19 @@ const STILL: [(u8, &str, &str); 6] = [
         "There is no world saving on this client: the server saves the world.",
     ),
     (
-        FULLSCREEN,
-        "photon.video.fullscreen_key",
-        "Use the fullscreen key (F11) to change this.",
-    ),
-    (
         CHUNK_FADE,
         "photon.video.no_chunk_fade",
         "Chunks appear at once; the fade-in is not available yet.",
     ),
 ];
+
+/// The fullscreen button.
+pub(super) fn fullscreen_entry(display: &VideoValues) -> (u8, Build) {
+    (
+        FULLSCREEN,
+        boolean("options.fullscreen", display.play.fullscreen),
+    )
+}
 
 impl VideoSettingsScreen {
     /// The screen with the options that have no effect here still, saying why. The reference
@@ -229,6 +232,7 @@ impl VideoSettingsScreen {
         photon_game::options::PlayOptions {
             autosave_indicator: flag(AUTOSAVE, play.autosave_indicator),
             vignette: flag(VIGNETTE, play.vignette),
+            fullscreen: flag(FULLSCREEN, play.fullscreen),
             ..play
         }
     }
