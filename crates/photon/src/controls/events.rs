@@ -156,7 +156,7 @@ impl Controls {
                 hotbar if press && self.captured && hotbar.starts_with("key.hotbar.") => {
                     select_hotbar(session, hotbar, spectating);
                 }
-                moving if self.captured || !down => self.keys.set_mapping(moving, down),
+                moving if self.captured || !down => self.set_moving(moving, (press, down)),
                 _ => {}
             }
         }
@@ -349,6 +349,7 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) -> Result {
+        let event = self.discrete_scroll(event);
         if let glfw::WindowEvent::Key(key, _, action, _) = event {
             self.track_modifiers(key, action, session.reduced_debug_info());
         }

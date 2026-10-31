@@ -150,9 +150,21 @@ impl PlaySession {
         self.state.server_brand.as_deref()
     }
 
-    /// `Player.isReducedDebugInfo`: the server asked for less on the debug screen.
+    /// `Minecraft.showOnlyReducedInfo`: the server asked for less on the debug screen, or the
+    /// option does.
     pub fn reduced_debug_info(&self) -> bool {
-        self.local.reduced_debug_info
+        self.local.reduced_debug_info || self.local.reduced_debug_option
+    }
+
+    /// The options the session follows: `reducedDebugInfo`, `autoJump` and `sprintWindow`, now and for the
+    /// player a respawn makes.
+    pub fn follow_options(&mut self, (reduced_debug, auto_jump, sprint_window): (bool, bool, i32)) {
+        self.local.reduced_debug_option = reduced_debug;
+        self.link.auto_jump = auto_jump;
+        if let Some(player) = self.local.player.as_mut() {
+            player.set_auto_jump_option(auto_jump);
+            player.set_sprint_window(sprint_window);
+        }
     }
 
     /// The current dimension type's registry name.

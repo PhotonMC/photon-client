@@ -33,6 +33,35 @@ const CLICK_KEYS: [(&str, bool); 5] = [
 ];
 
 impl Controls {
+    /// `ToggleKeyMapping`: the attack or the use key is set to toggle.
+    fn toggles_click(&self, name: &str) -> bool {
+        let play = &self.options.play;
+        (name == "key.attack" && play.toggle_attack) || (name == "key.use" && play.toggle_use)
+    }
+
+    /// A moving mapping pressed or let go; the sneak and sprint keys flip when set to toggle.
+    pub(super) fn set_moving(&mut self, name: &str, (press, down): (bool, bool)) {
+        let play = &self.options.play;
+        let toggles = (name == "key.sneak" && play.toggle_crouch)
+            || (name == "key.sprint" && play.toggle_sprint);
+        if !toggles {
+            self.keys.set_mapping(name, down);
+        } else if press && self.captured {
+            self.keys.flip_mapping(name);
+        }
+    }
+
+    /// `MouseHandler.onScroll`: a discrete wheel counts every notch as one.
+    pub(super) fn discrete_scroll(&self, event: glfw::WindowEvent) -> glfw::WindowEvent {
+        match event {
+            glfw::WindowEvent::Scroll(x, y) if self.options.play.discrete_mouse_scroll => {
+                let notch = |v: f64| if v == 0.0 { 0.0 } else { v.signum() };
+                glfw::WindowEvent::Scroll(notch(x), notch(y))
+            }
+            event => event,
+        }
+    }
+
     /// The attack, use, pick, drop and swap hands keys (`KeyMapping.set` and `click`): pressed
     /// with the mouse captured they click and are held, let go they are up. A repeat of a held
     /// key clicks again for the drop key (`KeyboardHandler.keyPress`). Whether the mapping is
@@ -42,6 +71,7 @@ impl Controls {
             return false;
         };
         let repeats = CLICK_KEYS[index].1;
+        let toggles = self.toggles_click(name);
         let keys = [
             &mut self.attack_key,
             &mut self.use_key,
@@ -50,7 +80,11 @@ impl Controls {
             &mut self.swap_key,
         ];
         let key = keys.into_iter().nth(index).expect("one key per mapping");
-        if (press || (down && repeats)) && self.captured {
+        if toggles {
+            if press && self.captured {
+                key.press_toggling();
+            }
+        } else if (press || (down && repeats)) && self.captured {
             key.press();
         } else if !down {
             key.release();

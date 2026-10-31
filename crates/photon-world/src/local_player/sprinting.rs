@@ -256,7 +256,7 @@ impl LocalPlayer {
             if self.sprint_trigger_time > 0 {
                 self.set_sprinting(true);
             } else {
-                self.sprint_trigger_time = SPRINT_WINDOW;
+                self.sprint_trigger_time = self.followed.1;
             }
         }
         if self.input.key_presses.sprint {

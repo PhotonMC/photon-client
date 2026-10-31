@@ -132,6 +132,15 @@ impl HeldKeys {
         }
     }
 
+    /// The sneak or sprint mapping, flipped (`ToggleKeyMapping.setDown`).
+    pub fn flip_mapping(&mut self, mapping: &str) {
+        match mapping {
+            "key.sneak" => self.sneak = !self.sneak,
+            "key.sprint" => self.sprint = !self.sprint,
+            _ => {}
+        }
+    }
+
     /// A step's plain key name, set. Whether it was one.
     fn set_flag(&mut self, name: &str) -> bool {
         FLAGS

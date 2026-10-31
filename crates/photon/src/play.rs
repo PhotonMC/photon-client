@@ -456,10 +456,13 @@ pub(crate) fn join(
     packs: &PackSource,
 ) -> Result<PlaySession> {
     let (username, account) = crate::profile_login::identity()?;
-    let auto_jump = env::var("PHOTON_AUTO_JUMP").is_ok_and(|value| value == "1");
     println!("play_connecting={server} user={username}");
     let mut options = crate::controls::load_options();
     ticks::apply_env_options(&mut options);
+    if env::var("PHOTON_AUTO_JUMP").is_ok_and(|value| value == "1") {
+        options.play.auto_jump = true;
+    }
+    let auto_jump = options.play.auto_jump;
     let information = crate::controls::client_information(&options);
     let timeout = Duration::from_secs(30);
     let first = ConnectionState {

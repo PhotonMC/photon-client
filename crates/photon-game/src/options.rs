@@ -108,12 +108,12 @@ pub struct Options {
     pub main_hand: MainHand,
     /// The online screen's options.
     pub online: OnlineOptions,
+    /// The toggles, auto jump and chat and view extras of the play screens.
+    pub play: PlayOptions,
     /// The quality options the video screen holds besides the ones above.
     pub quality: QualityOptions,
-    /// The key each mapping is bound to, in `keyMappings` order.
-    pub(super) key_bindings: Vec<photon_data::keys::InputKey>,
-    /// The file's lines as last read, so what is not known is kept.
-    pub(super) lines: Vec<(String, String)>,
+    /// What the file holds besides the values above.
+    pub(super) file: FileState,
 }
 
 impl Options {
@@ -129,6 +129,23 @@ impl Options {
     /// The GUI scale option and whether the Unicode font is forced, which the scale follows.
     pub fn gui_scaling(&self) -> (i32, bool) {
         (self.gui_scale, self.font.force_unicode)
+    }
+}
+
+/// The key each mapping is bound to, in `keyMappings` order, and the file's lines as last read, so
+/// what is not known is kept.
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct FileState {
+    pub(super) key_bindings: Vec<photon_data::keys::InputKey>,
+    pub(super) lines: Vec<(String, String)>,
+}
+
+impl FileState {
+    fn new() -> Self {
+        Self {
+            key_bindings: bindings::default_bindings(),
+            lines: Vec::new(),
+        }
     }
 }
 
@@ -189,9 +206,9 @@ impl Default for Options {
             model_parts: ALL_MODEL_PARTS,
             main_hand: MainHand::Right,
             online: OnlineOptions::default(),
+            play: PlayOptions::default(),
             quality: QualityOptions::default(),
-            key_bindings: bindings::default_bindings(),
-            lines: Vec::new(),
+            file: FileState::new(),
         }
     }
 }
@@ -204,15 +221,19 @@ mod file;
 mod json;
 pub use json::*;
 mod font;
+mod groups;
 mod keys;
 mod online;
 mod packs;
+mod play;
 mod quality;
 pub use font::*;
 pub use keys::DATA_VERSION;
 use keys::*;
 use online::OnlineKey;
 pub use online::{OnlineOptions, PresenceSharing};
+use play::PlayKey;
+pub use play::PlayOptions;
 pub use quality::*;
 mod sliders;
 pub use sliders::*;

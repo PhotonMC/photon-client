@@ -50,6 +50,8 @@ pub(super) struct LocalState {
     pub(super) difficulty_locked: bool,
     /// `Player.isReducedDebugInfo`: the login's word, then entity events 22 and 23.
     pub(super) reduced_debug_info: bool,
+    /// `Options.reducedDebugInfo`, which `showOnlyReducedInfo` adds to the server's word.
+    pub(super) reduced_debug_option: bool,
     /// `ClientAdvancements`: the tree the server told of and how far the player is.
     pub(super) advancements: photon_game::advancements::ClientAdvancements,
     /// The advancements done by updates whose toasts the screen is yet to show.
@@ -280,6 +282,7 @@ impl Default for LocalState {
             difficulty: 2,
             difficulty_locked: false,
             reduced_debug_info: false,
+            reduced_debug_option: false,
             advancements: photon_game::advancements::ClientAdvancements::default(),
             pending_toasts: Vec::new(),
             received_items: Vec::new(),

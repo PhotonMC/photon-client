@@ -28,7 +28,8 @@ impl Options {
     /// `highContrast`: the High Contrast pack is in use. The line is kept as the file has it.
     #[must_use]
     pub fn high_contrast(&self) -> bool {
-        self.lines
+        self.file
+            .lines
             .iter()
             .any(|(name, value)| name == "highContrast" && value == "true")
     }
@@ -43,20 +44,22 @@ impl Options {
     }
 
     fn set_line(&mut self, key: &str, value: String, before: &str) {
-        if let Some(line) = self.lines.iter_mut().find(|(name, _)| name == key) {
+        if let Some(line) = self.file.lines.iter_mut().find(|(name, _)| name == key) {
             line.1 = value;
             return;
         }
         let at = self
+            .file
             .lines
             .iter()
             .position(|(name, _)| name == before || name == "lang")
-            .unwrap_or(self.lines.len());
-        self.lines.insert(at, (key.to_owned(), value));
+            .unwrap_or(self.file.lines.len());
+        self.file.lines.insert(at, (key.to_owned(), value));
     }
 
     fn list(&self, key: &str) -> Vec<String> {
-        self.lines
+        self.file
+            .lines
             .iter()
             .find(|(name, _)| name == key)
             .map(|(_, value)| string_list(value))
@@ -153,14 +156,15 @@ mod tests {
     fn high_contrast_is_a_line_before_the_block_outline() {
         let mut options = Options::default();
         options
+            .file
             .lines
             .push(("highContrastBlockOutline".to_owned(), "false".to_owned()));
         assert!(!options.high_contrast());
         options.set_high_contrast(true);
         assert!(options.high_contrast());
-        assert_eq!(options.lines[0].0, "highContrast");
+        assert_eq!(options.file.lines[0].0, "highContrast");
         options.set_high_contrast(false);
         assert!(!options.high_contrast());
-        assert_eq!(options.lines.len(), 2);
+        assert_eq!(options.file.lines.len(), 2);
     }
 }

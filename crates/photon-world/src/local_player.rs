@@ -200,7 +200,8 @@ pub struct LocalPlayer {
     pub(super) attributes: Vec<crate::ClientAttributeState>,
     pub(super) game_mode: ClientPlayerGameMode,
     pub(super) no_physics: bool,
-    pub(super) auto_jump_option: bool,
+    /// `Options.autoJump` and `Options.sprintWindow`, which the player follows.
+    pub(super) followed: (bool, i32),
     pub(super) auto_jump_enabled: bool,
     /// `LocalPlayer.isControlledCamera`: the player is the camera entity, so its input moves it and
     /// its position is sent.

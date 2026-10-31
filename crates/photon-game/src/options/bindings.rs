@@ -42,32 +42,32 @@ pub fn key_display_name(key: InputKey, system: Option<String>, lang: &Lang) -> C
 impl Options {
     /// Every mapping's key, in `keyMappings` order.
     pub fn key_bindings(&self) -> &[InputKey] {
-        &self.key_bindings
+        &self.file.key_bindings
     }
 
     /// Every mapping's key at once, in `keyMappings` order.
     pub fn set_key_bindings(&mut self, keys: &[InputKey]) {
-        self.key_bindings = keys.to_vec();
+        self.file.key_bindings = keys.to_vec();
     }
 
     /// The key a mapping (`key.forward`) is bound to.
     pub fn key_binding(&self, mapping: &str) -> Option<InputKey> {
         mappings()
             .position(|row| row.name == mapping)
-            .and_then(|index| self.key_bindings.get(index).copied())
+            .and_then(|index| self.file.key_bindings.get(index).copied())
     }
 
     /// `KeyMapping.setKey`.
     pub fn set_key_binding(&mut self, mapping: &str, key: InputKey) {
         if let Some(index) = mappings().position(|row| row.name == mapping) {
-            self.key_bindings[index] = key;
+            self.file.key_bindings[index] = key;
         }
     }
 
     /// The mappings a key is bound to, in `keyMappings` order.
     pub fn mappings_of(&self, key: InputKey) -> impl Iterator<Item = &'static str> + '_ {
         mappings()
-            .zip(&self.key_bindings)
+            .zip(&self.file.key_bindings)
             .filter(move |(_, bound)| **bound == key)
             .map(|(row, _)| row.name)
     }
@@ -76,9 +76,9 @@ impl Options {
     pub(super) fn read_key_bindings(&mut self) {
         for (index, row) in mappings().enumerate() {
             let name = line_name(row.name);
-            let value = self.lines.iter().find(|(known, _)| *known == name);
+            let value = self.file.lines.iter().find(|(known, _)| *known == name);
             if let Some(key) = value.and_then(|(_, value)| key_of(value)) {
-                self.key_bindings[index] = key;
+                self.file.key_bindings[index] = key;
             }
         }
     }
@@ -86,7 +86,7 @@ impl Options {
     /// Every `key_` line as `save` writes it, in `keyMappings` order.
     pub(super) fn key_lines(&self) -> Vec<(String, String)> {
         mappings()
-            .zip(&self.key_bindings)
+            .zip(&self.file.key_bindings)
             .map(|(row, key)| (line_name(row.name), key_name(*key)))
             .collect()
     }

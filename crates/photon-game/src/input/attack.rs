@@ -15,6 +15,13 @@ impl AttackKey {
         self.down = true;
     }
 
+    /// `KeyMapping.click` and `ToggleKeyMapping.setDown(true)`: the key was pressed while it
+    /// toggles, so it is held when it was not, and let go when it was.
+    pub fn press_toggling(&mut self) {
+        self.clicks += 1;
+        self.down = !self.down;
+    }
+
     /// The key came up.
     pub fn release(&mut self) {
         self.down = false;

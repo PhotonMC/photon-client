@@ -211,7 +211,7 @@ impl LocalPlayer {
         }
         self.last_on_ground = on_ground;
         self.last_horizontal_collision = horizontal_collision;
-        self.auto_jump_enabled = self.auto_jump_option;
+        self.auto_jump_enabled = self.followed.0;
     }
 
     pub(super) fn set_pos(&mut self, position: Vec3) {

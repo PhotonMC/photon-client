@@ -63,9 +63,10 @@ pub(super) enum Key {
     ModelPart(usize),
     Quality(QualityKey),
     Online(OnlineKey),
+    Play(PlayKey),
 }
 
-pub(super) const KEYS: [(&str, Key); 87] = [
+pub(super) const KEYS: [(&str, Key); 102] = [
     ("ao", Key::AmbientOcclusion),
     (
         "biomeBlendRadius",
@@ -150,6 +151,27 @@ pub(super) const KEYS: [(&str, Key); 87] = [
         Key::Online(OnlineKey::InGameNotification),
     ),
     ("sharePresence", Key::Online(OnlineKey::SharePresence)),
+    ("toggleCrouch", Key::Play(PlayKey::ToggleCrouch)),
+    ("toggleSprint", Key::Play(PlayKey::ToggleSprint)),
+    ("toggleAttack", Key::Play(PlayKey::ToggleAttack)),
+    ("toggleUse", Key::Play(PlayKey::ToggleUse)),
+    ("sprintWindow", Key::Play(PlayKey::SprintWindow)),
+    ("autoJump", Key::Play(PlayKey::AutoJump)),
+    ("operatorItemsTab", Key::Play(PlayKey::OperatorItemsTab)),
+    (
+        "discrete_mouse_scroll",
+        Key::Play(PlayKey::DiscreteMouseScroll),
+    ),
+    ("allowCursorChanges", Key::Play(PlayKey::AllowCursorChanges)),
+    ("chatLinks", Key::Play(PlayKey::ChatLinks)),
+    ("chatLinksPrompt", Key::Play(PlayKey::ChatLinksPrompt)),
+    ("autoSuggestions", Key::Play(PlayKey::AutoSuggestions)),
+    ("reducedDebugInfo", Key::Play(PlayKey::ReducedDebugInfo)),
+    ("vignette", Key::Play(PlayKey::Vignette)),
+    (
+        "showAutosaveIndicator",
+        Key::Play(PlayKey::AutosaveIndicator),
+    ),
     ("saveChatDrafts", Key::SaveChatDrafts),
     ("attackIndicator", Key::AttackIndicator),
     ("tutorialStep", Key::TutorialStep),

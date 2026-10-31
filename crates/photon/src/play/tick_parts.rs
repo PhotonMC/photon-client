@@ -64,6 +64,8 @@ impl Play {
         let breaking = session.take_breaking_effects();
         self.particles.breaking(session.world(), breaking);
         self.particles.follow_options(&self.controls.options);
+        let play = self.controls.options.play;
+        session.follow_options((play.reduced_debug_info, play.auto_jump, play.sprint_window));
         super::effects::tick_blocks(
             session,
             (&mut self.particles, &self.sky),

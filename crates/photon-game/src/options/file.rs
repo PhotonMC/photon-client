@@ -3,7 +3,8 @@ use super::*;
 impl Options {
     /// `Options.fullscreenVideoModeString`: the text of the fullscreen resolution the file holds.
     pub fn fullscreen_resolution(&self) -> Option<&str> {
-        self.lines
+        self.file
+            .lines
             .iter()
             .find(|(known, _)| known == "fullscreenResolution")
             .map(|(_, value)| value.as_str())
@@ -11,10 +12,13 @@ impl Options {
 
     /// Keep the fullscreen resolution for the next save; none drops the line.
     pub fn set_fullscreen_resolution(&mut self, mode: Option<String>) {
-        self.lines
+        self.file
+            .lines
             .retain(|(known, _)| known != "fullscreenResolution");
         if let Some(mode) = mode {
-            self.lines.push(("fullscreenResolution".to_owned(), mode));
+            self.file
+                .lines
+                .push(("fullscreenResolution".to_owned(), mode));
         }
     }
 
@@ -29,13 +33,19 @@ impl Options {
             let Some((key, value)) = line.split_once(':') else {
                 continue;
             };
-            match options.lines.iter_mut().find(|(known, _)| known == key) {
+            match options
+                .file
+                .lines
+                .iter_mut()
+                .find(|(known, _)| known == key)
+            {
                 Some(entry) => value.clone_into(&mut entry.1),
-                None => options.lines.push((key.to_owned(), value.to_owned())),
+                None => options.file.lines.push((key.to_owned(), value.to_owned())),
             }
         }
         for (name, key) in KEYS {
             let value = options
+                .file
                 .lines
                 .iter()
                 .find(|(known, _)| known == name)
@@ -77,26 +87,7 @@ impl Options {
         }
     }
 
-    /// `read` for the main hand and the skin's parts.
-    /// The options that come in groups: the skin's and the quality options.
-    fn read_group(&mut self, key: Key, json: &Json) {
-        match key {
-            Key::Quality(key) => self.quality.read(key, json),
-            Key::Online(key) => self.online.read(key, json),
-            _ => self.read_skin(key, json),
-        }
-    }
-
-    fn write_group(&self, key: Key) -> String {
-        match key {
-            Key::Quality(key) => self.quality.write(key),
-            Key::Online(key) => self.online.write(key),
-            Key::ModelPart(bit) => self.is_model_part_enabled(bit).to_string(),
-            _ => String::new(),
-        }
-    }
-
-    fn read_skin(&mut self, key: Key, json: &Json) {
+    pub(super) fn read_skin(&mut self, key: Key, json: &Json) {
         match (key, json) {
             (Key::MainHand, Json::Text(name)) => {
                 if let Some(value) = MainHand::from_serialized(name) {
@@ -266,7 +257,7 @@ impl Options {
             | Key::DamageTiltStrength => {
                 self.read_unit(key, &json);
             }
-            Key::MainHand | Key::ModelPart(_) | Key::Quality(_) | Key::Online(_) => {
+            Key::MainHand | Key::ModelPart(_) | Key::Quality(_) | Key::Online(_) | Key::Play(_) => {
                 self.read_group(key, &json);
             }
             Key::MouseWheelSensitivity | Key::NotificationDisplayTime | Key::ChatDelay => {
@@ -487,7 +478,9 @@ impl Options {
                 java_double(value.map_or(0.0, |(_, value)| value))
             }
             Key::MainHand => write_string(self.main_hand.serialized()),
-            Key::ModelPart(_) | Key::Quality(_) | Key::Online(_) => self.write_group(key),
+            Key::ModelPart(_) | Key::Quality(_) | Key::Online(_) | Key::Play(_) => {
+                self.write_group(key)
+            }
             Key::MouseWheelSensitivity | Key::NotificationDisplayTime | Key::ChatDelay => {
                 java_double(self.range_value(key))
             }
@@ -509,7 +502,7 @@ impl Options {
     pub fn save(&self, path: &Path) -> io::Result<()> {
         let mut text = format!("version:{DATA_VERSION}\n");
         let mut put = |name: &str, value: &str| text.push_str(&format!("{name}:{value}\n"));
-        let kept = |name: &str| self.lines.iter().find(|(known, _)| known == name);
+        let kept = |name: &str| self.file.lines.iter().find(|(known, _)| known == name);
         for name in WRITE_ORDER {
             match name {
                 "key_" => {
@@ -605,6 +598,18 @@ mod tests {
         );
         let refused = loaded("realmsNotifications:1\nsharePresence:\"everyone\"\n");
         assert_eq!(refused.online, OnlineOptions::default());
+    }
+
+    #[test]
+    fn the_play_options_read_and_write_as_the_file_holds_them() {
+        let options = loaded("toggleSprint:true\nsprintWindow:3\nvignette:false\nautoJump:true\n");
+        assert!(options.play.toggle_sprint && options.play.auto_jump);
+        assert!(!options.play.vignette && options.play.chat_links);
+        assert_eq!(options.play.sprint_window, 3);
+        assert_eq!(options.write(Key::Play(PlayKey::SprintWindow)), "3");
+        assert_eq!(options.write(Key::Play(PlayKey::Vignette)), "false");
+        let refused = loaded("sprintWindow:11\nautoJump:1\nvignette:\"no\"\n");
+        assert_eq!(refused.play, PlayOptions::default());
     }
 
     #[test]

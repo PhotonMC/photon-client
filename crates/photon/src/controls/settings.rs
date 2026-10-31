@@ -147,6 +147,7 @@ impl Controls {
             &assets.lang,
             Self::gui_size(surface),
             !self.title_host,
+            &self.options,
         ));
     }
 
@@ -169,6 +170,10 @@ impl Controls {
             self.options.mouse_wheel_sensitivity = choices.wheel_sensitivity;
             self.options.invert_mouse_x = choices.invert_x;
             self.options.invert_mouse_y = choices.invert_y;
+            self.options.play.discrete_mouse_scroll = choices.discrete_scroll;
+            self.options.play.allow_cursor_changes = choices.cursor_changes;
+        } else if let Some(screen) = self.controls_screen.as_ref() {
+            self.options.play = screen.choices(self.options.play);
         }
     }
 

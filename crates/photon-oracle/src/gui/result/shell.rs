@@ -96,7 +96,7 @@ pub(super) fn settings_shell(
         "sound_options_screen" => {
             Shell::Sound(sound_screen(font, lang, (size, in_world), &options))
         }
-        _ => Shell::Controls(ControlsScreen::new(font, lang, size, in_world)),
+        _ => Shell::Controls(ControlsScreen::new(font, lang, size, in_world, &options)),
     }
 }
 

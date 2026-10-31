@@ -3,6 +3,16 @@ use photon_core::ids::{BlockStateId, EntityId};
 use photon_data::item::registry::AIR_ITEM;
 
 impl LocalPlayer {
+    /// `Options.autoJump`, which the player reads when it sends its position.
+    pub fn set_auto_jump_option(&mut self, on: bool) {
+        self.followed.0 = on;
+    }
+
+    /// `Options.sprintWindow`: the ticks a second press of forward starts the sprint within.
+    pub fn set_sprint_window(&mut self, ticks: i32) {
+        self.followed.1 = ticks;
+    }
+
     /// `Minecraft.setCameraEntity`: whether the view is the player's own, which decides whether its
     /// input moves it and its position is sent (`isControlledCamera`).
     /// The server's word on the bed the player sleeps in (`SLEEPING_POS_ID`): a bed puts the
@@ -145,7 +155,7 @@ impl LocalPlayer {
             attributes: Vec::new(),
             game_mode,
             no_physics: false,
-            auto_jump_option,
+            followed: (auto_jump_option, 7),
             auto_jump_enabled: true,
             view: ViewState::default(),
             trace: Default::default(),
@@ -248,8 +258,6 @@ pub enum PlayerCommandAction {
     OpenInventory = 5,
     StartFallFlying = 6,
 }
-
-pub(super) const SPRINT_WINDOW: i32 = 7;
 
 /// What the player's moves leave behind: the stretches for the block-effects pass, and (as
 /// `Entity.pistonDeltas` and `pistonDeltasGameTime`) how far pistons moved the player on each
