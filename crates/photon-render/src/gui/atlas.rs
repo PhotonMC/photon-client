@@ -118,6 +118,11 @@ fn register_folder(
 
 /// The whole textures screens blit parts of (`WHOLE_TEXTURES`), and the default skins whose
 /// faces the social screen draws, stitched under `minecraft:texture/<name>`.
+/// The atlas key of a whole texture.
+fn whole_key(name: &str) -> String {
+    format!("minecraft:texture/{name}")
+}
+
 fn register_whole_textures(
     stitcher: &mut Stitcher,
     images: &mut BTreeMap<String, DecodedImage>,
@@ -138,7 +143,7 @@ fn register_whole_textures(
             format!("textures/gui/{name}")
         };
         let mut image = read_png(resources, &path)?;
-        let key = format!("minecraft:texture/{name}");
+        let key = whole_key(&name);
         // A blurred texture is sampled linearly and clamped at its edge: a border of its own
         // edge texels around it keeps the filter off its neighbours.
         // The loading overlay's logo is read with smooth sampling whatever its file says.
@@ -369,6 +374,15 @@ impl GuiAtlas {
             stitcher.stitch().ok()?;
             Some((stitcher, images, blurred))
         })?;
+        Self::assemble(stitcher, &images, blurred)
+    }
+
+    /// Pack the stitched `images` into the texture and note where each went.
+    fn assemble(
+        stitcher: Stitcher,
+        images: &BTreeMap<String, DecodedImage>,
+        blurred: BTreeSet<String>,
+    ) -> Option<(Self, DecodedImage)> {
         let width = stitcher.width().max(1) as u32;
         let height = stitcher.height().max(1) as u32;
         let mut atlas = DecodedImage {
@@ -417,6 +431,31 @@ impl GuiAtlas {
             },
             atlas,
         ))
+    }
+
+    /// The atlas of the loading overlay before the real one exists: the logo and the white pixel.
+    /// The logo is read from `resources` as the vanilla pack's, which a resource pack cannot change.
+    pub fn load_splash(resources: &dyn Resources) -> Option<(Self, DecodedImage)> {
+        let logo = with_edge_border(&read_png(
+            resources,
+            &format!("textures/gui/{LOGO_TEXTURE}"),
+        )?);
+        let key = whole_key(LOGO_TEXTURE);
+        // The logo may be a high-resolution one: the atlas grows with it.
+        let (stitcher, images) = [1024, 2048, 4096, 8192].into_iter().find_map(|side| {
+            let mut stitcher = Stitcher::new(side, side, 0, 0);
+            let mut images = BTreeMap::new();
+            stitcher.register_sprite(SpriteEntry {
+                width: logo.width as i32,
+                height: logo.height as i32,
+                name: Identifier::parse(&key).ok()?,
+            });
+            images.insert(key.clone(), logo.clone());
+            register_white(&mut stitcher, &mut images)?;
+            stitcher.stitch().ok()?;
+            Some((stitcher, images))
+        })?;
+        Self::assemble(stitcher, &images, BTreeSet::from([key]))
     }
 
     /// Every icon texture released (`FaviconTexture.close` of the entries of a list that is gone).

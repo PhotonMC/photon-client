@@ -450,6 +450,13 @@ impl VulkanBackend {
         Ok(())
     }
 
+    /// Whether a GUI atlas is on the GPU already.
+    pub fn has_gui_texture(&self) -> bool {
+        self.scene
+            .as_ref()
+            .is_some_and(|scene| scene.gui_set.is_some())
+    }
+
     /// Load the GUI sprites' atlas, sampled texel by texel.
     pub fn load_gui_texture(&mut self, atlas: &DecodedImage) -> Result<(), VulkanError> {
         if self

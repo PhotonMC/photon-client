@@ -34,6 +34,7 @@ pub(crate) mod panorama;
 mod pings;
 mod servers;
 mod settings;
+mod startup;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -86,6 +87,8 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
         .transpose()?
         .unwrap_or(720);
     let mut client = Client::open((width, height))?;
+    // The first start shows the loading overlay over the load; a return from a game does not.
+    let mut splash = startup::begin(&mut client);
     let mut scripted_join = env::var_os("PHOTON_SCRIPT").is_some();
     // Dev only: the addresses a scripted run joins after each `leave`, in turn.
     let mut hops: std::collections::VecDeque<SocketAddr> = env::var("PHOTON_HOPS")
@@ -102,6 +105,7 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
     let mut left_server = false;
     loop {
         let mut menu = Menu::open(&mut client)?;
+        menu.loading = splash.take().map(startup::Splash::into_overlay);
         menu.open_requested_screen(&client);
         if std::mem::take(&mut left_server) {
             menu.screen = menu.server_list(gui_size(&client));
@@ -167,6 +171,8 @@ struct Menu {
     /// `Panorama.spin`, in degrees, and when it last advanced.
     spin: f32,
     last_spin: Instant,
+    /// The loading overlay of the first start, and the clock it fades by, until it is gone.
+    loading: Option<(photon_gui::loading_overlay::LoadingOverlay, Instant)>,
 }
 
 impl Menu {
@@ -228,6 +234,7 @@ impl Menu {
             icons_dirty: false,
             spin: 0.0,
             last_spin: Instant::now(),
+            loading: None,
             options,
         })
     }
@@ -346,20 +353,10 @@ impl Menu {
             self.credits_ticked(size);
             self.fit_screen(size);
             self.spin_panorama(client);
-            let mouse = self.mouse;
-            let screen = &mut self.screen;
-            let lang = self.gui.lang();
-            let host = &mut self.host;
-            self.gui.draw_menu_screen(
-                &mut client.backend,
-                &client.surface,
-                |frame, atlas, font| {
-                    draw_screen(screen, host, (frame, atlas, font), (lang, mouse, size));
-                },
-            )?;
+            let clear = self.draw_frame(client, size)?;
             self.gui.sync_glyphs(&mut client.backend)?;
             // A join's screens are not what a capture waits for.
-            if !matches!(self.screen, Screen::Connecting(..)) {
+            if self.loading.is_none() && !matches!(self.screen, Screen::Connecting(..)) {
                 frames += 1;
             }
             if let Some(path) = capture.as_deref().filter(|_| frames == capture_at) {
@@ -370,7 +367,7 @@ impl Menu {
                 println!("captured_frame={path}");
                 return Ok(Choice::Quit);
             }
-            client.backend.draw_scene([0.0, 0.0, 0.0, 1.0], IDENTITY)?;
+            client.backend.draw_scene(clear, IDENTITY)?;
             if let Some(rest) = MENU_FRAME.checked_sub(frame_start.elapsed()) {
                 std::thread::sleep(rest);
             }
@@ -380,8 +377,17 @@ impl Menu {
 
     /// One window event for the open menu; what it chose, if anything.
     fn handle(&mut self, event: WindowEvent, client: &mut Client) -> Result<Option<Choice>> {
-        let size = gui_size(client);
         self.track_mouse(&event, &client.surface);
+        // The overlay is in the way of the mouse and the keys (`Gui.overlay() != null`).
+        if self.loading.is_some() {
+            return Ok(None);
+        }
+        self.handle_open(event, client)
+    }
+
+    /// `handle` for the screen that is not under an overlay.
+    fn handle_open(&mut self, event: WindowEvent, client: &mut Client) -> Result<Option<Choice>> {
+        let size = gui_size(client);
         let mouse = self.mouse;
         let action = match &mut self.screen {
             Screen::Title(screen) => {

@@ -19,7 +19,12 @@ impl Gui {
             Arc::new(Font::load_alt_from(&*resources).ok_or("the alt font could not be read")?);
         let (atlas, texture) = GuiAtlas::load_from(&*resources, &[&font, &alt_font])
             .ok_or("the HUD sprites could not be read")?;
-        backend.load_gui_texture(&texture)?;
+        // The loading overlay of the first start has put its own small atlas there.
+        if backend.has_gui_texture() {
+            backend.replace_gui_texture(&texture)?;
+        } else {
+            backend.load_gui_texture(&texture)?;
+        }
         let lang = Arc::new(Lang::load_from(&*resources, root));
         let languages = photon_game::language::LanguageSource::open(root).map(Arc::new);
         Ok(Self::assembled(
