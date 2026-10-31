@@ -120,6 +120,8 @@ enum Focus {
 
 pub struct FriendsOverlay {
     size: (i32, i32),
+    /// `backgroundScreen`: a screen drawn under the overlay, which then has no background tile.
+    over_screen: bool,
     tab: Tab,
     edit: EditBox,
     focus: Focus,
@@ -157,6 +159,15 @@ struct Texts {
     tooltips: tooltip::TooltipTexts,
 }
 
+/// The headers of the pending lists: bold and underlined.
+fn heading_style() -> Style {
+    Style {
+        bold: Some(true),
+        underlined: Some(true),
+        ..Style::default()
+    }
+}
+
 impl FriendsOverlay {
     pub fn new(lang: &Lang, font: &Font, size: (i32, i32), view: FriendsView) -> Self {
         let runs = |component: &Component| lang.runs(component, &Style::default());
@@ -167,11 +178,7 @@ impl FriendsOverlay {
             colour: Some(0xAAAAAA),
             ..Style::default()
         });
-        let heading = Style {
-            bold: Some(true),
-            underlined: Some(true),
-            ..Style::default()
-        };
+        let heading = heading_style();
         let texts = Texts {
             friends_tab: key("gui.friends.tab_friends"),
             hint: runs(&Component::translatable("gui.friends.enter_nickname").with_colour("gray")),
@@ -206,6 +213,7 @@ impl FriendsOverlay {
             focused_at: Instant::now(),
             scroll: 0,
             dragging: false,
+            over_screen: false,
             pressed: None,
             size,
             tab: Tab::Friends,
@@ -221,6 +229,11 @@ impl FriendsOverlay {
 
     pub fn size(&self) -> (i32, i32) {
         self.size
+    }
+
+    /// The overlay opened over a screen of its own (the title), which it blurs and draws under.
+    pub fn set_over_screen(&mut self, over_screen: bool) {
+        self.over_screen = over_screen;
     }
 
     /// `repositionElements` for a window of another size.

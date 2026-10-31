@@ -119,12 +119,9 @@ impl Controls {
             social.want_presence();
         }
         self.friends_from_pause = false;
-        self.friends = Some(FriendsOverlay::new(
-            &assets.lang,
-            &assets.creative.font,
-            size,
-            view,
-        ));
+        let mut overlay = FriendsOverlay::new(&assets.lang, &assets.creative.font, size, view);
+        overlay.set_over_screen(self.title_host);
+        self.friends = Some(overlay);
         self.captured = false;
         self.last_cursor = None;
         surface.set_cursor_captured(false);

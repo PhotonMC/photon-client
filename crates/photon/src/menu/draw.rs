@@ -17,7 +17,11 @@ pub(super) fn draw_screen(
     (lang, mouse, size): (&Lang, (i32, i32), (i32, i32)),
 ) {
     match screen {
-        Screen::Title(screen) => screen.draw(frame, atlas, font, mouse),
+        Screen::Title(screen) => {
+            screen.draw(frame, atlas, font, mouse);
+            // The friends overlay, or its question, opens over the title.
+            draw_over_title(host, (frame, atlas, font), (lang, size));
+        }
         Screen::Servers(screen) => screen.draw(frame, atlas, font, mouse),
         Screen::Form(screen, _) => screen.draw(frame, atlas, font, mouse),
         // Not over a level, so the panorama is what blurs, not this screen.
@@ -53,6 +57,16 @@ fn draw_pack_question(
     }
 }
 
+fn draw_over_title(
+    host: &mut crate::controls::Controls,
+    at: (&mut GuiFrame, &GuiAtlas, &Font),
+    (lang, size): (&Lang, (i32, i32)),
+) {
+    if host.host_open() {
+        draw_settings(host, at, (lang, size));
+    }
+}
+
 /// The options screens of the title, or the question one of them asked.
 fn draw_settings(
     host: &mut crate::controls::Controls,
@@ -68,7 +82,8 @@ fn draw_settings(
         if friends.size() != size {
             friends.resize(size);
         }
-        friends.draw(frame, (atlas, font), mouse, (0, frame.millis));
+        let blurriness = host.options.menu_background_blurriness;
+        friends.draw(frame, (atlas, font), mouse, (blurriness, frame.millis));
     } else if let Some((link, _)) = host.link_confirm.as_mut() {
         if link.size() != size {
             *link = link.resized(font, lang, size);

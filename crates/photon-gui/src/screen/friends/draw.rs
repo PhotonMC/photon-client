@@ -43,12 +43,14 @@ impl FriendsOverlay {
     ) {
         let (left, top, width, height) = self.content();
         frame.blur_before_this_stratum(blurriness);
-        frame.tile_texture(
-            atlas,
-            "inworld_menu_background",
-            (32, 32),
-            (0, 0, self.size.0, self.size.1),
-        );
+        if !self.over_screen {
+            frame.tile_texture(
+                atlas,
+                "inworld_menu_background",
+                (32, 32),
+                (0, 0, self.size.0, self.size.1),
+            );
+        }
         frame.nine_slice(
             atlas,
             "friends/background",

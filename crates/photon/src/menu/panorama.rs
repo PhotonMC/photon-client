@@ -18,7 +18,7 @@ impl Menu {
         let extent = client.backend.description().extent;
         // `Screen.extractBackground` blurs behind every screen but the title's, which draws no
         // background of its own.
-        let title = matches!(self.screen, Screen::Title(_));
+        let title = matches!(self.screen, Screen::Title(_)) && !self.host.host_open();
         let blur = if title {
             0
         } else {

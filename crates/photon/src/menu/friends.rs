@@ -53,8 +53,8 @@ impl Menu {
     pub(super) fn friends_ticked(&mut self, client: &mut Client) {
         // The toasts have no layer on the title screen.
         drop(self.host.friends_tick(self.gui.lang()));
-        if self.host.take_friends_wanted() && self.open_friends(client) {
-            self.screen = Screen::Settings;
+        if self.host.take_friends_wanted() {
+            self.open_friends(client);
         }
     }
 
@@ -63,6 +63,24 @@ impl Menu {
         self.host.gui_mouse = (f64::from(self.mouse.0), f64::from(self.mouse.1));
         self.host.toggle_friends(&mut client.surface, &self.assets);
         self.host.host_open()
+    }
+
+    /// One window event for the title: the friends overlay over it takes it first.
+    pub(super) fn title_input(
+        &mut self,
+        event: glfw::WindowEvent,
+        client: &mut Client,
+        size: (i32, i32),
+    ) -> Option<Choice> {
+        if self.host.host_open() {
+            self.settings_event(event, client);
+            return None;
+        }
+        let Screen::Title(screen) = &mut self.screen else {
+            return None;
+        };
+        let chosen = super::input::title_event(screen, event, self.mouse);
+        self.title_pressed(chosen, client, size)
     }
 
     /// A press on the title: an options screen, the friends, or what the title chose.
@@ -76,9 +94,7 @@ impl Menu {
             return None;
         }
         if matches!(chosen, Some(TitleAction::Friends)) {
-            if self.open_friends(client) {
-                self.screen = Screen::Settings;
-            }
+            self.open_friends(client);
             return None;
         }
         self.title_chosen(chosen, size)

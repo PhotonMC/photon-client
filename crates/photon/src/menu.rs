@@ -21,7 +21,7 @@ use photon_gui::widgets::navigation::Direction;
 use photon_net::connection::PlaySession;
 
 use self::draw::draw_screen;
-use self::input::{confirm_event, failed_event, title_event};
+use self::input::{confirm_event, failed_event};
 use crate::gui::Gui;
 use crate::play::{self, Client, Exit, JoinTask};
 
@@ -408,10 +408,7 @@ impl Menu {
         let size = gui_size(client);
         let mouse = self.mouse;
         let action = match &mut self.screen {
-            Screen::Title(screen) => {
-                let chosen = title_event(screen, event, mouse);
-                return Ok(self.title_pressed(chosen, client, size));
-            }
+            Screen::Title(_) => return Ok(self.title_input(event, client, size)),
             Screen::Servers(_) => self.servers_event(event),
             Screen::Form(..) => {
                 let result = self.form_event(event, &mut client.surface);
