@@ -2,12 +2,7 @@ use super::*;
 use crate::FontRuns;
 
 /// The options this client has no effect for yet, and what their widgets say.
-const STILL: [(u8, &str, &str); 5] = [
-    (
-        CUTOUT_LEAVES,
-        "photon.video.no_cutout_leaves",
-        "Leaves are always drawn with cut-out holes: there is no solid pass for them yet.",
-    ),
+const STILL: [(u8, &str, &str); 3] = [
     (
         IMPROVED_TRANSPARENCY,
         "photon.video.no_improved_transparency",
@@ -22,11 +17,6 @@ const STILL: [(u8, &str, &str); 5] = [
         AUTOSAVE,
         "photon.video.no_autosave",
         "There is no world saving on this client: the server saves the world.",
-    ),
-    (
-        CHUNK_FADE,
-        "photon.video.no_chunk_fade",
-        "Chunks appear at once; the fade-in is not available yet.",
     ),
 ];
 

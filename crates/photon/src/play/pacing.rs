@@ -2,14 +2,19 @@
 
 use super::*;
 
-/// The chunk fade option, 0.75 seconds by default and `PHOTON_CHUNK_FADE` seconds if given; a
-/// scripted run shows every section at once unless asked, so its captures do not catch one
-/// mid-fade.
-pub(super) fn chunk_fade(scripted: bool) -> Result<Duration> {
+/// [`chunk_fade`] as the options file holds the option when a level starts.
+pub(super) fn chunk_fade_at_start(scripted: bool) -> Result<Duration> {
+    chunk_fade(scripted, crate::controls::load_options().quality.chunk_fade)
+}
+
+/// The chunk fade option (`LevelRenderer`: its seconds, floored to milliseconds) or
+/// `PHOTON_CHUNK_FADE` seconds if given; a scripted run shows every section at once unless asked,
+/// so its captures do not catch one mid-fade.
+pub(super) fn chunk_fade(scripted: bool, option: f64) -> Result<Duration> {
     Ok(match env::var("PHOTON_CHUNK_FADE") {
         Ok(seconds) => Duration::from_secs_f64(seconds.parse::<f64>()?.clamp(0.0, 2.0)),
         Err(_) if scripted => Duration::ZERO,
-        Err(_) => Duration::from_millis(750),
+        Err(_) => Duration::from_millis((option * 1000.0).floor() as u64),
     })
 }
 

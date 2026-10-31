@@ -183,6 +183,15 @@ fn framerate(caption: &Component, value: &i32) -> Component {
     }
 }
 
+/// `chunkSectionFadeInTime`'s slider steps: twentieths of a second, up to two seconds.
+fn chunk_fade_values() -> EntityDistanceValues {
+    IntRange::new(0, 40).xmap(
+        (|value| f64::from(value) / 20.0) as fn(i32) -> f64,
+        (|value: &f64| (*value * 20.0) as i32) as fn(&f64) -> i32,
+        true,
+    )
+}
+
 fn chunk_fade(_caption: &Component, value: &f64) -> Component {
     if *value <= 0.0 {
         Component::translatable("options.chunkFade.none")
@@ -534,13 +543,9 @@ fn preference_options(values: &VideoValues) -> Vec<(u8, Build)> {
             CHUNK_FADE,
             slider_tip(
                 "options.chunkFade",
-                IntRange::new(0, 40).xmap(
-                    |value| f64::from(value) / 20.0,
-                    |value: &f64| (*value * 20.0) as i32,
-                    true,
-                ),
+                chunk_fade_values(),
                 chunk_fade,
-                0.75,
+                values.quality.chunk_fade,
                 constant_tip("options.chunkFade.tooltip"),
             ),
         ),
@@ -717,15 +722,12 @@ mod tests {
                 .find(tag)
                 .map(|control| control.is_active())
         };
-        assert_eq!(active(&screen, CUTOUT_LEAVES), Some(true));
         let screen = screen.without_missing_effects(&lang);
-        for tag in [
-            CUTOUT_LEAVES,
-            IMPROVED_TRANSPARENCY,
-            PRIORITIZE_CHUNK_UPDATES,
-        ] {
+        for tag in [IMPROVED_TRANSPARENCY, PRIORITIZE_CHUNK_UPDATES] {
             assert_eq!(active(&screen, tag), Some(false));
         }
+        assert_eq!(active(&screen, CUTOUT_LEAVES), Some(true));
+        assert_eq!(active(&screen, CHUNK_FADE), Some(true));
         assert_eq!(active(&screen, BIOME_BLEND), Some(true));
     }
 }

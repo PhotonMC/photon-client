@@ -20,7 +20,7 @@ pub mod shapes;
 pub mod state;
 pub mod tags;
 
-pub use culling::should_render_face;
+pub use culling::{cutout_leaves, set_cutout_leaves, should_render_face};
 pub use fluid::FluidState;
 pub use state::{StateInfo, SupportType, state, state_or_air, states};
 

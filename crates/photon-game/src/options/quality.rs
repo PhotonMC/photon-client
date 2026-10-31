@@ -151,6 +151,7 @@ pub(super) enum QualityKey {
     EntityDistanceScaling,
     CloudRange,
     CutoutLeaves,
+    ChunkFade,
     ImprovedTransparency,
     WeatherRadius,
     MaxAnisotropyBit,
@@ -176,6 +177,8 @@ pub struct QualityOptions {
     /// `cloudRange`, in chunks, 2 to 128.
     pub cloud_range: i32,
     pub cutout_leaves: bool,
+    /// `chunkSectionFadeInTime`, in seconds, 0 to 2 in twentieths.
+    pub chunk_fade: f64,
     pub improved_transparency: bool,
     /// `weatherRadius`, in blocks, 3 to 10.
     pub weather_radius: i32,
@@ -197,6 +200,7 @@ impl Default for QualityOptions {
             entity_distance_scaling: 1.0,
             cloud_range: 128,
             cutout_leaves: true,
+            chunk_fade: 0.75,
             improved_transparency: false,
             weather_radius: 10,
             max_anisotropy_bit: 2,
@@ -263,6 +267,13 @@ impl QualityOptions {
                     self.entity_distance_scaling = f64::from((value * 4.0) as i32) / 4.0;
                 }
             }
+            (QualityKey::ChunkFade, Json::Number(number)) => {
+                // `Codec.doubleRange(0.0, 2.0)`, then the set keeps the twentieths of the slider.
+                let value = double_value(number);
+                if (0.0..=2.0).contains(&value) {
+                    self.chunk_fade = f64::from((value * 20.0) as i32) / 20.0;
+                }
+            }
             _ => {}
         }
     }
@@ -308,6 +319,7 @@ impl QualityOptions {
             QualityKey::CloudStatus => write_string(self.cloud_status.serialized()),
             QualityKey::PrioritizeChunkUpdates => self.prioritize_chunk_updates.id().to_string(),
             QualityKey::TextureFiltering => self.texture_filtering.id().to_string(),
+            QualityKey::ChunkFade => java_double(self.chunk_fade),
             _ => java_double(self.entity_distance_scaling),
         }
     }
@@ -437,6 +449,10 @@ mod tests {
         let scaled = read(QualityKey::EntityDistanceScaling, "0.8");
         assert_eq!(scaled.entity_distance_scaling, 0.75);
         assert_eq!(scaled.write(QualityKey::EntityDistanceScaling), "0.75");
+        let fade = read(QualityKey::ChunkFade, "1.23");
+        assert_eq!(fade.chunk_fade, 1.2);
+        assert_eq!(fade.write(QualityKey::ChunkFade), "1.2");
+        assert_eq!(read(QualityKey::ChunkFade, "2.5").chunk_fade, 0.75);
         let low = read(QualityKey::EntityDistanceScaling, "0.4");
         assert_eq!(low.entity_distance_scaling, 1.0);
         let high = read(QualityKey::EntityDistanceScaling, "5.0");

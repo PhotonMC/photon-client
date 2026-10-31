@@ -31,6 +31,7 @@ pub(super) fn stored_values(row: &Value) -> photon_gui::options::video::VideoVal
             .unwrap_or(fallback.entity_distance_scaling),
         cloud_range: int("cloud_range", fallback.cloud_range),
         cutout_leaves: flag("leaves", fallback.cutout_leaves),
+        chunk_fade: stored["chunk_fade"].as_f64().unwrap_or(fallback.chunk_fade),
         improved_transparency: flag("transparency", fallback.improved_transparency),
         weather_radius: int("weather", fallback.weather_radius),
         max_anisotropy_bit: int("anisotropy", fallback.max_anisotropy_bit),

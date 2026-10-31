@@ -259,6 +259,12 @@ impl SectionMeshes {
             .is_some_and(|fade| fade.visibility(Instant::now()) >= 0.3)
     }
 
+    /// The chunk fade option changed: sections that show for the first time from now on fade in
+    /// over this long.
+    pub fn set_chunk_fade(&mut self, length: Duration) {
+        self.chunk_fade = length;
+    }
+
     /// A section fades in from the fog the first time it shows, unless it is
     /// near the camera; its later rebuilds keep that first time.
     fn fade(&mut self, key: SectionKey, camera_block: [i64; 3]) -> SectionFade {

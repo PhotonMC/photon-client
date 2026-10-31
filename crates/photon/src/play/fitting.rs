@@ -3,6 +3,17 @@
 use super::*;
 
 impl Play {
+    /// `LevelRenderer.allChanged` for the cutout leaves option: whether it changed since the
+    /// sections were built.
+    fn sync_cutout_leaves(&self) -> bool {
+        let cutout = self.controls.options.quality.cutout_leaves;
+        let changed = photon_world::block::cutout_leaves() != cutout;
+        if changed {
+            photon_world::block::set_cutout_leaves(cutout);
+        }
+        changed
+    }
+
     /// A resized or fullscreen window gets a swapchain of its new size.
     pub(super) fn fit_swapchain(&mut self) -> Result<()> {
         self.backend.set_vsync(self.controls.options.enable_vsync);
@@ -21,7 +32,11 @@ impl Play {
         let blend_changed = self
             .biome_tints
             .set_blend_radius(quality.biome_blend_radius);
-        if std::mem::take(&mut self.controls.reload_chunks) || blend_changed {
+        let leaves_changed = self.sync_cutout_leaves();
+        if let Ok(length) = pacing::chunk_fade(self.script.is_some(), quality.chunk_fade) {
+            self.sections.set_chunk_fade(length);
+        }
+        if std::mem::take(&mut self.controls.reload_chunks) || blend_changed || leaves_changed {
             self.sections.rebuild_all(&mut self.backend)?;
         }
         self.sections

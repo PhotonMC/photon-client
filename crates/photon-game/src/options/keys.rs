@@ -66,11 +66,15 @@ pub(super) enum Key {
     Play(PlayKey),
 }
 
-pub(super) const KEYS: [(&str, Key); 106] = [
+pub(super) const KEYS: [(&str, Key); 107] = [
     ("ao", Key::AmbientOcclusion),
     (
         "biomeBlendRadius",
         Key::Quality(QualityKey::BiomeBlendRadius),
+    ),
+    (
+        "chunkSectionFadeInTime",
+        Key::Quality(QualityKey::ChunkFade),
     ),
     ("cutoutLeaves", Key::Quality(QualityKey::CutoutLeaves)),
     ("enableVsync", Key::EnableVsync),

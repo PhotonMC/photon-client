@@ -16,6 +16,11 @@ use super::tags::BlockTags;
 /// their shared faces only when it is off.
 static CUTOUT_LEAVES: AtomicBool = AtomicBool::new(true);
 
+/// `LeavesBlock.cutoutLeaves`.
+pub fn cutout_leaves() -> bool {
+    CUTOUT_LEAVES.load(Ordering::Relaxed)
+}
+
 /// `LeavesBlock.setCutoutLeaves`.
 pub fn set_cutout_leaves(cutout: bool) {
     CUTOUT_LEAVES.store(cutout, Ordering::Relaxed);

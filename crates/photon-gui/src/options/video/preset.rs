@@ -220,6 +220,16 @@ impl VideoSettingsScreen {
                 .map_or(fallback.entity_distance_scaling, |slider| *slider.value()),
             cloud_range: self.int_of(CLOUD_RANGE, fallback.cloud_range),
             cutout_leaves: self.flag_of(CUTOUT_LEAVES, fallback.cutout_leaves),
+            chunk_fade: self
+                .screen
+                .list
+                .find(CHUNK_FADE)
+                .and_then(|control| {
+                    control
+                        .as_any()
+                        .downcast_ref::<OptionSlider<EntityDistanceValues>>()
+                })
+                .map_or(fallback.chunk_fade, |slider| *slider.value()),
             improved_transparency: self
                 .flag_of(IMPROVED_TRANSPARENCY, fallback.improved_transparency),
             weather_radius: self.int_of(WEATHER_RADIUS, fallback.weather_radius),

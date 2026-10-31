@@ -64,6 +64,8 @@ vec4 sample_rotated_grid(vec2 uv) {
 void main() {
     vec4 sampled = push.rgss > 0.5 ? sample_rotated_grid(in_uv) : sample_texel_centred(in_uv);
     vec4 texel = sampled * in_tint;
+    // A quad whose colour has no alpha is in the solid layer: the texel's own alpha is ignored.
+    if (in_tint.a < 0.001) { texel = vec4(sampled.rgb * in_tint.rgb, 1.0); }
     // The shade carries the entity overlay (`OverlayTexture`) above two: the
     // shade itself is below two, so the whole part of half of it is the
     // overlay's code, as the entities' shader reads it.

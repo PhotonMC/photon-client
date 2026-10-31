@@ -341,7 +341,7 @@ impl BlockRenderer {
                             if quad.cull.is_some_and(&mut is_hidden) {
                                 continue;
                             }
-                            let tint = quad_tint(quad.tint_index, &tints);
+                            let tint = quad_tint(quad.tint_index, &tints, info);
                             push_block_quad(
                                 &mut mesh,
                                 quad,
@@ -396,12 +396,22 @@ impl BlockRenderer {
     }
 }
 
-/// The colour a quad takes from its tint slot; white without one.
-fn quad_tint(tint_index: i32, tints: &[u32]) -> u32 {
-    usize::try_from(tint_index)
+/// The colour a quad takes from its tint slot; white without one. `ModelBlockRenderer.forceOpaque`:
+/// leaves go to the solid layer when they are not cut out, which a colour without alpha marks.
+fn quad_tint(tint_index: i32, tints: &[u32], info: &photon_world::block::StateInfo) -> u32 {
+    let tint = usize::try_from(tint_index)
         .ok()
         .and_then(|slot| tints.get(slot).copied())
-        .unwrap_or(0xFFFF_FFFF)
+        .unwrap_or(0xFFFF_FFFF);
+    let leaves = info
+        .block()
+        .class
+        .is(photon_data::block::classes::BlockClass::LeavesBlock);
+    if leaves && !photon_world::block::cutout_leaves() {
+        tint & 0x00FF_FFFF
+    } else {
+        tint
+    }
 }
 
 /// Where a block's unit cube sits from the mesh origin, with its random
@@ -441,7 +451,8 @@ pub(super) fn push_block_quad(
                 channel(0) as f32 / 255.0,
                 channel(1) as f32 / 255.0,
                 channel(2) as f32 / 255.0,
-                1.0,
+                // Without alpha the shader draws the quad opaque.
+                if tint[3] == 0 { 0.0 } else { 1.0 },
             ],
             crate::block::light::light_uv(lit.light[corner]),
         ));

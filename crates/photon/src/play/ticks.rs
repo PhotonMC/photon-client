@@ -46,7 +46,7 @@ impl Play {
             position.y.floor() as i32,
             position.z.floor() as i32,
         ];
-        let chunk_fade = pacing::chunk_fade(script.is_some())?;
+        let chunk_fade = pacing::chunk_fade_at_start(script.is_some())?;
         let sections = SectionMeshes::new(
             &mut session,
             Arc::clone(&block_renderer),
