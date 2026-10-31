@@ -193,6 +193,7 @@ impl Play {
             }
         }
         self.show_backdrop();
+        self.update_screen_toasts();
         // The new connection's login stages replace `connect.transferring` as they come.
         if let Some(stage) = self.session.switch_stage().filter(|stage| *stage != 0)
             && let Some(Shown::Transferring(screen)) =
@@ -229,6 +230,7 @@ impl Play {
             return Ok(());
         }
         self.show_backdrop();
+        self.update_screen_toasts();
         let Some(screen) = self.controls.disconnected.as_mut() else {
             return Ok(());
         };

@@ -73,6 +73,7 @@ impl Play {
         self.backend
             .update_atlas(&self.animated_atlas.changed_regions())?;
         self.spin_loading_panorama(reason);
+        self.update_screen_toasts();
         self.draw_end_portal_background(reason)?;
         let scale = self.surface.scale();
         let size = (scale.gui_scaled_width(), scale.gui_scaled_height());

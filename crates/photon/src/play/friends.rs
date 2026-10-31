@@ -18,4 +18,11 @@ impl Play {
             self.gui.add_friend_toast(&title);
         }
     }
+
+    /// The toasts move on over a screen that has the window to itself (the level is not
+    /// drawn, so `draw` does not do it).
+    pub(super) fn update_screen_toasts(&mut self) {
+        self.gui
+            .update_menu_toasts(&self.controls.options, self.sound.as_mut());
+    }
 }
