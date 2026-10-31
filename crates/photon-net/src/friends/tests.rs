@@ -360,3 +360,23 @@ mod updates {
         assert!(!updates.is_due(after(49), hint, false));
     }
 }
+
+#[test]
+fn preferences_read_the_friends_flags_and_default_to_off() {
+    use crate::friends::{Preferences, parse_preferences};
+    let on = r#"{"privileges":{},"friendsPreferences":{"friends":"ENABLED","acceptInvites":"DISABLED"}}"#;
+    assert_eq!(
+        parse_preferences(on),
+        Some(Preferences {
+            friends_list: true,
+            accept_invites: false
+        })
+    );
+    assert_eq!(parse_preferences("{}"), Some(Preferences::default()));
+    assert_eq!(parse_preferences("nope"), None);
+    let script = script(vec![reply(200, on), reply(500, "")]);
+    let mut service = FriendsService::new(&script);
+    assert!(service.preferences().friends_list);
+    assert_eq!(service.preferences(), Preferences::default());
+    assert_eq!(script.seen.borrow()[0].path, "/player/attributes");
+}

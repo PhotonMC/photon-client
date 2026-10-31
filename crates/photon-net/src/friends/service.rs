@@ -7,8 +7,8 @@ use photon_core::binary::Uuid;
 use photon_core::json;
 
 use super::data::{
-    FriendData, PresenceEntry, PresenceStatus, ResultCode, Target, action_body, parse_friends,
-    parse_presence, presence_body, settings_body,
+    FriendData, Preferences, PresenceEntry, PresenceStatus, ResultCode, Target, action_body,
+    parse_friends, parse_preferences, parse_presence, presence_body, settings_body,
 };
 use super::transport::{Method, Reply, Request, Transport, TransportError};
 
@@ -150,6 +150,21 @@ impl<T: Transport> FriendsService<T> {
             Ok(None) => ResultCode::Success,
             Err(failure) => action_failure(&failure),
         }
+    }
+
+    /// `fetchProperties`' friends flags: both off when the call fails, as the reference's
+    /// fallback properties have them.
+    pub fn preferences(&mut self) -> Preferences {
+        let request = Request {
+            method: Method::Get,
+            path: "/player/attributes",
+            body: None,
+            etag: None,
+        };
+        self.send(&request)
+            .ok()
+            .and_then(|reply| parse_preferences(&reply.body))
+            .unwrap_or_default()
     }
 
     /// `updateFriendSettings`: the friends list and the friend invites on or off.

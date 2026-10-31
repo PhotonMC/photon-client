@@ -185,3 +185,30 @@ pub(super) fn settings_body(friends_list: bool, invites: bool) -> String {
 pub(super) fn presence_body(status: PresenceStatus) -> String {
     format!("{{\"status\":\"{}\"}}", status.name())
 }
+
+/// What the account says about the friends list (`UserFlag.FRIENDS_ENABLED` and
+/// `ACCEPT_FRIEND_INVITES`): both off when the service sent no friends preferences.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Preferences {
+    pub friends_list: bool,
+    pub accept_invites: bool,
+}
+
+/// `YggdrasilUserApiService.fetchProperties`, the friends part: `None` when the body is not a
+/// JSON object.
+pub fn parse_preferences(body: &str) -> Option<Preferences> {
+    let object = json::parse_object(body)?;
+    let on = |preferences: &json::JsonObject, key: &str| {
+        preferences
+            .text(key)
+            .is_some_and(|value| value == "ENABLED")
+    };
+    Some(
+        object
+            .object("friendsPreferences")
+            .map_or_else(Preferences::default, |preferences| Preferences {
+                friends_list: on(preferences, "friends"),
+                accept_invites: on(preferences, "acceptInvites"),
+            }),
+    )
+}

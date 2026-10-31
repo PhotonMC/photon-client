@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use crate::account::{AccessToken, is_this_machine};
+use crate::account::{AccessToken, Account, is_this_machine};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Method {
@@ -58,6 +58,11 @@ impl HttpTransport {
 
     pub fn new(host: String, token: AccessToken) -> Self {
         Self { host, token }
+    }
+
+    /// The services of an account's token, at `host` (`Hosts::services`).
+    pub fn for_account(account: &Account, host: &str) -> Self {
+        Self::new(host.to_owned(), account.token.clone())
     }
 }
 

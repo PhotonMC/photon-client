@@ -12,7 +12,8 @@ mod transport;
 mod updates;
 
 pub use data::{
-    Friend, FriendData, PresenceEntry, PresenceStatus, ResultCode, parse_friends, parse_presence,
+    Friend, FriendData, Preferences, PresenceEntry, PresenceStatus, ResultCode, parse_friends,
+    parse_preferences, parse_presence,
 };
 pub use service::FriendsService;
 pub use transport::{HttpTransport, Method, Reply, Request, Transport, TransportError};
