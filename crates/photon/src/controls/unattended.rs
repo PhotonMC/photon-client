@@ -21,6 +21,8 @@ pub enum ConfirmTarget {
     Drop(Vec<std::path::PathBuf>),
     /// `OnlineOptionsScreen.confirmFriendsListEnabled`: turning the friends list on.
     FriendsList,
+    /// `FriendEntry.confirmRemoveFriend`: the friend to remove once the player agrees.
+    RemoveFriend(photon_core::binary::Uuid),
 }
 
 impl Controls {
@@ -147,7 +149,9 @@ impl Controls {
             (LinkAction::Yes, ConfirmTarget::Drop(paths)) => {
                 self.copy_confirmed_packs(paths, assets);
             }
-            (action, ConfirmTarget::FriendsList) => self.answer_friends_list(action, surface),
+            (action, ConfirmTarget::FriendsList | ConfirmTarget::RemoveFriend(_)) => {
+                self.answer_friends_confirm(action, target, surface);
+            }
             _ => {}
         }
         Ok(())

@@ -5,11 +5,13 @@
 //! buttons, and the entries' buttons.
 
 use super::*;
-use crate::social::Social;
-use photon_game::text::{Component, Lang, Style};
+use crate::social::{Action, Social};
+use photon_game::text::{Component, Lang, Run, Style};
 use photon_gui::options::online::FriendFacts;
-use photon_gui::screen::friends::{FriendsEvent, FriendsOverlay, FriendsView, Listing};
-use photon_net::friends::{FriendData, PresenceStatus, ResultCode, State};
+use photon_gui::screen::friends::{
+    Entry, EntryKind, FriendsEvent, FriendsOverlay, FriendsView, Listing,
+};
+use photon_net::friends::{Friend, FriendData, PresenceStatus, ResultCode, State};
 
 impl Controls {
     /// The state of the account's friends, started once the connection has an account.
@@ -56,12 +58,12 @@ impl Controls {
     fn friends_view(&self, lang: &Lang) -> Option<FriendsView> {
         let social = self.friends_list.as_ref()?;
         let data = social.lists();
-        let names = |friends: &[photon_net::friends::Friend]| -> Vec<String> {
-            friends.iter().map(|friend| friend.name.clone()).collect()
-        };
         let (friends, pending) = match social.state() {
             State::Loading => (Listing::Loading, Listing::Loading),
-            State::Success => (listing(names(&data.friends)), listing(pending_names(data))),
+            State::Success => (
+                listing(friend_entries(social, data, lang)),
+                listing(request_entries(data)),
+            ),
             failed => {
                 let message = lang.runs(&error_message(failed), &Default::default());
                 (Listing::Error(message.clone()), Listing::Error(message))
@@ -71,7 +73,6 @@ impl Controls {
             friends,
             pending,
             requests: data.incoming.len(),
-            received: data.incoming.len(),
             profile_name: self.profile_name.clone(),
             ready: social.state() == State::Success,
             sending: social.sending(),
@@ -147,15 +148,24 @@ impl Controls {
         self.link_confirm = Some((screen, ConfirmTarget::FriendsList));
     }
 
-    /// The answer of the screen that asks to turn the list on: Turn OFF goes back to the game
-    /// (`setScreen(lastScreen)`).
-    pub(super) fn answer_friends_list(&mut self, action: LinkAction, surface: &mut WindowSurface) {
-        if action == LinkAction::Yes {
-            self.turn_on_friends();
-        } else if self.online_screen.is_none() {
-            self.captured = true;
-            self.last_cursor = None;
-            surface.set_cursor_captured(true);
+    /// The answer of a confirmation of the friends: Turn ON asks the service, Remove removes the
+    /// friend; Turn OFF goes back to the game (`setScreen(lastScreen)`) unless another screen
+    /// is under it.
+    pub(super) fn answer_friends_confirm(
+        &mut self,
+        action: LinkAction,
+        target: &ConfirmTarget,
+        surface: &mut WindowSurface,
+    ) {
+        match (action, target) {
+            (LinkAction::Yes, ConfirmTarget::RemoveFriend(id)) => self.remove_friend(*id),
+            (LinkAction::Yes, _) => self.turn_on_friends(),
+            (_, ConfirmTarget::FriendsList) if self.online_screen.is_none() => {
+                self.captured = true;
+                self.last_cursor = None;
+                surface.set_cursor_captured(true);
+            }
+            _ => {}
         }
     }
 
@@ -218,13 +228,20 @@ impl Controls {
                 }
                 None
             }
+            WindowEvent::Scroll(_, y) => {
+                let wheel = self.options.mouse_wheel_sensitivity;
+                if let Some(screen) = self.friends.as_mut() {
+                    screen.scrolled(mouse, y * wheel);
+                }
+                None
+            }
             WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => self
                 .friends
                 .as_mut()
                 .and_then(|screen| screen.clicked(mouse, font)),
             _ => None,
         };
-        self.friends_asked(asked, surface, font);
+        self.friends_asked(asked, surface, assets);
     }
 
     /// What the overlay asked the game for.
@@ -232,13 +249,14 @@ impl Controls {
         &mut self,
         asked: Option<FriendsEvent>,
         surface: &mut WindowSurface,
-        font: &photon_render::gui::font::Font,
+        assets: &ScreenAssets,
     ) {
+        let font = &assets.creative.font;
         match asked {
             Some(FriendsEvent::Close) => self.close_friends(surface),
             Some(FriendsEvent::Send(name)) => {
                 if let Some(social) = self.friends_list.as_mut() {
-                    social.act(crate::social::Action::Send(name));
+                    social.act(Action::Send(name));
                 }
                 if let Some(screen) = self.friends.as_mut() {
                     screen.clear_box(font);
@@ -248,8 +266,43 @@ impl Controls {
                 use photon_gui::widgets::edit_box::Clipboard;
                 WindowClipboard(surface).set(&self.profile_name);
             }
+            Some(FriendsEvent::Remove(id)) => self.ask_remove_friend(id, surface, assets),
+            Some(FriendsEvent::Accept(id)) => self.act_friend(Action::Accept(id)),
+            Some(FriendsEvent::Decline(id)) => self.act_friend(Action::Decline(id)),
+            Some(FriendsEvent::Revoke(id)) => self.act_friend(Action::Revoke(id)),
             None => {}
         }
+    }
+
+    fn act_friend(&mut self, action: Action) {
+        if let Some(social) = self.friends_list.as_mut() {
+            social.act(action);
+        }
+    }
+
+    /// The answer Remove of the confirmation of `FriendEntry.confirmRemoveFriend`.
+    pub(super) fn remove_friend(&mut self, id: photon_core::binary::Uuid) {
+        self.act_friend(Action::Remove(id));
+    }
+
+    /// `FriendEntry.confirmRemoveFriend`: the popup over the overlay.
+    fn ask_remove_friend(
+        &mut self,
+        id: photon_core::binary::Uuid,
+        surface: &WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        let text = |key: &str| Component::translatable(key);
+        let screen = ConfirmScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            Self::gui_size(surface),
+            &text("gui.friends.confirm_title"),
+            &text("gui.friends.confirm_unfriend"),
+            (&text("gui.remove"), &text("gui.cancel")),
+        )
+        .with_background(ConfirmBackground::Menu { in_world: true });
+        self.link_confirm = Some((screen, ConfirmTarget::RemoveFriend(id)));
     }
 }
 
@@ -283,21 +336,85 @@ fn collect_toasts(social: &mut Social) -> (Vec<Component>, bool) {
     (toasts, turned_on)
 }
 
-fn listing(names: Vec<String>) -> Listing {
-    if names.is_empty() {
+fn listing(entries: Vec<Entry>) -> Listing {
+    if entries.is_empty() {
         Listing::Empty
     } else {
-        Listing::Entries(names)
+        Listing::Entries(entries)
     }
 }
 
-/// The received requests, then the sent ones.
-fn pending_names(data: &FriendData) -> Vec<String> {
-    data.incoming
+/// The friends with their presence (`FriendEntry.presenceStatusComponent`), the ones in a game
+/// first (`presenceStatusSortOrder`).
+fn friend_entries(social: &Social, data: &FriendData, lang: &Lang) -> Vec<Entry> {
+    let mut entries: Vec<(u8, Entry)> = data
+        .friends
         .iter()
-        .chain(&data.outgoing)
-        .map(|friend| friend.name.clone())
+        .map(|friend| {
+            let status = social.presence_of(friend.id);
+            (
+                sort_order(status),
+                entry(friend, EntryKind::Friend, presence_runs(status, lang)),
+            )
+        })
+        .collect();
+    entries.sort_by_key(|(order, _)| *order);
+    entries.into_iter().map(|(_, entry)| entry).collect()
+}
+
+/// The received requests, then the sent ones.
+fn request_entries(data: &FriendData) -> Vec<Entry> {
+    let both = [
+        (&data.incoming, EntryKind::Incoming),
+        (&data.outgoing, EntryKind::Outgoing),
+    ];
+    both.into_iter()
+        .flat_map(|(list, kind)| {
+            list.iter()
+                .map(move |friend| entry(friend, kind, Vec::new()))
+        })
         .collect()
+}
+
+fn entry(friend: &Friend, kind: EntryKind, status: Vec<Run>) -> Entry {
+    Entry {
+        id: friend.id,
+        name: friend.name.clone(),
+        kind,
+        status,
+    }
+}
+
+fn sort_order(status: PresenceStatus) -> u8 {
+    match status {
+        PresenceStatus::PlayingHostedServer => 0,
+        PresenceStatus::PlayingServer => 1,
+        PresenceStatus::PlayingRealms => 2,
+        PresenceStatus::PlayingOffline => 3,
+        PresenceStatus::Online => 4,
+        PresenceStatus::Offline => 5,
+    }
+}
+
+/// The status line of a friend: green when online, grey when not.
+fn presence_runs(status: PresenceStatus, lang: &Lang) -> Vec<Run> {
+    let key = format!(
+        "gui.friends.presence.status.{}",
+        status.name().to_ascii_lowercase()
+    );
+    let colour = if status == PresenceStatus::Offline {
+        0xA0A0A0
+    } else {
+        0x00FF00
+    };
+    let style = Style {
+        colour: Some(colour),
+        ..Style::default()
+    };
+    lang.runs(
+        &Component::translatable(key).with_style(&style),
+        &Style::default(),
+    )
 }
 
 /// `FriendsOverlayScreen.refreshLists`'s message for a state that is no list.

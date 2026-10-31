@@ -4,6 +4,7 @@
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::{Duration, Instant};
 
+use photon_core::binary::Uuid;
 use photon_net::friends::{
     FriendData, FriendsService, Preferences, PresenceEntry, PresenceStatus, ResultCode, Transport,
 };
@@ -11,6 +12,10 @@ use photon_net::friends::{
 /// An action on the lists (`PlayerSocialManager`'s calls).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Action {
+    Remove(Uuid),
+    Accept(Uuid),
+    Decline(Uuid),
+    Revoke(Uuid),
     Send(String),
 }
 
@@ -106,6 +111,10 @@ fn list<T: Transport>(service: &mut FriendsService<T>, now: Instant) -> Event {
 
 fn act<T: Transport>(service: &mut FriendsService<T>, action: Action, now: Instant) -> ResultCode {
     match action {
+        Action::Remove(id) => service.remove_friend(id, now),
+        Action::Accept(id) => service.accept_incoming(id, now),
+        Action::Decline(id) => service.decline_incoming(id, now),
+        Action::Revoke(id) => service.revoke_outgoing(id, now),
         Action::Send(name) => service.send_request(&name, now),
     }
 }

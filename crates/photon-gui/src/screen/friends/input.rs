@@ -67,6 +67,7 @@ impl FriendsOverlay {
             if inside(at, self.tab_rect(tab)) {
                 crate::ui_sound::play_down_sound();
                 self.tab = tab;
+                self.scroll = 0;
                 return None;
             }
         }
@@ -77,6 +78,10 @@ impl FriendsOverlay {
                 self.edit.click_at(at.0 - (rect.0 + 4), font);
             }
             return None;
+        }
+        if let Some(asked) = self.entry_pressed(at) {
+            crate::ui_sound::play_down_sound();
+            return Some(asked);
         }
         if inside(at, self.button_rect()) {
             return self.send();

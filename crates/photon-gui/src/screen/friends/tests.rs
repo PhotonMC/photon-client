@@ -5,7 +5,6 @@ fn view(ready: bool) -> FriendsView {
         friends: Listing::Empty,
         pending: Listing::Empty,
         requests: 2,
-        received: 0,
         profile_name: "Steve".to_owned(),
         ready,
         sending: false,
@@ -89,6 +88,42 @@ fn a_click_on_the_profile_name_copies_it() {
     let (x, y, ..) = screen.name_rect(&font);
     let asked = screen.clicked((f64::from(x + 1), f64::from(y + 1)), &font);
     assert_eq!(asked, Some(FriendsEvent::CopyName));
+}
+
+fn entry(kind: EntryKind, n: u64) -> Entry {
+    Entry {
+        id: Uuid::new(0, n),
+        name: format!("P{n}"),
+        kind,
+        status: Vec::new(),
+    }
+}
+
+#[test]
+fn the_buttons_of_the_entries_ask_for_their_actions() {
+    let font = Font::default();
+    let mut screen = overlay(true);
+    let mut shown = view(true);
+    shown.friends = Listing::Entries(vec![entry(EntryKind::Friend, 1)]);
+    shown.pending = Listing::Entries(vec![
+        entry(EntryKind::Incoming, 2),
+        entry(EntryKind::Outgoing, 3),
+    ]);
+    screen.set_view(&Lang::new([]), shown);
+    let (left, top, ..) = screen.list_area();
+    // The first friend: its remove button is at the right of the 204-wide row.
+    let at = (f64::from(left + 8 + 204 - 10), f64::from(top + 14));
+    assert_eq!(
+        screen.clicked(at, &font),
+        Some(FriendsEvent::Remove(Uuid::new(0, 1)))
+    );
+    // The pending tab: a header (9 + 4), then the request's decline button.
+    screen.clicked(centre(screen.tab_rect(Tab::Pending)), &font);
+    let at = (f64::from(left + 8 + 204 - 10), f64::from(top + 13 + 14));
+    assert_eq!(
+        screen.clicked(at, &font),
+        Some(FriendsEvent::Decline(Uuid::new(0, 2)))
+    );
 }
 
 struct Memory(String);

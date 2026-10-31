@@ -9,10 +9,12 @@
 //! link of the empty state is plain text.
 
 mod draw;
+mod entries;
 mod input;
 
 use std::time::Instant;
 
+use photon_core::binary::Uuid;
 use photon_game::text::{Component, Lang, Run, Style};
 
 use crate::widgets::edit_box::EditBox;
@@ -23,8 +25,8 @@ const OVERLAY_WIDTH: i32 = 220;
 const TAB_WIDTH: i32 = 110;
 const TAB_HEIGHT: i32 = 20;
 const BORDER: i32 = 8;
-/// One entry of the lists, drawn as its name only until the entries get their widgets.
-const ENTRY_HEIGHT: i32 = 24;
+/// One entry of the lists (`AbstractFriendsEntryContainerWidget`).
+const ENTRY_HEIGHT: i32 = 28;
 /// What the box to add a friend takes: the box, its button and the rows around them
 /// (`AddFriendWidget`).
 const INPUT_LEFT: i32 = 8;
@@ -54,8 +56,24 @@ pub enum Listing {
     /// The message, as runs.
     Error(Vec<Run>),
     Empty,
-    /// The names of the friends, or of the incoming and outgoing requests, in order.
-    Entries(Vec<String>),
+    /// The friends, or the incoming and then the outgoing requests, in order.
+    Entries(Vec<Entry>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntryKind {
+    Friend,
+    Incoming,
+    Outgoing,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Entry {
+    pub id: Uuid,
+    pub name: String,
+    pub kind: EntryKind,
+    /// A friend's presence, as runs in its colour; empty for requests.
+    pub status: Vec<Run>,
 }
 
 /// What the game knows for the screen.
@@ -65,8 +83,6 @@ pub struct FriendsView {
     pub pending: Listing,
     /// The incoming requests (`gui.friends.requests_count`).
     pub requests: usize,
-    /// How many of the pending names come first as received requests; the rest were sent.
-    pub received: usize,
     pub profile_name: String,
     /// The list is loaded, so a request can be sent (`State.SUCCESS`).
     pub ready: bool,
@@ -83,6 +99,11 @@ pub enum FriendsEvent {
     Send(String),
     /// The profile name is copied (`setClipboard`).
     CopyName,
+    /// The remove button of a friend: the game asks first.
+    Remove(Uuid),
+    Accept(Uuid),
+    Decline(Uuid),
+    Revoke(Uuid),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -99,6 +120,7 @@ pub struct FriendsOverlay {
     view: FriendsView,
     texts: Texts,
     focused_at: Instant,
+    scroll: i32,
     pending_label: Vec<Run>,
 }
 
@@ -155,6 +177,7 @@ impl FriendsOverlay {
         Self {
             pending_label: pending_label(lang, view.requests),
             focused_at: Instant::now(),
+            scroll: 0,
             size,
             tab: Tab::Friends,
             edit: EditBox::new(
@@ -182,6 +205,7 @@ impl FriendsOverlay {
             self.pending_label = pending_label(lang, view.requests);
         }
         self.view = view;
+        self.scroll = self.scroll.clamp(0, self.max_scroll());
     }
 
     pub fn tab(&self) -> Tab {

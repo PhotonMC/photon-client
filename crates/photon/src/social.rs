@@ -93,6 +93,14 @@ impl Social {
         self.list_enabled
     }
 
+    /// `getLatestPresence` of one player.
+    pub(crate) fn presence_of(&self, id: photon_core::binary::Uuid) -> PresenceStatus {
+        self.presence
+            .iter()
+            .find(|entry| entry.profile_id == id)
+            .map_or(PresenceStatus::Offline, |entry| entry.status)
+    }
+
     /// `isAllowFriendRequests`.
     pub(crate) fn allow_requests(&self) -> bool {
         self.allow_requests

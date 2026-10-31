@@ -82,7 +82,7 @@ impl FriendsOverlay {
                 };
                 self.draw_centered(frame, (atlas, font), area, runs);
             }
-            Listing::Entries(names) => self.draw_entries(frame, (atlas, font), area, names),
+            Listing::Entries(_) => self.draw_entries(frame, (atlas, font), mouse),
         }
     }
 
@@ -214,42 +214,6 @@ impl FriendsOverlay {
             let line_width = font.width_of_runs(line);
             let at = (x + (width - line_width) / 2, first + index as i32 * 9);
             frame.styled_text(atlas, font, line, at, WHITE, true);
-        }
-    }
-
-    fn draw_entries(
-        &self,
-        frame: &mut GuiFrame,
-        (atlas, font): (&GuiAtlas, &Font),
-        (x, y, width, _): (i32, i32, i32, i32),
-        names: &[String],
-    ) {
-        let received = self.view.received.min(names.len());
-        let mut row = y;
-        for (index, name) in names.iter().enumerate() {
-            if self.tab == Tab::Pending && (index == 0 || index == received) {
-                let header = if index == 0 && received > 0 {
-                    &self.texts.received
-                } else {
-                    &self.texts.sent
-                };
-                frame.styled_text(atlas, font, header, (x + BORDER, row + 2), WHITE, true);
-                row += 13;
-            }
-            frame.fill(
-                atlas,
-                (x + BORDER, row, x + width - BORDER, row + ENTRY_HEIGHT - 2),
-                0xFF4A_4A4A,
-            );
-            frame.text_with_shadow(
-                atlas,
-                font,
-                name,
-                x + BORDER + 4,
-                row + (ENTRY_HEIGHT - 2 - 8) / 2,
-                WHITE,
-            );
-            row += ENTRY_HEIGHT;
         }
     }
 }
