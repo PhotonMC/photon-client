@@ -62,19 +62,21 @@ impl std::error::Error for WindowSurfaceError {}
 
 /// A live GLFW window plus the sizing state derived from its framebuffer.
 pub struct WindowSurface {
-    glfw: glfw::Glfw,
-    window: glfw::PWindow,
+    pub(super) glfw: glfw::Glfw,
+    pub(super) window: glfw::PWindow,
     events: glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
-    scale: WindowScale,
+    pub(super) scale: WindowScale,
+    /// The window's framebuffer, and the size frames are drawn at when it is another.
+    pub(super) framebuffer: ((i32, i32), Option<(i32, i32)>),
     /// `Options.guiScale`, which the scale chosen follows.
-    gui_scale_option: i32,
-    enforce_unicode: bool,
+    pub(super) gui_scale_option: i32,
+    pub(super) enforce_unicode: bool,
     /// Where and how big the window was before it went fullscreen.
-    windowed: Option<(i32, i32, i32, i32)>,
+    pub(super) windowed: Option<(i32, i32, i32, i32)>,
     /// `Window.preferredFullscreenVideoMode`: the mode fullscreen asks the monitor for, if it has it.
-    preferred_mode: Option<VideoMode>,
+    pub(super) preferred_mode: Option<VideoMode>,
     /// The modes the primary monitor listed when the window was made; none without a monitor.
-    monitor_modes: Option<Vec<VideoMode>>,
+    pub(super) monitor_modes: Option<Vec<VideoMode>>,
     /// The preferred mode changed since fullscreen last took it (`Window.dirty`).
     mode_dirty: bool,
 }
@@ -151,6 +153,7 @@ impl WindowSurface {
             window,
             events,
             scale,
+            framebuffer: ((framebuffer_width, framebuffer_height), None),
             gui_scale_option: 0,
             enforce_unicode: false,
             windowed: None,
@@ -213,14 +216,11 @@ impl WindowSurface {
     pub fn poll(&mut self) -> Vec<glfw::WindowEvent> {
         self.glfw.poll_events();
         let mut seen = Vec::new();
-        for (_, event) in glfw::flush_messages(&self.events) {
+        let pending: Vec<_> = glfw::flush_messages(&self.events).collect();
+        for (_, event) in pending {
             if let glfw::WindowEvent::FramebufferSize(width, height) = event {
-                self.scale
-                    .set_framebuffer_size(framebuffer_extent(width), framebuffer_extent(height));
-                let chosen = self
-                    .scale
-                    .calculate_scale(self.gui_scale_option, self.enforce_unicode);
-                self.scale.set_gui_scale(chosen);
+                self.framebuffer.0 = (width, height);
+                self.refresh_drawn_size();
             }
             seen.push(event);
         }
@@ -240,11 +240,12 @@ impl WindowSurface {
                 height.max(1) as u32,
                 None,
             );
+            self.refresh_drawn_size();
             return;
         }
         let (x, y) = self.window.get_pos();
         let (width, height) = self.window.get_size();
-        let preferred = self.preferred_mode;
+        let preferred = (self.preferred_mode, !Self::keeps_monitor_mode(&self.glfw));
         let window = &mut self.window;
         let switched = self.glfw.with_primary_monitor(|_, monitor| {
             let monitor = monitor?;
@@ -261,13 +262,17 @@ impl WindowSurface {
         });
         if switched.is_some() {
             self.windowed = Some((x, y, width, height));
+            self.refresh_drawn_size();
         }
     }
 
     /// `Monitor.getPreferredVidMode`: the preferred mode if the monitor lists it, else the mode the
     /// monitor runs now.
-    fn fullscreen_mode(monitor: &glfw::Monitor, preferred: Option<VideoMode>) -> Option<VideoMode> {
-        if let Some(wanted) = preferred
+    fn fullscreen_mode(
+        monitor: &glfw::Monitor,
+        (preferred, switches): (Option<VideoMode>, bool),
+    ) -> Option<VideoMode> {
+        if let Some(wanted) = preferred.filter(|_| switches)
             && Self::listed_modes(monitor).contains(&wanted)
         {
             return Some(wanted);
@@ -293,6 +298,9 @@ impl WindowSurface {
                     .iter()
                     .filter(|(width, height)| *width <= only.width && *height <= only.height)
                     .filter(|(width, height)| (*width, *height) != (only.width, only.height))
+                    .filter(|&&(width, height)| {
+                        super::drawn_size::same_shape((width, height), (only.width, only.height))
+                    })
                     .map(|&(width, height)| VideoMode {
                         width,
                         height,
@@ -329,7 +337,7 @@ impl WindowSurface {
             return;
         }
         self.mode_dirty = false;
-        let preferred = self.preferred_mode;
+        let preferred = (self.preferred_mode, !Self::keeps_monitor_mode(&self.glfw));
         let window = &mut self.window;
         self.glfw.with_primary_monitor(|_, monitor| {
             let monitor = monitor?;
@@ -344,6 +352,7 @@ impl WindowSurface {
             );
             Some(())
         });
+        self.refresh_drawn_size();
     }
 
     /// Hide and hold the cursor for mouse look, or give it back.

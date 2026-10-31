@@ -238,7 +238,7 @@ impl VulkanBackend {
                 .reset_fences(&[self.frames[self.frame_slot].in_flight])
                 .map_err(|result| VulkanError::Call("vkResetFences", result))?;
 
-            let image = self.images[index as usize];
+            let image = self.frame_target(index as usize).0;
             let range = vk::ImageSubresourceRange::default()
                 .aspect_mask(vk::ImageAspectFlags::COLOR)
                 .level_count(1)
@@ -297,51 +297,7 @@ impl VulkanBackend {
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                 );
             }
-            if capture {
-                transition(
-                    &self.device,
-                    self.command_buffer,
-                    image,
-                    range,
-                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                );
-                let region = vk::BufferImageCopy::default()
-                    .image_subresource(
-                        vk::ImageSubresourceLayers::default()
-                            .aspect_mask(vk::ImageAspectFlags::COLOR)
-                            .layer_count(1),
-                    )
-                    .image_extent(vk::Extent3D {
-                        width: self.description.extent.width,
-                        height: self.description.extent.height,
-                        depth: 1,
-                    });
-                self.device.cmd_copy_image_to_buffer(
-                    self.command_buffer,
-                    image,
-                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    self.readback.as_ref().expect("made for the capture").buffer,
-                    &[region],
-                );
-                transition(
-                    &self.device,
-                    self.command_buffer,
-                    image,
-                    range,
-                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    vk::ImageLayout::PRESENT_SRC_KHR,
-                );
-            } else {
-                transition(
-                    &self.device,
-                    self.command_buffer,
-                    image,
-                    range,
-                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                    vk::ImageLayout::PRESENT_SRC_KHR,
-                );
-            }
+            self.record_frame_end(index as usize, capture);
 
             self.device
                 .end_command_buffer(self.command_buffer)
@@ -410,6 +366,91 @@ impl VulkanBackend {
                 }
             }
             Ok(Some(rgba))
+        }
+    }
+}
+
+impl VulkanBackend {
+    /// The end of a frame's commands: the drawn image read back when captured, then left ready to
+    /// present, blitted up to the swapchain first when it is not the swapchain's own.
+    ///
+    /// # Safety
+    ///
+    /// Recording, outside a rendering scope, after the scene; the frame's target is in the
+    /// transfer-destination layout.
+    unsafe fn record_frame_end(&self, index: usize, capture: bool) {
+        let image = self.frame_target(index).0;
+        let drawn_layout = if self.targets.scaled.is_some() {
+            vk::ImageLayout::TRANSFER_SRC_OPTIMAL
+        } else {
+            vk::ImageLayout::PRESENT_SRC_KHR
+        };
+        let range = vk::ImageSubresourceRange::default()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .level_count(1)
+            .layer_count(1);
+        // SAFETY: the caller's contract; the images are live and the layouts follow in order.
+        unsafe {
+            if capture {
+                transition(
+                    &self.device,
+                    self.command_buffer,
+                    image,
+                    range,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                );
+                self.record_readback_copy(image);
+                transition(
+                    &self.device,
+                    self.command_buffer,
+                    image,
+                    range,
+                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                    drawn_layout,
+                );
+            } else {
+                transition(
+                    &self.device,
+                    self.command_buffer,
+                    image,
+                    range,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    drawn_layout,
+                );
+            }
+            if self.targets.scaled.is_some() {
+                self.record_scaled_present(image, self.images[index]);
+            }
+        }
+    }
+
+    /// Copy the drawn image into the capture buffer.
+    ///
+    /// # Safety
+    ///
+    /// Recording, with `image` in the transfer-source layout and the capture buffer made.
+    unsafe fn record_readback_copy(&self, image: vk::Image) {
+        // SAFETY: the caller's contract.
+        unsafe {
+            let region = vk::BufferImageCopy::default()
+                .image_subresource(
+                    vk::ImageSubresourceLayers::default()
+                        .aspect_mask(vk::ImageAspectFlags::COLOR)
+                        .layer_count(1),
+                )
+                .image_extent(vk::Extent3D {
+                    width: self.description.extent.width,
+                    height: self.description.extent.height,
+                    depth: 1,
+                });
+            self.device.cmd_copy_image_to_buffer(
+                self.command_buffer,
+                image,
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                self.readback.as_ref().expect("made for the capture").buffer,
+                &[region],
+            );
         }
     }
 }

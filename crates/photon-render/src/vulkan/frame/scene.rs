@@ -39,7 +39,8 @@ impl VulkanBackend {
         // views, pipelines, sets and buffers are owned by `self` or `scene` and live.
         unsafe {
             let now = std::time::Instant::now();
-            let (Some(scene), Some(depth)) = (self.scene.as_ref(), self.depth.as_ref()) else {
+            let (Some(scene), Some(depth)) = (self.scene.as_ref(), self.targets.depth.as_ref())
+            else {
                 return;
             };
             self.stamp(0);
@@ -48,7 +49,7 @@ impl VulkanBackend {
             }
             let terrain_push = self.terrain_push(view_projection);
             self.record_outline_chain(scene, &terrain_push);
-            self.begin_rendering(self.image_views[index], depth.view);
+            self.begin_rendering(self.frame_target(index).1, depth.view);
             for pass in PASSES {
                 if self.gui_only && !matches!(pass, Pass::Panorama | Pass::Gui | Pass::Entities) {
                     continue;

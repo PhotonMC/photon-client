@@ -40,6 +40,7 @@ impl Drop for VulkanBackend {
             self.arena.clear();
             self.staging.clear();
             self.readback = None;
+            self.targets.scaled = None;
             for view in self.image_views.drain(..) {
                 self.device.destroy_image_view(view, None);
             }

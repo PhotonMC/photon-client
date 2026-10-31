@@ -270,11 +270,7 @@ impl VulkanBackend {
             let colour_formats = [self.description.surface_format];
             let mut rendering = vk::PipelineRenderingCreateInfo::default()
                 .color_attachment_formats(&colour_formats)
-                .depth_attachment_format(
-                    self.depth
-                        .as_ref()
-                        .map_or(vk::Format::UNDEFINED, |d| d.format),
-                );
+                .depth_attachment_format(self.depth_format());
             let create = vk::GraphicsPipelineCreateInfo::default()
                 .stages(&stages)
                 .vertex_input_state(&vertex_input)

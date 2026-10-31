@@ -150,30 +150,6 @@ impl Client {
     }
 }
 
-/// A resized or fullscreen window gets a swapchain of its new size; whether it did.
-fn resize_to_window(
-    surface: &WindowSurface,
-    backend: &mut VulkanBackend,
-    sized_for: &mut (u32, u32),
-) -> Result<bool> {
-    let size = surface.scale();
-    let wanted = (
-        size.framebuffer_width() as u32,
-        size.framebuffer_height() as u32,
-    );
-    if (backend.out_of_date() || wanted != *sized_for) && wanted.0 > 0 && wanted.1 > 0 {
-        *sized_for = wanted;
-        backend.resize(wanted.0, wanted.1)?;
-        return Ok(true);
-    }
-    Ok(false)
-}
-
-/// The menu's swapchain fitted to its window.
-pub(crate) fn fit_swapchain(client: &mut Client) -> Result<()> {
-    resize_to_window(&client.surface, &mut client.backend, &mut client.size).map(drop)
-}
-
 /// How a game ended.
 pub(crate) enum Exit {
     /// The window closed.
@@ -612,6 +588,7 @@ mod cull;
 mod draw;
 mod effects;
 mod fitting;
+pub(crate) use fitting::fit_swapchain;
 mod gizmo;
 mod glints;
 mod loading;

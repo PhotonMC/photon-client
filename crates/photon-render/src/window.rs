@@ -4,6 +4,7 @@
 //! needs no GPU or surface. [`surface`] owns the actual GLFW window and applies
 //! those rules to a real framebuffer.
 
+mod drawn_size;
 pub mod scale;
 pub mod surface;
 pub mod video_mode;

@@ -114,7 +114,7 @@ impl VulkanBackend {
         // scene, so everything made below replaces something unused.
         unsafe {
             self.destroy_scene();
-            self.depth = Some(self.create_depth_target()?);
+            self.targets.depth = Some(self.create_depth_target()?);
 
             let texture = self.upload_texture(texture_levels)?;
             let sampler = self.atlas_sampler(1.0)?;
@@ -237,7 +237,7 @@ impl VulkanBackend {
             // Their copies have nowhere to go now.
             self.staged.clear();
             self.staging_filling.clear();
-            self.depth = None;
+            self.targets.depth = None;
         }
     }
 }

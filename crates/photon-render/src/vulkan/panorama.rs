@@ -339,9 +339,7 @@ impl VulkanBackend {
             let mut rendering = vk::PipelineRenderingCreateInfo::default()
                 .color_attachment_formats(&colour_formats)
                 .depth_attachment_format(if with_depth {
-                    self.depth
-                        .as_ref()
-                        .map_or(vk::Format::UNDEFINED, |d| d.format)
+                    self.depth_format()
                 } else {
                     vk::Format::UNDEFINED
                 });

@@ -329,7 +329,8 @@ impl VulkanBackend {
         let Some(blur) = scene.backdrop.blur.as_ref() else {
             return;
         };
-        let (Some(targets), Some(depth)) = (blur.targets.as_ref(), self.depth.as_ref()) else {
+        let (Some(targets), Some(depth)) = (blur.targets.as_ref(), self.targets.depth.as_ref())
+        else {
             return;
         };
         // SAFETY: the caller's contract; the copy is between two images of the same format and
@@ -337,9 +338,9 @@ impl VulkanBackend {
         unsafe {
             self.dynamic_rendering
                 .cmd_end_rendering(self.command_buffer);
-            self.copy_frame(self.images[index], &targets.a, targets.extent);
+            self.copy_frame(self.frame_target(index).0, &targets.a, targets.extent);
             self.blur_rounds(blur, targets, radius as f32);
-            self.begin_rendering(self.image_views[index], depth.view);
+            self.begin_rendering(self.frame_target(index).1, depth.view);
             self.draw_blurred_panorama(scene);
         }
     }

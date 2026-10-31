@@ -40,7 +40,7 @@ pub struct VulkanBackend {
     pub(super) completed: std::cell::Cell<u64>,
     /// The buffer a screenshot is copied into, there only while one is taken.
     pub(super) readback: Option<BoundBuffer>,
-    pub(super) depth: Option<Image>,
+    pub(super) targets: FrameTargets,
     /// Set when the surface no longer matches the swapchain.
     pub(super) out_of_date: bool,
     /// Draw only the GUI: a menu with no level behind it.
@@ -156,6 +156,15 @@ pub struct VulkanBackend {
     /// The time spent waiting for the frame in flight since the last frame was submitted.
     pub(super) fence_wait: std::cell::Cell<std::time::Duration>,
     pub(super) description: BackendDescription,
+}
+
+/// The images a frame is drawn with besides the swapchain's.
+#[derive(Default)]
+pub(super) struct FrameTargets {
+    pub(super) depth: Option<Image>,
+    /// The colour target the frame is drawn in when it is not drawn at the swapchain's size, and
+    /// the size it is blitted up to.
+    pub(super) scaled: Option<(Image, vk::Extent2D)>,
 }
 
 /// The GUI's runs by blend, and where the frame behind the screen is blurred

@@ -76,7 +76,7 @@ impl VulkanBackend {
                 frames_submitted: 0,
                 completed: std::cell::Cell::new(0),
                 readback: None,
-                depth: None,
+                targets: Default::default(),
                 out_of_date: false,
                 gui_only: false,
                 filtering: Default::default(),
