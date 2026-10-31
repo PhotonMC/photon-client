@@ -6,12 +6,24 @@ use photon_core::direction::Axis;
 use photon_core::random::RandomSource;
 use photon_data::block::definition::Fluid;
 
-use super::engine::ParticleEngine;
+use super::engine::{ParticleEngine, ParticleStatus};
 use super::level_events::LevelEventContext;
 use crate::local_player::{LocalSound, LocalSoundSource};
 
 /// `Options.weatherRadius`' default.
 pub const WEATHER_RADIUS: i32 = 10;
+
+/// How many columns around the camera are tried for a drop in one tick: a share of the area that
+/// grows with the square of the rain, halved while the option is decreased.
+fn drop_count(rain_level: f32, diameter: i32, status: ParticleStatus) -> i32 {
+    let tried = (0.225_f32 * (diameter * diameter) as f32 * rain_level * rain_level) as i32;
+    tried
+        / if status == ParticleStatus::Decreased {
+            2
+        } else {
+            1
+        }
+}
 
 impl ParticleEngine {
     /// One tick of the weather around `camera`: the drops, and the rain's sound if one is heard.
@@ -29,7 +41,8 @@ impl ParticleEngine {
         let mut random = RandomSource::create((world.game_time() as i64).wrapping_mul(312_987_231));
         let [cx, cy, cz] = [camera.0, camera.1, camera.2].map(photon_core::math::floor_f64);
         let diameter = 2 * radius + 1;
-        let drops = (0.225_f32 * (diameter * diameter) as f32 * rain_level * rain_level) as i32;
+        let status = context.view.status;
+        let drops = drop_count(rain_level, diameter, status);
         let mut landed = None;
         for _ in 0..drops {
             let x = cx + random.next_int_bound(diameter).unwrap_or(0) - radius;
@@ -40,10 +53,24 @@ impl ParticleEngine {
                 .is_some_and(|materials| materials.rains_at(world, BlockPos::new(x, top, z)));
             if top > world.dimension().min_y && top <= cy + 10 && top >= cy - 10 && rains {
                 landed = Some((x, top - 1, z));
+                // `ParticleStatus.MINIMAL`: the first column that rains is all that is used.
+                if status == ParticleStatus::Minimal {
+                    break;
+                }
                 self.drop_on((x, top - 1, z), &mut random, context);
             }
         }
-        let (x, y, z) = landed?;
+        self.rain_sound(world, (landed?, (cx, cy, cz)), &mut random)
+    }
+
+    /// The sound of rain on the column a drop last landed on, now and then: the rain above when
+    /// something covers the camera.
+    fn rain_sound(
+        &mut self,
+        world: &crate::ClientWorld,
+        ((x, y, z), (cx, cy, cz)): ((i32, i32, i32), (i32, i32, i32)),
+        random: &mut RandomSource,
+    ) -> Option<LocalSound> {
         let time = self.rain_sound_time();
         let heard = random.next_int_bound(3).unwrap_or(0) < *time;
         *time += 1;

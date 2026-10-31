@@ -54,7 +54,7 @@ impl Play {
 
     /// The level's particles, events and sounds the packets brought since the last frame.
     pub(super) fn route_effects(&mut self) {
-        // The particles option is not kept yet: all of them.
+        self.particles.follow_options(&self.controls.options);
         let level_particles = self.session.take_level_particles();
         let pickups = self.session.take_item_pickups();
         self.particles.add_pickups(pickups);
@@ -62,11 +62,8 @@ impl Play {
             &mut self.session,
             (&mut self.particles, &mut self.gui, self.sound.as_mut()),
         );
-        self.particles.receive(
-            level_particles,
-            self.session.world(),
-            photon_world::particles::ParticleStatus::All,
-        );
+        self.particles
+            .receive(level_particles, self.session.world());
         if self.session.take_unsecure_server_warning() {
             self.gui.add_unsecure_server_toast();
         }

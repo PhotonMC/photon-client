@@ -63,7 +63,7 @@ impl Play {
         );
         let breaking = session.take_breaking_effects();
         self.particles.breaking(session.world(), breaking);
-        self.particles.weather_radius = self.controls.options.quality.weather_radius;
+        self.particles.follow_options(&self.controls.options);
         super::effects::tick_blocks(
             session,
             (&mut self.particles, &self.sky),

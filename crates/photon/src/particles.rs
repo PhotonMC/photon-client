@@ -1,6 +1,7 @@
 //! The level's particles on the client: the engine, the random sources the reference seeds from
 //! the clock, and the sprite lists of `particles/*.json`.
 
+mod options;
 mod reload;
 mod tracking;
 
@@ -53,6 +54,8 @@ pub(crate) struct Particles {
     camera: Vec3,
     /// `Options.weatherRadius`, which the rain's drops fall within.
     pub(crate) weather_radius: i32,
+    /// `Options.particles`, which `ClientLevel.calculateParticleLevel` reads.
+    status: ParticleStatus,
     /// The textures (under `textures/`) the types carried here are drawn in, and where each
     /// sits in the packed entity textures once those are made.
     textures: Vec<String>,
@@ -172,6 +175,7 @@ impl Particles {
             local_player: None,
             camera: Vec3::new(0.0, 0.0, 0.0),
             weather_radius: photon_world::particles::WEATHER_RADIUS,
+            status: ParticleStatus::All,
             textures,
             rects: HashMap::new(),
             renderer: None,
@@ -243,7 +247,7 @@ impl Particles {
         let world = session.world();
         let view = AddView {
             camera: self.camera,
-            status: ParticleStatus::All,
+            status: self.status,
         };
         let mut uniquifier = self.uniquifier;
         let mut context = photon_world::particles::LevelEventContext {
@@ -292,16 +296,11 @@ impl Particles {
 
     /// The particle packets that arrived: each particle asked for is made when the option and
     /// the camera's distance let it in.
-    pub(crate) fn receive(
-        &mut self,
-        packets: Vec<LevelParticles>,
-        world: &ClientWorld,
-        status: ParticleStatus,
-    ) {
+    pub(crate) fn receive(&mut self, packets: Vec<LevelParticles>, world: &ClientWorld) {
         self.packets_heard += packets.len();
         let view = AddView {
             camera: self.camera,
-            status,
+            status: self.status,
         };
         for packet in packets {
             let mut uniquifier = self.uniquifier;
@@ -388,7 +387,7 @@ impl Particles {
     ) -> Vec<photon_world::local_player::LocalSound> {
         let view = AddView {
             camera: self.camera,
-            status: ParticleStatus::All,
+            status: self.status,
         };
         let mut uniquifier = self.uniquifier;
         let mut context = photon_world::particles::LevelEventContext {
@@ -415,7 +414,7 @@ impl Particles {
     ) -> Option<photon_world::local_player::LocalSound> {
         let view = AddView {
             camera: self.camera,
-            status: ParticleStatus::All,
+            status: self.status,
         };
         let mut uniquifier = self.uniquifier;
         let mut context = photon_world::particles::LevelEventContext {
@@ -452,7 +451,7 @@ impl Particles {
         {
             let view = AddView {
                 camera: self.camera,
-                status: ParticleStatus::All,
+                status: self.status,
             };
             let mut uniquifier = self.uniquifier;
             let mut context = photon_world::particles::LevelEventContext {
@@ -477,10 +476,9 @@ impl Particles {
                 photon_world::particles::pickup_target(entity.position(), entity.eye_height())
             }),
         });
-        // The particles option is not kept yet: all of them, as `receive` is given.
         let view = AddView {
             camera: self.camera,
-            status: ParticleStatus::All,
+            status: self.status,
         };
         let mut uniquifier = self.uniquifier;
         sounds.extend(self.engine.tick(world, &view, &mut self.level_random, || {
