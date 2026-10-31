@@ -337,11 +337,9 @@ impl Controls {
     }
 }
 
-/// Presence changes the account's state on the service, so it is posted only when asked for.
+/// `PresenceHandler` shares that the player is online while the overlay is open.
 fn presence_status() -> Option<PresenceStatus> {
-    std::env::var_os("PHOTON_FRIENDS_PRESENCE")
-        .is_some_and(|value| value == "1")
-        .then_some(PresenceStatus::Online)
+    Some(PresenceStatus::Online)
 }
 
 /// The toasts the answers of the service call for, and whether the list was turned on

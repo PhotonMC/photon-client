@@ -33,6 +33,8 @@ pub struct ClientId {
 
 /// The application of the official launcher, which the project owner chose to sign in with until
 /// Photon has a registration of its own. It signs in through the consumer service.
+/// Photon's own Azure application (a public client; it holds no secret).
+const PHOTON_CLIENT_ID: &str = "5a6a8989-522e-4eea-aac0-ef0b5c4c503a";
 const LAUNCHER_CLIENT_ID: &str = "00000000402b5328";
 
 impl ClientId {
@@ -44,7 +46,12 @@ impl ClientId {
         }
     }
 
-    /// The application used when none is named.
+    /// Photon's registration in Azure, used when none is named.
+    pub fn photon() -> Self {
+        Self::new(PHOTON_CLIENT_ID.to_owned())
+    }
+
+    /// The official launcher's application.
     pub fn launcher() -> Self {
         Self {
             id: LAUNCHER_CLIENT_ID.to_owned(),
@@ -52,12 +59,12 @@ impl ClientId {
         }
     }
 
-    /// The development variable names an Azure application; without it, the launcher's.
+    /// Photon's own Azure application; the development variable names another one.
     pub fn from_environment() -> Self {
         std::env::var("PHOTON_MS_CLIENT_ID")
             .ok()
             .filter(|id| !id.trim().is_empty())
-            .map_or_else(Self::launcher, |id| Self::new(id.trim().to_owned()))
+            .map_or_else(Self::photon, |id| Self::new(id.trim().to_owned()))
     }
 
     pub(crate) fn flow(&self) -> Flow {
