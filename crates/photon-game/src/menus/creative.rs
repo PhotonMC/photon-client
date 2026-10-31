@@ -12,7 +12,9 @@
 
 use crate::menus::container::{ClickType, ContainerMenu, Player, max_stack_size, settle};
 use crate::registries::Registries;
-use photon_data::item::creative_tabs::{CREATIVE_TABS, CreativeStack, DEFAULT_TAB, TabKind};
+use photon_data::item::creative_tabs::{
+    CREATIVE_TABS, CreativeStack, DEFAULT_TAB, OPERATOR_TAB, OPERATOR_TAB_ITEMS, TabKind,
+};
 use photon_world::ClientItemStackState as Stack;
 use photon_world::block::tags::ItemTags;
 
@@ -31,6 +33,7 @@ impl CreativeMenu {
             scroll: 0.0,
             registries,
             versions,
+            operator: false,
         };
         menu.select_tab(tab);
         menu
@@ -38,6 +41,31 @@ impl CreativeMenu {
 
     pub fn tab(&self) -> usize {
         self.tab
+    }
+
+    /// Whether the player can use game master blocks.
+    pub fn operator(&self) -> bool {
+        self.operator
+    }
+
+    /// The tabs shown to this player.
+    pub fn shown_tabs(&self) -> Vec<usize> {
+        shown_tabs_for(self.operator)
+    }
+
+    /// `tryRefreshInvalidatedTabs`: the player's permission to use game master blocks changed.
+    /// A tab that is no longer shown gives way to the default one.
+    pub fn set_operator(&mut self, operator: bool) {
+        if self.operator == operator {
+            return;
+        }
+        self.operator = operator;
+        let tab = if self.shown_tabs().contains(&self.tab) {
+            self.tab
+        } else {
+            default_tab()
+        };
+        self.select_tab(tab);
     }
 
     pub fn kind(&self) -> TabKind {
@@ -62,6 +90,8 @@ pub struct CreativeMenu {
     pub(super) registries: std::sync::Arc<Registries>,
     /// The numbering of the version the session speaks: a tab lists the items it has.
     pub(super) versions: std::sync::Arc<photon_data::version_registries::VersionRegistries>,
+    /// Whether the player can use game master blocks, which gives the operator tab its stacks.
+    pub(super) operator: bool,
 }
 
 mod clicks;
@@ -119,6 +149,28 @@ mod tests {
             outside: true,
         };
         creative.slot_clicked(click, menu, PLAYER, true)
+    }
+
+    #[test]
+    fn the_operator_tab_is_for_an_operator_only() {
+        let op = CREATIVE_TABS
+            .iter()
+            .position(|tab| tab.name == OPERATOR_TAB)
+            .expect("the operator tab is in the table");
+        assert!(!shown_tabs_for(false).contains(&op));
+        assert!(shown_tabs_for(true).contains(&op));
+        let mut menu = menu_on(TabKind::Category);
+        menu.set_operator(true);
+        menu.select_tab(op);
+        assert_eq!(menu.items.len(), OPERATOR_TAB_ITEMS.len());
+        // Losing the permission leaves the tab for the default one.
+        menu.set_operator(false);
+        assert_eq!(menu.tab(), default_tab());
+        // The search tab lists the operator tab's stacks after the others.
+        assert_eq!(
+            search_list().len(),
+            search_tab().items.len() + OPERATOR_TAB_ITEMS.len()
+        );
     }
 
     #[test]

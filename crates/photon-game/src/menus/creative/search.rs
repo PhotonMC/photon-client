@@ -32,6 +32,13 @@ pub(super) fn offered(
     versions.has_item(entry.item)
 }
 
+pub(super) fn search_tab_index() -> usize {
+    CREATIVE_TABS
+        .iter()
+        .position(|tab| tab.kind == TabKind::Search)
+        .expect("there is a search tab")
+}
+
 pub(super) fn search_tab() -> &'static photon_data::item::creative::CreativeTab {
     CREATIVE_TABS
         .iter()
@@ -41,9 +48,42 @@ pub(super) fn search_tab() -> &'static photon_data::item::creative::CreativeTab 
 
 /// The tabs that are shown, in the reference's order: `CreativeModeTabs.tabs`.
 pub fn shown_tabs() -> Vec<usize> {
+    shown_tabs_for(false)
+}
+
+/// The tabs shown to a player who can (`operator`) or cannot use game master blocks: the
+/// operator tab has stacks only for the one who can.
+pub fn shown_tabs_for(operator: bool) -> Vec<usize> {
     (0..CREATIVE_TABS.len())
-        .filter(|&tab| CREATIVE_TABS[tab].should_display)
+        .filter(|&tab| CREATIVE_TABS[tab].should_display || (operator && is_operator_tab(tab)))
         .collect()
+}
+
+/// Whether a tab is the operator tab.
+pub fn is_operator_tab(tab: usize) -> bool {
+    CREATIVE_TABS[tab].name == OPERATOR_TAB
+}
+
+/// The stacks a tab lists for a player who can (`operator`) or cannot use game master blocks.
+pub fn tab_items(tab: usize, operator: bool) -> &'static [CreativeStack] {
+    if operator && is_operator_tab(tab) {
+        &OPERATOR_TAB_ITEMS
+    } else if operator && CREATIVE_TABS[tab].kind == TabKind::Search {
+        search_list()
+    } else {
+        CREATIVE_TABS[tab].items
+    }
+}
+
+/// The search tab's stacks for a player who can use game master blocks: the operator tab gives
+/// its own after everything else.
+pub fn search_list() -> &'static [CreativeStack] {
+    static LIST: std::sync::OnceLock<Vec<CreativeStack>> = std::sync::OnceLock::new();
+    LIST.get_or_init(|| {
+        let mut list = search_tab().items.to_vec();
+        list.extend_from_slice(&OPERATOR_TAB_ITEMS);
+        list
+    })
 }
 
 /// The search tab's items with what the search reads of each: the lines of
@@ -79,6 +119,12 @@ pub fn query_matches(lines: &[String], ids: &[(String, String)], text: &str) -> 
 /// a tag, not necessarily the same, whose path holds the other; anything else
 /// is part of a tag's path. A stack without tags is never found.
 pub fn tag_search(tags: &ItemTags, text: &str) -> Vec<u16> {
+    tag_search_with(tags, text, false)
+}
+
+/// [`tag_search`] over the search tab a player who can (`operator`) or cannot use game master
+/// blocks has.
+pub fn tag_search_with(tags: &ItemTags, text: &str, operator: bool) -> Vec<u16> {
     let mut of_item: std::collections::HashMap<i32, Vec<(&str, &str)>> =
         std::collections::HashMap::new();
     for (tag, items) in tags.iter() {
@@ -90,8 +136,7 @@ pub fn tag_search(tags: &ItemTags, text: &str) -> Vec<u16> {
     let query = text
         .split_once(':')
         .map(|(namespace, path)| (namespace.trim(), path.trim()));
-    search_tab()
-        .items
+    tab_items(search_tab_index(), operator)
         .iter()
         .enumerate()
         .filter(|(_, entry)| {
@@ -154,7 +199,9 @@ impl std::fmt::Debug for SearchTrees {
 /// search tab, by item and component patch.
 pub fn tab_contains(tab: usize, stack: &Stack, registries: &Registries) -> bool {
     let entry = &CREATIVE_TABS[tab];
-    let candidates = if entry.search_items.is_empty() {
+    let candidates = if is_operator_tab(tab) {
+        &OPERATOR_TAB_ITEMS
+    } else if entry.search_items.is_empty() {
         entry.items
     } else {
         entry.search_items
@@ -182,7 +229,7 @@ pub fn default_tab() -> usize {
 
 impl SearchIndex {
     pub fn build(lang: &crate::text::Lang, registries: &Registries) -> Self {
-        let items = search_tab().items;
+        let items = search_list();
         let mut lines = Vec::with_capacity(items.len());
         let mut ids = Vec::with_capacity(items.len());
         for entry in items {

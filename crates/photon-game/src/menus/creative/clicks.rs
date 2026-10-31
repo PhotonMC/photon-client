@@ -19,8 +19,7 @@ impl CreativeMenu {
                 }
             }
             TabKind::Category | TabKind::Search => {
-                for entry in CREATIVE_TABS[tab]
-                    .items
+                for entry in tab_items(tab, self.operator)
                     .iter()
                     .filter(|entry| offered(entry, &self.versions))
                 {

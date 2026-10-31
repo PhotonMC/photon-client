@@ -14,7 +14,7 @@ use crate::widgets::edit_box::{Clipboard, EditBox, edit_key};
 use photon_data::item::creative_tabs::{CREATIVE_TABS, TabKind};
 use photon_game::menus::container::{ClickType, ContainerMenu, max_stack_size};
 use photon_game::menus::creative::{
-    Click, CreativeMenu, SearchTrees, Target, shown_tabs, tab_contains, table_stack, tag_search,
+    Click, CreativeMenu, SearchTrees, Target, tab_contains, table_stack, tag_search_with,
     visible_tags,
 };
 use photon_game::text::{Run, Style};
@@ -186,7 +186,9 @@ impl Screen for CreativeScreen {
         let double = self.mouse.note_click(now, button);
         if button == 0 {
             let relative = self.layout.relative(mouse);
-            if shown_tabs()
+            if self
+                .menu
+                .shown_tabs()
                 .into_iter()
                 .any(|tab| self.tab_clicked(tab, relative))
             {
@@ -220,7 +222,9 @@ impl Screen for CreativeScreen {
         if button == 0 {
             let relative = self.layout.relative(mouse);
             self.scrolling = false;
-            if let Some(tab) = shown_tabs()
+            if let Some(tab) = self
+                .menu
+                .shown_tabs()
                 .into_iter()
                 .find(|&tab| self.tab_clicked(tab, relative))
             {
@@ -339,7 +343,7 @@ impl Screen for CreativeScreen {
         let (left, top) = (self.layout.left(), self.layout.top());
         let selected = self.menu.tab();
         self.layout.background(draw);
-        for tab in shown_tabs() {
+        for tab in self.menu.shown_tabs() {
             if tab != selected {
                 self.build_tab(draw, tab);
             }
@@ -500,7 +504,9 @@ mod tests {
     fn a_tab_is_chosen_when_its_button_is_released() {
         let mut screen = test_screen(default_tab());
         let inventory = ContainerMenu::default();
-        let other = shown_tabs()
+        let other = screen
+            .menu
+            .shown_tabs()
             .into_iter()
             .find(|&tab| tab != default_tab() && CREATIVE_TABS[tab].top)
             .expect("another top tab");

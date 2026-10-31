@@ -310,6 +310,42 @@ class BlockItemOracle extends BlockPropertyOracle {
     }
 
     /**
+     * The creative inventory as the client builds it for a player with operator permissions: the
+     * operator tab's stacks, what it gives the search tab, and the search tab's whole list.
+     */
+    static JsonObject creativeTabsOperator(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registries = Game26_2.vanillaRegistries();
+        net.minecraft.world.item.CreativeModeTabs.tryRebuildTabContents(
+            net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS, true, registries);
+        var registry = net.minecraft.core.registries.BuiltInRegistries.CREATIVE_MODE_TAB;
+        for (var tab : registry) {
+            var name = registry.getKey(tab).toString();
+            if (name.equals("minecraft:op_blocks")) {
+                entry.addProperty("should_display", tab.shouldDisplay());
+                var items = new JsonArray();
+                for (var stack : tab.getDisplayItems()) {
+                    items.add(creativeStack(stack, registries));
+                }
+                entry.add("items", items);
+                var searchItems = new JsonArray();
+                for (var stack : tab.getSearchTabDisplayItems()) {
+                    searchItems.add(creativeStack(stack, registries));
+                }
+                entry.add("search_items", searchItems);
+            }
+        }
+        var search = new JsonArray();
+        for (var stack : net.minecraft.world.item.CreativeModeTabs.searchTab().getDisplayItems()) {
+            search.add(creativeStack(stack, registries));
+        }
+        entry.add("search_tab", search);
+        return entry;
+    }
+
+    /**
      * The creative search tab's tag search for what the box holds: the game's
      * own tag tree over the search tab's stacks (by place), and the tags the
      * screen's private updateVisibleTags names, sorted (the screen keeps them

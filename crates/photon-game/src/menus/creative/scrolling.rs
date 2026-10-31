@@ -53,9 +53,11 @@ impl CreativeMenu {
     /// The search tab's stacks, by place, shown in place of the tab's own, as
     /// a search finds them, scrolled to the top.
     pub fn show_items(&mut self, places: &[u16]) {
-        let items = search_tab().items;
+        let items = search_list();
+        let base = search_tab().items.len();
         self.items = places
             .iter()
+            .filter(|&&place| self.operator || usize::from(place) < base)
             .map(|&place| &items[usize::from(place)])
             .filter(|entry| offered(entry, &self.versions))
             .map(|entry| {

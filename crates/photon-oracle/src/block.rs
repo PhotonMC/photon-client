@@ -292,38 +292,14 @@ fn block_result(request: &Value) -> Result<Value, String> {
             }
             "tooltip_registries" => out.push(tooltip_registries(label)),
             "potions" => out.push(potions(label)),
+            "creative_tabs_operator" => out.push(crate::creative_op::operator_tabs(label)),
             "creative_tabs" => {
-                use photon_data::item::component_types::NAMES;
                 use photon_data::item::creative_tabs::{CREATIVE_TABS, DEFAULT_TAB, TabKind};
                 let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
                     .join("../../.data/minecraft/assets/jar/data");
                 let registries = photon_game::registries::Registries::vanilla(&data_root);
                 let stack = |entry: &photon_data::item::creative::CreativeStack| {
-                    let made = photon_game::menus::creative::table_stack(entry, &registries);
-                    let mut wire = Vec::new();
-                    photon_core::wire::write_varint(made.item_count(), &mut wire);
-                    photon_core::wire::write_varint(
-                        crate::case_ids::wire_item(made.item_registry_id()),
-                        &mut wire,
-                    );
-                    wire.extend(made.patch().trusted());
-                    let mut components = serde_json::Map::new();
-                    for component in entry.components {
-                        if let Some((id, _)) = photon_game::item::default_components::encode(
-                            component,
-                            Some(&registries),
-                        ) {
-                            components
-                                .insert(NAMES[id as usize].to_owned(), component_json(component));
-                        }
-                    }
-                    json!({
-                        "item": entry.item,
-                        "wire": wire.iter().map(|byte| format!("{byte:02x}")).collect::<String>(),
-                        "positive": made.positive_component_type_ids(),
-                        "negative": made.negative_component_type_ids(),
-                        "components": components,
-                    })
+                    crate::creative_op::stack_json(entry, &registries)
                 };
                 let tabs: Vec<Value> = CREATIVE_TABS
                     .iter()

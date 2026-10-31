@@ -9,6 +9,9 @@ pub use crate::item::creative::{CreativeStack, CreativeTab, TabKind};
 
 pub const DEFAULT_TAB: &str = "minecraft:building_blocks";
 
+/// The tab that lists stacks only to a player who can use game master blocks.
+pub const OPERATOR_TAB: &str = "minecraft:op_blocks";
+
 #[rustfmt::skip]
 pub static CREATIVE_TABS: [CreativeTab; 14] = [
     CreativeTab {
@@ -4342,4 +4345,44 @@ pub static CREATIVE_TABS: [CreativeTab; 14] = [
         search_items: &[
         ],
     },
+];
+
+/// What the operator tab shows a player who can use game master blocks, in order. The tab gives
+/// the same stacks to the search tab, after everything else.
+#[rustfmt::skip]
+pub static OPERATOR_TAB_ITEMS: [CreativeStack; 34] = [
+    CreativeStack::of("minecraft:command_block"),
+    CreativeStack::of("minecraft:chain_command_block"),
+    CreativeStack::of("minecraft:repeating_command_block"),
+    CreativeStack::of("minecraft:command_block_minecart"),
+    CreativeStack::of("minecraft:jigsaw"),
+    CreativeStack::of("minecraft:structure_block"),
+    CreativeStack::of("minecraft:structure_void"),
+    CreativeStack::of("minecraft:barrier"),
+    CreativeStack::of("minecraft:debug_stick"),
+    CreativeStack::of("minecraft:test_instance_block"),
+    CreativeStack::of("minecraft:test_block"),
+    CreativeStack::of("minecraft:test_block").with(&[Component::BlockState(&[("mode", "log")])]),
+    CreativeStack::of("minecraft:test_block").with(&[Component::BlockState(&[("mode", "fail")])]),
+    CreativeStack::of("minecraft:test_block").with(&[Component::BlockState(&[("mode", "accept")])]),
+    CreativeStack::of("minecraft:light"),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "14")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "13")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "12")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "11")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "10")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "9")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "8")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "7")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "6")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "5")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "4")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "3")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "2")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "1")])]),
+    CreativeStack::of("minecraft:light").with(&[Component::BlockState(&[("level", "0")])]),
+    CreativeStack::of("minecraft:painting").with(&[Component::PaintingVariant("minecraft:earth")]),
+    CreativeStack::of("minecraft:painting").with(&[Component::PaintingVariant("minecraft:fire")]),
+    CreativeStack::of("minecraft:painting").with(&[Component::PaintingVariant("minecraft:water")]),
+    CreativeStack::of("minecraft:painting").with(&[Component::PaintingVariant("minecraft:wind")]),
 ];

@@ -30,6 +30,7 @@ const TABLES: &[(&str, &str)] = &[
     ("tooltip-registries", "tooltip_registries"),
     ("potions", "potions"),
     ("creative-tabs", "creative_tabs"),
+    ("creative-tabs-operator", "creative_tabs_operator"),
 ];
 
 /// The creative search box's tag text: path text, a namespace and a path

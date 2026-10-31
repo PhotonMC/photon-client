@@ -143,16 +143,13 @@ impl Controls {
 
     /// `ControlsScreen`, over the options screen.
     pub(super) fn open_controls(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
-        self.controls_screen = Some(
-            ControlsScreen::new(
-                &assets.creative.font,
-                &assets.lang,
-                Self::gui_size(surface),
-                !self.title_host,
-                &self.options,
-            )
-            .without_missing_effects(&assets.lang),
-        );
+        self.controls_screen = Some(ControlsScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            Self::gui_size(surface),
+            !self.title_host,
+            &self.options,
+        ));
     }
 
     /// `MouseSettingsScreen`, over the controls screen.

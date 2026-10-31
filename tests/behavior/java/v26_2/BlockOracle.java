@@ -36,6 +36,7 @@ public final class BlockOracle extends BlockDeclarationOracle {
                 case "tooltip_registries" -> rows.add(tooltipRegistries(element.getAsJsonObject()));
                 case "potions" -> rows.add(potions(element.getAsJsonObject()));
                 case "creative_tabs" -> rows.add(creativeTabs(element.getAsJsonObject()));
+                case "creative_tabs_operator" -> rows.add(creativeTabsOperator(element.getAsJsonObject()));
                 case "creative_tag_search" -> rows.add(creativeTagSearch(element.getAsJsonObject()));
                 case "block_behaviours" -> rows.add(blockBehaviours(element.getAsJsonObject()));
                 case "block_declarations" -> rows.add(blockDeclarations(element.getAsJsonObject()));

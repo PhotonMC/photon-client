@@ -32,6 +32,11 @@ impl CreativeScreen {
         }
     }
 
+    /// The player's permission to use game master blocks changed.
+    pub fn set_operator(&mut self, operator: bool) {
+        self.menu.set_operator(operator);
+    }
+
     /// The tab the screen is on.
     pub fn tab(&self) -> usize {
         self.menu.tab()
@@ -133,7 +138,7 @@ impl CreativeScreen {
         }
         let found = if let Some(term) = text.strip_prefix('#') {
             self.visible_tags = visible_tags(&self.tags, term);
-            tag_search(&self.tags, &term.to_lowercase())
+            tag_search_with(&self.tags, &term.to_lowercase(), self.menu.operator())
         } else {
             self.assets.trees.index().search(&text.to_lowercase())
         };
@@ -336,7 +341,7 @@ impl CreativeScreen {
             // name, except for a stack in a single category's own window.
             if !lines.is_empty() && !(kind == TabKind::Category && creative_slot) {
                 let mut at = 1;
-                for tab in shown_tabs() {
+                for tab in self.menu.shown_tabs() {
                     if CREATIVE_TABS[tab].kind != TabKind::Search
                         && tab_contains(tab, &stack, self.assets.trees.registries())
                     {
@@ -355,7 +360,7 @@ impl CreativeScreen {
             return;
         }
         let (xm, ym) = self.layout.relative(mouse);
-        let hovered_tab = shown_tabs().into_iter().find(|&tab| {
+        let hovered_tab = self.menu.shown_tabs().into_iter().find(|&tab| {
             let (x, y) = (tab_x(tab), tab_y(tab));
             xm >= f64::from(x + 3 - 1)
                 && xm < f64::from(x + 3 + 21 + 1)

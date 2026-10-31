@@ -259,6 +259,7 @@ impl Controls {
             return Ok(());
         };
         let creative = creative_tags(session);
+        sync_operator_tab(open, self.options.play.operator_items_tab, session);
         let open_tab = open.as_creative_mut().map(|open| open.tab());
         if open_tab.is_some() != creative.is_some() {
             self.creative_tab = open_tab.unwrap_or(self.creative_tab);
@@ -533,5 +534,17 @@ fn select_hotbar(session: &mut PlaySession, name: &str, spectating: bool) {
         .map(|slot| slot - 1);
     if let (false, Ok(slot)) = (spectating, slot) {
         session.select_slot(slot);
+    }
+}
+
+/// `tryRefreshInvalidatedTabs`: the creative screen shows the operator tab to a player with the
+/// option on who can use game master blocks.
+fn sync_operator_tab(
+    open: &mut Box<dyn photon_gui::screen::Screen>,
+    option: bool,
+    session: &PlaySession,
+) {
+    if let Some(screen) = open.as_creative_mut() {
+        screen.set_operator(option && session.permission_level() >= 2);
     }
 }

@@ -146,6 +146,7 @@ use nbt_cases::*;
 mod tooltip;
 use tooltip::*;
 mod block;
+mod creative_op;
 use block::*;
 mod placement;
 use placement::*;
