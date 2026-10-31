@@ -93,6 +93,11 @@ impl Social {
         self.list_enabled
     }
 
+    /// `isAllowFriendRequests`.
+    pub(crate) fn allow_requests(&self) -> bool {
+        self.allow_requests
+    }
+
     /// `getFriendListState`.
     pub(crate) fn state(&self) -> State {
         self.updates.state()

@@ -30,6 +30,13 @@ pub struct FriendFacts {
     pub allow_requests: bool,
 }
 
+/// Which of the account's buttons was pressed (`applyFriendSettings`'s callers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FriendPress {
+    List,
+    Requests,
+}
+
 pub struct OnlineOptionsScreen {
     screen: SubScreen,
     friends: FriendFacts,
@@ -86,6 +93,28 @@ impl OnlineOptionsScreen {
     /// Whether `input` is a press of the Xbox settings button, which asks about a link.
     pub fn xbox_pressed(input: &SubScreenInput) -> bool {
         input.changed == Some(XBOX)
+    }
+
+    /// Whether `input` is a press of one of the account's friends buttons.
+    pub fn friend_pressed(input: &SubScreenInput) -> Option<FriendPress> {
+        match input.changed {
+            Some(FRIENDS_LIST) => Some(FriendPress::List),
+            Some(ALLOW_REQUESTS) => Some(FriendPress::Requests),
+            _ => None,
+        }
+    }
+
+    /// `updateFriendListDependentButtons` for what the account says now.
+    pub fn set_friends(&mut self, lang: &Lang, friends: FriendFacts) {
+        self.friends = friends;
+        self.settled(
+            lang,
+            SubScreenInput {
+                changed: Some(FRIENDS_LIST),
+                ..SubScreenInput::default()
+            },
+        );
+        self.update_dependents();
     }
 
     /// The screen with the buttons of the services this client does not have still, saying why.

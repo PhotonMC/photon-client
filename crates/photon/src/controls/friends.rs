@@ -7,6 +7,7 @@
 use super::*;
 use crate::social::Social;
 use photon_game::text::{Component, Lang, Style};
+use photon_gui::options::online::FriendFacts;
 use photon_gui::screen::friends::{FriendsEvent, FriendsOverlay, FriendsView, Listing};
 use photon_net::friends::{FriendData, PresenceStatus, ResultCode, State};
 
@@ -27,22 +28,20 @@ impl Controls {
             return Vec::new();
         };
         let open = self.friends.is_some();
-        social.tick(std::time::Instant::now(), (open, true), presence_status());
-        let mut toasts = Vec::new();
-        while let Some(code) = social.take_settings_result() {
-            if code == ResultCode::Success {
-                self.friends_wanted = true;
-            } else {
-                toasts.push(Component::translatable("gui.friends.toast.generic_error"));
-            }
+        let notify = self.options.online.in_game_notification;
+        social.tick(std::time::Instant::now(), (open, notify), presence_status());
+        if let Some(screen) = self.online_screen.as_mut() {
+            let facts = FriendFacts {
+                enabled: social.list_enabled(),
+                allow_requests: social.allow_requests(),
+            };
+            screen.set_friends(lang, facts);
         }
-        while let Some(notice) = social.take_toast() {
-            toasts.push(notice_title(&notice));
-        }
-        while let Some(code) = social.take_result() {
-            if code != ResultCode::Success {
-                toasts.push(Component::translatable("gui.friends.toast.generic_error"));
-            }
+        let from_online = self.online_screen.is_some();
+        let (toasts, turned_on) = collect_toasts(social);
+        if turned_on {
+            // From the online settings the list only turns on; the key opens the overlay.
+            self.friends_wanted = !from_online;
         }
         if social.take_changed() || open {
             let view = self.friends_view(lang);
@@ -114,7 +113,7 @@ impl Controls {
     }
 
     /// `confirmFriendsListEnabled` for a list that is off: the screen that asks to turn it on.
-    fn ask_friends_list(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+    pub(super) fn ask_friends_list(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
         if self.friends_list.is_none() {
             return;
         }
@@ -153,7 +152,7 @@ impl Controls {
     pub(super) fn answer_friends_list(&mut self, action: LinkAction, surface: &mut WindowSurface) {
         if action == LinkAction::Yes {
             self.turn_on_friends();
-        } else {
+        } else if self.online_screen.is_none() {
             self.captured = true;
             self.last_cursor = None;
             surface.set_cursor_captured(true);
@@ -259,6 +258,29 @@ fn presence_status() -> Option<PresenceStatus> {
     std::env::var_os("PHOTON_FRIENDS_PRESENCE")
         .is_some_and(|value| value == "1")
         .then_some(PresenceStatus::Online)
+}
+
+/// The toasts the answers of the service call for, and whether the list was turned on.
+fn collect_toasts(social: &mut Social) -> (Vec<Component>, bool) {
+    let failed = || Component::translatable("gui.friends.toast.generic_error");
+    let mut toasts = Vec::new();
+    let mut turned_on = false;
+    while let Some(code) = social.take_settings_result() {
+        if code == ResultCode::Success {
+            turned_on = true;
+        } else {
+            toasts.push(failed());
+        }
+    }
+    while let Some(notice) = social.take_toast() {
+        toasts.push(notice_title(&notice));
+    }
+    while let Some(code) = social.take_result() {
+        if code != ResultCode::Success {
+            toasts.push(failed());
+        }
+    }
+    (toasts, turned_on)
 }
 
 fn listing(names: Vec<String>) -> Listing {

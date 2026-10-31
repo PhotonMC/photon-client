@@ -30,10 +30,13 @@ impl Controls {
                 .clone()
                 .unwrap_or_else(|| common.title.clone())
         });
-        self.pause = Some(
-            PauseScreen::new(&assets.creative.font, &assets.lang, size, custom.as_ref())
-                .without_services(&assets.lang),
-        );
+        let screen = PauseScreen::new(&assets.creative.font, &assets.lang, size, custom.as_ref());
+        // The friends button works once the connection has an account to ask the service as.
+        self.pause = Some(if self.friends_list.is_some() {
+            screen
+        } else {
+            screen.without_services(&assets.lang)
+        });
         self.captured = false;
         self.last_cursor = None;
         surface.set_cursor_captured(false);
@@ -48,7 +51,7 @@ impl Controls {
         surface.set_cursor_captured(true);
     }
 
-    /// What a pause menu button does. Friends is still: it has no service behind it.
+    /// What a pause menu button does.
     pub(super) fn pause_action(
         &mut self,
         action: PauseAction,
@@ -70,8 +73,13 @@ impl Controls {
                 };
                 self.ask_about_link(url, surface, assets);
             }
+            PauseAction::Friends => {
+                // The overlay replaces the menu (`Minecraft.toggleFriendsScreen` from the pause
+                // screen); closing it returns to the game.
+                self.pause = None;
+                self.toggle_friends(surface, assets);
+            }
             PauseAction::Custom => self.show_pause_additions(session, surface, assets),
-            _ => {}
         }
     }
 
