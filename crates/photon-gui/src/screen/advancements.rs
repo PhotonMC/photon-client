@@ -267,7 +267,7 @@ impl AdvancementsScreen {
         self.done.draw(frame, atlas, font, &self.arena, highlighted);
         self.draw_inside(frame, (atlas, font), item);
         self.draw_window(frame, (atlas, font), item);
-        self.draw_tooltips(frame, (atlas, font, lang), mouse);
+        self.draw_tooltips(frame, (atlas, font, lang), mouse, item);
     }
 
     /// `extractInside`: the tree of the tab shown, or the empty state.
@@ -346,10 +346,16 @@ impl AdvancementsScreen {
         frame: &mut GuiFrame,
         (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
         mouse: (i32, i32),
+        item: &mut ItemDrawer<'_>,
     ) {
         let origin = (self.left + 9, self.top + 18);
         if let Some(selected) = self.selected {
-            self.tabs[selected].draw_tooltips(frame, (atlas, font, lang), (origin, self.size.0));
+            self.tabs[selected].draw_tooltips(
+                frame,
+                (atlas, font, lang),
+                (origin, self.size.0),
+                item,
+            );
         }
         if self.tabs.len() > 1 {
             let window = (self.left, self.top);

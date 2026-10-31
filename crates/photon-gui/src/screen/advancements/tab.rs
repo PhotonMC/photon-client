@@ -389,6 +389,7 @@ impl AdvancementTab {
         frame: &mut GuiFrame,
         (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
         (origin, screen_width): ((i32, i32), i32),
+        item: &mut ItemDrawer<'_>,
     ) {
         let alpha = (self.fade * 255.0).floor() as u32;
         frame.fill(
@@ -401,6 +402,7 @@ impl AdvancementTab {
                 frame,
                 (atlas, font, lang),
                 (self.scroll_ints(), origin, screen_width),
+                item,
             );
         }
     }

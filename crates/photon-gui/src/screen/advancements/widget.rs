@@ -6,7 +6,7 @@ use crate::{FontRuns, FrameRuns};
 use photon_game::advancements::{AdvancementProgress, AdvancementType, DisplayInfo};
 use photon_game::text::{Component, Lang, Run, Style};
 use photon_render::gui::font::Font;
-use photon_render::gui::{GuiAtlas, GuiFrame};
+use photon_render::gui::{GuiAtlas, GuiFrame, ItemDrawer};
 
 /// `TEST_SPLIT_OFFSETS`.
 const TEST_SPLIT_OFFSETS: [i32; 5] = [0, 10, -10, 25, -25];
@@ -203,6 +203,7 @@ impl AdvancementWidget {
         frame: &mut GuiFrame,
         (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
         (scroll, origin, screen_width): ((i32, i32), (i32, i32), i32),
+        item: &mut ItemDrawer<'_>,
     ) {
         let layout = HoverLayout::new(self, lang, scroll, screen_width);
         let (ox, oy) = origin;
@@ -236,6 +237,13 @@ impl AdvancementWidget {
             oy + scroll.1 + self.y,
             26,
             26,
+        );
+        let stack = photon_world::ClientItemStackState::new(1, self.display.icon.0);
+        frame.item(
+            item,
+            &stack,
+            ox + scroll.0 + self.x + 8,
+            oy + scroll.1 + self.y + 5,
         );
         self.draw_hover_text(frame, (atlas, font), &layout, (scroll, origin));
     }
