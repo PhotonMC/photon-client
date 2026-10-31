@@ -29,7 +29,7 @@ impl FriendsOverlay {
         let lines = crate::chat::split(runs, width - 2 * BORDER - 2 * TEXT_PADDING, font);
         let above = if picture { PICTURE.1 + PICTURE_GAP } else { 0 };
         let text_height = lines.len() as i32 * 9 + 2 * TEXT_PADDING;
-        // The layout rounds the half up, which the oracle rows with a single line show.
+        // Matched to the oracle rows: a single line sits one pixel lower than the half.
         let top = y + (height - above - text_height + 1) / 2;
         Block {
             picture: picture.then(|| (x + (width - PICTURE.0) / 2, top)),
