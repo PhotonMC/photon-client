@@ -104,6 +104,63 @@ class GuiSettingsOracle extends GuiScreenOracle {
         set(minecraft, "running", true);
     }
 
+    /**
+     * The account's friends as a row gives them: the list the service answered, the presence of
+     * each friend and the profile's name, in the objects the overlay reads them from.
+     */
+    static void friendsFacts(net.minecraft.client.Minecraft minecraft, JsonObject facts) throws Exception {
+        var social = unsafe.allocateInstance(net.minecraft.client.gui.screens.social.PlayerSocialManager.class);
+        set(social, "friendListEnabled", true);
+        set(social, "allowFriendRequests", !facts.has("requests") || facts.get("requests").getAsBoolean());
+        var handler = unsafe.allocateInstance(net.minecraft.client.gui.screens.social.RemoteFriendListUpdateHandler.class);
+        var data = new com.mojang.authlib.yggdrasil.response.FriendData(
+            friendDtos(facts, "friends"), friendDtos(facts, "incoming"), friendDtos(facts, "outgoing"));
+        set(handler, "latestFriendData", data);
+        set(handler, "state", net.minecraft.client.gui.screens.social.RemoteFriendListUpdateHandler.State.valueOf(
+            (facts.has("state") ? facts.get("state").getAsString() : "success").toUpperCase()));
+        set(handler, "updateListeners", new java.util.concurrent.CopyOnWriteArraySet<Runnable>());
+        set(social, "remoteFriendListUpdateHandler", handler);
+        var statuses = new java.util.ArrayList<com.mojang.authlib.yggdrasil.response.PresenceStatusDto>();
+        if (facts.has("friends")) {
+            for (var element : facts.getAsJsonArray("friends")) {
+                var friend = element.getAsJsonObject();
+                if (friend.has("presence")) {
+                    statuses.add(new com.mojang.authlib.yggdrasil.response.PresenceStatusDto(
+                        java.util.UUID.fromString(friend.get("id").getAsString()), java.util.UUID.randomUUID(),
+                        com.mojang.authlib.yggdrasil.response.PresenceStatus.valueOf(friend.get("presence").getAsString().toUpperCase()),
+                        java.time.Instant.EPOCH));
+                }
+            }
+        }
+        var presence = unsafe.allocateInstance(net.minecraft.client.gui.screens.social.PresenceHandler.class);
+        set(presence, "latestPresence", new com.mojang.authlib.yggdrasil.response.PresenceResponse(statuses));
+        set(social, "presenceHandler", presence);
+        set(minecraft, "playerSocialManager", social);
+        var user = unsafe.allocateInstance(net.minecraft.client.User.class);
+        set(user, "name", facts.has("name") ? facts.get("name").getAsString() : "Steve");
+        set(minecraft, "user", user);
+        // No skin is ever fetched: every face is the default skin its id picks.
+        set(minecraft, "playerSkinRenderCache", new net.minecraft.client.renderer.PlayerSkinRenderCache(null, null, null) {
+            @Override
+            public java.util.concurrent.CompletableFuture<java.util.Optional<net.minecraft.client.renderer.PlayerSkinRenderCache.RenderInfo>> lookup(
+                net.minecraft.world.item.component.ResolvableProfile profile) {
+                return java.util.concurrent.CompletableFuture.completedFuture(java.util.Optional.empty());
+            }
+        });
+    }
+
+    static java.util.List<com.mojang.authlib.yggdrasil.response.FriendDto> friendDtos(JsonObject facts, String key) {
+        var list = new java.util.ArrayList<com.mojang.authlib.yggdrasil.response.FriendDto>();
+        if (facts.has(key)) {
+            for (var element : facts.getAsJsonArray(key)) {
+                var friend = element.getAsJsonObject();
+                list.add(new com.mojang.authlib.yggdrasil.response.FriendDto(
+                    java.util.UUID.fromString(friend.get("id").getAsString()), friend.get("name").getAsString()));
+            }
+        }
+        return list;
+    }
+
     static JsonObject settingsScreen(JsonObject request, String kind) throws Exception {
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
@@ -197,6 +254,9 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 set(social, "allowFriendRequests", friends.has("requests") && friends.get("requests").getAsBoolean());
                 set(minecraft, "playerSocialManager", social);
             }
+            if (kind.equals("friends")) {
+                friendsFacts(minecraft, row.has("friends") ? row.getAsJsonObject("friends") : new JsonObject());
+            }
             minecraft.setLastInputType(net.minecraft.client.InputType.NONE);
             var languageBefore = net.minecraft.locale.Language.getInstance();
             if (kind.equals("language")) {
@@ -215,6 +275,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 case "skin" -> new net.minecraft.client.gui.screens.options.SkinCustomizationScreen(null, minecraft.options);
                 case "font" -> new net.minecraft.client.gui.screens.options.FontOptionsScreen(null, minecraft.options);
                 case "online" -> new net.minecraft.client.gui.screens.options.OnlineOptionsScreen(null, minecraft.options);
+                case "friends" -> new net.minecraft.client.gui.screens.friends.FriendsOverlayScreen(null);
                 case "language" -> new net.minecraft.client.gui.screens.options.LanguageSelectScreen(
                     null, minecraft.options, languageManager(row.get("language").getAsString(), row.getAsJsonArray("codes")));
                 case "packs" -> new net.minecraft.client.gui.screens.packs.PackSelectionScreen(
@@ -226,7 +287,9 @@ class GuiSettingsOracle extends GuiScreenOracle {
             set(minecraft.gui, "screen", video);
             set(video, "width", window.getGuiScaledWidth());
             set(video, "height", window.getGuiScaledHeight());
-            var init = Reflect.method(kind.equals("world")
+            var init = Reflect.method(kind.equals("friends")
+                ? net.minecraft.client.gui.screens.friends.FriendsOverlayScreen.class
+                : kind.equals("world")
                 ? net.minecraft.client.gui.screens.options.WorldOptionsScreen.class
                 : kind.equals("packs")
                     ? net.minecraft.client.gui.screens.packs.PackSelectionScreen.class
@@ -317,7 +380,12 @@ class GuiSettingsOracle extends GuiScreenOracle {
             // A graphics made now knows the window's size, which the scissor is cut to.
             var finalState = new GuiRenderState();
             var graphics = new GuiGraphicsExtractor(minecraft, finalState, mouseX, mouseY);
-            background.invoke(video, graphics);
+            if (kind.equals("friends")) {
+                // The overlay draws its panel in its own background, which the tile is part of.
+                video.extractBackground(graphics, mouseX, mouseY, 0.0F);
+            } else {
+                background.invoke(video, graphics);
+            }
             now[0] = row.has("ms") ? row.get("ms").getAsLong() : 0;
             video.extractRenderState(graphics, mouseX, mouseY, 0.0F);
             graphics.extractDeferredElements(mouseX, mouseY, 0.0F);
@@ -330,7 +398,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 var languageList = Reflect.field(video.getClass(), "languageSelectionList");
                 scrollAmount = ((net.minecraft.client.gui.components.AbstractScrollArea) languageList.get(video))
                     .scrollAmount();
-            } else if (kind.equals("world")) {
+            } else if (kind.equals("world") || kind.equals("friends")) {
                 scrollAmount = 0;
             } else if (kind.equals("packs")) {
                 scrollAmount = packList(video, "availablePackList").scrollAmount();

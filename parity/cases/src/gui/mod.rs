@@ -16,6 +16,7 @@ mod dialog;
 mod draft;
 mod effects;
 mod fonts;
+mod friends;
 mod hud;
 mod icons;
 mod item_bundle;
@@ -103,6 +104,7 @@ const ORDER: &[Generator] = &[
     || vec![panels::font_options_screen()],
     || vec![panels::world_options_screen()],
     || vec![panels::online_options_screen()],
+    || vec![friends::friends_overlay()],
     || vec![crate::sound::music_manager()],
     panels::mouse_and_controls,
     || vec![panels::sound_options_screen()],

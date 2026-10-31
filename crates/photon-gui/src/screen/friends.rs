@@ -42,7 +42,8 @@ const INPUT_SPACING: i32 = 3;
 const PROFILE_TOP: i32 = 6;
 const ADD_WIDGET_HEIGHT: i32 = INPUT_TOP + BOX_HEIGHT + PROFILE_TOP + 9 + 4 + 2;
 /// `PROFILE_NAME_LABEL`'s colour and the loading dots'.
-const LABEL_COLOUR: u32 = 0xFFA0_A0A0;
+const HINT_COLOUR: u32 = 0xFFE0_E0E0;
+const HINT_OFF_COLOUR: u32 = 0xFF70_7070;
 const DOTS_COLOUR: u32 = 0xFF80_8080;
 const WHITE: u32 = 0xFFFF_FFFF;
 /// Names are at most this long (`EditBox`'s default).
@@ -183,7 +184,9 @@ impl FriendsOverlay {
         let heading = heading_style();
         let texts = Texts {
             friends_tab: key("gui.friends.tab_friends"),
-            hint: runs(&Component::translatable("gui.friends.enter_nickname").with_colour("gray")),
+            hint: runs(
+                &Component::translatable("gui.friends.enter_nickname").with_colour("dark_gray"),
+            ),
             loading: [
                 key("gui.friends.loading_friends"),
                 key("gui.friends.loading_requests"),
@@ -298,6 +301,12 @@ impl FriendsOverlay {
     /// The box can be typed in: the list is loaded and no request is on its way.
     fn box_active(&self) -> bool {
         self.view.ready && !self.view.sending
+    }
+
+    /// The send button shows the loading mark (`State.SENDING`): a request is on its way, or the
+    /// list is loading.
+    pub(super) fn button_loading(&self) -> bool {
+        self.pressed == Some(Pressed::Send) || self.view.friends == Listing::Loading
     }
 
     /// The button can be pressed (`AddFriendWidget.State.READY`).

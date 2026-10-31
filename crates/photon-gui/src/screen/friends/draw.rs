@@ -121,7 +121,7 @@ impl FriendsOverlay {
             atlas,
             font,
             label,
-            (text_x, (top + y + height - 9) / 2),
+            (text_x, (top + y + height - 9) / 2 + 1),
             WHITE,
             true,
         );
@@ -160,7 +160,13 @@ impl FriendsOverlay {
             None,
         );
         if self.edit.is_empty() && !focused {
-            frame.styled_text(atlas, font, &self.texts.hint, text_at, WHITE, true);
+            // `EditBox`: the hint takes the colour of the text, which a box not usable dims.
+            let colour = if self.box_active() {
+                HINT_COLOUR
+            } else {
+                HINT_OFF_COLOUR
+            };
+            frame.styled_text(atlas, font, &self.texts.hint, text_at, colour, true);
         }
         let (sx, sy, sw, sh) = self.button_rect();
         let state = if !self.button_active() {
@@ -171,10 +177,17 @@ impl FriendsOverlay {
             "widget/button"
         };
         frame.nine_slice(atlas, state, (200, 20), 1, false, (sx, sy, sw, sh));
-        if self.pressed == Some(Pressed::Send) {
+        if self.button_loading() {
             super::entries::draw_loading_mark(frame, atlas, (sx, sy, sw, sh));
         } else {
-            frame.sprite(atlas, "friends/send_request", sx + 2, sy + 2, 15, 15);
+            frame.sprite(
+                atlas,
+                "friends/send_request",
+                sx + sw / 2 - 7,
+                sy + sh / 2 - 7,
+                15,
+                15,
+            );
         }
         self.draw_profile_row(frame, (atlas, font));
     }
@@ -189,7 +202,7 @@ impl FriendsOverlay {
             font,
             &self.texts.profile_label,
             (left + INPUT_LEFT, row_y),
-            LABEL_COLOUR,
+            WHITE,
             true,
         );
         frame.text_with_shadow(

@@ -67,7 +67,7 @@ impl FriendsOverlay {
         if !draw::inside(at, send) {
             return None;
         }
-        if self.pressed == Some(Pressed::Send) {
+        if self.button_loading() {
             return Some((&texts.loading, send));
         }
         let empty = self.box_active() && self.edit.value().trim().is_empty();

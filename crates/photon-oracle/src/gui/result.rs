@@ -28,6 +28,7 @@ mod tutorial;
 use screens::*;
 mod dialog;
 use dialog::*;
+mod friends;
 mod restrictions;
 use restrictions::*;
 mod item_condition;
@@ -145,6 +146,9 @@ fn screen_case(
     row: &Value,
     operation: &str,
 ) -> Option<Result<Value, String>> {
+    if operation == "friends_overlay" {
+        return Some(friends::friends_overlay_case(ctx, row));
+    }
     if SETTINGS_SCREENS.contains(&operation) {
         return Some(chat_options_screen_case(ctx, row, operation));
     }
@@ -156,7 +160,7 @@ fn screen_case(
 
 /// The operations whose rows carry the sounds the interface asked for (the Java oracle writes
 /// them after the row's steps).
-const SOUND_OPERATIONS: [&str; 38] = [
+const SOUND_OPERATIONS: [&str; 39] = [
     "container_screen",
     "death_screen",
     "disconnected_screen",
@@ -191,6 +195,7 @@ const SOUND_OPERATIONS: [&str; 38] = [
     "font_options_screen",
     "world_options_screen",
     "online_options_screen",
+    "friends_overlay",
     "controls_screen",
     "key_binds_screen",
     "language_screen",

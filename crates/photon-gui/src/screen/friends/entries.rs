@@ -19,7 +19,6 @@ const HEADER_HEIGHT: i32 = 9 + 2 * TEXT_PADDING;
 const SCROLL_STEP: i32 = 9;
 const ICON_BUTTON: i32 = 20;
 const SCROLLBAR_WIDTH: i32 = 6;
-const GREY: u32 = 0xFFA0_A0A0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Button {
@@ -67,7 +66,7 @@ impl FriendsOverlay {
             .iter()
             .enumerate()
             .map(|(index, line)| {
-                let x = left + (ENTRY_WIDTH - font.width_of_runs(line)) / 2;
+                let x = left + ENTRY_WIDTH / 2 - font.width_of_runs(line) / 2;
                 ((x, top + TEXT_PADDING + index as i32 * 9), line.as_slice())
             })
             .collect()
@@ -330,7 +329,7 @@ impl FriendsOverlay {
                     (top, bottom),
                 );
             } else {
-                frame.styled_text(atlas, font, &entry.status, status_at, GREY, true);
+                frame.styled_text(atlas, font, &entry.status, status_at, WHITE, true);
             }
         }
         for (button, rect) in Self::buttons_of(entry.kind, x, y) {
@@ -347,9 +346,10 @@ impl FriendsOverlay {
         (x, y, w, h): (i32, i32, i32, i32),
         mouse: (i32, i32),
     ) {
+        let hovered = !self.view.sending && inside(mouse, (x, y, w, h));
         let sprite = if self.view.sending {
             "widget/button_disabled"
-        } else if inside(mouse, (x, y, w, h)) {
+        } else if hovered {
             "widget/button_highlighted"
         } else {
             "widget/button"
@@ -359,20 +359,28 @@ impl FriendsOverlay {
             draw_loading_mark(frame, atlas, (x, y, w, h));
             return;
         }
-        let (icon, size) = match button {
-            Button::Remove => ("friends/remove", (13, 11)),
-            Button::Accept => ("friends/accept", (18, 18)),
-            Button::Decline => ("friends/reject", (18, 18)),
-            Button::Revoke => ("friends/cancel", (12, 12)),
-        };
+        let (icon, size) = button_icon(button, hovered);
         frame.sprite(
             atlas,
             icon,
-            x + (w - size.0) / 2,
-            y + (h - size.1) / 2,
+            x + w / 2 - size.0 / 2,
+            y + h / 2 - size.1 / 2,
             size.0,
             size.1,
         );
+    }
+}
+
+/// The picture of a button and its size; accept and decline have another one under the cursor
+/// (`WidgetSprites`).
+fn button_icon(button: Button, hovered: bool) -> (&'static str, (i32, i32)) {
+    match (button, hovered) {
+        (Button::Remove, _) => ("friends/remove", (13, 11)),
+        (Button::Accept, true) => ("friends/accept_highlighted", (18, 18)),
+        (Button::Accept, false) => ("friends/accept", (18, 18)),
+        (Button::Decline, true) => ("friends/reject_highlighted", (18, 18)),
+        (Button::Decline, false) => ("friends/reject", (18, 18)),
+        (Button::Revoke, _) => ("friends/cancel", (12, 12)),
     }
 }
 

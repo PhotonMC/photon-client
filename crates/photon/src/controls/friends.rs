@@ -84,7 +84,10 @@ impl Controls {
                 listing(request_entries(data)),
             ),
             failed => {
-                let message = lang.runs(&error_message(failed), &Default::default());
+                let message = lang.runs(
+                    &error_message(failed).with_colour("gray"),
+                    &Default::default(),
+                );
                 (Listing::Error(message.clone()), Listing::Error(message))
             }
         };

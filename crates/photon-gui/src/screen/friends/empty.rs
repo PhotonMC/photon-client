@@ -7,6 +7,8 @@ use crate::FontRuns;
 
 const PICTURE: (i32, i32) = (128, 48);
 const PICTURE_GAP: i32 = 8;
+/// `FocusableTextWidget.DEFAULT_PADDING`.
+const TEXT_PADDING: i32 = 4;
 
 pub(super) struct Block {
     /// Where the picture is, when there is one.
@@ -23,17 +25,20 @@ impl FriendsOverlay {
         runs: &[Run],
         picture: bool,
     ) -> Block {
-        let lines = crate::chat::split(runs, width - 2 * BORDER, font);
+        // `FocusableTextWidget` keeps a padding around its text, which the width and height count.
+        let lines = crate::chat::split(runs, width - 2 * BORDER - 2 * TEXT_PADDING, font);
         let above = if picture { PICTURE.1 + PICTURE_GAP } else { 0 };
-        let top = y + (height - above - lines.len() as i32 * 9) / 2;
+        let text_height = lines.len() as i32 * 9 + 2 * TEXT_PADDING;
+        // The layout rounds the half up, which the oracle rows with a single line show.
+        let top = y + (height - above - text_height + 1) / 2;
         Block {
             picture: picture.then(|| (x + (width - PICTURE.0) / 2, top)),
             lines: lines
                 .into_iter()
                 .enumerate()
                 .map(|(index, line)| {
-                    let at = x + (width - font.width_of_runs(&line)) / 2;
-                    (at, top + above + index as i32 * 9, line)
+                    let at = x + width / 2 - font.width_of_runs(&line) / 2;
+                    (at, top + above + TEXT_PADDING + index as i32 * 9, line)
                 })
                 .collect(),
         }
