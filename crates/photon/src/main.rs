@@ -31,6 +31,7 @@ mod self_update;
 mod settings;
 mod sign_in;
 mod skins;
+mod social;
 mod sound;
 mod system_info;
 mod updates;

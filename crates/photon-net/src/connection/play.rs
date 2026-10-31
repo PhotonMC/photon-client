@@ -40,6 +40,7 @@ mod chat_validation;
 mod chunks;
 mod command_blocks;
 mod containers;
+mod friends;
 mod groups;
 mod incoming;
 mod last_seen;

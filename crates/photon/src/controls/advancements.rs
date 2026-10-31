@@ -25,6 +25,7 @@ impl Controls {
             "key.smoothCamera" => self.turning.smooth_camera = !self.turning.smooth_camera,
             "key.advancements" => self.open_advancements(session, surface, assets),
             "key.socialInteractions" => self.open_social(session, surface, assets),
+            "key.friends" => self.toggle_friends(surface, assets),
             "key.chat" => self.open_chat(ChatMethod::Message, true, surface, assets),
             "key.command" => self.open_chat(ChatMethod::Command, true, surface, assets),
             _ => return false,

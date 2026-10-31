@@ -152,6 +152,12 @@ pub struct Controls {
     pub credits: Option<CreditsScreen>,
     /// The social interactions screen, while it is open.
     pub social: Option<SocialInteractionsScreen>,
+    /// The friends overlay, while it is open.
+    pub friends: Option<photon_gui::screen::friends::FriendsOverlay>,
+    /// The account's friends and the thread that asks the service, once the account is known.
+    pub(crate) friends_list: Option<crate::social::Social>,
+    /// The name the local player joined with (the overlay's "My profile name").
+    pub profile_name: String,
     /// The debug options screen (F3+F6), while it is open.
     pub debug_options: Option<DebugOptionsScreen>,
     /// The statistics screen over the pause menu, while it is open.
@@ -441,6 +447,7 @@ mod world;
 mod advancements;
 #[cfg(test)]
 mod debug_tests;
+mod friends;
 mod screen_keys;
 mod social;
 mod stats;
@@ -464,6 +471,7 @@ impl Controls {
     pub fn close_menus(&mut self) -> bool {
         let closed = [
             self.social.take().is_some(),
+            self.friends.take().is_some(),
             self.game_mode_switcher.take().is_some(),
         ];
         closed.contains(&true)

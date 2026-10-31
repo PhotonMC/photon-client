@@ -327,6 +327,7 @@ impl Play {
         self.controls
             .open_held_book(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls.close_faded_spectator_menu(&self.session);
+        self.tick_friends();
         let hud = self.session.drain_hud();
         if !hud.is_empty() {
             self.gui.receive_hud(hud);

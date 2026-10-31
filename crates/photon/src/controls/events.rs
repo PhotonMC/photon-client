@@ -95,6 +95,10 @@ impl Controls {
             self.social_event(event, surface, assets);
             return Ok(());
         }
+        if self.friends.is_some() {
+            self.friends_event(event, surface, assets);
+            return Ok(());
+        }
         if self.pause.is_some() {
             self.pause_event(event, session, surface, assets);
             return Ok(());

@@ -23,6 +23,11 @@ impl Gui {
                 }
             };
             options.draw(frame, (atlas, font), mouse, (blurriness, overlay));
+        } else if let Some(friends) = controls.friends.as_mut() {
+            if friends.size() != gui_size {
+                friends.resize(gui_size);
+            }
+            friends.draw(frame, (atlas, font), mouse, (blurriness, frame.millis));
         } else if let Some(social) = controls.social.as_mut() {
             if social.size() != gui_size {
                 *social = social.resized(font, lang, gui_size);

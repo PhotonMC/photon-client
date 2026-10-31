@@ -4,6 +4,7 @@ impl Controls {
     /// A screen the server opens takes the place of the light screens over the game.
     pub(super) fn drop_light_screens(&mut self) {
         self.social = None;
+        self.friends = None;
         self.debug_options = None;
         self.world_screen = None;
         self.online_screen = None;
@@ -46,7 +47,7 @@ impl Controls {
 
     /// Whether the social interactions screen or the debug options screen is up.
     pub(crate) fn light_screen_open(&self) -> bool {
-        self.social.is_some() || self.debug_options.is_some()
+        self.social.is_some() || self.friends.is_some() || self.debug_options.is_some()
     }
 
     /// Whether a screen is up over the game (`Gui.screen != null`): any of the screens and
@@ -59,6 +60,7 @@ impl Controls {
             self.death.is_some(),
             self.credits.is_some(),
             self.social.is_some(),
+            self.friends.is_some(),
             self.stats.is_some(),
             self.advancements.is_some(),
             self.game_mode_switcher.is_some(),

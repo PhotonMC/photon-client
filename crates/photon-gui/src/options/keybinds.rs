@@ -69,7 +69,7 @@ pub struct KeyBindsScreen {
 }
 
 /// The mappings this client has no effect for yet.
-const IDLE: [&str; 2] = ["key.friends", "key.toggleSpectatorShaderEffects"];
+const IDLE: [&str; 1] = ["key.toggleSpectatorShaderEffects"];
 
 impl KeyBindsScreen {
     /// The screen with a note on the keys that do nothing here yet. The reference has them

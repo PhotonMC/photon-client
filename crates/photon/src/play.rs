@@ -591,6 +591,7 @@ mod cull;
 mod draw;
 mod effects;
 mod fitting;
+mod friends;
 pub(crate) use fitting::fit_swapchain;
 mod gizmo;
 mod glints;

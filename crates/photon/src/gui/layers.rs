@@ -284,6 +284,20 @@ impl Gui {
         self.layers.toasts.add_system(toast);
     }
 
+    /// `SystemToast.addOrUpdate` of the friend notification: the title alone.
+    pub fn add_friend_toast(&mut self, title: &photon_game::text::Component) {
+        use photon_gui::toasts::{SystemToast, SystemToastId, ToastEnv};
+        let env = ToastEnv {
+            font: &self.font,
+            lang: &self.lang,
+            display_time: 1.0,
+            current_song: None,
+            note_colour: 0xFFFF_FFFF,
+        };
+        let toast = SystemToast::new(SystemToastId::FriendSystemNotification, &env, title, None);
+        self.layers.toasts.add_system(toast);
+    }
+
     /// The toasts the packets asked for, in the order they came: an advancement's holds what it
     /// showed when the packet came, a recipe is added to the recipe toast.
     pub fn add_pending_toasts(

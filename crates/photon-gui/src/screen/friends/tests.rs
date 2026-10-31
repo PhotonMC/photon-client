@@ -1,0 +1,90 @@
+use super::*;
+
+fn view(ready: bool) -> FriendsView {
+    FriendsView {
+        friends: Listing::Empty,
+        pending: Listing::Empty,
+        requests: 2,
+        received: 0,
+        profile_name: "Steve".to_owned(),
+        ready,
+        sending: false,
+    }
+}
+
+fn overlay(ready: bool) -> FriendsOverlay {
+    FriendsOverlay::new(&Lang::new([]), (320, 240), view(ready))
+}
+
+fn centre((x, y, width, height): (i32, i32, i32, i32)) -> (f64, f64) {
+    (f64::from(x + width / 2), f64::from(y + height / 2))
+}
+
+#[test]
+fn the_panel_is_centred_and_eighty_shorter_than_the_window() {
+    assert_eq!(overlay(true).content(), (50, 40, 220, 160));
+}
+
+#[test]
+fn a_click_on_the_pending_tab_selects_it() {
+    let mut screen = overlay(true);
+    let at = centre(screen.tab_rect(Tab::Pending));
+    assert_eq!(screen.clicked(at, &Font::default()), None);
+    assert_eq!(screen.tab(), Tab::Pending);
+}
+
+#[test]
+fn a_click_outside_the_panel_closes_it() {
+    let mut screen = overlay(true);
+    assert_eq!(
+        screen.clicked((2.0, 2.0), &Font::default()),
+        Some(FriendsEvent::Close)
+    );
+}
+
+#[test]
+fn a_name_is_sent_trimmed_and_only_when_the_list_is_ready() {
+    let font = Font::default();
+    for (ready, sent) in [(false, None), (true, Some("Alex".to_owned()))] {
+        let mut screen = overlay(ready);
+        let rect = screen.box_rect();
+        screen.clicked(centre(rect), &font);
+        for character in "  Alex ".chars() {
+            screen.char_typed(character, &font);
+        }
+        let asked = screen.clicked(centre(screen.button_rect()), &font);
+        assert_eq!(asked, sent.map(FriendsEvent::Send));
+    }
+}
+
+#[test]
+fn the_key_that_opens_the_overlay_closes_it_unless_the_box_is_typed_in() {
+    let font = Font::default();
+    let mut clipboard = Memory(String::new());
+    let mut screen = overlay(true);
+    let asked = screen.key_pressed(glfw::Key::F, (false, false), true, &font, &mut clipboard);
+    assert_eq!(asked, Some(FriendsEvent::Close));
+    screen.clicked(centre(screen.box_rect()), &font);
+    let asked = screen.key_pressed(glfw::Key::F, (false, false), true, &font, &mut clipboard);
+    assert_eq!(asked, None);
+    let asked = screen.key_pressed(
+        glfw::Key::Escape,
+        (false, false),
+        false,
+        &font,
+        &mut clipboard,
+    );
+    assert_eq!(asked, Some(FriendsEvent::Close));
+}
+
+struct Memory(String);
+
+impl crate::widgets::edit_box::Clipboard for Memory {
+    fn get(&mut self) -> String {
+        self.0.clone()
+    }
+
+    fn set(&mut self, text: &str) {
+        self.0 = text.to_owned();
+    }
+}
