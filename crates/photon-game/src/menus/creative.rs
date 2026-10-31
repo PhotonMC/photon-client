@@ -7,8 +7,7 @@
 //! sent as a `SetCreativeModeSlot` packet for each slot it changed, and a
 //! stack thrown away as one for slot -1.
 //!
-//! Not ported: the hotbar tab's saved hotbars (they are all empty, so it
-//! shows the placeholders), and armour locked by enchantments.
+//! Not ported: the placeholders' names, and armour locked by enchantments.
 
 use crate::menus::container::{ClickType, ContainerMenu, Player, max_stack_size, settle};
 use crate::registries::Registries;
@@ -34,6 +33,7 @@ impl CreativeMenu {
             registries,
             versions,
             operator: false,
+            saved_hotbars: Vec::new(),
         };
         menu.select_tab(tab);
         menu
@@ -68,6 +68,15 @@ impl CreativeMenu {
         self.select_tab(tab);
     }
 
+    /// The saved hotbars the hotbar tab lists (`None` for an empty one, which shows a
+    /// placeholder), listed again when the tab is open.
+    pub fn set_saved_hotbars(&mut self, saved: Vec<Option<Vec<Option<Stack>>>>) {
+        self.saved_hotbars = saved;
+        if self.kind() == TabKind::Hotbar {
+            self.select_tab(self.tab);
+        }
+    }
+
     pub fn kind(&self) -> TabKind {
         CREATIVE_TABS[self.tab].kind
     }
@@ -92,6 +101,8 @@ pub struct CreativeMenu {
     pub(super) versions: std::sync::Arc<photon_data::version_registries::VersionRegistries>,
     /// Whether the player can use game master blocks, which gives the operator tab its stacks.
     pub(super) operator: bool,
+    /// `HotbarManager`: the nine saved hotbars the hotbar tab lists, `None` for an empty one.
+    pub(super) saved_hotbars: Vec<Option<Vec<Option<Stack>>>>,
 }
 
 mod clicks;
@@ -386,5 +397,31 @@ mod tests {
             ClickType::Pickup,
         );
         assert!(menu.carried.is_none());
+    }
+
+    #[test]
+    fn the_hotbar_tab_lists_saved_hotbars_in_place_of_the_placeholder() {
+        let mut creative = menu_on(TabKind::Hotbar);
+        let stone = crate::item::id_of("minecraft:stone").expect("stone is an item");
+        let mut saved = vec![None; 9];
+        saved[1] = Some(vec![
+            None,
+            None,
+            None,
+            Some(Stack::new(5, stone)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ]);
+        creative.set_saved_hotbars(saved);
+        // Hotbar 1 lists its own stacks, unlocked; hotbar 0 is still the placeholder.
+        let shown = creative.window_stack(9 + 3).expect("the saved stone");
+        assert_eq!(shown.item_count(), 5);
+        assert!(creative.may_pickup(Target::Window(9 + 3)));
+        assert!(creative.window_stack(9 + 1).is_none());
+        assert!(creative.window_stack(0).is_some());
+        assert!(!creative.may_pickup(Target::Window(0)));
     }
 }

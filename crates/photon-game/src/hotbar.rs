@@ -153,6 +153,15 @@ impl HotbarManager {
         &self.hotbars[id]
     }
 
+    /// Every hotbar's stacks, `None` for an empty hotbar: what the creative hotbar tab lists.
+    pub fn saved(&mut self) -> Vec<Option<Vec<Option<Stack>>>> {
+        self.ensure_loaded();
+        self.hotbars
+            .iter()
+            .map(|hotbar| (!hotbar.is_empty()).then(|| hotbar.load()))
+            .collect()
+    }
+
     /// `Hotbar.storeFrom` on one hotbar, then `HotbarManager.save`.
     pub fn store(&mut self, id: usize, inventory: &[Option<Stack>]) {
         self.ensure_loaded();

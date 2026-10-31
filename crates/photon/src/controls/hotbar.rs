@@ -10,6 +10,14 @@ impl Controls {
             .get_or_insert_with(|| HotbarManager::new(&game_directory()))
     }
 
+    /// `selectTab` for the hotbar tab reads the saved hotbars: an open creative screen gets them.
+    pub(super) fn show_saved_hotbars(&mut self) {
+        let saved = self.hotbars().saved();
+        if let Some(creative) = self.screen.as_mut().and_then(|open| open.as_creative_mut()) {
+            creative.set_saved_hotbars(saved);
+        }
+    }
+
     /// `KeyMapping.getTranslatedKeyMessage` of a mapping.
     fn key_message(&self, mapping: &str, lang: &Lang) -> Component {
         self.options.key_binding(mapping).map_or_else(
@@ -40,7 +48,7 @@ impl Controls {
     ) {
         let (load, save) = (self.load_hotbar_held, self.save_hotbar_held);
         if spectating || !session.has_infinite_materials() || !(load || save) {
-            events::select_hotbar(session, name, spectating);
+            select_hotbar(session, name, spectating);
             return;
         }
         let Some(id) = name["key.hotbar.".len()..]
@@ -65,5 +73,15 @@ impl Controls {
                 ],
             ));
         }
+    }
+}
+
+/// A `key.hotbar.N` press: the slot is selected, but not by a spectator.
+fn select_hotbar(session: &mut PlaySession, name: &str, spectating: bool) {
+    let slot = name["key.hotbar.".len()..]
+        .parse::<i32>()
+        .map(|slot| slot - 1);
+    if let (false, Ok(slot)) = (spectating, slot) {
+        session.select_slot(slot);
     }
 }

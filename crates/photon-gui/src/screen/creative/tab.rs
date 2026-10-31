@@ -1,4 +1,5 @@
 use super::*;
+use photon_world::ClientItemStackState as Stack;
 
 impl CreativeScreen {
     /// A screen opened on a GUI of this size, on the tab last used, with the
@@ -30,6 +31,11 @@ impl CreativeScreen {
             tags,
             visible_tags: Vec::new(),
         }
+    }
+
+    /// The saved hotbars the hotbar tab lists.
+    pub fn set_saved_hotbars(&mut self, saved: Vec<Option<Vec<Option<Stack>>>>) {
+        self.menu.set_saved_hotbars(saved);
     }
 
     /// The player's permission to use game master blocks changed.

@@ -372,6 +372,7 @@ impl Controls {
                     self.creative_tab,
                     assets,
                 );
+                self.show_saved_hotbars();
             }
         }
         if held.advancements && self.advancements.is_none() {

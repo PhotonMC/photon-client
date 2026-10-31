@@ -119,6 +119,7 @@ impl Controls {
                 self.creative_tab,
                 assets,
             );
+            self.show_saved_hotbars();
             self.captured = false;
             self.turning.inventory_opened = true;
             self.release_keys();
@@ -266,6 +267,7 @@ impl Controls {
         if open_tab.is_some() != creative.is_some() {
             self.creative_tab = open_tab.unwrap_or(self.creative_tab);
             self.screen = Some(assets.screen(creative, width, height, self.creative_tab));
+            self.show_saved_hotbars();
         }
         Ok(())
     }
@@ -526,16 +528,6 @@ impl Controls {
             }
             _ => {}
         }
-    }
-}
-
-/// A `key.hotbar.N` press: the slot is selected, but not by a spectator.
-pub(super) fn select_hotbar(session: &mut PlaySession, name: &str, spectating: bool) {
-    let slot = name["key.hotbar.".len()..]
-        .parse::<i32>()
-        .map(|slot| slot - 1);
-    if let (false, Ok(slot)) = (spectating, slot) {
-        session.select_slot(slot);
     }
 }
 

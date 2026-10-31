@@ -7,16 +7,7 @@ impl CreativeMenu {
         self.items.clear();
         match CREATIVE_TABS[tab].kind {
             TabKind::Hotbar => {
-                // Every saved hotbar is empty: a paper in the diagonal.
-                let paper = crate::item::id_of("minecraft:paper").expect("paper is an item");
-                for hotbar in 0..COLUMNS {
-                    for slot in 0..COLUMNS {
-                        self.items.push((slot == hotbar).then(|| Shown {
-                            stack: Stack::new(1, paper),
-                            locked: true,
-                        }));
-                    }
-                }
+                self.list_saved_hotbars();
             }
             TabKind::Category | TabKind::Search => {
                 for entry in tab_items(tab, self.operator)
@@ -33,6 +24,27 @@ impl CreativeMenu {
         }
         self.scroll = 0.0;
         self.scroll_to(0.0);
+    }
+
+    /// The hotbar tab: an empty hotbar is a paper in the diagonal, any other lists its stacks.
+    fn list_saved_hotbars(&mut self) {
+        let paper = crate::item::id_of("minecraft:paper").expect("paper is an item");
+        for hotbar in 0..COLUMNS {
+            let saved = self.saved_hotbars.get(hotbar).and_then(Option::as_ref);
+            for slot in 0..COLUMNS {
+                let shown = match saved {
+                    Some(stacks) => stacks.get(slot).cloned().flatten().map(|stack| Shown {
+                        stack,
+                        locked: false,
+                    }),
+                    None => (slot == hotbar).then(|| Shown {
+                        stack: Stack::new(1, paper),
+                        locked: true,
+                    }),
+                };
+                self.items.push(shown);
+            }
+        }
     }
 
     /// `Slot.mayPickup` for what `slotClicked` asks it of.
