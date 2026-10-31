@@ -36,12 +36,9 @@ impl WindowSurface {
         };
         let drawn = self
             .preferred_mode
-            .filter(|_| self.windowed.is_some() && Self::keeps_monitor_mode(&self.glfw))
+            .filter(|_| Self::keeps_monitor_mode(&self.glfw))
             .filter(listed)
-            .map(|mode| (mode.width, mode.height))
-            .filter(|&(width, height)| {
-                (width, height) != native && width <= native.0 && height <= native.1
-            });
+            .and_then(|mode| self.scaled_framebuffer(mode, native));
         self.framebuffer.1 = drawn;
         let (width, height) = drawn.unwrap_or(native);
         self.scale
@@ -50,6 +47,26 @@ impl WindowSurface {
             .scale
             .calculate_scale(self.gui_scale_option, self.enforce_unicode);
         self.scale.set_gui_scale(chosen);
+    }
+}
+
+impl WindowSurface {
+    /// The window's framebuffer cut down by the share `mode` is of the monitor's own mode, so a
+    /// tiled window that cannot change the mode still renders fewer pixels. None where it would
+    /// not be fewer.
+    fn scaled_framebuffer(&self, mode: VideoMode, native: (i32, i32)) -> Option<(i32, i32)> {
+        let monitor = self
+            .monitor_modes
+            .as_ref()?
+            .iter()
+            .map(|m| m.height)
+            .max()?;
+        if mode.height >= monitor || monitor <= 0 {
+            return None;
+        }
+        let share = f64::from(mode.height) / f64::from(monitor);
+        let cut = |side: i32| ((f64::from(side) * share).round() as i32).max(1);
+        Some((cut(native.0), cut(native.1))).filter(|&drawn| drawn != native)
     }
 }
 

@@ -329,14 +329,19 @@ impl WindowSurface {
             self.mode_dirty = true;
         }
         self.preferred_mode = mode;
+        self.refresh_drawn_size();
     }
 
     /// `Window.changeFullscreenVideoMode`: a fullscreen window changes to the mode now preferred.
     pub fn apply_video_mode(&mut self) {
-        if !self.mode_dirty || self.windowed.is_none() {
+        if !self.mode_dirty {
             return;
         }
         self.mode_dirty = false;
+        if self.windowed.is_none() {
+            self.refresh_drawn_size();
+            return;
+        }
         let preferred = (self.preferred_mode, !Self::keeps_monitor_mode(&self.glfw));
         let window = &mut self.window;
         self.glfw.with_primary_monitor(|_, monitor| {
