@@ -238,6 +238,50 @@ impl PlaySession {
         Ok(())
     }
 
+    /// Whether the player has infinite materials (`hasInfiniteMaterials`).
+    pub fn has_infinite_materials(&self) -> bool {
+        self.local.game_mode == photon_world::ClientPlayerGameMode::Creative
+    }
+
+    /// The nine hotbar slots of the player's inventory (menu slots 36 to 44).
+    pub fn hotbar_stacks(&self) -> Vec<Option<photon_world::ClientItemStackState>> {
+        self.world
+            .local_player_menu()
+            .map(|(slots, _, _)| slots[36..45].to_vec())
+            .unwrap_or_default()
+    }
+
+    /// `Minecraft.handleHotbarLoadOrSave` for a load: the stacks fill the hotbar slots, and each
+    /// is sent as a creative slot.
+    pub fn load_hotbar(
+        &mut self,
+        stacks: &[Option<photon_world::ClientItemStackState>],
+    ) -> Result<(), ConnectionError> {
+        let Some((mut slots, carried, _)) = self.world.local_player_menu() else {
+            return Ok(());
+        };
+        for (index, stack) in stacks.iter().take(9).enumerate() {
+            slots[36 + index] = stack.clone();
+        }
+        self.world.set_local_player_menu(&slots, carried);
+        let registries = self.registries.clone();
+        for (index, stack) in stacks.iter().take(9).enumerate() {
+            self.send(
+                PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID,
+                |output| {
+                    encode_creative_slot(output, 36 + index as i16, stack.as_ref(), &registries);
+                    Ok(())
+                },
+            )?;
+        }
+        Ok(())
+    }
+
+    /// `Gui.setOverlayMessage` from the client's own code.
+    pub fn show_overlay(&mut self, message: photon_game::text::Component) {
+        self.social.hud_events.push(HudEvent::ActionBar(message));
+    }
+
     /// `LocalPlayer.closeContainer` for the inventory: the close packet,
     /// then `ContainerMenu.removed`, which empties the result slot.
     pub fn close_inventory(&mut self) -> Result<(), ConnectionError> {

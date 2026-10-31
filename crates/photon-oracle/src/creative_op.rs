@@ -60,3 +60,63 @@ pub(super) fn operator_tabs(label: &str) -> Value {
         "search_tab": stacks(search_tab),
     })
 }
+
+/// The hotbar file's item codec: a stack stored as its compound, or a compound read as its stack.
+pub(super) fn hotbar_entry(label: &str, row: &Value) -> Result<Value, String> {
+    use photon_core::ids::ItemId;
+    use photon_core::nbt::{Field, FieldValue};
+    use photon_game::hotbar::{decode_entry, encode_entry};
+    let text = |key: &str| row.get(key).and_then(Value::as_str);
+    let entry = if text("kind") == Some("store") {
+        let stack = text("item")
+            .and_then(photon_data::item::registry::index)
+            .zip(row.get("count").and_then(Value::as_i64))
+            .map(|(index, count)| {
+                photon_world::ClientItemStackState::new(count as i32, ItemId(index as i32))
+            });
+        let FieldValue::Compound(fields) = encode_entry(stack.as_ref()) else {
+            return Err("an entry is a compound".to_owned());
+        };
+        let mut object = serde_json::Map::new();
+        for Field { key, value } in fields {
+            let value = match value {
+                FieldValue::Str(text) => json!(text),
+                FieldValue::Int(number) => json!(number),
+                _ => json!("other"),
+            };
+            object.insert(key, value);
+        }
+        Value::Object(object)
+    } else {
+        let spec = row.get("entry").ok_or("a parse row has an entry")?;
+        let mut fields = Vec::new();
+        if let Some(id) = spec.get("id").and_then(Value::as_str) {
+            fields.push(Field {
+                key: "id".to_owned(),
+                value: FieldValue::Str(id.to_owned()),
+            });
+        }
+        if let Some(count) = spec.get("count").and_then(Value::as_i64) {
+            fields.push(Field {
+                key: "count".to_owned(),
+                value: FieldValue::Int(count as i32),
+            });
+        }
+        if spec.get("components").is_some() {
+            fields.push(Field {
+                key: "components".to_owned(),
+                value: FieldValue::Compound(Vec::new()),
+            });
+        }
+        match decode_entry(&FieldValue::Compound(fields)) {
+            Some(stack) => {
+                let name = photon_data::item::registry::ITEMS
+                    .get(stack.item_registry_id().0 as usize)
+                    .map(|item| item.name);
+                json!({"item": name, "count": stack.item_count()})
+            }
+            None => json!({}),
+        }
+    };
+    Ok(json!({"label": label, "outcome": "coded", "entry": entry}))
+}

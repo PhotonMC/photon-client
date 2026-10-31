@@ -346,6 +346,59 @@ class BlockItemOracle extends BlockPropertyOracle {
     }
 
     /**
+     * The hotbar file's entry codec (ItemStack.OPTIONAL_CODEC over NBT): a stack stored as the
+     * compound it encodes to, or a compound read as the stack it parses to ({} for no stack).
+     */
+    static JsonObject hotbarEntry(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "coded");
+        var registries = Game26_2.vanillaRegistries();
+        var ops = registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
+        var items = net.minecraft.core.registries.BuiltInRegistries.ITEM;
+        var result = new JsonObject();
+        if (row.get("kind").getAsString().equals("store")) {
+            var stack = row.has("item")
+                ? new net.minecraft.world.item.ItemStack(
+                    items.getValue(net.minecraft.resources.Identifier.parse(row.get("item").getAsString())),
+                    row.get("count").getAsInt())
+                : net.minecraft.world.item.ItemStack.EMPTY;
+            var tag = net.minecraft.world.item.ItemStack.OPTIONAL_CODEC.encodeStart(ops, stack).getOrThrow();
+            var compound = (net.minecraft.nbt.CompoundTag) tag;
+            for (var key : new java.util.TreeSet<>(compound.keySet())) {
+                var value = compound.get(key);
+                if (value instanceof net.minecraft.nbt.StringTag text) {
+                    result.addProperty(key, text.value());
+                } else if (value instanceof net.minecraft.nbt.IntTag number) {
+                    result.addProperty(key, number.intValue());
+                } else {
+                    result.addProperty(key, "other");
+                }
+            }
+        } else {
+            var spec = row.getAsJsonObject("entry");
+            var tag = new net.minecraft.nbt.CompoundTag();
+            if (spec.has("id")) {
+                tag.putString("id", spec.get("id").getAsString());
+            }
+            if (spec.has("count")) {
+                tag.putInt("count", spec.get("count").getAsInt());
+            }
+            if (spec.has("components")) {
+                tag.put("components", new net.minecraft.nbt.CompoundTag());
+            }
+            var parsed = net.minecraft.world.item.ItemStack.OPTIONAL_CODEC.parse(ops, tag).result()
+                .orElse(net.minecraft.world.item.ItemStack.EMPTY);
+            if (!parsed.isEmpty()) {
+                result.addProperty("item", items.getKey(parsed.getItem()).toString());
+                result.addProperty("count", parsed.getCount());
+            }
+        }
+        entry.add("entry", result);
+        return entry;
+    }
+
+    /**
      * The creative search tab's tag search for what the box holds: the game's
      * own tag tree over the search tab's stacks (by place), and the tags the
      * screen's private updateVisibleTags names, sorted (the screen keeps them

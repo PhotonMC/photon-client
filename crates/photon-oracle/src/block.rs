@@ -292,7 +292,6 @@ fn block_result(request: &Value) -> Result<Value, String> {
             }
             "tooltip_registries" => out.push(tooltip_registries(label)),
             "potions" => out.push(potions(label)),
-            "creative_tabs_operator" => out.push(crate::creative_op::operator_tabs(label)),
             "creative_tabs" => {
                 use photon_data::item::creative_tabs::{CREATIVE_TABS, DEFAULT_TAB, TabKind};
                 let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -365,7 +364,6 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
-            "creative_tag_search" => out.push(creative_tag_search(label, row)?),
             "face_occlusion" => out.push(face_occlusion(label)?),
             "collision_shapes" => out.push(shape_table(label, false)),
             "outline_shapes" => out.push(shape_table(label, true)),
@@ -385,7 +383,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "tinted": tinted}));
             }
-            other => return Err(format!("unknown block operation: {other}")),
+            other => out.push(creative_operation(other, label, row)?),
         }
     }
     Ok(json!({"rows": out}))
@@ -467,4 +465,14 @@ fn destroy_properties(label: &str) -> Value {
         })
         .collect();
     json!({"label": label, "outcome": "listed", "blocks": blocks})
+}
+
+/// The operations on the creative inventory and the hotbar file.
+fn creative_operation(operation: &str, label: &str, row: &Value) -> Result<Value, String> {
+    match operation {
+        "creative_tabs_operator" => Ok(crate::creative_op::operator_tabs(label)),
+        "creative_tag_search" => creative_tag_search(label, row),
+        "hotbar_entry" => crate::creative_op::hotbar_entry(label, row),
+        other => Err(format!("unknown block operation: {other}")),
+    }
 }

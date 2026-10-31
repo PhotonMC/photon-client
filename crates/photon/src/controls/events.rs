@@ -154,7 +154,7 @@ impl Controls {
                 "key.toggleGui" if press && self.captured => self.hud_hidden = !self.hud_hidden,
                 held if self.held_key(held, down) => {}
                 hotbar if press && self.captured && hotbar.starts_with("key.hotbar.") => {
-                    select_hotbar(session, hotbar, spectating);
+                    self.hotbar_key(hotbar, session, spectating, &assets.lang);
                 }
                 moving if self.captured || !down => self.set_moving(moving, (press, down)),
                 _ => {}
@@ -169,7 +169,7 @@ impl Controls {
         match name {
             "key.playerlist" => self.tab_held = held,
             "key.spectatorOutlines" => self.spectator_outlines_held = held,
-            _ => return false,
+            _ => return self.toolbar_activator_key(name, down),
         }
         true
     }
@@ -197,6 +197,8 @@ impl Controls {
         self.keys = HeldKeys::default();
         self.tab_held = false;
         self.spectator_outlines_held = false;
+        self.save_hotbar_held = false;
+        self.load_hotbar_held = false;
         self.attack_key.release();
         self.use_key.release();
         self.pick_key.release();
@@ -528,7 +530,7 @@ impl Controls {
 }
 
 /// A `key.hotbar.N` press: the slot is selected, but not by a spectator.
-fn select_hotbar(session: &mut PlaySession, name: &str, spectating: bool) {
+pub(super) fn select_hotbar(session: &mut PlaySession, name: &str, spectating: bool) {
     let slot = name["key.hotbar.".len()..]
         .parse::<i32>()
         .map(|slot| slot - 1);

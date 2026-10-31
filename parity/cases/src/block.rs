@@ -62,8 +62,36 @@ pub fn cases() -> Vec<Value> {
         "case_id": "block/creative-tag-search", "family": "block",
         "operation": "creative_tag_search", "rows": rows,
     }));
+    cases.push(json!({
+        "case_id": "block/hotbar-entry", "family": "block",
+        "operation": "hotbar_entry", "rows": hotbar_entries(),
+    }));
     cases.extend(crate::block_placement::cases());
     cases.push(table("behaviours", "block_behaviours"));
     cases.push(table("tints", "block_tints"));
     cases
+}
+
+/// The hotbar file's entries: stacks stored, and compounds read, as the item codec does.
+fn hotbar_entries() -> Vec<Value> {
+    let store = |label: &str, item: Option<&str>, count: i32| match item {
+        Some(item) => json!({"label": label, "kind": "store", "item": item, "count": count}),
+        None => json!({"label": label, "kind": "store"}),
+    };
+    let parse = |label: &str, entry: Value| json!({"label": label, "kind": "parse", "entry": entry});
+    vec![
+        store("store-full", Some("minecraft:stone"), 64),
+        store("store-one", Some("minecraft:diamond_sword"), 1),
+        store("store-empty", None, 0),
+        parse("parse-full", json!({"id": "minecraft:stone", "count": 64})),
+        parse("parse-no-count", json!({"id": "minecraft:stone"})),
+        parse("parse-zero", json!({"id": "minecraft:stone", "count": 0})),
+        parse("parse-max", json!({"id": "minecraft:stone", "count": 99})),
+        parse("parse-over", json!({"id": "minecraft:stone", "count": 100})),
+        parse("parse-unknown", json!({"id": "minecraft:nothing", "count": 1})),
+        parse("parse-empty", json!({})),
+        parse("parse-empty-components", json!({"id": "minecraft:stone", "components": {}})),
+        parse("parse-air", json!({"id": "minecraft:air", "count": 1})),
+        parse("parse-no-id", json!({"count": 3})),
+    ]
 }

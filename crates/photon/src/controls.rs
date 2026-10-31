@@ -224,6 +224,12 @@ pub struct Controls {
     pub tab_held: bool,
     /// Whether the spectator outlines key (`keySpectatorOutlines`) is held.
     pub spectator_outlines_held: bool,
+    /// Whether the save toolbar activator is held.
+    pub(super) save_hotbar_held: bool,
+    /// Whether the load toolbar activator is held.
+    pub(super) load_hotbar_held: bool,
+    /// `HotbarManager`: opened on first use.
+    pub(super) hotbars: Option<photon_game::hotbar::HotbarManager>,
     /// `Hud.isHidden`: the interface hidden with F1.
     pub hud_hidden: bool,
     /// F2 was pressed: the next frame is written to a file.
@@ -392,6 +398,8 @@ mod dialogs;
 mod game_mode_switcher;
 
 mod events;
+
+mod hotbar;
 
 pub(crate) mod keybinds;
 
