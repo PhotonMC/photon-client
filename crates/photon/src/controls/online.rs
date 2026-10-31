@@ -8,12 +8,15 @@ impl Controls {
     /// `OnlineOptionsScreen`, over the options screen. There is no account yet, so the friends
     /// list is off.
     pub(super) fn open_online(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
-        self.online_screen = Some(OnlineOptionsScreen::new(
-            (&assets.creative.font, &assets.lang),
-            Self::gui_size(surface),
-            !self.title_host,
-            (&self.options, FriendFacts::default()),
-        ));
+        self.online_screen = Some(
+            OnlineOptionsScreen::new(
+                (&assets.creative.font, &assets.lang),
+                Self::gui_size(surface),
+                !self.title_host,
+                (&self.options, FriendFacts::default()),
+            )
+            .without_services(&assets.lang),
+        );
     }
 
     /// `OptionsSubScreen.onClose` and `removed`: back to the options screen, and the options are

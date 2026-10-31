@@ -88,6 +88,25 @@ impl OnlineOptionsScreen {
         input.changed == Some(XBOX)
     }
 
+    /// The screen with the buttons of the services this client does not have still, saying why.
+    /// The reference has them active, so the parity cases build the screen without this.
+    #[must_use]
+    pub fn without_services(mut self, lang: &Lang) -> Self {
+        let friends = Component::translatable_or(
+            "photon.online.no_friends",
+            "There is no friends service in this client.",
+        );
+        let realms = Component::translatable_or(
+            "photon.online.no_realms",
+            "There is no Realms service in this client.",
+        );
+        for tag in [FRIENDS_LIST, ALLOW_REQUESTS, IN_GAME, PRESENCE] {
+            self.screen.list.still(tag, lang, &friends);
+        }
+        self.screen.list.still(REALMS, lang, &realms);
+        self
+    }
+
     /// `init`, with the options as they are.
     pub fn new(
         (font, lang): (&Font, &Lang),
@@ -222,5 +241,34 @@ impl OnlineOptionsScreen {
 
     pub fn scroll_amount(&self) -> f64 {
         self.screen.list.scroll_amount()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn without_services_only_the_server_listing_stays_active() {
+        let (font, lang) = (Font::default(), Lang::default());
+        let screen = OnlineOptionsScreen::new(
+            (&font, &lang),
+            (320, 180),
+            true,
+            (&Options::default(), FriendFacts::default()),
+        )
+        .without_services(&lang);
+        let active = |tag| {
+            screen
+                .screen
+                .list
+                .find(tag)
+                .map(|control| control.is_active())
+        };
+        for tag in [FRIENDS_LIST, ALLOW_REQUESTS, IN_GAME, PRESENCE, REALMS] {
+            assert_eq!(active(tag), Some(false));
+        }
+        assert_eq!(active(SERVER_LISTING), Some(true));
+        assert_eq!(active(XBOX), Some(true));
     }
 }
