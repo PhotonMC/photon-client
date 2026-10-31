@@ -220,7 +220,10 @@ impl Controls {
     fn close_friends(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {
         self.friends = None;
         if std::mem::take(&mut self.friends_from_pause) {
-            self.open_pause(surface, assets);
+            match self.pause_under.take() {
+                Some(menu) => self.pause = Some(menu),
+                None => self.open_pause(surface, assets),
+            }
             return;
         }
         if self.title_host {

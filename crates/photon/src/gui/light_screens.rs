@@ -27,6 +27,13 @@ impl Gui {
             if friends.size() != gui_size {
                 friends.resize(gui_size);
             }
+            // `backgroundScreen`: the pause menu the overlay was opened from is drawn under it.
+            if let Some(pause) = controls.pause_under.as_mut() {
+                if pause.size() != gui_size {
+                    *pause = pause.resized(font, lang, gui_size);
+                }
+                pause.draw(frame, atlas, font, (-1, -1), gui_size, Some(blurriness));
+            }
             friends.draw(frame, (atlas, font), mouse, (blurriness, frame.millis));
         } else if let Some(social) = controls.social.as_mut() {
             if social.size() != gui_size {

@@ -73,14 +73,20 @@ impl Controls {
                 };
                 self.ask_about_link(url, surface, assets);
             }
-            PauseAction::Friends => {
-                // The overlay replaces the menu (`Minecraft.toggleFriendsScreen` from the pause
-                // screen); closing it returns to the menu.
-                self.pause = None;
-                self.toggle_friends(surface, assets);
-                self.friends_from_pause = self.friends.is_some();
-            }
+            PauseAction::Friends => self.open_friends_from_pause(surface, assets),
             PauseAction::Custom => self.show_pause_additions(session, surface, assets),
+        }
+    }
+
+    /// The overlay replaces the menu (`Minecraft.toggleFriendsScreen` from the pause screen) but
+    /// has it under it (`backgroundScreen`); closing it returns to the menu.
+    fn open_friends_from_pause(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {
+        let menu = self.pause.take();
+        self.toggle_friends(surface, assets);
+        self.friends_from_pause = self.friends.is_some();
+        if let Some(overlay) = self.friends.as_mut() {
+            overlay.set_over_screen(true);
+            self.pause_under = menu;
         }
     }
 

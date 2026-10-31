@@ -164,6 +164,8 @@ pub struct Controls {
     faces: faces::Faces,
     /// The overlay was opened from the pause menu, which comes back when it closes.
     friends_from_pause: bool,
+    /// The pause menu the overlay was opened from, drawn under it until it closes.
+    pub(crate) pause_under: Option<PauseScreen>,
     /// Friend toasts the controls decided on, shown on the next tick.
     pending_toasts: Vec<photon_game::text::Component>,
     /// The debug options screen (F3+F6), while it is open.
