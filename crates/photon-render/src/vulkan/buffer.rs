@@ -37,6 +37,8 @@ pub(super) enum PipelineKind {
     Clouds,
     Weather,
     Entity,
+    /// The entities drawn from a shared mesh, placed by an instance each.
+    EntityInstanced,
     /// GUI sprites over the finished frame.
     Gui,
     /// The crosshair, inverting what is behind it.
@@ -239,7 +241,8 @@ pub(super) struct SceneResources {
     pub(super) weather_textures: Vec<Image>,
     pub(super) weather_sampler: Option<Sampler>,
     pub(super) weather_sets: Vec<vk::DescriptorSet>,
-    pub(super) entity_pipeline: Pipeline,
+    /// The entity pipeline, and the one for the entities drawn from shared meshes.
+    pub(super) entity_pipelines: [Pipeline; 2],
     pub(super) lines_pipelines: [Pipeline; 2],
     pub(super) crumbling_pipeline: Pipeline,
     /// The pipelines of the held items: opaque, then the quads of translucent sprites
@@ -563,6 +566,8 @@ pub(super) struct FlatDraws {
     pub(super) swirl: DrawList,
     /// The enchantment glints' triangles (`RenderTypes.armorEntityGlint`).
     pub(super) glint: DrawList,
+    /// The mobs drawn from shared meshes (ADR 0016), which sample the entity textures too.
+    pub(super) instanced: InstancedDraws,
 }
 
 impl FlatDraws {
@@ -576,6 +581,7 @@ impl FlatDraws {
         ] {
             list.buffer.clear();
         }
+        self.instanced.clear();
     }
 }
 
@@ -587,4 +593,21 @@ pub(super) struct LineDraws {
     /// How many of the outline's first vertices are the black backing.
     pub(super) backing: u32,
     pub(super) gizmo: DrawList,
+}
+
+/// The entities drawn from shared meshes: the meshes in use and the instances, each in a buffer
+/// of its own, and which instances use which mesh.
+#[derive(Default)]
+pub(super) struct InstancedDraws {
+    pub(super) meshes: DynamicBuffer,
+    pub(super) instances: DynamicBuffer,
+    pub(super) batches: Vec<crate::entity::instancing::Batch>,
+}
+
+impl InstancedDraws {
+    pub(super) fn clear(&mut self) {
+        self.meshes.clear();
+        self.instances.clear();
+        self.batches.clear();
+    }
 }

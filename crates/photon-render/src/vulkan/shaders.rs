@@ -22,6 +22,7 @@ pub(super) const SECTION_VERTEX_SHADER: Shader = shader!("section.vert");
 pub(super) const VERTEX_SHADER: Shader = shader!("scene.vert");
 pub(super) const HELD_VERTEX_SHADER: Shader = shader!("held.vert");
 pub(super) const ENTITY_VERTEX_SHADER: Shader = shader!("entity.vert");
+pub(super) const ENTITY_INSTANCED_VERTEX_SHADER: Shader = shader!("entity_instanced.vert");
 pub(super) const ENTITY_FRAGMENT_SHADER: Shader = shader!("entity.frag");
 pub(super) const TEXT_VERTEX_SHADER: Shader = shader!("text.vert");
 pub(super) const SWIRL_VERTEX_SHADER: Shader = shader!("swirl.vert");

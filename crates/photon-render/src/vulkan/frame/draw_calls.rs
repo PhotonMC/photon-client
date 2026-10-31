@@ -193,6 +193,59 @@ impl VulkanBackend {
         }
     }
 
+    /// Draw the entities that share meshes: each mesh once, for all of its instances.
+    ///
+    /// # Safety
+    ///
+    /// `command_buffer` must be recording inside the scene's rendering scope, and `scene` must be
+    /// the live scene.
+    pub(super) unsafe fn draw_instanced(&self, scene: &SceneResources, base: &[f32; 46]) {
+        let draws = &self.flat.instanced;
+        let (Some(meshes), Some(instances), Some(set)) = (
+            draws.meshes.as_ref(),
+            draws.instances.as_ref(),
+            Sampled::Entity.set(scene),
+        ) else {
+            return;
+        };
+        if draws.batches.is_empty() {
+            return;
+        }
+        let mut push = [0.0_f32; 47];
+        push[..40].copy_from_slice(&base[..40]);
+        push[44] = base[44];
+        push[45] = base[45];
+        push[46] = self.glint_strength;
+        // SAFETY: recording (see `# Safety`); the pipeline, set and both buffers are live, and each
+        // batch lies in the buffers the frame was handed.
+        unsafe {
+            self.bind_state(
+                &scene.entity_pipelines[1],
+                Some(set),
+                &[(
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    &as_bytes(&push)[..184],
+                )],
+            );
+            self.device.cmd_bind_vertex_buffers(
+                self.command_buffer,
+                0,
+                &[meshes.buffer, instances.buffer],
+                &[0, 0],
+            );
+            for batch in &draws.batches {
+                self.device.cmd_draw(
+                    self.command_buffer,
+                    batch.vertex_count,
+                    batch.instance_count,
+                    batch.first_vertex,
+                    batch.first_instance,
+                );
+            }
+        }
+    }
+
     /// Draw the end portal and gateway surfaces: the end sky in the first set and the portal's
     /// picture in the second, with how far through the day the game is after the frame's push
     /// constants.

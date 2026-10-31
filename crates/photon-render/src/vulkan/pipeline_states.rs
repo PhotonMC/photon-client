@@ -8,7 +8,10 @@ use super::buffer::PipelineKind;
 pub(super) fn uses_entity_shaders(kind: PipelineKind) -> bool {
     matches!(
         kind,
-        PipelineKind::Entity | PipelineKind::EntityOutline | PipelineKind::EntityMask
+        PipelineKind::Entity
+            | PipelineKind::EntityInstanced
+            | PipelineKind::EntityOutline
+            | PipelineKind::EntityMask
     )
 }
 

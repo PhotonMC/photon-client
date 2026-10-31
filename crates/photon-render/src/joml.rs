@@ -537,6 +537,12 @@ impl Pose {
         }
     }
 
+    /// Whether the normal matrix keeps normals unit length, so a normal needs no normalising
+    /// after it.
+    pub fn keeps_normals_unit(&self) -> bool {
+        !self.untrusted_normals
+    }
+
     /// `Pose.transformNormal`.
     pub fn transform_normal(&self, normal: [f32; 3]) -> [f32; 3] {
         let result = self.normal.transform(normal[0], normal[1], normal[2]);

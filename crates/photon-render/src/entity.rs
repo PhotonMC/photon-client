@@ -7,6 +7,7 @@ pub mod equipment;
 pub mod gui_view;
 pub mod hand_motion;
 pub mod held_item;
+pub mod instancing;
 pub mod keyframe;
 pub mod layering;
 pub mod mob_model;

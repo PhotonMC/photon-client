@@ -59,6 +59,24 @@ impl VulkanBackend {
         }
     }
 
+    /// The entity pipeline, then the one for the entities drawn from shared meshes.
+    ///
+    /// # Safety
+    ///
+    /// The device and the layout must be live.
+    unsafe fn create_entity_pipelines(
+        &self,
+        layout: vk::DescriptorSetLayout,
+    ) -> Result<[Pipeline; 2], VulkanError> {
+        // SAFETY: the caller keeps the device and the layout live.
+        unsafe {
+            Ok([
+                self.create_pipeline(layout, PipelineKind::Entity)?,
+                self.create_pipeline(layout, PipelineKind::EntityInstanced)?,
+            ])
+        }
+    }
+
     /// Build the depth target, texture, buffers and pipeline for one mesh.
     ///
     /// The GLSL is this project's own; `build.rs` compiles it with shaderc, the library the
@@ -96,7 +114,7 @@ impl VulkanBackend {
             let cloud_pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Clouds)?;
             let weather_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::Weather)?;
-            let entity_pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Entity)?;
+            let entity_pipelines = self.create_entity_pipelines(descriptors.layout)?;
             let gui_pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Gui)?;
             let lines_pipelines = self.create_line_pipelines(descriptors.layout)?;
             let crumbling_pipeline =
@@ -138,7 +156,7 @@ impl VulkanBackend {
                 weather_textures: Vec::new(),
                 weather_sampler: None,
                 weather_sets: Vec::new(),
-                entity_pipeline,
+                entity_pipelines,
                 lines_pipelines,
                 crumbling_pipeline,
                 held_pipelines,

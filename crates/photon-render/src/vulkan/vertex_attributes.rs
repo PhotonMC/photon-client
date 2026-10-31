@@ -174,11 +174,100 @@ pub(super) fn gui_item_attributes() -> [vk::VertexInputAttributeDescription; 3] 
 pub(super) fn cull_mode(kind: PipelineKind) -> vk::CullModeFlags {
     use PipelineKind::*;
     match kind {
-        SkyTranslucent | SkyOverlay | Weather | Entity | EntityMask | Dissolve | Swirl | Glint
-        | Rays | WorldBorder | Text | TextTranslucent | Shadow | TextSeeThrough | Gui
-        | GuiInvert | GuiHighlight | GuiVignette | GuiLogo | GuiItem | GuiGlint | Lines => {
-            vk::CullModeFlags::NONE
-        }
+        SkyTranslucent | SkyOverlay | Weather | Entity | EntityInstanced | EntityMask
+        | Dissolve | Swirl | Glint | Rays | WorldBorder | Text | TextTranslucent | Shadow
+        | TextSeeThrough | Gui | GuiInvert | GuiHighlight | GuiVignette | GuiLogo | GuiItem
+        | GuiGlint | Lines => vk::CullModeFlags::NONE,
         _ => vk::CullModeFlags::BACK,
     }
+}
+
+/// The binding of the per-instance data of [`PipelineKind::EntityInstanced`].
+pub(super) fn instance_binding() -> vk::VertexInputBindingDescription {
+    vk::VertexInputBindingDescription::default()
+        .binding(1)
+        .stride(std::mem::size_of::<crate::entity::instancing::Instance>() as u32)
+        .input_rate(vk::VertexInputRate::INSTANCE)
+}
+
+/// The attributes of the instanced entity pipeline: the mesh's vertex (as the entity pipeline
+/// reads it) at binding 0, then the instance at binding 1: the position matrix's four columns,
+/// the normal matrix's three, the shade and colour, and the light.
+pub(super) fn instanced_attributes() -> [vk::VertexInputAttributeDescription; 14] {
+    let vertex = terrain_attributes();
+    let instance = |location: u32, format: vk::Format, offset: u32| {
+        vk::VertexInputAttributeDescription::default()
+            .location(location)
+            .binding(1)
+            .format(format)
+            .offset(offset)
+    };
+    let vec3 = vk::Format::R32G32B32_SFLOAT;
+    [
+        vertex[1],
+        vertex[2],
+        vertex[3],
+        vertex[4],
+        vertex[0],
+        instance(5, vec3, 0),
+        instance(6, vec3, 12),
+        instance(7, vec3, 24),
+        instance(8, vec3, 36),
+        instance(9, vec3, 48),
+        instance(10, vec3, 60),
+        instance(11, vec3, 72),
+        instance(12, vk::Format::R32G32_SFLOAT, 84),
+        instance(13, vk::Format::R32G32_SFLOAT, 92),
+    ]
+}
+
+/// The vertex buffers' bindings and the attributes the pipelines of a kind read.
+pub(super) fn vertex_layout(
+    kind: PipelineKind,
+) -> (
+    Vec<vk::VertexInputBindingDescription>,
+    Vec<vk::VertexInputAttributeDescription>,
+) {
+    use PipelineKind::*;
+    let (stride, attributes) = match kind {
+        EntityInstanced => (
+            std::mem::size_of::<Vertex>(),
+            instanced_attributes().to_vec(),
+        ),
+        SkyTranslucent | SkyOverlay => (
+            std::mem::size_of::<crate::sky::SkyVertex>(),
+            sky_attributes().to_vec(),
+        ),
+        Clouds => (
+            std::mem::size_of::<crate::sky::clouds::CloudVertex>(),
+            cloud_attributes().to_vec(),
+        ),
+        Gui | GuiInvert | GuiHighlight | GuiVignette | GuiLogo => (
+            std::mem::size_of::<crate::gui::GuiVertex>(),
+            gui_attributes().to_vec(),
+        ),
+        GuiItem | GuiGlint => (
+            std::mem::size_of::<crate::gui::items::GuiItemVertex>(),
+            gui_item_attributes().to_vec(),
+        ),
+        Lines | LinesBacking => (
+            std::mem::size_of::<crate::block::outline::LineVertex>(),
+            line_attributes().to_vec(),
+        ),
+        Terrain | Translucent => (
+            std::mem::size_of::<BlockVertex>(),
+            section_attributes().to_vec(),
+        ),
+        _ => (std::mem::size_of::<Vertex>(), terrain_attributes().to_vec()),
+    };
+    let mut bindings = vec![
+        vk::VertexInputBindingDescription::default()
+            .binding(0)
+            .stride(stride as u32)
+            .input_rate(vk::VertexInputRate::VERTEX),
+    ];
+    if kind == EntityInstanced {
+        bindings.push(instance_binding());
+    }
+    (bindings, attributes)
 }

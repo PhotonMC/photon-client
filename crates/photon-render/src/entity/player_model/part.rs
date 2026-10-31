@@ -150,6 +150,22 @@ impl Part {
         }
     }
 
+    /// Feed everything that decides how the part and its children are drawn (the pose each was
+    /// given, not the cubes, which the model fixes) to `hasher`.
+    pub fn hash_pose(&self, hasher: &mut impl std::hash::Hasher) {
+        use std::hash::Hash;
+        for value in [self.x, self.y, self.z, self.x_rot, self.y_rot, self.z_rot] {
+            value.to_bits().hash(hasher);
+        }
+        for value in self.scale {
+            value.to_bits().hash(hasher);
+        }
+        (self.visible, self.skip_draw).hash(hasher);
+        for child in &self.children {
+            child.hash_pose(hasher);
+        }
+    }
+
     /// `ModelPart.render`: every visible face, posed, each with the path of
     /// the part it belongs to.
     pub fn render(&self, pose: &Pose, path: &str, out: &mut Vec<(String, [ModelVertex; 4])>) {

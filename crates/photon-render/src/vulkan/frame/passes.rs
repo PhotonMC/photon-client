@@ -177,7 +177,7 @@ impl Run {
             | Self::HeldTranslucent => {
                 &scene.held_pipelines[usize::from(self.is_item_translucent())]
             }
-            Self::Entity | Self::Hand | Self::Particle => &scene.entity_pipeline,
+            Self::Entity | Self::Hand | Self::Particle => &scene.entity_pipelines[0],
             Self::Mask => &scene.mask_pipeline,
             Self::Shadow | Self::Glow => &scene.shadow_pipeline,
             Self::Dissolve => &scene.dissolve_pipeline,

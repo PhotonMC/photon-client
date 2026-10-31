@@ -33,6 +33,7 @@ plain_vertices! {
     crate::sky::SkyVertex = 44,
     crate::gui::GuiVertex = 32,
     crate::gui::items::GuiItemVertex = 36,
+    crate::entity::instancing::Instance = 100,
 }
 
 /// The bytes of a slice of plain values.

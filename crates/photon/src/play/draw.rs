@@ -247,6 +247,7 @@ impl Play {
             photon_render::vulkan::DrawKind::Entities,
             &self.entity_vertices,
         )?;
+        self.backend.set_instanced(&self.mob_models.instanced)?;
         Ok(held)
     }
 

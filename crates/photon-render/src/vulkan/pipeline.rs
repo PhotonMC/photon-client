@@ -1,7 +1,7 @@
 //! Building a graphics pipeline.
 
+use super::pipeline_shaders::shader_pair;
 use super::pipeline_states::{crumbling_or_mask_blend, uses_entity_shaders};
-use super::shaders::*;
 use super::vertex_attributes::*;
 use super::*;
 
@@ -96,7 +96,6 @@ impl VulkanBackend {
         let lines = matches!(kind, PipelineKind::Lines | PipelineKind::LinesBacking);
         let crumbling = kind == PipelineKind::Crumbling;
         let screen_effect = kind == PipelineKind::ScreenEffect;
-        let section = matches!(kind, PipelineKind::Terrain | PipelineKind::Translucent);
         // SAFETY: live handles; the shader modules are made from the embedded SPIR-V and
         // destroyed once the pipeline is built, and every create-info points at locals that
         // outlive its call.
@@ -123,50 +122,10 @@ impl VulkanBackend {
                     .name(&entry),
             ];
 
-            let stride = if sky {
-                std::mem::size_of::<crate::sky::SkyVertex>()
-            } else if clouds {
-                std::mem::size_of::<crate::sky::clouds::CloudVertex>()
-            } else if gui {
-                std::mem::size_of::<crate::gui::GuiVertex>()
-            } else if gui_item {
-                std::mem::size_of::<crate::gui::items::GuiItemVertex>()
-            } else if lines {
-                std::mem::size_of::<crate::block::outline::LineVertex>()
-            } else if section {
-                std::mem::size_of::<BlockVertex>()
-            } else {
-                std::mem::size_of::<Vertex>()
-            };
-            let bindings = [vk::VertexInputBindingDescription::default()
-                .binding(0)
-                .stride(stride as u32)
-                .input_rate(vk::VertexInputRate::VERTEX)];
-            let sky_attributes = sky_attributes();
-            let terrain_attributes = terrain_attributes();
-            let section_attributes = section_attributes();
-            let cloud_attributes = cloud_attributes();
-            let gui_attributes = gui_attributes();
-            let line_attributes = line_attributes();
-            let gui_item_attributes = gui_item_attributes();
-            let attributes: &[vk::VertexInputAttributeDescription] = if sky {
-                &sky_attributes
-            } else if gui_item {
-                &gui_item_attributes
-            } else if clouds {
-                &cloud_attributes
-            } else if gui {
-                &gui_attributes
-            } else if lines {
-                &line_attributes
-            } else if section {
-                &section_attributes
-            } else {
-                &terrain_attributes
-            };
+            let (bindings, attributes) = vertex_layout(kind);
             let vertex_input = vk::PipelineVertexInputStateCreateInfo::default()
                 .vertex_binding_descriptions(&bindings)
-                .vertex_attribute_descriptions(attributes);
+                .vertex_attribute_descriptions(&attributes);
             let assembly = vk::PipelineInputAssemblyStateCreateInfo::default()
                 .topology(vk::PrimitiveTopology::TRIANGLE_LIST);
             // The viewport follows the window, so it is set per frame.
@@ -383,6 +342,7 @@ fn writes_depth(kind: PipelineKind) -> bool {
             | PipelineKind::Translucent
             | PipelineKind::Clouds
             | PipelineKind::Entity
+            | PipelineKind::EntityInstanced
             | PipelineKind::EntityOutline
             | PipelineKind::EntityMask
             | PipelineKind::Held
@@ -395,159 +355,5 @@ fn writes_depth(kind: PipelineKind) -> bool {
             | PipelineKind::Lines
             | PipelineKind::GuiItem
             | PipelineKind::WorldBorder
-    )
-}
-
-/// The vertex and fragment shader of each pipeline kind; a kind not listed is drawn with the
-/// held items' pair.
-const SHADERS: &[(PipelineKind, &Shader, &Shader)] = &[
-    (
-        PipelineKind::SkyTranslucent,
-        &SKY_VERTEX_SHADER,
-        &SKY_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::SkyOverlay,
-        &SKY_VERTEX_SHADER,
-        &SKY_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Clouds,
-        &CLOUD_VERTEX_SHADER,
-        &CLOUD_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Weather,
-        &VERTEX_SHADER,
-        &WEATHER_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Dissolve,
-        &ENTITY_VERTEX_SHADER,
-        &DISSOLVE_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Rays,
-        &RAYS_VERTEX_SHADER,
-        &RAYS_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Portal,
-        &PORTAL_VERTEX_SHADER,
-        &PORTAL_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::WorldBorder,
-        &WORLD_BORDER_VERTEX_SHADER,
-        &WORLD_BORDER_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Entity,
-        &ENTITY_VERTEX_SHADER,
-        &ENTITY_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::EntityMask,
-        &ENTITY_VERTEX_SHADER,
-        &ENTITY_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::EntityOutline,
-        &ENTITY_VERTEX_SHADER,
-        &ENTITY_OUTLINE_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Swirl,
-        &SWIRL_VERTEX_SHADER,
-        &SWIRL_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::GuiGlint,
-        &GUI_GLINT_VERTEX_SHADER,
-        &GUI_GLINT_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Glint,
-        &GLINT_VERTEX_SHADER,
-        &GLINT_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Shadow,
-        &SHADOW_VERTEX_SHADER,
-        &SHADOW_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Text,
-        &TEXT_VERTEX_SHADER,
-        &TEXT_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::TextTranslucent,
-        &TEXT_VERTEX_SHADER,
-        &TEXT_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::TextSeeThrough,
-        &TEXT_SEE_THROUGH_VERTEX_SHADER,
-        &TEXT_SEE_THROUGH_FRAGMENT_SHADER,
-    ),
-    (PipelineKind::Gui, &GUI_VERTEX_SHADER, &GUI_FRAGMENT_SHADER),
-    (
-        PipelineKind::GuiInvert,
-        &GUI_VERTEX_SHADER,
-        &GUI_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::GuiHighlight,
-        &GUI_VERTEX_SHADER,
-        &GUI_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::GuiVignette,
-        &GUI_VERTEX_SHADER,
-        &GUI_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::GuiLogo,
-        &GUI_VERTEX_SHADER,
-        &GUI_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::GuiItem,
-        &GUI_ITEM_VERTEX_SHADER,
-        &GUI_ITEM_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Lines,
-        &LINE_VERTEX_SHADER,
-        &LINE_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::LinesBacking,
-        &LINE_VERTEX_SHADER,
-        &LINE_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Crumbling,
-        &VERTEX_SHADER,
-        &CRUMBLING_FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Terrain,
-        &SECTION_VERTEX_SHADER,
-        &FRAGMENT_SHADER,
-    ),
-    (
-        PipelineKind::Translucent,
-        &SECTION_VERTEX_SHADER,
-        &FRAGMENT_SHADER,
-    ),
-];
-
-/// The vertex and fragment shader a pipeline is built from.
-fn shader_pair(kind: PipelineKind) -> (&'static Shader, &'static Shader) {
-    SHADERS.iter().find(|(listed, ..)| *listed == kind).map_or(
-        (&HELD_VERTEX_SHADER, &FRAGMENT_SHADER),
-        |&(_, vertex, fragment)| (vertex, fragment),
     )
 }

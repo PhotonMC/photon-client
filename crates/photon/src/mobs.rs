@@ -270,6 +270,9 @@ pub struct MobModels {
     /// What the glowing layers drew this frame (eyes), for the frame to hand
     /// to the renderer after the mobs.
     pub(crate) glow: Vec<Vertex>,
+    /// The mobs that share a mesh this frame (ADR 0016), and what the frame hands the renderer.
+    pub(crate) instancer: photon_render::entity::instancing::Batcher,
+    pub(crate) instanced: photon_render::entity::instancing::InstancedFrame,
     /// The boats' water patches this frame, which only write the depth.
     pub(crate) water_masks: Vec<Vertex>,
     /// What the energy swirls drew this frame (a charged creeper's).
@@ -315,6 +318,8 @@ impl MobModels {
                 .into(),
             models: HashMap::new(),
             glow: Vec::new(),
+            instancer: Default::default(),
+            instanced: Default::default(),
             water_masks: Vec::new(),
             swirl: Vec::new(),
             dissolve: Vec::new(),
@@ -340,7 +345,24 @@ impl MobModels {
     }
 }
 
-impl MobModels {}
+impl MobModels {
+    /// Place the body of a visible, unglowing mob as an instance of a mesh shared with the mobs
+    /// in the same pose (ADR 0016); false when its pose does not allow it and the caller draws it.
+    pub(crate) fn instance_body(
+        &mut self,
+        layer: &str,
+        (placement, rect): (&MobPlacement, photon_render::entity::textures::TextureRect),
+    ) -> bool {
+        use photon_render::entity::mob_model::{mob_instance, mob_mesh, mob_mesh_key};
+        let (Some(instance), Some(model)) = (mob_instance(placement), self.models.get(layer))
+        else {
+            return false;
+        };
+        let key = mob_mesh_key(model, layer, rect);
+        self.instancer.add(key, instance, || mob_mesh(model, rect));
+        true
+    }
+}
 
 impl Default for MobModels {
     fn default() -> Self {

@@ -269,6 +269,59 @@ fn burning_light(light: i32, burning: bool) -> i32 {
     }
 }
 
+/// The model layer and the texture of a mob: the variant the server named by its place in the
+/// registry, or the default while it has said nothing; one the registry lacks is not drawn.
+fn variant_of(
+    session: &PlaySession,
+    kind: &MobKind,
+    entity: EntityView<'_>,
+) -> Option<(String, &'static str)> {
+    let name = match entity.variant() {
+        None => Some(DEFAULT_VARIANT),
+        Some(id) => usize::try_from(id)
+            .ok()
+            .and_then(|id| session.registry_names(kind.registry).get(id))
+            .map(String::as_str),
+    };
+    let variant = photon_data::entity_type::variant(kind.variant_kind, name?)?;
+    let baby = entity.is_baby();
+    let asset = if baby {
+        variant.baby_asset
+    } else {
+        variant.asset
+    };
+    Some((layer_name(kind, variant.model, baby), texture_path(asset)))
+}
+
+/// Pose a mob's model the way its renderer does, from where it is between two ticks.
+fn pose_mob(
+    model: &mut MobModel,
+    kind: &MobKind,
+    entity: EntityView<'_>,
+    (snapshot, partial): (&photon_world::EntitySnapshot, f32),
+) {
+    let look = QuadrupedState {
+        head_y_rot: photon_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
+        x_rot: snapshot.pitch,
+        walk_position: snapshot.walk_position,
+        walk_speed: snapshot.walk_speed,
+    };
+    match kind.pose {
+        Pose::Quadruped => model.setup_quadruped(&look),
+        Pose::Chicken => {
+            let (flap, flap_speed) = entity.chicken_flap(partial);
+            model.setup_chicken(&ChickenState {
+                head_y_rot: look.head_y_rot,
+                x_rot: look.x_rot,
+                walk_position: look.walk_position,
+                walk_speed: look.walk_speed,
+                flap,
+                flap_speed,
+            });
+        }
+    }
+}
+
 /// `LivingEntityRenderer` for the mobs the server added: each posed from
 /// where it is between two ticks.
 pub fn remote_mobs(
@@ -280,31 +333,15 @@ pub fn remote_mobs(
 ) {
     let (world, partial) = (session.world(), view.partial as f32);
     models.clear_layers();
+    models.instancer.begin_frame();
     let kinds = std::sync::Arc::clone(&models.kinds);
     for entity in world.drawn_mobs_where(|candidate| kinds.contains_key(&candidate)) {
         let Some(kind) = kinds.get(&entity.type_id).copied() else {
             continue;
         };
-        // The variant the server named by its place in the registry, or the
-        // default while it has said nothing; one the registry lacks is not drawn.
-        let name = match entity.variant() {
-            None => Some(DEFAULT_VARIANT),
-            Some(id) => usize::try_from(id)
-                .ok()
-                .and_then(|id| session.registry_names(kind.registry).get(id))
-                .map(String::as_str),
-        };
-        let Some(variant) =
-            name.and_then(|name| photon_data::entity_type::variant(kind.variant_kind, name))
-        else {
+        let Some((layer, texture)) = variant_of(session, kind, entity) else {
             continue;
         };
-        let layer = layer_name(kind, variant.model, entity.is_baby());
-        let texture = texture_path(if entity.is_baby() {
-            variant.baby_asset
-        } else {
-            variant.asset
-        });
         let (Some(snapshot), Some(rect)) = (
             world.entity_snapshot_of(entity, partial),
             textures.rect(texture),
@@ -314,32 +351,19 @@ pub fn remote_mobs(
         let Some(model) = models.model(&layer) else {
             continue;
         };
-        let look = QuadrupedState {
-            head_y_rot: photon_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
-            x_rot: snapshot.pitch,
-            walk_position: snapshot.walk_position,
-            walk_speed: snapshot.walk_speed,
-        };
-        match kind.pose {
-            Pose::Quadruped => model.setup_quadruped(&look),
-            Pose::Chicken => {
-                let (flap, flap_speed) = entity.chicken_flap(partial);
-                model.setup_chicken(&ChickenState {
-                    head_y_rot: look.head_y_rot,
-                    x_rot: look.x_rot,
-                    walk_position: look.walk_position,
-                    walk_speed: look.walk_speed,
-                    flap,
-                    flap_speed,
-                });
-            }
+        pose_mob(model, kind, entity, (&snapshot, partial));
+        let placed = placement(world, &snapshot, view, entity.scale());
+        let instanced = !entity.is_glowing() && !entity.is_invisible();
+        if instanced && models.instance_body(&layer, (&placed, rect)) {
+            continue;
         }
-        vertices.extend(crate::mobs::visible_body(
-            entity,
-            model,
-            (&placement(world, &snapshot, view, entity.scale()), rect),
-        ));
+        let Some(model) = models.model(&layer) else {
+            continue;
+        };
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
     }
+    let frame = models.instancer.finish(vertices);
+    models.instanced = frame;
     remote_families(session, (models, armor), textures, (view, held), vertices);
 }
 

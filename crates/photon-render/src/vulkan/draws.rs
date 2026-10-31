@@ -146,6 +146,23 @@ impl VulkanBackend {
         Ok(())
     }
 
+    /// Hand over the next frame's entities drawn from shared meshes (ADR 0016).
+    pub fn set_instanced(
+        &mut self,
+        frame: &crate::entity::instancing::InstancedFrame,
+    ) -> Result<(), VulkanError> {
+        let mut draws = std::mem::take(&mut self.flat.instanced);
+        let filled = if frame.batches.is_empty() {
+            Ok(())
+        } else {
+            self.fill_vertex_buffer(&mut draws.meshes, &frame.vertices)
+                .and_then(|()| self.fill_bytes(&mut draws.instances, as_bytes(&frame.instances)))
+        };
+        draws.batches.clone_from(&frame.batches);
+        self.flat.instanced = draws;
+        filled
+    }
+
     /// Hand over the next frame's triangles of one kind of draw.
     pub fn set_draw(&mut self, kind: DrawKind, vertices: &[Vertex]) -> Result<(), VulkanError> {
         if kind == DrawKind::EntityOutline {

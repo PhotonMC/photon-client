@@ -107,6 +107,9 @@ impl VulkanBackend {
             if !self.gui_only {
                 for run in ENTITY_RUNS {
                     self.draw_run(scene, run, terrain_push);
+                    if run == Run::Entity {
+                        self.draw_instanced(scene, terrain_push);
+                    }
                 }
             }
         }

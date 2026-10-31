@@ -162,6 +162,12 @@ impl MobModel {
         out
     }
 
+    /// A number that is the same for two poses of this model that draw the same faces in the same
+    /// places: the key of the model-space mesh two entities share.
+    pub fn pose_key(&self, hasher: &mut impl std::hash::Hasher) {
+        self.root.hash_pose(hasher);
+    }
+
     /// The faces of `render`, handed one by one to `emit`, in the order of `quads`.
     pub fn each_quad(&self, pose: &Pose, emit: &mut impl FnMut([ModelVertex; 4])) {
         self.root.each_quad(pose, emit);

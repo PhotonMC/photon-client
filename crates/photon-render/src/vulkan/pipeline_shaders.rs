@@ -1,0 +1,163 @@
+//! Which shaders each pipeline kind is built from.
+
+use super::buffer::PipelineKind;
+use super::shaders::*;
+
+/// The vertex and fragment shader of each pipeline kind; a kind not listed is drawn with the
+/// held items' pair.
+const SHADERS: &[(PipelineKind, &Shader, &Shader)] = &[
+    (
+        PipelineKind::SkyTranslucent,
+        &SKY_VERTEX_SHADER,
+        &SKY_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::SkyOverlay,
+        &SKY_VERTEX_SHADER,
+        &SKY_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Clouds,
+        &CLOUD_VERTEX_SHADER,
+        &CLOUD_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Weather,
+        &VERTEX_SHADER,
+        &WEATHER_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Dissolve,
+        &ENTITY_VERTEX_SHADER,
+        &DISSOLVE_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Rays,
+        &RAYS_VERTEX_SHADER,
+        &RAYS_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Portal,
+        &PORTAL_VERTEX_SHADER,
+        &PORTAL_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::WorldBorder,
+        &WORLD_BORDER_VERTEX_SHADER,
+        &WORLD_BORDER_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Entity,
+        &ENTITY_VERTEX_SHADER,
+        &ENTITY_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::EntityInstanced,
+        &ENTITY_INSTANCED_VERTEX_SHADER,
+        &ENTITY_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::EntityMask,
+        &ENTITY_VERTEX_SHADER,
+        &ENTITY_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::EntityOutline,
+        &ENTITY_VERTEX_SHADER,
+        &ENTITY_OUTLINE_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Swirl,
+        &SWIRL_VERTEX_SHADER,
+        &SWIRL_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::GuiGlint,
+        &GUI_GLINT_VERTEX_SHADER,
+        &GUI_GLINT_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Glint,
+        &GLINT_VERTEX_SHADER,
+        &GLINT_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Shadow,
+        &SHADOW_VERTEX_SHADER,
+        &SHADOW_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Text,
+        &TEXT_VERTEX_SHADER,
+        &TEXT_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::TextTranslucent,
+        &TEXT_VERTEX_SHADER,
+        &TEXT_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::TextSeeThrough,
+        &TEXT_SEE_THROUGH_VERTEX_SHADER,
+        &TEXT_SEE_THROUGH_FRAGMENT_SHADER,
+    ),
+    (PipelineKind::Gui, &GUI_VERTEX_SHADER, &GUI_FRAGMENT_SHADER),
+    (
+        PipelineKind::GuiInvert,
+        &GUI_VERTEX_SHADER,
+        &GUI_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::GuiHighlight,
+        &GUI_VERTEX_SHADER,
+        &GUI_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::GuiVignette,
+        &GUI_VERTEX_SHADER,
+        &GUI_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::GuiLogo,
+        &GUI_VERTEX_SHADER,
+        &GUI_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::GuiItem,
+        &GUI_ITEM_VERTEX_SHADER,
+        &GUI_ITEM_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Lines,
+        &LINE_VERTEX_SHADER,
+        &LINE_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::LinesBacking,
+        &LINE_VERTEX_SHADER,
+        &LINE_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Crumbling,
+        &VERTEX_SHADER,
+        &CRUMBLING_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Terrain,
+        &SECTION_VERTEX_SHADER,
+        &FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::Translucent,
+        &SECTION_VERTEX_SHADER,
+        &FRAGMENT_SHADER,
+    ),
+];
+
+/// The vertex and fragment shader a pipeline is built from.
+pub(super) fn shader_pair(kind: PipelineKind) -> (&'static Shader, &'static Shader) {
+    SHADERS.iter().find(|(listed, ..)| *listed == kind).map_or(
+        (&HELD_VERTEX_SHADER, &FRAGMENT_SHADER),
+        |&(_, vertex, fragment)| (vertex, fragment),
+    )
+}
