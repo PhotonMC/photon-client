@@ -24,11 +24,6 @@ impl FullscreenModes {
         IntRange::new(-1, self.modes.as_ref().map_or(-1, |m| m.len() as i32 - 1))
     }
 
-    /// A step that leaves the list stays where it was.
-    fn stepped(&self, index: i32, current: &ModeChoice) -> i32 {
-        self.range().validate_value(index).unwrap_or(current.index)
-    }
-
     fn choice(&self, index: i32) -> ModeChoice {
         ModeChoice {
             index,
@@ -78,11 +73,11 @@ impl SliderValues for FullscreenModes {
     }
 
     fn next(&self, current: &ModeChoice) -> Option<ModeChoice> {
-        Some(self.choice(self.stepped(self.range().next(current.index), current)))
+        Some(self.choice(self.range().next(current.index)))
     }
 
     fn previous(&self, current: &ModeChoice) -> Option<ModeChoice> {
-        Some(self.choice(self.stepped(self.range().previous(current.index), current)))
+        Some(self.choice(self.range().previous(current.index)))
     }
 }
 
@@ -143,21 +138,26 @@ mod tests {
     #[test]
     fn the_slider_walks_current_then_each_mode() {
         let set = modes();
+        // The slider keeps its handle on the bar, as `OptionSlider` does after a step.
+        let step = |at: &ModeChoice| {
+            let position = set
+                .position_of(&set.next(at).expect("steps"))
+                .clamp(0.0, 1.0);
+            set.value_at(position)
+        };
         let mut at = set.choice(-1);
         let mut seen = Vec::new();
-        for _ in 0..6 {
-            let next = set.next(&at).expect("steps");
-            if next == at {
-                break;
-            }
-            seen.push(next.preferred());
-            at = next;
+        for _ in 0..5 {
+            at = step(&at);
+            seen.push(at.preferred());
         }
         assert_eq!(
             seen,
             [
                 Some(Some(mode(2560, 1440))),
                 Some(Some(mode(1920, 1080))),
+                Some(Some(mode(1280, 720))),
+                Some(Some(mode(1280, 720))),
                 Some(Some(mode(1280, 720))),
             ]
         );
