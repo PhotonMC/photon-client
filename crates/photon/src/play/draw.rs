@@ -52,6 +52,7 @@ impl Play {
         FrameView {
             render_distance: frame.render_distance,
             partial: frame.partial,
+            real_partial: frame.real_partial,
             light: self.player_light(frame),
             ambient_occlusion: options.ambient_occlusion,
             origin: self.origin,
@@ -97,7 +98,7 @@ impl Play {
             && !spectating
             && !self.local_invisible()
             && self.session.camera_entity().is_none())
-        .then(|| player.interpolated_position(frame.partial));
+        .then(|| player.interpolated_position(frame.real_partial));
         let held = self.draw_entities(view, first_person, hook_sprites)?;
         self.set_billboards(frame, (spectating, local), view)?;
         let tints = (&*self.block_renderer, &*self.biome_tints);
@@ -239,7 +240,11 @@ impl Play {
                 .elder_guardian_vertices(&self.entity_textures, (view.partial as f32, &view)),
         );
         if !first_person {
-            let own = self.own_model(view, &mut held, invisible)?;
+            let player_view = overlays::FrameView {
+                partial: view.real_partial,
+                ..view
+            };
+            let own = self.own_model(player_view, &mut held, invisible)?;
             self.entity_vertices.extend(own);
         }
         self.upload_skins(&mut held)?;

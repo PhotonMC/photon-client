@@ -28,6 +28,9 @@ use crate::hud_input::attack_speed;
 #[derive(Clone, Copy)]
 pub struct FrameView {
     pub partial: f64,
+    /// The partial tick of the running clock: the one a frozen level still draws a player at
+    /// (`LevelExtractor` reads the world's partial only for the entities that are frozen).
+    pub real_partial: f64,
     /// `Options.getEffectiveRenderDistance`, in chunks.
     pub render_distance: i32,
     pub light: i32,

@@ -185,6 +185,7 @@ impl Play {
         FrameCamera {
             locator,
             partial: self.world_partial(partial),
+            real_partial: partial,
             eye,
             camera,
             relative,

@@ -217,7 +217,10 @@ enum Flow {
 
 /// Where a frame is seen from.
 struct FrameCamera {
+    /// The partial tick the world is drawn at (held at one while the level is frozen).
     partial: f64,
+    /// The running partial tick, for what a frozen level still moves (the local player).
+    real_partial: f64,
     /// The player's eyes.
     eye: Vec3,
     /// The camera, which backs away from the eyes when detached.
