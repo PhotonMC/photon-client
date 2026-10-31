@@ -426,38 +426,7 @@ impl LocalPlayer {
 
         self.fly_vertically();
 
-        // `jumpableVehicle`: holding the jump key charges a jump of the mount (a saddled horse),
-        // which letting go of it makes, and tells the server of.
-        if self.riding.is_some_and(|riding| riding.can_jump) {
-            if self.jump_riding_ticks < 0 {
-                self.jump_riding_ticks += 1;
-                if self.jump_riding_ticks == 0 {
-                    self.jump_riding_scale = 0.0;
-                }
-            }
-            if was_jumping && !self.input.key_presses.jump {
-                self.jump_riding_ticks = -10;
-                let charge = floor_f64(f64::from(self.jump_riding_scale * 100.0));
-                self.ride_jump = Some(charge);
-                self.sent.push(ServerboundMovement::PlayerCommand {
-                    entity_id: self.entity_id,
-                    action: PlayerCommandAction::StartRidingJump,
-                    data: charge,
-                });
-            } else if !was_jumping && self.input.key_presses.jump {
-                self.jump_riding_ticks = 0;
-                self.jump_riding_scale = 0.0;
-            } else if was_jumping {
-                self.jump_riding_ticks += 1;
-                if self.jump_riding_ticks < 10 {
-                    self.jump_riding_scale = self.jump_riding_ticks as f32 * 0.1;
-                } else {
-                    self.jump_riding_scale = 0.8 + 2.0 / (self.jump_riding_ticks - 9) as f32 * 0.1;
-                }
-            }
-        } else {
-            self.jump_riding_scale = 0.0;
-        }
+        self.charge_riding_jump(was_jumping);
 
         // AbstractClientPlayer.aiStep: the bob eases towards the ground speed.
         let target_bob = if self.on_ground && !self.is_swimming() {

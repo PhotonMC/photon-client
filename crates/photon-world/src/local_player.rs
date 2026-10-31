@@ -115,7 +115,9 @@ pub struct LocalPlayer {
     /// `LocalPlayer.jumpRidingTicks` and `jumpRidingScale`: how long the jump key has charged a
     /// mount's jump, and how hard that is; the jump let go of this tick, for the mount.
     pub(super) jump_riding_ticks: i32,
-    pub(super) jump_riding_scale: f32,
+    /// `jumpRidingScale`, and whether the last tick sat on a mount that jumps (`jumpableVehicle`),
+    /// which the tick's riding state does not outlive.
+    pub(super) jump_riding: (f32, bool),
     pub(super) ride_jump: Option<i32>,
     /// The first-person hand's lagging view: it chases the rotation by
     /// half the gap each tick.

@@ -74,9 +74,45 @@ impl LocalPlayer {
     /// `LocalPlayer.jumpableVehicle` and `getJumpRidingScale`: how far the jump of the mount that
     /// can jump is charged, if the player rides one.
     pub fn jumpable_vehicle_scale(&self) -> Option<f32> {
-        self.riding
-            .is_some_and(|riding| riding.can_jump)
-            .then_some(self.jump_riding_scale)
+        self.jump_riding.1.then_some(self.jump_riding.0)
+    }
+
+    /// `LocalPlayer.aiStep`'s jump of a mount that jumps.
+    pub(super) fn charge_riding_jump(&mut self, was_jumping: bool) {
+        // `jumpableVehicle`: holding the jump key charges a jump of the mount (a saddled horse),
+        // which letting go of it makes, and tells the server of.
+        let jumpable = self.riding.is_some_and(|riding| riding.can_jump);
+        self.jump_riding.1 = jumpable;
+        if jumpable {
+            if self.jump_riding_ticks < 0 {
+                self.jump_riding_ticks += 1;
+                if self.jump_riding_ticks == 0 {
+                    self.jump_riding.0 = 0.0;
+                }
+            }
+            if was_jumping && !self.input.key_presses.jump {
+                self.jump_riding_ticks = -10;
+                let charge = floor_f64(f64::from(self.jump_riding.0 * 100.0));
+                self.ride_jump = Some(charge);
+                self.sent.push(ServerboundMovement::PlayerCommand {
+                    entity_id: self.entity_id,
+                    action: PlayerCommandAction::StartRidingJump,
+                    data: charge,
+                });
+            } else if !was_jumping && self.input.key_presses.jump {
+                self.jump_riding_ticks = 0;
+                self.jump_riding.0 = 0.0;
+            } else if was_jumping {
+                self.jump_riding_ticks += 1;
+                if self.jump_riding_ticks < 10 {
+                    self.jump_riding.0 = self.jump_riding_ticks as f32 * 0.1;
+                } else {
+                    self.jump_riding.0 = 0.8 + 2.0 / (self.jump_riding_ticks - 9) as f32 * 0.1;
+                }
+            }
+        } else {
+            self.jump_riding.0 = 0.0;
+        }
     }
 
     pub fn pose(&self) -> ClientEntityPose {

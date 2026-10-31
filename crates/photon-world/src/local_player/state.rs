@@ -90,7 +90,7 @@ impl LocalPlayer {
             walk: crate::living::WalkAnimation::default(),
             riding: None,
             jump_riding_ticks: 0,
-            jump_riding_scale: 0.0,
+            jump_riding: (0.0, false),
             ride_jump: None,
             x_bob: 0.0,
             y_bob: 0.0,
