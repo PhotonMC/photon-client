@@ -3,7 +3,7 @@
 mod server;
 
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use zip::write::SimpleFileOptions;
 
@@ -127,10 +127,28 @@ impl Fixture {
     }
 }
 
-fn scratch(name: &str) -> PathBuf {
+/// A cache in the temp directory that is removed again when the test ends, so runs do not pile
+/// up copies of the extracted game in a RAM-backed `/tmp`.
+struct Scratch(Cache);
+
+impl std::ops::Deref for Scratch {
+    type Target = Cache;
+
+    fn deref(&self) -> &Cache {
+        &self.0
+    }
+}
+
+impl Drop for Scratch {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(self.0.root());
+    }
+}
+
+fn scratch(name: &str) -> Scratch {
     let dir = std::env::temp_dir().join(format!("photon-content-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
-    dir
+    Scratch(Cache::at(dir))
 }
 
 fn run(stand: &Stand, fixture: &Fixture, cache: &Cache) -> Result<Installed, ContentError> {
@@ -167,7 +185,7 @@ fn files_under(root: &Path) -> Vec<(String, u64)> {
 fn the_pipeline_fills_the_cache_and_a_second_run_fetches_nothing() {
     let (stand, fixture) = (Stand::start(), Fixture::new());
     fixture.serve(&stand, None);
-    let cache = Cache::at(scratch("full"));
+    let cache = scratch("full");
     let first = run(&stand, &fixture, &cache).unwrap();
     assert_eq!(
         first.downloaded,
@@ -215,7 +233,7 @@ fn an_object_that_is_not_the_promised_one_is_never_kept() {
         &format!("/resources/{}/{}", &victim.as_str()[..2], victim.as_str()),
         b"evil".to_vec(),
     );
-    let cache = Cache::at(scratch("mismatch"));
+    let cache = scratch("mismatch");
     let error = run(&stand, &fixture, &cache).unwrap_err();
     assert!(matches!(error, ContentError::Mismatch(_)), "{error}");
     assert!(!cache.object(&victim).exists());
@@ -235,7 +253,7 @@ fn a_short_body_is_a_mismatch() {
         &format!("/resources/{}/{}", &victim.as_str()[..2], victim.as_str()),
         b"tw".to_vec(),
     );
-    let error = run(&stand, &fixture, &Cache::at(scratch("short"))).unwrap_err();
+    let error = run(&stand, &fixture, &scratch("short")).unwrap_err();
     assert!(matches!(error, ContentError::Mismatch(_)), "{error}");
 }
 
@@ -249,7 +267,7 @@ fn metadata_cannot_send_the_download_to_another_host() {
         jar = jar.as_str()
     );
     fixture.serve(&stand, Some(version));
-    let error = run(&stand, &fixture, &Cache::at(scratch("foreign"))).unwrap_err();
+    let error = run(&stand, &fixture, &scratch("foreign")).unwrap_err();
     assert!(matches!(error, ContentError::ForeignHost(_)), "{error}");
     assert!(stand.asked().iter().all(|path| !path.contains("evil")));
 }
@@ -273,7 +291,7 @@ fn an_index_with_a_path_for_a_hash_is_refused_before_any_object_is_fetched() {
         &format!("/meta/v1/packages/{}/32.json", idx.as_str()),
         index.as_bytes().to_vec(),
     );
-    let error = run(&stand, &fixture, &Cache::at(scratch("badhash"))).unwrap_err();
+    let error = run(&stand, &fixture, &scratch("badhash")).unwrap_err();
     assert!(matches!(error, ContentError::BadHash(_)), "{error}");
     assert!(
         stand
@@ -291,7 +309,7 @@ fn a_jar_that_is_not_the_pinned_one_stops_the_download() {
         id: "26.2",
         client_sha1: "0000000000000000000000000000000000000000",
     };
-    let cache = Cache::at(scratch("otherjar"));
+    let cache = scratch("otherjar");
     let error = install_with(
         &Endpoints::stand_in(&stand.base),
         other,
@@ -306,7 +324,7 @@ fn a_jar_that_is_not_the_pinned_one_stops_the_download() {
 fn an_interrupted_extraction_is_redone_and_a_member_outside_the_folder_is_refused() {
     let (stand, fixture) = (Stand::start(), Fixture::new());
     fixture.serve(&stand, None);
-    let cache = Cache::at(scratch("extract"));
+    let cache = scratch("extract");
     let tree = cache.jar_tree(&Sha1Hex::of_bytes(&fixture.jar));
     let mut leftover = tree.as_os_str().to_owned();
     leftover.push(".tmp");
@@ -322,7 +340,7 @@ fn an_interrupted_extraction_is_redone_and_a_member_outside_the_folder_is_refuse
     };
     let stand = Stand::start();
     slip.serve(&stand, None);
-    let cache = Cache::at(scratch("slip"));
+    let cache = scratch("slip");
     let error = run(&stand, &slip, &cache).unwrap_err();
     assert!(matches!(error, ContentError::UnsafePath(_)), "{error}");
     assert!(!cache.jar_tree(&Sha1Hex::of_bytes(&slip.jar)).exists());
@@ -349,7 +367,7 @@ fn the_real_jar_extracts_to_the_development_tree() {
     };
     let stand = Stand::start();
     fixture.serve(&stand, None);
-    let cache = Cache::at(scratch("real"));
+    let cache = scratch("real");
     let done = run(&stand, &fixture, &cache).unwrap();
     let extracted = files_under(done.jar_assets.parent().unwrap());
     assert!(extracted.len() > 1000, "{} files", extracted.len());
@@ -364,7 +382,7 @@ fn the_real_jar_extracts_to_the_development_tree() {
 fn a_republished_index_of_the_same_size_replaces_the_cached_one() {
     let (stand, fixture) = (Stand::start(), Fixture::new());
     fixture.serve(&stand, None);
-    let cache = Cache::at(scratch("republish"));
+    let cache = scratch("republish");
     let index = fixture.index_json();
     let stale = index.replace("minecraft/sounds/a.ogg", "minecraft/sounds/z.ogg");
     assert_eq!(stale.len(), index.len());
@@ -384,7 +402,7 @@ fn a_republished_index_of_the_same_size_replaces_the_cached_one() {
 fn an_installed_cache_is_found_again_and_a_half_made_one_is_not() {
     let (stand, fixture) = (Stand::start(), Fixture::new());
     fixture.serve(&stand, None);
-    let cache = Cache::at(scratch("found"));
+    let cache = scratch("found");
     assert!(
         installed_for(fixture.pin(), &cache).is_none(),
         "nothing yet"
