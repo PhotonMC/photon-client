@@ -162,10 +162,16 @@ impl MobModel {
         out
     }
 
-    /// A number that is the same for two poses of this model that draw the same faces in the same
-    /// places: the key of the model-space mesh two entities share.
-    pub fn pose_key(&self, hasher: &mut impl std::hash::Hasher) {
-        self.root.hash_pose(hasher);
+    /// The faces of each part in its own space, by the part's number.
+    pub fn part_quads(&self) -> Vec<Vec<[ModelVertex; 4]>> {
+        let mut out = Vec::new();
+        self.root.part_quads(&mut out);
+        out
+    }
+
+    /// Hand each part that draws cubes, with its number and the pose its cubes are in, to `emit`.
+    pub fn each_part_pose(&self, pose: &Pose, emit: &mut impl FnMut(usize, &Pose)) {
+        self.root.each_part_pose(pose, &mut 0, emit);
     }
 
     /// The faces of `render`, handed one by one to `emit`, in the order of `quads`.
@@ -222,6 +228,53 @@ mod tests {
             assert_eq!(built.len(), expected.len(), "{name}");
             for (got, want) in built.iter().zip(&expected) {
                 assert_eq!(format!("{got:?}"), format!("{want:?}"), "{name}");
+            }
+        }
+    }
+
+    #[test]
+    fn parts_placed_by_their_instances_are_where_the_cpu_path_puts_them() {
+        for name in [
+            "minecraft:pig#main",
+            "minecraft:creeper#main",
+            "minecraft:villager#main",
+        ] {
+            let mut model = MobModel::bake(layer(name).expect("a layer"));
+            model.root.child_at_mut(0).y_rot += 0.3;
+            model.root.child_at_mut(0).x_rot -= 0.2;
+            let placement = MobPlacement {
+                feet: [3.5, 64.0, -2.25],
+                body_rot: 37.0,
+                light: 0x00F0_00F0,
+                red_overlay: true,
+                ..MobPlacement::default()
+            };
+            let rect = [0.25, 0.5, 0.75, 1.0];
+            let built = mob_vertices_coloured(&model, &placement, rect, None);
+            let meshes = mob_part_meshes(&model, rect);
+            let mut parts = Vec::new();
+            assert!(mob_part_instances(&model, &placement, &mut parts), "{name}");
+            let placed: Vec<Vertex> = parts
+                .iter()
+                .flat_map(|(number, instance)| meshes[*number].iter().map(|v| instance.place(v)))
+                .collect();
+            assert!(!built.is_empty(), "{name}");
+            assert_eq!(placed.len(), built.len(), "{name}");
+            for (got, want) in placed.iter().zip(&built) {
+                for axis in 0..3 {
+                    // A sixteenth of a model pixel, which is 1/16 block.
+                    assert!(
+                        (got.position[axis] - want.position[axis]).abs() <= 1.0 / 4096.0,
+                        "{name}"
+                    );
+                    assert!((got.tint[axis] - want.tint[axis]).abs() <= 1e-5, "{name}");
+                }
+                assert_eq!(
+                    (got.uv, got.shade, got.light),
+                    (want.uv, want.shade, want.light),
+                    "{name}"
+                );
+                assert_eq!(got.tint[3], want.tint[3], "{name}");
             }
         }
     }

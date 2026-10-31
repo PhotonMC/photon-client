@@ -84,11 +84,19 @@ pub struct InstancedFrame {
 /// How many meshes the cache keeps before it starts again.
 const MESHES_KEPT: usize = 4096;
 
-/// The meshes built so far, by the key of the pose they were built from, and the entities placed
-/// this frame.
+/// The key of a part's mesh among a model's.
+fn part_key(base: u64, part: usize) -> u64 {
+    base.wrapping_mul(0x9E37_79B9_7F4A_7C15)
+        .wrapping_add(part as u64)
+}
+
+/// The meshes built so far, a model's parts each in its own space, and the parts placed this
+/// frame.
 #[derive(Default)]
 pub struct Batcher {
     meshes: HashMap<u64, Vec<Vertex>>,
+    /// The models (by their key) whose parts are in `meshes`.
+    known: std::collections::HashSet<u64>,
     /// The key each slot of this frame's list stands for, in the order of first use.
     slots: Vec<u64>,
     slot_of: HashMap<u64, usize>,
@@ -99,31 +107,37 @@ impl Batcher {
     /// Forget the meshes (the models or textures they were built from changed).
     pub fn clear(&mut self) {
         self.meshes.clear();
+        self.known.clear();
         self.begin_frame();
     }
 
     /// Start a frame: nothing is placed yet.
     pub fn begin_frame(&mut self) {
+        if self.meshes.len() > MESHES_KEPT {
+            self.meshes.clear();
+            self.known.clear();
+        }
         self.slots.clear();
         self.slot_of.clear();
         self.placed.clear();
     }
 
-    /// Whether the cache has the mesh of `key`.
-    pub fn has(&self, key: u64) -> bool {
-        self.meshes.contains_key(&key)
+    /// Whether the parts of the model with this key are in the cache.
+    pub fn has(&self, model: u64) -> bool {
+        self.known.contains(&model)
     }
 
-    /// Place an entity whose posed parts hash to `key`; `build` makes the model-space mesh when
-    /// the cache lacks it.
-    pub fn add(&mut self, key: u64, instance: Instance, build: impl FnOnce() -> Vec<Vertex>) {
-        if self.meshes.len() >= MESHES_KEPT && !self.meshes.contains_key(&key) {
-            // Every mesh this frame uses is in the list below by its key; forgetting the rest
-            // costs a rebuild when one comes back.
-            let used: std::collections::HashSet<u64> = self.slots.iter().copied().collect();
-            self.meshes.retain(|key, _| used.contains(key));
+    /// Keep the meshes of a model's parts, by the part's number.
+    pub fn insert(&mut self, model: u64, parts: Vec<Vec<Vertex>>) {
+        self.known.insert(model);
+        for (number, mesh) in parts.into_iter().enumerate() {
+            self.meshes.insert(part_key(model, number), mesh);
         }
-        self.meshes.entry(key).or_insert_with(build);
+    }
+
+    /// Place a part of a model whose meshes are in the cache.
+    pub fn add(&mut self, model: u64, part: usize, instance: Instance) {
+        let key = part_key(model, part);
         let slots = &mut self.slots;
         let slot = *self.slot_of.entry(key).or_insert_with(|| {
             slots.push(key);
@@ -225,16 +239,19 @@ mod tests {
 
     #[test]
     fn instances_are_sorted_by_mesh_and_a_mesh_used_once_is_placed_on_the_cpu() {
-        let mesh = |x: f32| move || vec![vertex([x, 0.0, 0.0], [0.0, 1.0, 0.0])];
+        let mesh = |x: f32| vec![vertex([x, 0.0, 0.0], [0.0, 1.0, 0.0])];
         let at = |x: f32| {
             let mut pose = Pose::default();
             pose.translate(x, 0.0, 0.0);
             Instance::new(&pose, (0.0, 0.0), [0.0; 2]).expect("unit normals")
         };
         let mut batcher = Batcher::default();
-        batcher.add(1, at(10.0), mesh(1.0));
-        batcher.add(2, at(20.0), mesh(2.0));
-        batcher.add(1, at(30.0), mesh(1.0));
+        assert!(!batcher.has(1));
+        batcher.insert(1, vec![mesh(1.0), mesh(2.0)]);
+        assert!(batcher.has(1));
+        batcher.add(1, 0, at(10.0));
+        batcher.add(1, 1, at(20.0));
+        batcher.add(1, 0, at(30.0));
         let mut alone = Vec::new();
         let frame = batcher.finish(&mut alone);
         assert_eq!(frame.batches.len(), 1);
@@ -247,5 +264,6 @@ mod tests {
         // The next frame starts empty but keeps the meshes.
         let again = batcher.finish(&mut alone);
         assert!(again.batches.is_empty());
+        assert!(batcher.has(1));
     }
 }

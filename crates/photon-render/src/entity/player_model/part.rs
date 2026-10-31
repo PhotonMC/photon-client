@@ -150,19 +150,55 @@ impl Part {
         }
     }
 
-    /// Feed everything that decides how the part and its children are drawn (the pose each was
-    /// given, not the cubes, which the model fixes) to `hasher`.
-    pub fn hash_pose(&self, hasher: &mut impl std::hash::Hasher) {
-        use std::hash::Hash;
-        for value in [self.x, self.y, self.z, self.x_rot, self.y_rot, self.z_rot] {
-            value.to_bits().hash(hasher);
+    /// How many parts this one and its descendants make.
+    fn part_count(&self) -> usize {
+        1 + self.children.iter().map(Self::part_count).sum::<usize>()
+    }
+
+    /// The faces of this part's own cubes, in the part's own space (no pose), and then those of
+    /// each descendant in the order of `each_part_pose`'s numbering.
+    pub fn part_quads(&self, out: &mut Vec<Vec<[ModelVertex; 4]>>) {
+        let mut quads = Vec::new();
+        for cube in &self.cubes {
+            for polygon in &cube.polygons {
+                let corner = |index: usize| {
+                    let (position, uv) = polygon.corners[index];
+                    ModelVertex {
+                        position: [position[0] / 16.0, position[1] / 16.0, position[2] / 16.0],
+                        uv,
+                        normal: polygon.normal,
+                    }
+                };
+                quads.push([corner(0), corner(1), corner(2), corner(3)]);
+            }
         }
-        for value in self.scale {
-            value.to_bits().hash(hasher);
-        }
-        (self.visible, self.skip_draw).hash(hasher);
+        out.push(quads);
         for child in &self.children {
-            child.hash_pose(hasher);
+            child.part_quads(out);
+        }
+    }
+
+    /// Hand each part that draws cubes, with its number (the order parts are visited in, drawn or
+    /// not) and the pose its cubes are in, to `emit`: the parts `each_quad` draws.
+    pub fn each_part_pose(
+        &self,
+        pose: &Pose,
+        number: &mut usize,
+        emit: &mut impl FnMut(usize, &Pose),
+    ) {
+        let mine = *number;
+        *number += 1;
+        if !self.visible || (self.cubes.is_empty() && self.children.is_empty()) {
+            *number += self.part_count() - 1;
+            return;
+        }
+        let mut pose = *pose;
+        self.translate_and_rotate(&mut pose);
+        if !self.cubes.is_empty() && !self.skip_draw {
+            emit(mine, &pose);
+        }
+        for child in &self.children {
+            child.each_part_pose(&pose, number, emit);
         }
     }
 

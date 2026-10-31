@@ -273,6 +273,8 @@ pub struct MobModels {
     /// The mobs that share a mesh this frame (ADR 0016), and what the frame hands the renderer.
     pub(crate) instancer: photon_render::entity::instancing::Batcher,
     pub(crate) instanced: photon_render::entity::instancing::InstancedFrame,
+    /// The parts of the mob being placed.
+    parts: Vec<(usize, photon_render::entity::instancing::Instance)>,
     /// The boats' water patches this frame, which only write the depth.
     pub(crate) water_masks: Vec<Vertex>,
     /// What the energy swirls drew this frame (a charged creeper's).
@@ -320,6 +322,7 @@ impl MobModels {
             glow: Vec::new(),
             instancer: Default::default(),
             instanced: Default::default(),
+            parts: Vec::new(),
             water_masks: Vec::new(),
             swirl: Vec::new(),
             dissolve: Vec::new(),
@@ -346,20 +349,29 @@ impl MobModels {
 }
 
 impl MobModels {
-    /// Place the body of a visible, unglowing mob as an instance of a mesh shared with the mobs
-    /// in the same pose (ADR 0016); false when its pose does not allow it and the caller draws it.
+    /// Place the parts of a visible, unglowing mob as instances of the meshes the mobs of its
+    /// model share (ADR 0016); false when its pose does not allow it and the caller draws it.
     pub(crate) fn instance_body(
         &mut self,
         layer: &str,
         (placement, rect): (&MobPlacement, photon_render::entity::textures::TextureRect),
     ) -> bool {
-        use photon_render::entity::mob_model::{mob_instance, mob_mesh, mob_mesh_key};
-        let (Some(instance), Some(model)) = (mob_instance(placement), self.models.get(layer))
-        else {
+        use photon_render::entity::mob_model::{
+            mob_meshes_key, mob_part_instances, mob_part_meshes,
+        };
+        let Some(model) = self.models.get(layer) else {
             return false;
         };
-        let key = mob_mesh_key(model, layer, rect);
-        self.instancer.add(key, instance, || mob_mesh(model, rect));
+        if !mob_part_instances(model, placement, &mut self.parts) {
+            return false;
+        }
+        let key = mob_meshes_key(layer, rect);
+        if !self.instancer.has(key) {
+            self.instancer.insert(key, mob_part_meshes(model, rect));
+        }
+        for &(number, instance) in &self.parts {
+            self.instancer.add(key, number, instance);
+        }
         true
     }
 }

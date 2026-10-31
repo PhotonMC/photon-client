@@ -147,48 +147,67 @@ pub fn mob_vertices_coloured(
     vertices
 }
 
-/// The instance that places [`mob_mesh`] as [`mob_vertices_coloured`] places the model, or none
-/// when the placement's pose does not keep normals unit length (the CPU path draws it).
-pub fn mob_instance(placement: &MobPlacement) -> Option<crate::entity::instancing::Instance> {
-    crate::entity::instancing::Instance::new(
+/// The instances that place the parts of a model, as [`mob_vertices_coloured`] places them: one
+/// for each part that draws cubes, with its number. False, with `out` emptied, when a pose does
+/// not keep normals unit length (the CPU path draws such a mob).
+pub fn mob_part_instances(
+    model: &MobModel,
+    placement: &MobPlacement,
+    out: &mut Vec<(usize, crate::entity::instancing::Instance)>,
+) -> bool {
+    use crate::entity::instancing::Instance;
+    out.clear();
+    let shade = (
+        overlay_code(placement.red_overlay, placement.white_overlay),
+        0.0,
+    );
+    let light = crate::block::light::light_uv(placement.light);
+    let mut whole = true;
+    model.each_part_pose(
         &placement_pose(placement),
-        (
-            overlay_code(placement.red_overlay, placement.white_overlay),
-            0.0,
-        ),
-        crate::block::light::light_uv(placement.light),
-    )
+        &mut |number, pose| match Instance::new(pose, shade, light) {
+            Some(instance) => out.push((number, instance)),
+            None => whole = false,
+        },
+    );
+    if !whole {
+        out.clear();
+    }
+    whole
 }
 
-/// The model's faces as posed now, in model space (the root pose is the identity), for the
-/// instances that share them: shade, colour and light are the instances' own.
-pub fn mob_mesh(model: &MobModel, texture: TextureRect) -> Vec<Vertex> {
-    let mut vertices = Vec::with_capacity(QUADS_TO_EXPECT * 6);
-    model.each_quad(&Pose::default(), &mut |corners| {
-        for index in [0, 1, 2, 0, 2, 3] {
-            let corner = corners[index];
-            vertices.push(Vertex {
-                position: corner.position,
-                uv: uv(texture, corner.uv),
-                shade: 0.0,
-                tint: [corner.normal[0], corner.normal[1], corner.normal[2], 0.0],
-                light: [0.0; 2],
-            });
-        }
-    });
-    vertices
+/// The meshes of a model's parts, each in the part's own space, by the part's number.
+pub fn mob_part_meshes(model: &MobModel, texture: TextureRect) -> Vec<Vec<Vertex>> {
+    model
+        .part_quads()
+        .iter()
+        .map(|quads| {
+            let mut vertices = Vec::with_capacity(quads.len() * 6);
+            for corners in quads {
+                for index in [0, 1, 2, 0, 2, 3] {
+                    let corner = corners[index];
+                    vertices.push(Vertex {
+                        position: corner.position,
+                        uv: uv(texture, corner.uv),
+                        shade: 0.0,
+                        tint: [corner.normal[0], corner.normal[1], corner.normal[2], 0.0],
+                        light: [0.0; 2],
+                    });
+                }
+            }
+            vertices
+        })
+        .collect()
 }
 
-/// The key of the mesh [`mob_mesh`] makes: the model by its layer's name, its parts' poses and
-/// the texture.
-pub fn mob_mesh_key(model: &MobModel, layer: &str, texture: TextureRect) -> u64 {
+/// The key of a model's part meshes: the model by its layer's name, and the texture.
+pub fn mob_meshes_key(layer: &str, texture: TextureRect) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     layer.hash(&mut hasher);
     for value in texture {
         value.to_bits().hash(&mut hasher);
     }
-    model.pose_key(&mut hasher);
     hasher.finish()
 }
 
