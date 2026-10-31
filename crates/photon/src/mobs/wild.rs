@@ -278,11 +278,11 @@ pub fn remote_mobs(
     (view, held): (FrameView, &mut Vec<HeldItem>),
     vertices: &mut Vec<Vertex>,
 ) {
-    let world = session.world();
-    let partial = view.partial as f32;
+    let (world, partial) = (session.world(), view.partial as f32);
     models.clear_layers();
-    for entity in world.drawn_mobs() {
-        let Some(kind) = models.kinds.get(&entity.type_id).copied() else {
+    let kinds = std::sync::Arc::clone(&models.kinds);
+    for entity in world.drawn_mobs_where(|candidate| kinds.contains_key(&candidate)) {
+        let Some(kind) = kinds.get(&entity.type_id).copied() else {
             continue;
         };
         // The variant the server named by its place in the registry, or the

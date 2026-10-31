@@ -127,7 +127,7 @@ pub fn remote_monsters(
         .collect();
     let mut glow = Vec::new();
     let mut swirl = Vec::new();
-    for entity in world.drawn_mobs() {
+    for entity in world.drawn_mobs_where(|candidate| ids.iter().any(|(id, _)| *id == candidate)) {
         let Some(monster) = monster_drawn(&ids, entity, sees_ghost(world, view, entity)) else {
             continue;
         };

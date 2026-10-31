@@ -176,7 +176,7 @@ pub fn remote_wolves(
     };
     let world = session.world();
     let (partial, game_time) = (view.partial as f32, world.game_time());
-    for entity in world.drawn_mobs().filter(|entity| entity.type_id == wolf) {
+    for entity in world.drawn_mobs_where(|candidate| candidate == wolf) {
         let Some(variant) = variant_of(session, entity) else {
             continue;
         };

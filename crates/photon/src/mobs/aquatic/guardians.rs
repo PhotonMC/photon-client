@@ -133,11 +133,10 @@ pub fn remote_guardians(
     let partial = view.partial as f32;
     let guardian = photon_data::entity_type::id("minecraft:guardian");
     let elder = photon_data::entity_type::id("minecraft:elder_guardian");
-    for entity in world.drawn_mobs() {
+    for entity in
+        world.drawn_mobs_where(|candidate| Some(candidate) == elder || Some(candidate) == guardian)
+    {
         let is_elder = Some(entity.type_id) == elder;
-        if !is_elder && Some(entity.type_id) != guardian {
-            continue;
-        }
         let (layer, texture) = if is_elder {
             ("minecraft:elder_guardian#main", ELDER_TEXTURE)
         } else {

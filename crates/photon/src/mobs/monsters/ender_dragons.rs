@@ -85,7 +85,7 @@ pub fn remote_ender_dragons(
     let (mut glow, mut dissolving, mut rays) = (Vec::new(), Vec::new(), Vec::new());
     let mut beams = Vec::new();
     let mut mask_offset = None;
-    for entity in world.drawn_mobs().filter(|entity| entity.type_id == dragon) {
+    for entity in world.drawn_mobs_where(|candidate| candidate == dragon) {
         let (Some(snapshot), Some(rect), Some(eyes), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
             textures.rect(TEXTURE),

@@ -263,8 +263,9 @@ const DEFAULT_VARIANT: &str = "minecraft:temperate";
 
 /// The baked models of the mobs, which are posed anew for each one drawn.
 pub struct MobModels {
-    kinds: HashMap<EntityTypeId, &'static MobKind>,
-    humanoids: HashMap<EntityTypeId, &'static HumanoidKind>,
+    /// Shared, so a renderer can test types while it changes the models.
+    kinds: std::sync::Arc<HashMap<EntityTypeId, &'static MobKind>>,
+    humanoids: std::sync::Arc<HashMap<EntityTypeId, &'static HumanoidKind>>,
     models: HashMap<String, MobModel>,
     /// What the glowing layers drew this frame (eyes), for the frame to hand
     /// to the renderer after the mobs.
@@ -305,11 +306,13 @@ impl MobModels {
             kinds: KINDS
                 .iter()
                 .filter_map(|kind| Some((photon_data::entity_type::id(kind.type_name)?, kind)))
-                .collect(),
+                .collect::<HashMap<_, _>>()
+                .into(),
             humanoids: HUMANOIDS
                 .iter()
                 .filter_map(|kind| Some((photon_data::entity_type::id(kind.type_name)?, kind)))
-                .collect(),
+                .collect::<HashMap<_, _>>()
+                .into(),
             models: HashMap::new(),
             glow: Vec::new(),
             water_masks: Vec::new(),

@@ -32,10 +32,7 @@ pub fn remote_ravagers(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world
-        .drawn_mobs()
-        .filter(|entity| entity.type_id == ravager)
-    {
+    for entity in world.drawn_mobs_where(|candidate| candidate == ravager) {
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
             textures.rect(TEXTURE),

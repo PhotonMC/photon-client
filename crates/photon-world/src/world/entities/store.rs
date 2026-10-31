@@ -20,7 +20,9 @@ pub struct Entities {
     ids: BTreeMap<EntityId, Entity>,
     /// The entities of `ids` that are not in `out_of_view`, in id order: what every renderer of
     /// a frame walks, kept beside the map so each of them does not walk all the entities again.
-    visible: Vec<(EntityId, Entity)>,
+    /// The type id rides with each, so a renderer that wants some types skips the others before
+    /// it builds their views.
+    visible: Vec<(EntityId, Entity, EntityTypeId)>,
     /// The ids of the entities in each section, as `EntitySectionStorage` indexes them.
     pub(crate) sections: BTreeMap<(i32, i32, i32), Vec<EntityId>>,
     /// The ender dragons, which `Level.getEntities` lists the parts of after the entities.
@@ -99,6 +101,12 @@ impl Entities {
 
     pub fn get(&self, entity_id: &EntityId) -> Option<EntityView<'_>> {
         self.view(*self.ids.get(entity_id)?)
+    }
+
+    fn type_id_of(&self, entity: Entity) -> Option<EntityTypeId> {
+        self.ecs
+            .get::<ClientEntity>(entity)
+            .map(|client| client.type_id)
     }
 
     fn view(&self, entity: Entity) -> Option<EntityView<'_>> {
@@ -204,16 +212,24 @@ impl Entities {
         parts: EntityParts,
     ) -> Option<EntityParts> {
         if let Some(&existing) = self.ids.get(&entity_id) {
+            let type_id = parts.type_id;
             let view = Self::view_mut(&mut self.ecs, &mut self.write, existing)?;
             let replaced = view.replace_parts(parts);
+            if let Ok(at) = self
+                .visible
+                .binary_search_by_key(&entity_id, |&(id, _, _)| id)
+            {
+                self.visible[at].2 = type_id;
+            }
             self.note_dragon(entity_id, existing);
             return Some(replaced);
         }
+        let type_id = parts.type_id;
         let spawned = self.ecs.spawn(parts).id();
         self.ids.insert(entity_id, spawned);
         if !self.out_of_view.contains(&entity_id) {
-            let at = self.visible.partition_point(|&(id, _)| id < entity_id);
-            self.visible.insert(at, (entity_id, spawned));
+            let at = self.visible.partition_point(|&(id, _, _)| id < entity_id);
+            self.visible.insert(at, (entity_id, spawned, type_id));
         }
         self.refresh_queries();
         self.note_dragon(entity_id, spawned);
@@ -225,7 +241,10 @@ impl Entities {
         let entity = self.ids.remove(&entity_id)?;
         self.dragons.remove(&entity_id);
         self.players.remove(&entity_id);
-        if let Ok(at) = self.visible.binary_search_by_key(&entity_id, |&(id, _)| id) {
+        if let Ok(at) = self
+            .visible
+            .binary_search_by_key(&entity_id, |&(id, _, _)| id)
+        {
             self.visible.remove(at);
         }
         let mut taken = self.ecs.entity_mut(entity);
@@ -266,7 +285,19 @@ impl Entities {
     pub fn drawn_with_invisible(&self) -> impl Iterator<Item = EntityView<'_>> {
         self.visible
             .iter()
-            .filter_map(|&(_, entity)| self.view(entity))
+            .filter_map(|&(_, entity, _)| self.view(entity))
+    }
+
+    /// [`Self::drawn_with_invisible`] of the entities whose type id `accept` takes, in the same
+    /// order; the others are skipped before a view is built for them.
+    pub fn drawn_with_invisible_of(
+        &self,
+        accept: impl Fn(EntityTypeId) -> bool,
+    ) -> impl Iterator<Item = EntityView<'_>> {
+        self.visible
+            .iter()
+            .filter(move |&&(_, _, type_id)| accept(type_id))
+            .filter_map(|&(_, entity, _)| self.view(entity))
     }
 
     /// Set which invisible entities the local player sees as ghosts (`Entity.isInvisibleTo`).
@@ -290,7 +321,7 @@ impl Entities {
             .ids
             .iter()
             .filter(|(id, _)| !ids.contains(id))
-            .map(|(&id, &entity)| (id, entity))
+            .filter_map(|(&id, &entity)| Some((id, entity, self.type_id_of(entity)?)))
             .collect();
         self.out_of_view = ids;
     }

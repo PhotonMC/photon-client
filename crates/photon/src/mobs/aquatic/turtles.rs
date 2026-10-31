@@ -31,7 +31,7 @@ pub fn remote_turtles(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.drawn_mobs().filter(|entity| entity.type_id == turtle) {
+    for entity in world.drawn_mobs_where(|candidate| candidate == turtle) {
         let baby = entity.is_baby();
         let index = usize::from(baby);
         let (Some(snapshot), Some(rect), Some(model)) = (

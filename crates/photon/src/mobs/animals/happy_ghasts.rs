@@ -32,7 +32,7 @@ pub fn remote_happy_ghasts(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.drawn_mobs().filter(|entity| entity.type_id == ghast) {
+    for entity in world.drawn_mobs_where(|candidate| candidate == ghast) {
         let baby = entity.is_baby();
         let (layer, texture, harness) = if baby {
             (

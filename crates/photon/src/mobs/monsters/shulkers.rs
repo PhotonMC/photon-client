@@ -60,10 +60,7 @@ pub fn remote_shulkers(
     let Some(type_id) = photon_data::entity_type::id(SHULKER) else {
         return;
     };
-    for entity in world
-        .drawn_mobs()
-        .filter(|entity| entity.type_id == type_id)
-    {
+    for entity in world.drawn_mobs_where(|candidate| candidate == type_id) {
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
             textures.rect(texture_of(entity.shulker_color())),

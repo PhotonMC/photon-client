@@ -39,11 +39,10 @@ pub fn remote_frogs(
     let partial = view.partial as f32;
     let frog = photon_data::entity_type::id("minecraft:frog");
     let tadpole = photon_data::entity_type::id("minecraft:tadpole");
-    for entity in world.drawn_mobs() {
+    for entity in
+        world.drawn_mobs_where(|candidate| Some(candidate) == frog || Some(candidate) == tadpole)
+    {
         let is_frog = Some(entity.type_id) == frog;
-        if !is_frog && Some(entity.type_id) != tadpole {
-            continue;
-        }
         let (layer, texture) = if is_frog {
             // The variant the server named by its place in the registry, or the
             // default while it has said nothing; one the registry lacks is not drawn.

@@ -46,10 +46,7 @@ pub fn remote_hoglins(
         let Some(type_id) = photon_data::entity_type::id(name) else {
             continue;
         };
-        for entity in world
-            .drawn_mobs()
-            .filter(|entity| entity.type_id == type_id)
-        {
+        for entity in world.drawn_mobs_where(|candidate| candidate == type_id) {
             let baby = entity.is_baby();
             let index = usize::from(baby);
             let (Some(snapshot), Some(rect), Some(model)) = (

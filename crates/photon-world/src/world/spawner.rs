@@ -153,6 +153,21 @@ impl ClientWorld {
         )
     }
 
+    /// [`Self::drawn_mobs`] of the types `accept` takes, in the same order.
+    pub fn drawn_mobs_where(
+        &self,
+        accept: impl Fn(EntityTypeId) -> bool + Copy,
+    ) -> impl Iterator<Item = EntityView<'_>> {
+        self.entities.drawn_with_invisible_of(accept).chain(
+            self.spawner_displays
+                .iter()
+                .filter(move |shown| accept(shown.entity.type_id))
+                .filter(|shown| !self.entities.is_out_of_view(shown.entity.net.id))
+                .filter(|shown| self.spawner_display_shows(shown))
+                .map(|shown| shown.entity.view()),
+        )
+    }
+
     /// The ids and blocks of the mobs spawners show, for the frame to leave out the ones whose
     /// block entity is not extracted.
     pub fn spawner_display_places(&self) -> impl Iterator<Item = (EntityId, Pos)> + '_ {

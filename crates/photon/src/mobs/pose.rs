@@ -15,10 +15,10 @@ pub(super) fn remote_humanoids(
     (view, held): (FrameView, &mut Vec<HeldItem>),
     vertices: &mut Vec<Vertex>,
 ) {
-    let world = session.world();
-    let partial = view.partial as f32;
-    for entity in world.drawn_mobs() {
-        let Some(kind) = models.humanoids.get(&entity.type_id).copied() else {
+    let (world, partial) = (session.world(), view.partial as f32);
+    let humanoids = std::sync::Arc::clone(&models.humanoids);
+    for entity in world.drawn_mobs_where(|candidate| humanoids.contains_key(&candidate)) {
+        let Some(kind) = humanoids.get(&entity.type_id).copied() else {
             continue;
         };
         let baby = entity.is_baby();

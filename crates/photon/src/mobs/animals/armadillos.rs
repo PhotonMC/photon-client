@@ -33,10 +33,7 @@ pub fn remote_armadillos(
     let Some(armadillo) = photon_data::entity_type::id("minecraft:armadillo") else {
         return;
     };
-    for entity in world
-        .drawn_mobs()
-        .filter(|entity| entity.type_id == armadillo)
-    {
+    for entity in world.drawn_mobs_where(|candidate| candidate == armadillo) {
         let (layer, texture) = if entity.is_baby() { BABY } else { ADULT };
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
