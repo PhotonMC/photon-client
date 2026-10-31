@@ -1,7 +1,7 @@
 //! The entries of the friends overlay's lists: their layout, drawing and buttons
 //! (`FriendEntry`, `IncomingEntry`, `OutgoingEntry`).
 //!
-//! Not drawn: the buttons' loading states, the status text scrolling
+//! Not drawn: the status text scrolling
 //! when it is too long, and the skins other than a default one.
 
 use super::draw::inside;
@@ -146,11 +146,15 @@ impl FriendsOverlay {
     }
 
     /// The press of a button of an entry at `at`, as what the screen asks of the game.
-    pub(super) fn entry_pressed(&self, at: (i32, i32)) -> Option<FriendsEvent> {
+    pub(super) fn entry_pressed(&mut self, at: (i32, i32)) -> Option<FriendsEvent> {
         if self.view.sending {
             return None;
         }
         let (button, id, _) = self.button_under(at)?;
+        // The remove button waits for the answer of its confirmation first (`removing`).
+        if button != Button::Remove {
+            self.pressed = Some(Pressed::Entry(button, id));
+        }
         Some(match button {
             Button::Remove => FriendsEvent::Remove(id),
             Button::Accept => FriendsEvent::Accept(id),
@@ -273,7 +277,8 @@ impl FriendsOverlay {
             );
         }
         for (button, rect) in Self::buttons_of(entry.kind, x, y) {
-            self.draw_button(frame, atlas, button, rect, mouse);
+            let loading = self.pressed == Some(Pressed::Entry(button, entry.id));
+            self.draw_button(frame, atlas, (button, loading), rect, mouse);
         }
     }
 
@@ -281,7 +286,7 @@ impl FriendsOverlay {
         &self,
         frame: &mut GuiFrame,
         atlas: &GuiAtlas,
-        button: Button,
+        (button, loading): (Button, bool),
         (x, y, w, h): (i32, i32, i32, i32),
         mouse: (i32, i32),
     ) {
@@ -293,6 +298,10 @@ impl FriendsOverlay {
             "widget/button"
         };
         frame.nine_slice(atlas, sprite, (200, 20), 1, false, (x, y, w, h));
+        if loading {
+            draw_loading_mark(frame, atlas, (x, y, w, h));
+            return;
+        }
         let (icon, size) = match button {
             Button::Remove => ("friends/remove", (13, 11)),
             Button::Accept => ("friends/accept", (18, 18)),
@@ -315,6 +324,18 @@ impl Tab {
     fn received_kind() -> EntryKind {
         EntryKind::Incoming
     }
+}
+
+/// `SpriteIconButton.extractLoadingStateIfLoading`: a small mark in the middle of the button.
+pub(super) fn draw_loading_mark(frame: &mut GuiFrame, atlas: &GuiAtlas, (x, y, w, h): Rect) {
+    frame.sprite(
+        atlas,
+        "friends/loading",
+        x + (w - 5) / 2,
+        y + (h - 2) / 2,
+        5,
+        2,
+    );
 }
 
 /// The scroller's offset from the list's top and its height (`scrollBarY`, `scrollerHeight`).

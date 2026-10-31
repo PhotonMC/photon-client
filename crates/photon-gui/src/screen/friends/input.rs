@@ -52,6 +52,7 @@ impl FriendsOverlay {
         }
         let name = self.edit.value().trim().to_owned();
         crate::ui_sound::play_down_sound();
+        self.pressed = Some(Pressed::Send);
         Some(FriendsEvent::Send(name))
     }
 

@@ -328,6 +328,9 @@ impl Controls {
 
     /// The answer Remove of the confirmation of `FriendEntry.confirmRemoveFriend`.
     pub(super) fn remove_friend(&mut self, id: photon_core::binary::Uuid) {
+        if let Some(screen) = self.friends.as_mut() {
+            screen.removing(id);
+        }
         self.act_friend(Action::Remove(id));
     }
 

@@ -167,7 +167,11 @@ impl FriendsOverlay {
             "widget/button"
         };
         frame.nine_slice(atlas, state, (200, 20), 1, false, (sx, sy, sw, sh));
-        frame.sprite(atlas, "friends/send_request", sx + 2, sy + 2, 15, 15);
+        if self.pressed == Some(Pressed::Send) {
+            super::entries::draw_loading_mark(frame, atlas, (sx, sy, sw, sh));
+        } else {
+            frame.sprite(atlas, "friends/send_request", sx + 2, sy + 2, 15, 15);
+        }
         self.draw_profile_row(frame, (atlas, font));
     }
 

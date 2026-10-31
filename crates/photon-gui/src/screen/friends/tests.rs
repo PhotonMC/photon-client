@@ -199,3 +199,20 @@ fn a_tooltip_stands_over_the_send_button_and_over_nothing_else() {
     assert_eq!(lines, screen.texts.tooltips.empty_name.as_slice());
     assert!(screen.tooltip_at((0, 0), &font).is_none());
 }
+
+#[test]
+fn a_button_shows_loading_until_the_action_is_answered() {
+    let mut screen = overlay(true);
+    let id = Uuid::new(0, 7);
+    screen.removing(id);
+    assert_eq!(
+        screen.pressed,
+        Some(Pressed::Entry(entries::Button::Remove, id))
+    );
+    let mut waiting = view(true);
+    waiting.sending = true;
+    screen.set_view(&Lang::new([]), waiting);
+    assert!(screen.pressed.is_some());
+    screen.set_view(&Lang::new([]), view(true));
+    assert_eq!(screen.pressed, None);
+}

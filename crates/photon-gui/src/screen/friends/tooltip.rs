@@ -15,6 +15,7 @@ pub(super) struct TooltipTexts {
     accept: Vec<Run>,
     decline: Vec<Run>,
     cancel: Vec<Run>,
+    loading: Vec<Run>,
 }
 
 impl TooltipTexts {
@@ -28,6 +29,7 @@ impl TooltipTexts {
             accept: key("gui.friends.accept"),
             decline: key("gui.friends.decline"),
             cancel: key("gui.friends.cancel_request"),
+            loading: key("gui.friends.button.loading"),
         }
     }
 }
@@ -36,7 +38,10 @@ impl FriendsOverlay {
     /// The tooltip of the button under the cursor, and where the button is.
     pub(super) fn tooltip_at(&self, at: (i32, i32), font: &Font) -> Option<(&[Run], Rect)> {
         let texts = &self.texts.tooltips;
-        if let Some((button, _, rect)) = self.button_under(at) {
+        if let Some((button, id, rect)) = self.button_under(at) {
+            if self.pressed == Some(Pressed::Entry(button, id)) {
+                return Some((&texts.loading, rect));
+            }
             let lines = match button {
                 Button::Remove => &texts.unfriend,
                 Button::Accept => &texts.accept,
@@ -47,6 +52,9 @@ impl FriendsOverlay {
         }
         let send = self.button_rect();
         if draw::inside(at, send) {
+            if self.pressed == Some(Pressed::Send) {
+                return Some((&texts.loading, send));
+            }
             let empty = self.box_active() && self.edit.value().trim().is_empty();
             return Some((
                 if empty {

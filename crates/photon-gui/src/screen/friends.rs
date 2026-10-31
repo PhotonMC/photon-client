@@ -127,7 +127,16 @@ pub struct FriendsOverlay {
     scroll: i32,
     /// The scroller is held by the primary button.
     dragging: bool,
+    /// The button whose action is on its way, which shows the loading state.
+    pressed: Option<Pressed>,
     pending_label: Vec<Run>,
+}
+
+/// A button that was pressed and has not been answered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Pressed {
+    Send,
+    Entry(entries::Button, Uuid),
 }
 
 /// The screen's texts as runs, made once.
@@ -187,6 +196,7 @@ impl FriendsOverlay {
             focused_at: Instant::now(),
             scroll: 0,
             dragging: false,
+            pressed: None,
             size,
             tab: Tab::Friends,
             edit: EditBox::new(
@@ -213,8 +223,16 @@ impl FriendsOverlay {
         if view.requests != self.view.requests {
             self.pending_label = pending_label(lang, view.requests);
         }
+        if !view.sending {
+            self.pressed = None;
+        }
         self.view = view;
         self.scroll = self.scroll.clamp(0, self.max_scroll());
+    }
+
+    /// `FriendEntry.confirmRemoveFriend`: the remove button of `id` waits for the answer.
+    pub fn removing(&mut self, id: Uuid) {
+        self.pressed = Some(Pressed::Entry(entries::Button::Remove, id));
     }
 
     pub fn tab(&self) -> Tab {
