@@ -260,6 +260,7 @@ impl Controls {
                 use photon_gui::widgets::edit_box::Clipboard;
                 WindowClipboard(surface).set(&self.profile_name);
             }
+            Some(FriendsEvent::OpenLink) => self.ask_account_link(surface, assets),
             Some(FriendsEvent::Remove(id)) => self.ask_remove_friend(id, surface, assets),
             Some(FriendsEvent::Accept(id)) => self.act_friend(Action::Accept(id)),
             Some(FriendsEvent::Decline(id)) => self.act_friend(Action::Decline(id)),
@@ -281,6 +282,20 @@ impl Controls {
         if let Some(screen) = self.friends.as_mut() {
             screen.clear_box(font);
         }
+    }
+
+    /// `PrivacyConfirmLinkScreen.confirmLinkNow`: the account page is asked about, over the overlay.
+    fn ask_account_link(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        let url = super::online::PRIVACY_AND_ONLINE_SETTINGS;
+        let screen = ConfirmScreen::link(
+            &assets.creative.font,
+            &assets.lang,
+            Self::gui_size(surface),
+            url,
+            true,
+        )
+        .with_background(ConfirmBackground::Menu { in_world: true });
+        self.link_confirm = Some((screen, ConfirmTarget::Link(url.to_owned())));
     }
 
     fn act_friend(&mut self, action: Action) {

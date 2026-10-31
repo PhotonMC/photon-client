@@ -9,6 +9,7 @@
 //! link of the empty state is plain text.
 
 mod draw;
+mod empty;
 mod entries;
 mod input;
 
@@ -104,6 +105,8 @@ pub enum FriendsEvent {
     Accept(Uuid),
     Decline(Uuid),
     Revoke(Uuid),
+    /// The Microsoft account link of the empty list: the game asks before opening it.
+    OpenLink,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -2,7 +2,8 @@ use super::*;
 use photon_gui::options::online::{FriendFacts, FriendPress, OnlineOptionsScreen};
 
 /// `CommonLinks.PRIVACY_AND_ONLINE_SETTINGS`.
-const PRIVACY_AND_ONLINE_SETTINGS: &str = "https://aka.ms/MinecraftJavaXboxPrivacyAndSafety";
+pub(super) const PRIVACY_AND_ONLINE_SETTINGS: &str =
+    "https://aka.ms/MinecraftJavaXboxPrivacyAndSafety";
 
 impl Controls {
     /// `OnlineOptionsScreen`, over the options screen. There is no account yet, so the friends

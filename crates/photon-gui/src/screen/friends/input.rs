@@ -79,6 +79,10 @@ impl FriendsOverlay {
             }
             return None;
         }
+        if self.empty_link_at(at, font) {
+            crate::ui_sound::play_down_sound();
+            return Some(FriendsEvent::OpenLink);
+        }
         if let Some(asked) = self.entry_pressed(at) {
             crate::ui_sound::play_down_sound();
             return Some(asked);

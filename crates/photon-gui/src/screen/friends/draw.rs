@@ -74,13 +74,15 @@ impl FriendsOverlay {
         let area = self.list_rect();
         match listing {
             Listing::Loading => draw_loading(frame, (atlas, font), (area, loading), millis),
-            Listing::Error(message) => self.draw_centered(frame, (atlas, font), area, message),
+            Listing::Error(message) => {
+                self.draw_centered(frame, (atlas, font), area, (message, false));
+            }
             Listing::Empty => {
                 let runs = match self.tab {
                     Tab::Friends => &texts.empty,
                     Tab::Pending => &texts.pending_empty,
                 };
-                self.draw_centered(frame, (atlas, font), area, runs);
+                self.draw_centered(frame, (atlas, font), area, (runs, self.tab == Tab::Friends));
             }
             Listing::Entries(_) => self.draw_entries(frame, (atlas, font), mouse),
         }
@@ -199,21 +201,20 @@ impl FriendsOverlay {
         );
     }
 
-    /// The lines of a text, centred in the room of the list.
+    /// The lines of a text, centred in the room of the list, with the picture over them.
     fn draw_centered(
         &self,
         frame: &mut GuiFrame,
         (atlas, font): (&GuiAtlas, &Font),
-        (x, y, width, height): (i32, i32, i32, i32),
-        runs: &[Run],
+        area: (i32, i32, i32, i32),
+        (runs, picture): (&[Run], bool),
     ) {
-        let lines = crate::chat::split(runs, width - 2 * BORDER, font);
-        let block = lines.len() as i32 * 9;
-        let first = y + (height - block) / 2;
-        for (index, line) in lines.iter().enumerate() {
-            let line_width = font.width_of_runs(line);
-            let at = (x + (width - line_width) / 2, first + index as i32 * 9);
-            frame.styled_text(atlas, font, line, at, WHITE, true);
+        let block = self.centred_block(font, area, runs, picture);
+        if let Some((x, y)) = block.picture {
+            frame.sprite(atlas, "friends/illustrations_00", x, y, 128, 48);
+        }
+        for (x, y, line) in &block.lines {
+            frame.styled_text(atlas, font, line, (*x, *y), WHITE, true);
         }
     }
 }
