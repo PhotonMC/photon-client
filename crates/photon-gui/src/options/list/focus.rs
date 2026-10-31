@@ -49,7 +49,12 @@ impl OptionsList {
         self.push(Entry {
             y: 0,
             height: ITEM_HEIGHT,
-            content: Content::Row(vec![Child { tag, rect, control }]),
+            content: Content::Row(vec![Child {
+                tag,
+                rect,
+                control,
+                reason: None,
+            }]),
         });
     }
 
@@ -65,6 +70,7 @@ impl OptionsList {
                     tag,
                     rect,
                     control: build(lang, rect),
+                    reason: None,
                 });
             }
             self.push(Entry {
@@ -85,6 +91,19 @@ impl OptionsList {
         self.children()
             .find(|child| child.tag == tag)
             .map(|child| &*child.control)
+    }
+
+    /// Makes an option's widget still, saying why on hover. The widgets of options that have no
+    /// effect here are stilled this way, on the live screens only.
+    pub fn still(&mut self, tag: u8, lang: &Lang, reason: &Component) {
+        for entry in &mut self.entries {
+            if let Content::Row(children) = &mut entry.content {
+                for child in children.iter_mut().filter(|child| child.tag == tag) {
+                    child.control.set_active(false);
+                    child.reason = Some(Holder::of(lang, reason));
+                }
+            }
+        }
     }
 
     pub fn find_mut(&mut self, tag: u8) -> Option<&mut dyn Control> {
@@ -211,7 +230,9 @@ impl OptionsList {
                 Content::Row(children) => {
                     for (child_index, child) in children.iter().enumerate() {
                         child.control.draw(frame, atlas, font, &self.arena, mouse);
-                        let Some(holder) = child.control.tooltip() else {
+                        let Some(holder) =
+                            child.reason.as_ref().or_else(|| child.control.tooltip())
+                        else {
                             continue;
                         };
                         let rect = self.arena.0[child.rect];

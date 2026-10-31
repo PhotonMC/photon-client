@@ -684,4 +684,34 @@ mod tests {
             Some("options.graphics.fast")
         );
     }
+
+    #[test]
+    fn the_options_without_an_effect_are_still_and_the_rest_are_not() {
+        let Some((font, lang)) = assets() else { return };
+        let screen = VideoSettingsScreen::new(
+            &font,
+            &lang,
+            (427, 240),
+            true,
+            (2, 2),
+            (VideoValues::default(), FullscreenModes::default()),
+        );
+        let active = |screen: &VideoSettingsScreen, tag| {
+            screen
+                .screen
+                .list
+                .find(tag)
+                .map(|control| control.is_active())
+        };
+        assert_eq!(active(&screen, CUTOUT_LEAVES), Some(true));
+        let screen = screen.without_missing_effects(&lang);
+        for tag in [
+            CUTOUT_LEAVES,
+            IMPROVED_TRANSPARENCY,
+            PRIORITIZE_CHUNK_UPDATES,
+        ] {
+            assert_eq!(active(&screen, tag), Some(false));
+        }
+        assert_eq!(active(&screen, BIOME_BLEND), Some(true));
+    }
 }

@@ -151,6 +151,8 @@ pub struct BiomeTints {
     foliage: Vec<u32>,
     dry_foliage: Vec<u32>,
     zoom_seed: i64,
+    /// `Options.biomeBlendRadius`: the columns averaged each way around a block.
+    blend_radius: std::sync::Arc<std::sync::atomic::AtomicI32>,
     /// `Biome.BIOME_INFO_NOISE`, which the swamp colour and the frozen
     /// modifier read.
     swamp_noise: SimplexNoise,
@@ -258,10 +260,7 @@ impl BiomeTints {
                 }
             })
             .collect();
-        let plains = biome_names
-            .iter()
-            .position(|name| name == "minecraft:plains")
-            .unwrap_or(0);
+        let plains = plains_index(biome_names);
         let mut random = RandomSource::create(2345);
         let mut temperature_random = RandomSource::create(1234);
         let mut frozen_random = RandomSource::create(3456);
@@ -278,6 +277,7 @@ impl BiomeTints {
             foliage: colour_map(resources, "foliage")?,
             dry_foliage: colour_map(resources, "dry_foliage")?,
             zoom_seed,
+            blend_radius: default_blend_radius(),
             swamp_noise: SimplexNoise::new(&mut random),
             temperature_noise: SimplexNoise::new(&mut temperature_random),
             frozen_noise,
@@ -460,8 +460,14 @@ impl BiomeTints {
         }
     }
 
-    /// `ClientLevel.calculateBlockTint` with the default blend radius of two:
-    /// the channel average of the 25 columns around the block, at its height.
+    /// Sets the blend radius; whether it changed, so the meshes made with the old one are stale.
+    pub fn set_blend_radius(&self, radius: i32) -> bool {
+        use std::sync::atomic::Ordering;
+        self.blend_radius.swap(radius, Ordering::Relaxed) != radius
+    }
+
+    /// `ClientLevel.calculateBlockTint`: the channel average of the columns within the blend
+    /// radius around the block, at its height.
     pub fn tint(
         &self,
         kind: TintKind,
@@ -481,11 +487,11 @@ impl BiomeTints {
         position: [i32; 3],
         biome_at: &impl Fn(i32, i32, i32) -> usize,
     ) -> u32 {
-        const RADIUS: i32 = 2;
-        let count = (RADIUS * 2 + 1) * (RADIUS * 2 + 1);
+        let radius = self.blend_radius.load(std::sync::atomic::Ordering::Relaxed);
+        let count = (radius * 2 + 1) * (radius * 2 + 1);
         let (mut red, mut green, mut blue) = (0, 0, 0);
-        for z in position[2] - RADIUS..=position[2] + RADIUS {
-            for x in position[0] - RADIUS..=position[0] + RADIUS {
+        for z in position[2] - radius..=position[2] + radius {
+            for x in position[0] - radius..=position[0] + radius {
                 let biome = biome_at(x, position[1], z);
                 let colour = self.colour(kind, biome, x, z);
                 red += ((colour >> 16) & 0xFF) as i32;
@@ -498,6 +504,19 @@ impl BiomeTints {
             | (((green / count) as u32) << 8)
             | (blue / count) as u32
     }
+}
+
+/// The index of plains, the biome a missing one reads as.
+fn plains_index(names: &[impl AsRef<str>]) -> usize {
+    names
+        .iter()
+        .position(|name| name.as_ref() == "minecraft:plains")
+        .unwrap_or(0)
+}
+
+/// `Options.biomeBlendRadius`' default.
+fn default_blend_radius() -> std::sync::Arc<std::sync::atomic::AtomicI32> {
+    std::sync::Arc::new(std::sync::atomic::AtomicI32::new(2))
 }
 
 /// Which biome colour each tint layer of a block reads in a world, or

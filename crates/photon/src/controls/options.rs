@@ -198,25 +198,28 @@ impl Controls {
     /// `VideoSettingsScreen`, over the options screen.
     pub(super) fn open_video(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
         let scale = surface.scale();
-        self.video_screen = Some(VideoSettingsScreen::new(
-            &assets.creative.font,
-            &assets.lang,
-            (scale.gui_scaled_width(), scale.gui_scaled_height()),
-            !self.title_host,
-            (
-                self.options.gui_scale,
-                scale.calculate_scale(0, self.options.font.force_unicode),
-            ),
-            (
-                Self::video_values(&self.options),
-                FullscreenModes::new(
-                    surface.video_modes().map(<[VideoMode]>::to_vec),
-                    self.options
-                        .fullscreen_resolution()
-                        .and_then(VideoMode::read),
+        self.video_screen = Some(
+            VideoSettingsScreen::new(
+                &assets.creative.font,
+                &assets.lang,
+                (scale.gui_scaled_width(), scale.gui_scaled_height()),
+                !self.title_host,
+                (
+                    self.options.gui_scale,
+                    scale.calculate_scale(0, self.options.font.force_unicode),
                 ),
-            ),
-        ));
+                (
+                    Self::video_values(&self.options),
+                    FullscreenModes::new(
+                        surface.video_modes().map(<[VideoMode]>::to_vec),
+                        self.options
+                            .fullscreen_resolution()
+                            .and_then(VideoMode::read),
+                    ),
+                ),
+            )
+            .without_missing_effects(&assets.lang),
+        );
     }
 
     /// `setPreferredFullscreenVideoMode`: the window takes the resolution the slider shows, and

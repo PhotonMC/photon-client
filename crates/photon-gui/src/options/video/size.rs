@@ -1,7 +1,37 @@
 use super::*;
 use crate::FontRuns;
 
+/// The options this client has no effect for yet, and what their widgets say.
+const STILL: [(u8, &str, &str); 3] = [
+    (
+        CUTOUT_LEAVES,
+        "photon.video.no_cutout_leaves",
+        "Leaves are always drawn with cut-out holes: there is no solid pass for them yet.",
+    ),
+    (
+        IMPROVED_TRANSPARENCY,
+        "photon.video.no_improved_transparency",
+        "The improved transparency shader is not available yet.",
+    ),
+    (
+        PRIORITIZE_CHUNK_UPDATES,
+        "photon.video.no_prioritize_chunk_updates",
+        "Chunk updates are always built nearest first; this choice has no effect yet.",
+    ),
+];
+
 impl VideoSettingsScreen {
+    /// The screen with the options that have no effect here still, saying why. The reference
+    /// has them active, so the parity cases build the screen without this.
+    #[must_use]
+    pub fn without_missing_effects(mut self, lang: &Lang) -> Self {
+        for (tag, key, fallback) in STILL {
+            let reason = Component::translatable_or(key, fallback);
+            self.screen.list.still(tag, lang, &reason);
+        }
+        self
+    }
+
     /// `init`, with the GUI scale as it is set, and the most the window
     /// allows.
     pub fn new(

@@ -218,6 +218,8 @@ struct Child {
     tag: u8,
     rect: usize,
     control: Box<dyn Control>,
+    /// Why the widget is still (ours: no effect behind it), shown in place of its tooltip.
+    reason: Option<Holder>,
 }
 
 enum Content {

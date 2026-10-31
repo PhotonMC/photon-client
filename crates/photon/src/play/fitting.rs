@@ -18,7 +18,10 @@ impl Play {
             quality.texture_filtering == photon_game::options::TextureFiltering::Rgss,
             anisotropy,
         )?;
-        if std::mem::take(&mut self.controls.reload_chunks) {
+        let blend_changed = self
+            .biome_tints
+            .set_blend_radius(quality.biome_blend_radius);
+        if std::mem::take(&mut self.controls.reload_chunks) || blend_changed {
             self.sections.rebuild_all(&mut self.backend)?;
         }
         self.sections
