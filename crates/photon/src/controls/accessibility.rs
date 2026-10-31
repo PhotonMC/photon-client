@@ -20,13 +20,16 @@ impl Controls {
     pub(super) fn open_accessibility(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
         // The server's enabled features are not kept for the screen yet, so the minecart option
         // stays out of reach.
-        self.accessibility_screen = Some(AccessibilityScreen::new(
-            &assets.creative.font,
-            &assets.lang,
-            Self::gui_size(surface),
-            !self.title_host,
-            (&self.options, false, high_contrast_available()),
-        ));
+        self.accessibility_screen = Some(
+            AccessibilityScreen::new(
+                &assets.creative.font,
+                &assets.lang,
+                Self::gui_size(surface),
+                !self.title_host,
+                (&self.options, false, high_contrast_available()),
+            )
+            .without_missing_effects(&assets.lang),
+        );
     }
 
     /// `OptionsSubScreen.onClose` and `removed`: back to the options screen, and the options are

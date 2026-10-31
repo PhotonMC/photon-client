@@ -23,7 +23,6 @@ use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
 /// What the screen finds its widgets by.
-const PLAIN: u8 = 0;
 const NARRATOR: u8 = 13;
 const CONTROLS: u8 = 1;
 const SUBTITLES: u8 = 2;
@@ -45,6 +44,34 @@ const GLINT_SPEED: u8 = 18;
 const GLINT_STRENGTH: u8 = 19;
 const MENU_BLURRINESS: u8 = 20;
 const BLOCK_OUTLINE: u8 = 21;
+const DARK_BACKGROUND: u8 = 22;
+const PANORAMA_SPEED: u8 = 23;
+const SPLASH_TEXTS: u8 = 24;
+const NARRATOR_HOTKEY: u8 = 25;
+
+/// The options this client has no effect for yet, and what their widgets say.
+const STILL: [(u8, &str, &str); 4] = [
+    (
+        DARK_BACKGROUND,
+        "photon.accessibility.no_dark_background",
+        "The loading background is always the original colour.",
+    ),
+    (
+        PANORAMA_SPEED,
+        "photon.accessibility.no_panorama_speed",
+        "The title panorama always turns at its own speed.",
+    ),
+    (
+        SPLASH_TEXTS,
+        "photon.accessibility.no_splash_texts",
+        "The splash text is always shown.",
+    ),
+    (
+        NARRATOR_HOTKEY,
+        "photon.accessibility.no_narrator",
+        "There is no narrator on this client.",
+    ),
+];
 
 /// `notificationDisplayTime`'s value set: tenths of a second from 0.5 to 10.
 type TimeValues =
@@ -136,6 +163,17 @@ pub struct AccessibilityScreen {
 }
 
 impl AccessibilityScreen {
+    /// The screen with the options that have no effect here still, saying why. The reference
+    /// has them active, so the parity cases build the screen without this.
+    #[must_use]
+    pub fn without_missing_effects(mut self, lang: &Lang) -> Self {
+        for (tag, key, fallback) in STILL {
+            let reason = Component::translatable_or(key, fallback);
+            self.screen.list.still(tag, lang, &reason);
+        }
+        self
+    }
+
     /// `init`, with the options as they are; `minecart_improvements` says the level has the
     /// feature `rotateWithMinecart` needs, and `high_contrast_pack` that the pack of that name can be
     /// chosen.
@@ -463,7 +501,7 @@ fn other_options(options: &Options) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            PLAIN,
+            DARK_BACKGROUND,
             boolean_tip(
                 "options.darkMojangStudiosBackgroundColor",
                 false,
@@ -471,7 +509,7 @@ fn other_options(options: &Options) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            PLAIN,
+            PANORAMA_SPEED,
             slider(
                 "options.accessibility.panorama_speed",
                 UnitDouble,
@@ -480,7 +518,7 @@ fn other_options(options: &Options) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            PLAIN,
+            SPLASH_TEXTS,
             boolean_tip(
                 "options.hideSplashTexts",
                 false,
@@ -493,7 +531,7 @@ fn other_options(options: &Options) -> Vec<(u8, Build)> {
 fn last_options(options: &Options) -> Vec<(u8, Build)> {
     vec![
         (
-            PLAIN,
+            NARRATOR_HOTKEY,
             boolean_tip(
                 "options.accessibility.narrator_hotkey",
                 true,

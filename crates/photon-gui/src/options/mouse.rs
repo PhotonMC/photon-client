@@ -89,6 +89,17 @@ pub struct MouseSettingsScreen {
 }
 
 impl MouseSettingsScreen {
+    /// The screen with the cursor option still: no cursor shapes are set here.
+    #[must_use]
+    pub fn without_missing_effects(mut self, lang: &Lang) -> Self {
+        let reason = Component::translatable_or(
+            "photon.mouse.no_cursor_changes",
+            "This client never changes the cursor's shape.",
+        );
+        self.screen.list.still(CURSOR_CHANGES, lang, &reason);
+        self
+    }
+
     pub fn new(
         font: &Font,
         lang: &Lang,
@@ -239,6 +250,17 @@ pub struct ControlsScreen {
 }
 
 impl ControlsScreen {
+    /// The screen with the operator items tab still: the creative inventory has no such tab.
+    #[must_use]
+    pub fn without_missing_effects(mut self, lang: &Lang) -> Self {
+        let reason = Component::translatable_or(
+            "photon.controls.no_operator_tab",
+            "The creative inventory has no operator items tab yet.",
+        );
+        self.screen.list.still(OPERATOR_ITEMS, lang, &reason);
+        self
+    }
+
     pub fn new(
         font: &Font,
         lang: &Lang,
