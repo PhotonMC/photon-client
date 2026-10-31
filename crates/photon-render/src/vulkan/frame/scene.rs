@@ -514,10 +514,8 @@ impl VulkanBackend {
     ///
     /// Recording inside the scene's rendering scope over swapchain image `index`; `scene` is live.
     unsafe fn record_gui(&self, scene: &SceneResources, index: usize) {
-        let blur = self
-            .gui_runs
-            .blur
-            .filter(|_| !self.gui_only && self.blur_images_ready(scene));
+        // Also in a menu (gui-only): the panorama and what the menu drew are what blurs.
+        let blur = self.gui_runs.blur.filter(|_| self.blur_images_ready(scene));
         let (before, after) = match blur {
             Some(blur) => crate::gui::frame::split_batches(&self.gui_runs.batches, blur.at),
             None => (self.gui_runs.batches.clone(), Vec::new()),
