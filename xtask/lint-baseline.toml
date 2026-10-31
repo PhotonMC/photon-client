@@ -600,7 +600,6 @@
 "crates/photon-gui/src/options/keybinds/list.rs::KeyBindsList::draw" = 88
 "crates/photon-gui/src/options/keybinds/list.rs::KeyBindsList::refresh" = 63
 "crates/photon-gui/src/options/language/scroll.rs::LanguageSelectScreen::new" = 87
-"crates/photon-gui/src/options/mouse.rs::MouseSettingsScreen::new" = 63
 "crates/photon-gui/src/options/sound.rs::SoundOptionsScreen::new" = 90
 "crates/photon-gui/src/options/video.rs::display_options" = 94
 "crates/photon-gui/src/screen/confirm.rs::ConfirmScreen::build" = 78

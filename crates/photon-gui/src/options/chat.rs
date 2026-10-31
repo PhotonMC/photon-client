@@ -2,6 +2,7 @@
 //! a list. The visibility and the sizes, spacing and opacities of the chat
 //! are the options' and take effect; the rest hold a value on their widget.
 
+use photon_game::options::PlayOptions;
 use photon_game::options::values::{IntRange, MappedIntRange, UnitDouble};
 use photon_game::options::{ChatVisibility, Options};
 use photon_game::text::{Component, Lang};
@@ -30,6 +31,10 @@ const NARRATOR: u8 = 9;
 const SAVE_DRAFTS: u8 = 10;
 const DELAY: u8 = 11;
 const CHAT_COLORS: u8 = 12;
+const LINKS: u8 = 13;
+const PROMPT: u8 = 14;
+const SUGGEST: u8 = 15;
+const REDUCED: u8 = 16;
 
 /// `chatDelay`'s value set: tenths of a second from 0 to 6.
 pub(super) type DelayValues = MappedIntRange<f64, fn(i32) -> f64, fn(&f64) -> i32>;
@@ -104,6 +109,26 @@ fn colours_entry(options: &Options) -> (u8, Build) {
     )
 }
 
+/// A plain on/off entry of the list.
+fn flag_entry(tag: u8, key: &'static str, value: bool) -> (u8, Build) {
+    (tag, boolean(key, value))
+}
+
+fn prompt_entry(options: &Options) -> (u8, Build) {
+    let value = options.play.chat_links_prompt;
+    flag_entry(PROMPT, "options.chat.links.prompt", value)
+}
+
+fn suggest_entry(options: &Options) -> (u8, Build) {
+    let value = options.play.auto_suggestions;
+    flag_entry(SUGGEST, "options.autoSuggestCommands", value)
+}
+
+fn reduced_entry(options: &Options) -> (u8, Build) {
+    let value = options.play.reduced_debug_info;
+    flag_entry(REDUCED, "options.reducedDebugInfo", value)
+}
+
 /// What the screen's options say, for the options and the chat to take.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ChatChoices {
@@ -147,8 +172,8 @@ impl ChatOptionsScreen {
                         ),
                     ),
                     colours_entry(options),
-                    (PLAIN, boolean("options.chat.links", true)),
-                    (PLAIN, boolean("options.chat.links.prompt", true)),
+                    flag_entry(LINKS, "options.chat.links", options.play.chat_links),
+                    prompt_entry(options),
                     (
                         OPACITY,
                         unit("options.chat.opacity", chat_opacity, options.chat_opacity),
@@ -210,7 +235,7 @@ impl ChatOptionsScreen {
                             "options.narrator.off",
                         ),
                     ),
-                    (PLAIN, boolean("options.autoSuggestCommands", true)),
+                    suggest_entry(options),
                     (
                         PLAIN,
                         boolean_tip(
@@ -219,7 +244,7 @@ impl ChatOptionsScreen {
                             "options.hideMatchedNames.tooltip",
                         ),
                     ),
-                    (PLAIN, boolean("options.reducedDebugInfo", false)),
+                    reduced_entry(options),
                     (
                         PLAIN,
                         boolean_tip(
@@ -248,6 +273,24 @@ impl ChatOptionsScreen {
     }
 
     /// What the options say now.
+    /// The chat flags on the screen, over `play`.
+    pub fn play_choices(&self, play: PlayOptions) -> PlayOptions {
+        let flag = |tag: u8, own: bool| {
+            self.screen
+                .list
+                .find(tag)
+                .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
+                .map_or(own, |button| *button.value())
+        };
+        PlayOptions {
+            chat_links: flag(LINKS, play.chat_links),
+            chat_links_prompt: flag(PROMPT, play.chat_links_prompt),
+            auto_suggestions: flag(SUGGEST, play.auto_suggestions),
+            reduced_debug_info: flag(REDUCED, play.reduced_debug_info),
+            ..play
+        }
+    }
+
     pub fn choices(&self) -> ChatChoices {
         let list = &self.screen.list;
         let share = |tag: u8| {

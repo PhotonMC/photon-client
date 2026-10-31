@@ -71,6 +71,11 @@ impl ChatScreen {
             .set_restrictions(messages_allowed, commands_allowed);
     }
 
+    /// `Options.autoSuggestions`.
+    pub fn set_auto_suggestions(&mut self, auto: bool) {
+        self.suggest.set_auto(auto);
+    }
+
     pub fn set_selectors(&mut self, allowed: bool) {
         self.suggest.set_selectors(allowed);
     }

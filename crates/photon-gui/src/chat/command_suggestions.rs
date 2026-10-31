@@ -93,6 +93,8 @@ pub struct CommandSuggestions {
     /// `setRestrictions`: whether the player may send messages and commands.
     messages_allowed: bool,
     commands_allowed: bool,
+    /// `Options.autoSuggestions`: the list opens as the text is typed, else on Tab.
+    auto: bool,
 }
 
 /// The command a text holds: whether it is one, and where it starts after its slash.
@@ -120,6 +122,7 @@ impl CommandSuggestions {
             local: Vec::new(),
             messages_allowed: true,
             commands_allowed: true,
+            auto: true,
         }
     }
 
@@ -164,6 +167,16 @@ impl CommandSuggestions {
     /// `updateCommandInfo`: the list goes, and a command's text up to the cursor asks for its
     /// matches.
     pub fn edited(&mut self, edit: &mut EditBox) {
+        self.refresh(edit, false);
+    }
+
+    /// `Options.autoSuggestions`.
+    pub fn set_auto(&mut self, auto: bool) {
+        self.auto = auto;
+    }
+
+    /// `edited`, or the Tab that asks for the list with the option off (`forced`).
+    fn refresh(&mut self, edit: &mut EditBox, forced: bool) {
         edit.set_suggestion(None);
         self.stale = true;
         let text = edit.value();
@@ -179,7 +192,7 @@ impl CommandSuggestions {
         // The reference knows the commands and answers within the same frame;
         // here the server answers a moment later, so the list stays up until
         // its answer replaces it, rather than blinking out between keys.
-        if !asks {
+        if !asks || !(self.auto || forced) {
             self.list = None;
             return;
         }
@@ -279,6 +292,10 @@ impl CommandSuggestions {
 
     /// `keyPressed`: whether the list took the key.
     pub fn list_key(&mut self, edit: &mut EditBox, key: ListKey) -> bool {
+        if self.list.is_none() && !self.auto && key == (ListKey::Tab { shift: false }) {
+            self.refresh(edit, true);
+            return true;
+        }
         let Some(list) = &mut self.list else {
             return false;
         };

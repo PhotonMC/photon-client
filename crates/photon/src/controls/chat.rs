@@ -189,6 +189,7 @@ impl Controls {
         if let Some(chat) = self.chat.as_mut() {
             chat.set_commands(session.commands().cloned());
             chat.set_selectors(session.can_use_selectors());
+            chat.set_auto_suggestions(self.options.play.auto_suggestions);
             chat.set_names(
                 session.online_player_names(),
                 session.scoreboard().team_names(),
@@ -415,18 +416,7 @@ impl Controls {
                 }
             }
             ClickEvent::CopyToClipboard(value) => surface.set_clipboard(value),
-            ClickEvent::OpenUrl(url) => {
-                // `clickUrlAction`, with the prompt on (the option is not
-                // kept): an untrusted link asks first.
-                let size = surface.scale();
-                let gui = (size.gui_scaled_width(), size.gui_scaled_height());
-                let screen =
-                    ConfirmScreen::link(&assets.creative.font, &assets.lang, gui, url, false)
-                        .with_background(photon_gui::screen::confirm::ConfirmBackground::Menu {
-                            in_world: true,
-                        });
-                self.link_confirm = Some((screen, ConfirmTarget::Link(url.clone())));
-            }
+            ClickEvent::OpenUrl(url) => self.click_url(url, surface, assets),
             ClickEvent::OpenFile(path) => open_uri(path),
             ClickEvent::Custom(id, payload) => {
                 session.send_custom_click_action(id, payload.as_ref())?;
@@ -440,6 +430,26 @@ impl Controls {
             ClickEvent::ChangePage(_) => {}
         }
         Ok(())
+    }
+
+    /// `Screen.clickUrlAction`: nothing with the links off, the link at once with the prompt off,
+    /// and an untrusted link asks first otherwise.
+    fn click_url(&mut self, url: &str, surface: &WindowSurface, assets: &ScreenAssets) {
+        let play = self.options.play;
+        if !play.chat_links {
+            return;
+        }
+        if !play.chat_links_prompt {
+            open_uri(url);
+            return;
+        }
+        let size = surface.scale();
+        let gui = (size.gui_scaled_width(), size.gui_scaled_height());
+        let screen = ConfirmScreen::link(&assets.creative.font, &assets.lang, gui, url, false)
+            .with_background(photon_gui::screen::confirm::ConfirmBackground::Menu {
+                in_world: true,
+            });
+        self.link_confirm = Some((screen, ConfirmTarget::Link(url.to_owned())));
     }
 
     /// An event for the open link confirmation: Yes opens the link, Copy

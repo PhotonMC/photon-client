@@ -74,6 +74,7 @@ impl Controls {
             return;
         };
         let choices = screen.choices();
+        self.options.play = screen.play_choices(self.options.play);
         let options = &mut self.options;
         options.chat_visibility = choices.visibility;
         options.save_chat_drafts = choices.save_drafts;
