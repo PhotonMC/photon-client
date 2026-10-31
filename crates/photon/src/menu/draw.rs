@@ -60,7 +60,16 @@ fn draw_settings(
     (lang, size): (&Lang, (i32, i32)),
 ) {
     let mouse = (host.gui_mouse.0 as i32, host.gui_mouse.1 as i32);
-    if let Some((link, _)) = host.link_confirm.as_mut() {
+    if let Some(friends) = host
+        .friends
+        .as_mut()
+        .filter(|_| host.link_confirm.is_none())
+    {
+        if friends.size() != size {
+            friends.resize(size);
+        }
+        friends.draw(frame, (atlas, font), mouse, (0, frame.millis));
+    } else if let Some((link, _)) = host.link_confirm.as_mut() {
         if link.size() != size {
             *link = link.resized(font, lang, size);
         }

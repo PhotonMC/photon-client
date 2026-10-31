@@ -23,6 +23,17 @@ impl Controls {
         }
     }
 
+    /// The state of the friends of the title screen, from the account resolved there.
+    pub(crate) fn start_friends_for(&mut self, account: &photon_net::account::Account) {
+        if self.friends_list.is_some() {
+            return;
+        }
+        let host = photon_net::signin::Hosts::from_environment().services;
+        let transport = photon_net::friends::HttpTransport::for_account(account, &host);
+        self.friends_list = Some(Social::start(transport, std::time::Instant::now()));
+        self.profile_name.clone_from(&account.name);
+    }
+
     /// One game tick of the friends: the answers of the service, the update of the lists, and the
     /// overlay following them. The toasts the changes call for are returned.
     pub(crate) fn friends_tick(&mut self, lang: &Lang) -> Vec<Component> {
@@ -150,7 +161,9 @@ impl Controls {
             (&title, &message),
             buttons,
         )
-        .with_background(ConfirmBackground::Menu { in_world: true });
+        .with_background(ConfirmBackground::Menu {
+            in_world: !self.title_host,
+        });
         self.link_confirm = Some((screen, ConfirmTarget::FriendsList));
     }
 
@@ -166,7 +179,7 @@ impl Controls {
         match (action, target) {
             (LinkAction::Yes, ConfirmTarget::RemoveFriend(id)) => self.remove_friend(*id),
             (LinkAction::Yes, _) => self.turn_on_friends(),
-            (_, ConfirmTarget::FriendsList) if self.online_screen.is_none() => {
+            (_, ConfirmTarget::FriendsList) if self.online_screen.is_none() && !self.title_host => {
                 self.captured = true;
                 self.last_cursor = None;
                 surface.set_cursor_captured(true);
@@ -194,6 +207,9 @@ impl Controls {
         self.friends = None;
         if std::mem::take(&mut self.friends_from_pause) {
             self.open_pause(surface, assets);
+            return;
+        }
+        if self.title_host {
             return;
         }
         self.captured = true;

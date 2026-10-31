@@ -31,7 +31,9 @@ impl Controls {
 
     /// Whether an options screen, or the link question one asked, is open.
     pub(crate) fn host_open(&self) -> bool {
-        self.topmost_option_screen().is_some() || self.link_confirm.is_some()
+        self.topmost_option_screen().is_some()
+            || self.link_confirm.is_some()
+            || self.friends.is_some()
     }
 
     /// The screen that takes the events: the topmost of the options screens that are open.
@@ -155,9 +157,19 @@ impl Controls {
                     (LinkAction::Yes, ConfirmTarget::Drop(paths)) => {
                         self.copy_confirmed_packs(&paths, assets);
                     }
+                    (
+                        action,
+                        target @ (ConfirmTarget::FriendsList | ConfirmTarget::RemoveFriend(_)),
+                    ) => {
+                        self.answer_friends_confirm(action, &target, surface);
+                    }
                     _ => {}
                 }
             }
+            return;
+        }
+        if self.friends.is_some() {
+            self.friends_event(event, surface, assets);
             return;
         }
         let _ = self.option_screens_event(event, surface, assets);

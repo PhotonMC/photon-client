@@ -28,6 +28,7 @@ use crate::play::{self, Client, Exit, JoinTask};
 mod audio;
 mod credits;
 mod draw;
+mod friends;
 mod icons;
 mod input;
 pub(crate) mod panorama;
@@ -166,6 +167,8 @@ struct Menu {
     options: photon_game::options::Options,
     /// The options screens the title opens: the ones of a level, made as outside one.
     host: crate::controls::Controls,
+    /// The account the title is looking up, until it is found, and whether friends work now.
+    friends_title: friends::TitleFriends,
     /// What those screens are made with.
     assets: crate::screens::ScreenAssets,
     /// `Panorama.spin`, in degrees, and when it last advanced.
@@ -235,13 +238,19 @@ impl Menu {
             spin: 0.0,
             last_spin: Instant::now(),
             loading: None,
+            friends_title: friends::TitleFriends::look_up(),
             options,
         })
     }
 
     fn title(&self, size: (i32, i32)) -> Screen {
         let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
-        title_screen(font, lang, size, self.splash.as_deref())
+        let mut screen =
+            TitleScreen::new(font, lang, size, self.splash.as_deref()).multiplayer_only(lang);
+        if self.friends_title.ready {
+            screen.friends_available(lang);
+        }
+        Screen::Title(screen)
     }
 
     /// `ConnectScreen.startConnecting`: the join starts on its own thread.
@@ -351,6 +360,8 @@ impl Menu {
                 return Ok(Choice::Play(session));
             }
             self.credits_ticked(size);
+            self.friends_account_polled();
+            self.friends_ticked(client);
             self.fit_screen(size);
             self.spin_panorama(client);
             let clear = self.draw_frame(client, size)?;
@@ -399,10 +410,7 @@ impl Menu {
         let action = match &mut self.screen {
             Screen::Title(screen) => {
                 let chosen = title_event(screen, event, mouse);
-                if self.open_settings(chosen.as_ref(), client) {
-                    return Ok(None);
-                }
-                return Ok(self.title_chosen(chosen, size));
+                return Ok(self.title_pressed(chosen, client, size));
             }
             Screen::Servers(_) => self.servers_event(event),
             Screen::Form(..) => {

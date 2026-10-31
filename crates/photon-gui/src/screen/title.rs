@@ -35,7 +35,7 @@ const FRIENDS: usize = 3;
 /// What the stilled buttons say (ours: the reference has no such state).
 const MULTIPLAYER_ONLY: &str =
     "Photon 1.0 is multiplayer-only. Singleplayer and Realms are not available yet.";
-const NO_FRIENDS: &str = "Photon does not have the online services friends need yet.";
+const NO_FRIENDS: &str = "The friends list needs a signed-in Microsoft account.";
 
 pub struct TitleScreen {
     buttons: ButtonSet<TitleAction>,
@@ -175,6 +175,13 @@ impl TitleScreen {
         self
     }
 
+    /// The friends button, once the account that has a friends list is known: it opens the overlay.
+    pub fn friends_available(&mut self, lang: &Lang) {
+        self.buttons.set_active(FRIENDS, true);
+        let tooltip = Component::translatable("gui.friends.open.tooltip");
+        self.buttons.set_tooltip(FRIENDS, lang, &tooltip);
+    }
+
     pub fn buttons(&mut self) -> &mut ButtonSet<TitleAction> {
         &mut self.buttons
     }
@@ -308,6 +315,17 @@ mod tests {
         assert_eq!(
             buttons.clicked((x + 24, y)),
             Some(TitleAction::Accessibility)
+        );
+    }
+
+    #[test]
+    fn friends_available_gives_the_friends_button_back() {
+        let mut screen = screen(true);
+        screen.friends_available(&Lang::default());
+        let (x, y) = row(3);
+        assert_eq!(
+            screen.buttons.clicked((x - 24, y)),
+            Some(TitleAction::Friends)
         );
     }
 }
