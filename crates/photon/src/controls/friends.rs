@@ -40,7 +40,8 @@ impl Controls {
             screen.set_friends(lang, facts);
         }
         let from_online = self.online_screen.is_some();
-        let (toasts, turned_on) = collect_toasts(social);
+        let (mut toasts, turned_on) = collect_toasts(social);
+        toasts.append(&mut self.pending_toasts);
         if turned_on {
             // From the online settings the list only turns on; the key opens the overlay.
             self.friends_wanted = !from_online;
@@ -254,14 +255,7 @@ impl Controls {
         let font = &assets.creative.font;
         match asked {
             Some(FriendsEvent::Close) => self.close_friends(surface),
-            Some(FriendsEvent::Send(name)) => {
-                if let Some(social) = self.friends_list.as_mut() {
-                    social.act(Action::Send(name));
-                }
-                if let Some(screen) = self.friends.as_mut() {
-                    screen.clear_box(font);
-                }
-            }
+            Some(FriendsEvent::Send(name)) => self.send_request(&name, font),
             Some(FriendsEvent::CopyName) => {
                 use photon_gui::widgets::edit_box::Clipboard;
                 WindowClipboard(surface).set(&self.profile_name);
@@ -271,6 +265,21 @@ impl Controls {
             Some(FriendsEvent::Decline(id)) => self.act_friend(Action::Decline(id)),
             Some(FriendsEvent::Revoke(id)) => self.act_friend(Action::Revoke(id)),
             None => {}
+        }
+    }
+
+    /// `AddFriendWidget.sendFriendRequest`: a name that cannot be asked is told why in a toast.
+    fn send_request(&mut self, name: &str, font: &photon_render::gui::font::Font) {
+        let Some(social) = self.friends_list.as_mut() else {
+            return;
+        };
+        if let Some(reason) = invalid_reason(name, &self.profile_name, social.lists()) {
+            self.pending_toasts.push(reason);
+            return;
+        }
+        social.act(Action::Send(name.to_owned()));
+        if let Some(screen) = self.friends.as_mut() {
+            screen.clear_box(font);
         }
     }
 
@@ -313,27 +322,63 @@ fn presence_status() -> Option<PresenceStatus> {
         .then_some(PresenceStatus::Online)
 }
 
-/// The toasts the answers of the service call for, and whether the list was turned on.
+/// The toasts the answers of the service call for, and whether the list was turned on
+/// (`PlayerSocialManager.showFailureToast`).
 fn collect_toasts(social: &mut Social) -> (Vec<Component>, bool) {
-    let failed = || Component::translatable("gui.friends.toast.generic_error");
     let mut toasts = Vec::new();
     let mut turned_on = false;
     while let Some(code) = social.take_settings_result() {
-        if code == ResultCode::Success {
-            turned_on = true;
-        } else {
-            toasts.push(failed());
-        }
+        turned_on |= code == ResultCode::Success;
+        toasts.extend(failure_title(code));
     }
     while let Some(notice) = social.take_toast() {
         toasts.push(notice_title(&notice));
     }
     while let Some(code) = social.take_result() {
-        if code != ResultCode::Success {
-            toasts.push(failed());
-        }
+        toasts.extend(failure_title(code));
     }
     (toasts, turned_on)
+}
+
+/// The title of the toast a failed action shows; some codes show none.
+fn failure_title(code: ResultCode) -> Option<Component> {
+    let key = match code {
+        ResultCode::TooManyRequests => "gui.friends.error.rateLimited.message",
+        ResultCode::UnknownProfile => "gui.friends.error.user_may_lack_active_profile",
+        ResultCode::Unauthorized => "gui.friends.error.unauthorized",
+        ResultCode::Forbidden => "gui.friends.error.forbidden.message",
+        ResultCode::ServiceNotAvailable => "gui.friends.error.unavailable.message",
+        ResultCode::Error => "gui.friends.error.failed.message",
+        ResultCode::Success
+        | ResultCode::UpgradeNeeded
+        | ResultCode::ConnectionIssue
+        | ResultCode::TemporaryUnavailable
+        | ResultCode::GenericError => return None,
+    };
+    Some(Component::translatable(key))
+}
+
+/// `AddFriendWidget.getInvalidInputReason`: why a request to `name` is not sent.
+fn invalid_reason(name: &str, own: &str, data: &FriendData) -> Option<Component> {
+    let has = |list: &[Friend]| {
+        list.iter()
+            .any(|friend| friend.name.eq_ignore_ascii_case(name))
+    };
+    let with_name =
+        |key: &str| Component::translatable_with(key, vec![Component::literal(name.to_owned())]);
+    if own.eq_ignore_ascii_case(name) {
+        Some(Component::translatable(
+            "gui.friends.validation.cannot_add_self",
+        ))
+    } else if has(&data.friends) {
+        Some(with_name("gui.friends.validation.already_friend"))
+    } else if has(&data.outgoing) {
+        Some(with_name("gui.friends.validation.already_outgoing"))
+    } else if has(&data.incoming) {
+        Some(with_name("gui.friends.validation.already_incoming"))
+    } else {
+        None
+    }
 }
 
 fn listing(entries: Vec<Entry>) -> Listing {
@@ -440,4 +485,44 @@ fn notice_title(notice: &photon_net::friends::Notice) -> Component {
         Notice::RequestSent(friend) => ("gui.friends.toast.request_sent.message", friend),
     };
     Component::translatable_with(key, vec![Component::literal(friend.name.clone())])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use photon_core::binary::Uuid;
+
+    fn friend(name: &str) -> Friend {
+        Friend {
+            id: Uuid::new(0, 1),
+            name: name.to_owned(),
+        }
+    }
+
+    #[test]
+    fn a_request_is_refused_for_yourself_and_for_names_on_a_list() {
+        let data = FriendData {
+            friends: vec![friend("Alex")],
+            incoming: vec![friend("Bob")],
+            outgoing: vec![friend("Cleo")],
+        };
+        for name in ["steve", "ALEX", "bob", "Cleo"] {
+            assert!(invalid_reason(name, "Steve", &data).is_some(), "{name}");
+        }
+        assert!(invalid_reason("Dana", "Steve", &data).is_none());
+    }
+
+    #[test]
+    fn only_some_failures_show_a_toast() {
+        assert!(failure_title(ResultCode::Success).is_none());
+        assert!(failure_title(ResultCode::GenericError).is_none());
+        for code in [
+            ResultCode::Error,
+            ResultCode::Forbidden,
+            ResultCode::TooManyRequests,
+            ResultCode::ServiceNotAvailable,
+        ] {
+            assert!(failure_title(code).is_some());
+        }
+    }
 }
