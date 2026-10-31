@@ -1,12 +1,11 @@
 //! The entries of the friends overlay's lists: their layout, drawing and buttons
 //! (`FriendEntry`, `IncomingEntry`, `OutgoingEntry`).
 //!
-//! Not drawn: the status text scrolling
-//! when it is too long, and the skins other than a default one.
+//! Not drawn: the skins other than a default one.
 
 use super::draw::inside;
 use super::*;
-use crate::FrameRuns;
+use crate::{FontRuns, FrameRuns};
 use photon_render::entity::player_renderer::default_skin;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
@@ -267,14 +266,22 @@ impl FriendsOverlay {
         let name_y = y + ENTRY_HEIGHT / if showing_status { 3 } else { 2 } - 9 / 2;
         frame.text_with_shadow(atlas, font, &entry.name, text_x, name_y, WHITE);
         if showing_status {
-            frame.styled_text(
-                atlas,
-                font,
-                &entry.status,
-                (text_x, name_y + 9 + 2),
-                GREY,
-                true,
-            );
+            let status_at = (text_x, name_y + 9 + 2);
+            // `FriendEntry`: the room is up to the remove button, and a longer text slides.
+            let room = x + ENTRY_WIDTH - ICON_BUTTON - text_x - 2;
+            if font.width_of_runs(&entry.status) > room {
+                let (top, bottom) = (status_at.1, status_at.1 + 9);
+                crate::widgets::draw_label(
+                    frame,
+                    atlas,
+                    font,
+                    (&entry.status, true),
+                    (text_x + 2, text_x + room - 2),
+                    (top, bottom),
+                );
+            } else {
+                frame.styled_text(atlas, font, &entry.status, status_at, GREY, true);
+            }
         }
         for (button, rect) in Self::buttons_of(entry.kind, x, y) {
             let loading = self.pressed == Some(Pressed::Entry(button, entry.id));
