@@ -3,6 +3,7 @@
 //! where there is none, a player wears its default skin (`DefaultPlayerSkin.get`).
 
 pub(crate) mod dynamic;
+pub(crate) mod face;
 pub(crate) mod item_profile;
 pub(crate) mod profile;
 mod slots;

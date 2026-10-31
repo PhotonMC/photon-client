@@ -9,11 +9,12 @@ use crate::play::Client;
 impl Menu {
     /// The Resource Packs screen's icons, put into the atlas as the screen asks for them.
     pub(super) fn sync_pack_icons(&mut self, client: &mut Client) -> Result<()> {
-        let Some(screen) = self.host.pack_screen.as_mut() else {
-            return Ok(());
-        };
         let (atlas, image) = (&mut self.gui.atlas, &mut self.gui.atlas_image);
-        if photon_gui::favicon::sync_pack_icons(screen, atlas, image) {
+        let mut changed = self.host.sync_faces((atlas, image));
+        if let Some(screen) = self.host.pack_screen.as_mut() {
+            changed |= photon_gui::favicon::sync_pack_icons(screen, atlas, image);
+        }
+        if changed {
             client.backend.replace_gui_texture(&self.gui.atlas_image)?;
         }
         Ok(())

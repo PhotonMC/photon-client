@@ -11,6 +11,7 @@
 mod draw;
 mod empty;
 mod entries;
+mod faces;
 mod input;
 mod tooltip;
 
@@ -122,6 +123,7 @@ pub struct FriendsOverlay {
     size: (i32, i32),
     /// `backgroundScreen`: a screen drawn under the overlay, which then has no background tile.
     over_screen: bool,
+    faces: faces::Faces,
     tab: Tab,
     edit: EditBox,
     focus: Focus,
@@ -214,6 +216,7 @@ impl FriendsOverlay {
             scroll: 0,
             dragging: false,
             over_screen: false,
+            faces: faces::Faces::default(),
             pressed: None,
             size,
             tab: Tab::Friends,

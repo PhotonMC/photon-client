@@ -298,7 +298,10 @@ impl FriendsOverlay {
         mouse: (i32, i32),
     ) {
         let face_y = y + (ENTRY_HEIGHT - FACE_SIZE) / 2;
-        let texture = format!("textures/{}", default_skin(entry.id).texture);
+        let texture = self.faces.texture(entry.id).map_or_else(
+            || format!("textures/{}", default_skin(entry.id).texture),
+            str::to_owned,
+        );
         for u in [8, 40] {
             frame.blit_texture_stretched(
                 atlas,

@@ -160,6 +160,8 @@ pub struct Controls {
     pub profile_name: String,
     /// The friends list was just turned on: the overlay opens next tick.
     friends_wanted: bool,
+    /// The skins of the overlay's faces.
+    faces: faces::Faces,
     /// The overlay was opened from the pause menu, which comes back when it closes.
     friends_from_pause: bool,
     /// Friend toasts the controls decided on, shown on the next tick.
@@ -453,6 +455,7 @@ mod world;
 mod advancements;
 #[cfg(test)]
 mod debug_tests;
+mod faces;
 mod friends;
 mod screen_keys;
 mod social;

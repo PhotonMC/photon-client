@@ -439,9 +439,11 @@ impl Gui {
             &mut Controls,
         ),
     ) -> Result<(), Box<dyn std::error::Error>> {
-        if let Some(screen) = controls.pack_screen.as_mut()
-            && photon_gui::favicon::sync_pack_icons(screen, atlas, image)
-        {
+        let mut changed = controls.sync_faces((atlas, image));
+        if let Some(screen) = controls.pack_screen.as_mut() {
+            changed |= photon_gui::favicon::sync_pack_icons(screen, atlas, image);
+        }
+        if changed {
             backend.replace_gui_texture(image)?;
         }
         Self::present(backend, (frame, size), (atlas, image))
