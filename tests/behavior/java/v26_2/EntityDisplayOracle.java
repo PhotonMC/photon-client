@@ -779,6 +779,7 @@ class EntityDisplayOracle extends EntityDataOracle {
                 Class<?> type = switch (kind.getAsString()) {
                     case "stand" -> net.minecraft.world.entity.decoration.ArmorStand.class;
                     case "player" -> net.minecraft.client.player.RemotePlayer.class;
+                    case "local" -> net.minecraft.client.player.LocalPlayer.class;
                     case "mannequin" -> net.minecraft.world.entity.decoration.Mannequin.class;
                     default -> throw new IllegalArgumentException(kind.getAsString());
                 };

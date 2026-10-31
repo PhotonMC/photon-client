@@ -8,7 +8,7 @@ use super::engine::*;
 use crate::bits::f64_bits;
 use crate::movement::world::{floor_of, put_with};
 
-fn parrot_row(label: &str, mobs: &[(&str, f64)]) -> Value {
+fn parrot_row(label: &str, mobs: &[(&str, f64)], frozen: bool) -> Value {
     // The parrots are silent: a loud one's ambient sounds are drawn from its own random source, which the
     // reference does not seed, so the reference's rows would differ from run to run.
     let at = |x: f64, z: f64| json!({"x": f64_bits(x), "y": f64_bits(64.0), "z": f64_bits(z), "silent": true});
@@ -33,6 +33,7 @@ fn parrot_row(label: &str, mobs: &[(&str, f64)]) -> Value {
         .set("game_time", json!(161))
         .set("tick_entities", json!(true))
         .set("tick_block_entities", json!(true))
+        .set("frozen", json!(frozen))
         .ticks(900)
         .seeds(2500)
         .describe(8)
@@ -41,7 +42,9 @@ fn parrot_row(label: &str, mobs: &[(&str, f64)]) -> Value {
 
 pub fn rows() -> Vec<Value> {
     vec![
-        parrot_row("parrot-draws", &[]),
-        parrot_row("parrot-draws-near-mobs", &[("minecraft:creeper", 1.5), ("minecraft:zombie", -1.5)]),
+        parrot_row("parrot-draws", &[], false),
+        parrot_row("parrot-draws-near-mobs", &[("minecraft:creeper", 1.5), ("minecraft:zombie", -1.5)], false),
+        // `/tick freeze`: neither the parrots nor the vault tick, so the draws stand still.
+        parrot_row("parrot-frozen", &[("minecraft:creeper", 1.5)], true),
     ]
 }

@@ -50,7 +50,7 @@ fn casters(
     world: &ClientWorld,
     camera: &TagCamera,
     local: Option<Vec3>,
-    partial: f32,
+    (world_partial, player_partial): (f32, f32),
 ) -> Vec<Caster> {
     let mut casters: Vec<Caster> = Vec::new();
     // Only a display casts a shadow farther than 16 blocks from the camera (`shadow_of`), so the
@@ -67,6 +67,12 @@ fn casters(
         let facts = *types
             .entry(entity.type_id)
             .or_insert_with(|| TypeShadow::of_type(entity));
+        // A frozen level still moves its players (`TickRateManager.isEntityFrozen`).
+        let partial = if entity.is_player() {
+            player_partial
+        } else {
+            world_partial
+        };
         let Some((radius, strength)) = shadow_of(world, camera, entity, facts, partial) else {
             continue;
         };
@@ -106,7 +112,12 @@ pub fn entity_shadows(
         return;
     };
     let world = session.world();
-    let casters = casters(world, camera, local, view.partial as f32);
+    let casters = casters(
+        world,
+        camera,
+        local,
+        (view.partial as f32, view.real_partial as f32),
+    );
     for Caster {
         drawn,
         ticked,

@@ -34,11 +34,16 @@ fn entity_type_of(kind: &str) -> Result<&'static str, String> {
 fn world_of(kinds: &[Value]) -> Result<ClientWorld, String> {
     let mut world = ClientWorld::default();
     for (index, kind) in kinds.iter().enumerate() {
-        let name = entity_type_of(kind.as_str().ok_or("kind")?)?;
+        let kind = kind.as_str().ok_or("kind")?;
+        // The local player is the entity the world calls its own, and is not in the entity list.
+        if kind == "local" {
+            world.set_local_player_id(EntityId(index as i32));
+            continue;
+        }
         world.apply_entity(EntityInput {
             entity_id: EntityId(index as i32),
             uuid: Uuid::new(1, index as u64),
-            type_id: photon_data::entity_type::id(name).ok_or("entity type")?,
+            type_id: photon_data::entity_type::id(entity_type_of(kind)?).ok_or("entity type")?,
             x: 0.0,
             y: 64.0,
             z: 0.0,

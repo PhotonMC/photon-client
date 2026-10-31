@@ -348,11 +348,7 @@ impl ClientWorld {
         if let Some(player) = player.as_deref_mut() {
             self.apply_player_steps(player);
         }
-        let pushed = if runs_normally {
-            self.tick_block_entities(player.as_deref_mut())
-        } else {
-            Ok(())
-        };
+        let pushed = self.tick_level_block_entities(player.as_deref_mut(), runs_normally);
         if let Some(player) = player {
             self.apply_player_steps(player);
         }
@@ -374,7 +370,20 @@ impl ClientWorld {
         }
     }
 
-    /// `Level.tickBlockEntities`: each block entity with a ticker ticks, in the order they were set
+    /// `Level.tickBlockEntities`: the block entities tick only while the level runs normally.
+    pub fn tick_level_block_entities(
+        &mut self,
+        player: Option<&mut LocalPlayer>,
+        runs_normally: bool,
+    ) -> Result<(), Unsupported> {
+        if runs_normally {
+            self.tick_block_entities(player)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// The tickers of `Level.tickBlockEntities`: each block entity with a ticker ticks, in the order they were set
     /// up. The moving pistons, the end gateways, the potent sulfur blocks, the enchanting tables, the
     /// beacons, the conduits and the vaults tick.
     pub fn tick_block_entities(

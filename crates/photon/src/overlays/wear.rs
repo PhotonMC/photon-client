@@ -279,7 +279,7 @@ pub fn name_tags(
         see_through: Vec::new(),
         normal: Vec::new(),
     };
-    player_tags(session, (&mut tags, lang), viewer, view.partial as f32);
+    player_tags(session, (&mut tags, lang), viewer, view.real_partial as f32);
     entity_tags(session, (&mut tags, lang), viewer, view.partial as f32);
     (tags.see_through, tags.normal)
 }

@@ -637,6 +637,12 @@ class MovementParticleOracle extends MovementMenuOracle {
                     level.updateSkyBrightness();
                     continue;
                 }
+                if (event.get("type").getAsString().equals("destroy_progress")) {
+                    level.destroyBlockProgress(event.get("id").getAsInt(), new net.minecraft.core.BlockPos(
+                        event.get("x").getAsInt(), event.get("y").getAsInt(), event.get("z").getAsInt()),
+                        event.get("stage").getAsInt());
+                    continue;
+                }
                 if (event.get("type").getAsString().equals("game_time")) {
                     level.setTimeFromServer(event.get("time").getAsLong());
                     continue;
@@ -694,6 +700,19 @@ class MovementParticleOracle extends MovementMenuOracle {
             }
             var counted = new JsonObject();
             counted.addProperty("pending", pending.size());
+            // `ClientLevel.tick`'s expiry of cracks nobody updates.
+            if (row.has("expire_cracks") && row.get("expire_cracks").getAsBoolean()) {
+                Reflect.invoke(level, net.minecraft.client.multiplayer.ClientLevel.class,
+                    "removeBlockBreakingProgress", new Class<?>[0]);
+            }
+            // `/tick freeze`: the level's own tick rate manager stands still, as the entities and the
+            // block entities read it.
+            if (row.has("frozen") && row.get("frozen").getAsBoolean()) {
+                var manager = new net.minecraft.world.TickRateManager();
+                manager.setFrozen(true);
+                manager.tick();
+                setField(level, "tickRateManager", manager);
+            }
             if (row.has("tick_entities") && row.get("tick_entities").getAsBoolean()) {
                 level.tickEntities();
             }
@@ -714,6 +733,9 @@ class MovementParticleOracle extends MovementMenuOracle {
             // Whether each parrot of the scene dances, in the order they were put in.
             for (var parrot : MovementSupport.parrots(level)) {
                 sounds.add("party," + parrot.getId() + "," + parrot.isPartyParrot());
+            }
+            if (row.has("watch_cracks")) {
+                sounds.add("cracks," + ((java.util.Map<?, ?>) getField(level, "destroyingBlocks")).size());
             }
             MovementSupport.watchLines(row, level).forEach(sounds::add);
             MovementSupport.regionLines(row, level).forEach(sounds::add);

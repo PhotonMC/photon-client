@@ -321,5 +321,6 @@ pub fn rows() -> Vec<Value> {
     rows.extend(super::spawner_rows::rows());
     rows.extend(super::portal_rows::rows());
     rows.extend(super::parrot_rows::rows());
+    rows.extend(super::crack_rows::rows());
     rows
 }

@@ -37,6 +37,13 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
             world.apply_global_level_event(i32_field(event, "event")?, pos()?);
         }
         "block_event" => queue_block_event(event, world)?,
+        "destroy_progress" => world.destroy_block_progress(
+            photon_core::ids::EntityId(i32_field(event, "id")?),
+            i32_field(event, "x")?,
+            i32_field(event, "y")?,
+            i32_field(event, "z")?,
+            i32_field(event, "stage")?,
+        ),
         "ore_touch" => touch_ore(world, pos()?),
         "set_block" => {
             let state = super::state_of(&json!({"state": event["state"]}))?;
@@ -281,11 +288,15 @@ pub(super) fn tick_block_entities(
     row: &Value,
     engine: &photon_world::particles::ParticleEngine,
 ) -> usize {
+    let frozen = row["frozen"].as_bool() == Some(true);
+    if row["expire_cracks"].as_bool() == Some(true) {
+        world.expire_destroy_progress();
+    }
     if row["tick_entities"].as_bool() == Some(true) {
-        world.tick_entities(false);
+        world.tick_entities(frozen);
     }
     if row["tick_block_entities"].as_bool() == Some(true) {
-        let _ = world.tick_block_entities(None);
+        let _ = world.tick_level_block_entities(None, !frozen);
     }
     engine.pending_count()
 }
@@ -298,6 +309,9 @@ pub(super) fn ticked_lines(
 ) -> Vec<String> {
     let mut lines: Vec<String> = ticked.iter().map(sound_line).collect();
     lines.extend(super::extras::party_lines(world));
+    if row["watch_cracks"].as_bool() == Some(true) {
+        lines.push(format!("cracks,{}", world.destroying_blocks().len()));
+    }
     lines.extend(super::extras::watch_lines(world, row));
     lines.extend(super::extras::region_lines(world, row));
     lines

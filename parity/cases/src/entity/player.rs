@@ -111,6 +111,8 @@ pub fn entity_frozen() -> Vec<Value> {
             &["stand", "stand", "stand", "player"],
             &[(0, 1), (0, 2), (2, 3)],
         ));
+        rows.push(row("the local player", level, &["local", "stand"], &[(1, 0)]));
+        rows.push(row("local player two levels up", level, &["stand", "stand", "local"], &[(0, 1), (1, 2)]));
     }
     vec![entity("entity-frozen", "entity_frozen", rows)]
 }

@@ -72,7 +72,7 @@ pub fn local_flames(
         return;
     }
     let twist = camera_twist(&camera_orientation(view.rotation.0, view.rotation.1));
-    let at = player.interpolated_position(view.partial);
+    let at = player.interpolated_position(view.real_partial);
     let body = Body {
         position: (at.x, at.y, at.z),
         size: (player.bb_width(), player.bb_height()),

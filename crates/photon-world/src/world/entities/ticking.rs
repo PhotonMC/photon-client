@@ -35,8 +35,16 @@ impl ClientWorld {
     /// The entity part of `isEntityFrozen`, for a level that is not running: an entity that is no
     /// player and carries none, directly or through its passengers.
     fn entity_is_frozen(&self, entity_id: EntityId) -> bool {
-        !self.entities.at(entity_id).is_some_and(|e| e.is_player())
-            && !self.carries_player(entity_id)
+        !self.is_player_id(entity_id) && !self.carries_player(entity_id)
+    }
+
+    /// Whether the id is a player's, remote or the local one.
+    fn is_player_id(&self, entity_id: EntityId) -> bool {
+        self.entities.at(entity_id).is_some_and(|e| e.is_player())
+            || self
+                .local_player
+                .as_ref()
+                .is_some_and(|p| p.id == entity_id)
     }
 
     /// `Entity.countPlayerPassengers() > 0`: a player, local or remote, sits in it or in
@@ -49,11 +57,7 @@ impl ClientWorld {
                 return false;
             };
             for &passenger in self.entity_passengers(id).unwrap_or_default() {
-                let local = self
-                    .local_player
-                    .as_ref()
-                    .is_some_and(|p| p.id == passenger);
-                if local || self.entities.at(passenger).is_some_and(|e| e.is_player()) {
+                if self.is_player_id(passenger) {
                     return true;
                 }
                 pending.push(passenger);
