@@ -59,7 +59,7 @@ impl Menu {
         } else {
             &self.options
         };
-        self.gui.update_menu_toasts(options);
+        self.gui.update_menu_toasts(options, self.sound.as_mut());
         if self.host.take_friends_wanted() {
             self.open_friends(client);
         }

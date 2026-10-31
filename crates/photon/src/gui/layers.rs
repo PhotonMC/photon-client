@@ -86,14 +86,15 @@ impl Layers {
         }
     }
 
-    /// `Gui.update` of a menu: the toasts move on (their sounds are not played there).
+    /// `Gui.update` of a menu: the toasts move on, with the sounds they make.
     pub(super) fn update_menu(
         &mut self,
         options: &photon_game::options::Options,
         (font, lang): (&Font, &Lang),
+        sound: Option<&mut crate::sound::SoundSystem>,
     ) {
         self.menu_display_time = options.notification_display_time;
-        self.update_toasts(None, options, ((font, lang), None));
+        self.update_toasts(sound, options, ((font, lang), None));
     }
 
     /// The toasts over a menu, which has no interface to hide and no pause screen.

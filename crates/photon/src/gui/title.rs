@@ -2,8 +2,13 @@ use super::*;
 
 impl Gui {
     /// The toasts of a menu move on.
-    pub fn update_menu_toasts(&mut self, options: &photon_game::options::Options) {
-        self.layers.update_menu(options, (&self.font, &self.lang));
+    pub fn update_menu_toasts(
+        &mut self,
+        options: &photon_game::options::Options,
+        sound: Option<&mut crate::sound::SoundSystem>,
+    ) {
+        self.layers
+            .update_menu(options, (&self.font, &self.lang), sound);
     }
 
     /// A frame of a menu, with nothing behind it but the clear colour.
