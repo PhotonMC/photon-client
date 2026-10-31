@@ -145,3 +145,13 @@ fn a_hotbar_of_the_wrong_size_is_empty() {
     assert!(!manager.get(1).is_empty());
     assert!(manager.get(2).is_empty());
 }
+
+#[test]
+fn a_stack_with_the_wire_form_of_no_components_is_stored_whole() {
+    // A stack read off the wire or taken from a creative tab carries the patch "0 added, 0 removed".
+    let plain = stack("minecraft:stone", 3).with_patch_bytes(vec![0, 0]);
+    assert_eq!(
+        decode_entry(&encode_entry(Some(&plain))).map(|stack| stack.item_count()),
+        Some(3)
+    );
+}
