@@ -31,6 +31,21 @@ impl Gui {
         )
     }
 
+    /// `PopupScreen` draws the screen it was opened over, `(-1, -1)` for the mouse.
+    fn draw_popup_background(
+        assets: (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
+        controls: &mut Controls,
+        frame: &mut photon_render::gui::GuiFrame,
+        gui_size: (i32, i32),
+    ) {
+        if matches!(
+            controls.link_confirm,
+            Some((_, crate::controls::ConfirmTarget::RemoveFriend(_)))
+        ) {
+            Self::draw_friends_overlay(frame, assets, (controls, gui_size, (-1, -1)));
+        }
+    }
+
     /// The link question, the dialog a server put over the game (or the question about it) or a
     /// confirmation: whether one is up.
     fn draw_server_dialog(
@@ -41,6 +56,7 @@ impl Gui {
     ) -> bool {
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
         let blurriness = controls.options.menu_background_blurriness;
+        Self::draw_popup_background((atlas, font, lang), controls, frame, gui_size);
         if let Some((link, _)) = controls.link_confirm.as_mut() {
             if link.size() != gui_size {
                 *link = link.resized(font, lang, gui_size);

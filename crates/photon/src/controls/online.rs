@@ -98,12 +98,11 @@ impl Controls {
         }
         if xbox {
             // `PrivacyConfirmLinkScreen.confirmLinkNow`: the page is asked about, over the screen.
-            let screen = ConfirmScreen::link(
+            let screen = ConfirmScreen::privacy_link(
                 &assets.creative.font,
                 &assets.lang,
                 Self::gui_size(surface),
                 PRIVACY_AND_ONLINE_SETTINGS,
-                true,
             )
             .with_background(ConfirmBackground::Menu {
                 in_world: !self.title_host,

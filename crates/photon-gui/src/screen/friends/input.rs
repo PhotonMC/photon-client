@@ -68,11 +68,36 @@ impl FriendsOverlay {
                 crate::ui_sound::play_down_sound();
                 self.tab = tab;
                 self.scroll = 0;
+                // The box belongs to the friends tab.
+                if tab == Tab::Pending {
+                    self.set_focus(Focus::None);
+                }
                 return true;
             }
         }
         self.dragging = self.over_scrollbar(at);
         self.dragging
+    }
+
+    /// A press on `AddFriendWidget` (the friends tab's box, send button and profile name): what
+    /// the press asks for, or none when it was elsewhere.
+    fn add_widget_pressed(&mut self, at: (i32, i32), font: &Font) -> Option<Option<FriendsEvent>> {
+        let rect = self.box_rect();
+        if inside(at, rect) {
+            if self.box_active() {
+                self.set_focus(Focus::Box);
+                self.edit.click_at(at.0 - (rect.0 + 4), font);
+            }
+            return Some(None);
+        }
+        if inside(at, self.button_rect()) {
+            return Some(self.send());
+        }
+        if inside(at, self.name_rect(font)) {
+            crate::ui_sound::play_down_sound();
+            return Some(Some(FriendsEvent::CopyName));
+        }
+        None
     }
 
     /// A press of the primary button at `mouse`.
@@ -81,13 +106,10 @@ impl FriendsOverlay {
         if self.tab_or_scrollbar_pressed(at) {
             return None;
         }
-        let rect = self.box_rect();
-        if inside(at, rect) {
-            if self.box_active() {
-                self.set_focus(Focus::Box);
-                self.edit.click_at(at.0 - (rect.0 + 4), font);
-            }
-            return None;
+        if self.tab == Tab::Friends
+            && let Some(pressed) = self.add_widget_pressed(at, font)
+        {
+            return pressed;
         }
         if self.empty_link_at(at, font) || self.footer_link_at(at, font) {
             crate::ui_sound::play_down_sound();
@@ -96,13 +118,6 @@ impl FriendsOverlay {
         if let Some(asked) = self.entry_pressed(at) {
             crate::ui_sound::play_down_sound();
             return Some(asked);
-        }
-        if inside(at, self.button_rect()) {
-            return self.send();
-        }
-        if inside(at, self.name_rect(font)) {
-            crate::ui_sound::play_down_sound();
-            return Some(FriendsEvent::CopyName);
         }
         if !inside(at, self.panel_rect()) {
             return Some(FriendsEvent::Close);

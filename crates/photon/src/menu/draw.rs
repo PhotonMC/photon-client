@@ -18,9 +18,7 @@ pub(super) fn draw_screen(
 ) {
     match screen {
         Screen::Title(screen) => {
-            screen.draw(frame, atlas, font, mouse);
-            // The friends overlay, or its question, opens over the title.
-            draw_over_title(host, (frame, atlas, font), (lang, size));
+            draw_title(screen, host, (frame, atlas, font), (lang, size, mouse));
         }
         Screen::Servers(screen) => screen.draw(frame, atlas, font, mouse),
         Screen::Form(screen, _) => screen.draw(frame, atlas, font, mouse),
@@ -57,6 +55,28 @@ fn draw_pack_question(
     }
 }
 
+/// The title, and what opens over it: the friends overlay and its question.
+fn draw_title(
+    screen: &photon_gui::screen::title::TitleScreen,
+    host: &mut crate::controls::Controls,
+    (frame, atlas, font): (&mut GuiFrame, &GuiAtlas, &Font),
+    (lang, size, mouse): (&Lang, (i32, i32), (i32, i32)),
+) {
+    // A screen opened over the title replaces it; the friends overlay (and its popup)
+    // draw it as their background, with no mouse over it (`extractRenderState(-1, -1)`).
+    let popup = matches!(
+        host.link_confirm,
+        Some((_, crate::controls::ConfirmTarget::RemoveFriend(_)))
+    );
+    let background = host.friends.is_some() && (host.link_confirm.is_none() || popup);
+    if !host.host_open() {
+        screen.draw(frame, atlas, font, mouse);
+    } else if background {
+        screen.draw(frame, atlas, font, (-1, -1));
+    }
+    draw_over_title(host, (frame, atlas, font), (lang, size));
+}
+
 fn draw_over_title(
     host: &mut crate::controls::Controls,
     at: (&mut GuiFrame, &GuiAtlas, &Font),
@@ -74,22 +94,30 @@ fn draw_settings(
     (lang, size): (&Lang, (i32, i32)),
 ) {
     let mouse = (host.gui_mouse.0 as i32, host.gui_mouse.1 as i32);
+    // `PopupScreen` draws the screen it was opened over, `(-1, -1)` for the mouse.
+    let popup = matches!(
+        host.link_confirm,
+        Some((_, crate::controls::ConfirmTarget::RemoveFriend(_)))
+    );
     if let Some(friends) = host
         .friends
         .as_mut()
-        .filter(|_| host.link_confirm.is_none())
+        .filter(|_| host.link_confirm.is_none() || popup)
     {
         if friends.size() != size {
             friends.resize(size);
         }
         let blurriness = host.options.menu_background_blurriness;
-        friends.draw(frame, (atlas, font), mouse, (blurriness, frame.millis));
-    } else if let Some((link, _)) = host.link_confirm.as_mut() {
+        let at = if popup { (-1, -1) } else { mouse };
+        friends.draw(frame, (atlas, font), at, (blurriness, frame.millis));
+    }
+    let friends_up = host.friends.is_some();
+    if let Some((link, _)) = host.link_confirm.as_mut() {
         if link.size() != size {
             *link = link.resized(font, lang, size);
         }
         link.draw(frame, (atlas, font), mouse, 0);
-    } else {
+    } else if !friends_up {
         let at = (atlas, font, lang);
         if !crate::gui::Gui::draw_packs(at, host, frame, (size, mouse)) {
             crate::gui::Gui::draw_option_screens(at, host, frame, (size, mouse));

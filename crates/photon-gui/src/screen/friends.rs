@@ -273,6 +273,16 @@ impl FriendsOverlay {
         (left, (self.size.1 - height) / 2, OVERLAY_WIDTH, height)
     }
 
+    /// The height of `AddFriendWidget`, which only the friends tab has: the pending tab's list
+    /// starts at the top of the panel.
+    fn add_height(&self) -> i32 {
+        if self.tab == Tab::Friends {
+            ADD_WIDGET_HEIGHT
+        } else {
+            0
+        }
+    }
+
     /// `AddFriendWidget`'s box and its button.
     fn box_rect(&self) -> (i32, i32, i32, i32) {
         let (left, top, ..) = self.content();

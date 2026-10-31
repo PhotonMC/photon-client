@@ -113,9 +113,9 @@ impl FriendsOverlay {
         let (left, top, width, height) = self.content();
         (
             left,
-            top + ADD_WIDGET_HEIGHT,
+            top + self.add_height(),
             width,
-            height - ADD_WIDGET_HEIGHT,
+            height - self.add_height(),
         )
     }
 

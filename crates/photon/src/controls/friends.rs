@@ -345,14 +345,15 @@ impl Controls {
     /// `PrivacyConfirmLinkScreen.confirmLinkNow`: the account page is asked about, over the overlay.
     fn ask_account_link(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
         let url = super::online::PRIVACY_AND_ONLINE_SETTINGS;
-        let screen = ConfirmScreen::link(
+        let screen = ConfirmScreen::privacy_link(
             &assets.creative.font,
             &assets.lang,
             Self::gui_size(surface),
             url,
-            true,
         )
-        .with_background(ConfirmBackground::Menu { in_world: true });
+        .with_background(ConfirmBackground::Menu {
+            in_world: !self.title_host,
+        });
         self.link_confirm = Some((screen, ConfirmTarget::Link(url.to_owned())));
     }
 
@@ -378,15 +379,16 @@ impl Controls {
         assets: &ScreenAssets,
     ) {
         let text = |key: &str| Component::translatable(key);
-        let screen = ConfirmScreen::new(
+        let screen = ConfirmScreen::popup(
             &assets.creative.font,
             &assets.lang,
             Self::gui_size(surface),
-            &text("gui.friends.confirm_title"),
-            &text("gui.friends.confirm_unfriend"),
+            (
+                &text("gui.friends.confirm_title"),
+                &text("gui.friends.confirm_unfriend"),
+            ),
             (&text("gui.remove"), &text("gui.cancel")),
-        )
-        .with_background(ConfirmBackground::Menu { in_world: true });
+        );
         self.link_confirm = Some((screen, ConfirmTarget::RemoveFriend(id)));
     }
 }

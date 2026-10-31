@@ -23,23 +23,34 @@ impl Gui {
                 }
             };
             options.draw(frame, (atlas, font), mouse, (blurriness, overlay));
-        } else if let Some(friends) = controls.friends.as_mut() {
-            if friends.size() != gui_size {
-                friends.resize(gui_size);
-            }
-            // `backgroundScreen`: the pause menu the overlay was opened from is drawn under it.
-            if let Some(pause) = controls.pause_under.as_mut() {
-                if pause.size() != gui_size {
-                    *pause = pause.resized(font, lang, gui_size);
-                }
-                pause.draw(frame, atlas, font, (-1, -1), gui_size, Some(blurriness));
-            }
-            friends.draw(frame, (atlas, font), mouse, (blurriness, frame.millis));
+        } else if controls.friends.is_some() {
+            Self::draw_friends_overlay(frame, (atlas, font, lang), (controls, gui_size, mouse));
         } else if let Some(social) = controls.social.as_mut() {
             if social.size() != gui_size {
                 *social = social.resized(font, lang, gui_size);
             }
             social.draw(frame, (atlas, font), mouse, blurriness);
+        }
+    }
+
+    /// The friends overlay, with the pause menu it was opened from under it (`backgroundScreen`).
+    pub(super) fn draw_friends_overlay(
+        frame: &mut photon_render::gui::GuiFrame,
+        (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
+        (controls, gui_size, mouse): (&mut Controls, (i32, i32), (i32, i32)),
+    ) {
+        let blurriness = controls.options.menu_background_blurriness;
+        if let Some(pause) = controls.pause_under.as_mut() {
+            if pause.size() != gui_size {
+                *pause = pause.resized(font, lang, gui_size);
+            }
+            pause.draw(frame, atlas, font, (-1, -1), gui_size, Some(blurriness));
+        }
+        if let Some(friends) = controls.friends.as_mut() {
+            if friends.size() != gui_size {
+                friends.resize(gui_size);
+            }
+            friends.draw(frame, (atlas, font), mouse, (blurriness, frame.millis));
         }
     }
 }

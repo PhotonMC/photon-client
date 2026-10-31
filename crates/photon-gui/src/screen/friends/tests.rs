@@ -119,6 +119,7 @@ fn the_buttons_of_the_entries_ask_for_their_actions() {
     );
     // The pending tab: a header (9 + 4), then the request's decline button.
     screen.clicked(centre(screen.tab_rect(Tab::Pending)), &font);
+    let (_, top, ..) = screen.list_area();
     let at = (f64::from(left + 8 + 204 - 10), f64::from(top + 13 + 14));
     assert_eq!(
         screen.clicked(at, &font),
@@ -215,4 +216,19 @@ fn a_button_shows_loading_until_the_action_is_answered() {
     assert!(screen.pressed.is_some());
     screen.set_view(&Lang::new([]), view(true));
     assert_eq!(screen.pressed, None);
+}
+
+#[test]
+fn the_pending_tab_has_no_box_and_its_list_starts_at_the_top() {
+    let font = Font::default();
+    let mut screen = overlay(true);
+    let under_box = screen.list_area();
+    screen.clicked(centre(screen.tab_rect(Tab::Pending)), &font);
+    assert_eq!(screen.list_area().1, screen.content().1);
+    assert!(screen.list_area().1 < under_box.1);
+    // Where the box was, a press focuses nothing and nothing is typed.
+    screen.clicked(centre(screen.box_rect()), &font);
+    screen.char_typed('A', &font);
+    screen.clicked(centre(screen.tab_rect(Tab::Friends)), &font);
+    assert!(screen.edit.is_empty());
 }

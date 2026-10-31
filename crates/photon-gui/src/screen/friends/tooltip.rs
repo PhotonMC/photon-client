@@ -50,23 +50,33 @@ impl FriendsOverlay {
             };
             return Some((lines, rect));
         }
-        let send = self.button_rect();
-        if draw::inside(at, send) {
-            if self.pressed == Some(Pressed::Send) {
-                return Some((&texts.loading, send));
-            }
-            let empty = self.box_active() && self.edit.value().trim().is_empty();
-            return Some((
-                if empty {
-                    &texts.empty_name
-                } else {
-                    &texts.send
-                },
-                send,
-            ));
+        if self.tab != Tab::Friends {
+            return None;
+        }
+        if let Some(found) = self.send_tooltip(at) {
+            return Some(found);
         }
         let name = self.name_rect(font);
         draw::inside(at, name).then_some((texts.copy.as_slice(), name))
+    }
+
+    /// The tooltip of the send button.
+    fn send_tooltip(&self, at: (i32, i32)) -> Option<(&[Run], Rect)> {
+        let texts = &self.texts.tooltips;
+        let send = self.button_rect();
+        if !draw::inside(at, send) {
+            return None;
+        }
+        if self.pressed == Some(Pressed::Send) {
+            return Some((&texts.loading, send));
+        }
+        let empty = self.box_active() && self.edit.value().trim().is_empty();
+        let lines = if empty {
+            &texts.empty_name
+        } else {
+            &texts.send
+        };
+        Some((lines, send))
     }
 
     pub(super) fn draw_tooltip(

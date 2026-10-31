@@ -16,9 +16,9 @@ impl FriendsOverlay {
         let (left, top, width, height) = self.content();
         (
             left,
-            top + ADD_WIDGET_HEIGHT,
+            top + self.add_height(),
             width,
-            height - ADD_WIDGET_HEIGHT,
+            height - self.add_height(),
         )
     }
 
@@ -67,7 +67,9 @@ impl FriendsOverlay {
         for tab in [Tab::Friends, Tab::Pending] {
             self.draw_tab(frame, (atlas, font), mouse, tab);
         }
-        self.draw_add_widget(frame, (atlas, font), mouse);
+        if self.tab == Tab::Friends {
+            self.draw_add_widget(frame, (atlas, font), mouse);
+        }
         let (view, texts) = (&self.view, &self.texts);
         let (listing, loading) = match self.tab {
             Tab::Friends => (&view.friends, &texts.loading[0]),
