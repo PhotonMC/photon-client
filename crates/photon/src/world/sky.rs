@@ -3,6 +3,7 @@
 //! weather, the fog rain brings, and the lightmap.
 
 use photon_core::math::Vec3;
+use photon_game::options::CloudStatus;
 use photon_net::connection::PlaySession;
 use photon_render::VulkanBackend;
 use photon_render::block::biome_tint::BiomeTints;
@@ -34,6 +35,8 @@ pub struct SkyCamera {
     pub lightmap_options: (f32, f32),
     /// `Options.hideLightningFlash`, read by the same extractor.
     pub hide_flashes: bool,
+    /// `Options.cloudStatus`.
+    pub cloud_status: CloudStatus,
 }
 
 pub struct Sky {
@@ -255,7 +258,7 @@ impl Sky {
             &sky,
             (camera.eye, session.game_time(), partial),
             camera.view_projection,
-            CLOUD_RANGE,
+            (CLOUD_RANGE, camera.cloud_status),
         )?;
         backend.set_fog(sky.fog_colour, sky.terrain_fog);
         backend.set_sky(

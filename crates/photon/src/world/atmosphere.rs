@@ -1,6 +1,7 @@
 //! The weather around the camera: rain and snow, and the fog rain brings.
 
 use photon_core::math::Vec3;
+use photon_game::options::CloudStatus;
 use photon_net::connection::PlaySession;
 use photon_render::block::biome_tint::{BiomeTints, Precipitation};
 use photon_render::scene::Vertex;
@@ -146,7 +147,7 @@ type CloudBuild = (
     CloudKey,
     std::sync::mpsc::Receiver<Vec<photon_render::sky::clouds::CloudVertex>>,
 );
-type CloudKey = ((i32, i32), photon_render::sky::clouds::RelativeCamera);
+type CloudKey = ((i32, i32), photon_render::sky::clouds::RelativeCamera, bool);
 
 /// The cloud layer: its cells from the clouds texture, which cell and side of the layer its
 /// faces were last built for, and the build under way.
@@ -180,7 +181,7 @@ impl Clouds {
     ) -> Option<Vec<photon_render::sky::clouds::CloudVertex>> {
         let radius = photon_render::sky::clouds::radius_cells(cloud_range);
         let cells = self.cells.clone();
-        let make = move || cells.build(key.1, key.0.0, key.0.1, radius);
+        let make = move || cells.build(key.1, key.0, radius, key.2);
         if self.built_for.is_none() {
             self.building = None;
             return Some(make());
@@ -192,7 +193,7 @@ impl Clouds {
                 let _ = sender.send(make());
             });
         if spawned.is_err() {
-            return Some(self.cells.build(key.1, key.0.0, key.0.1, radius));
+            return Some(self.cells.build(key.1, key.0, radius, key.2));
         }
         self.building = Some((key, receiver));
         None
@@ -218,7 +219,7 @@ impl Clouds {
     /// Where the built cell's corner sits from the camera: the placement's offset, moved by the
     /// cells between (the grid wraps).
     fn offset_for_built(&self, placement: &photon_render::sky::clouds::CloudPlacement) -> [f32; 3] {
-        let Some(((built_x, built_z), _)) = self.built_for else {
+        let Some(((built_x, built_z), ..)) = self.built_for else {
             return placement.offset;
         };
         let wrap = |delta: i32, width: i32| {
@@ -247,9 +248,10 @@ impl Clouds {
         sky: &photon_render::sky::SkyFrame,
         (eye, game_time, partial): (Vec3, i64, f32),
         view_projection: [[f32; 4]; 4],
-        cloud_range: i32,
+        (cloud_range, status): (i32, CloudStatus),
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let visible = sky.cloud_colour[3] > 0.0;
+        // `LevelRenderer`: no pass for Off or a fully transparent colour.
+        let visible = sky.cloud_colour[3] > 0.0 && status != CloudStatus::Off;
         if !visible {
             backend.set_cloud_frame(None);
             return Ok(());
@@ -261,7 +263,11 @@ impl Clouds {
             game_time,
             partial,
         );
-        let key = (placement.cell, placement.relative);
+        let key = (
+            placement.cell,
+            placement.relative,
+            status == CloudStatus::Fancy,
+        );
         if let Some((built, faces)) = self.finished() {
             self.built_for = Some(built);
             backend.set_cloud_faces(&faces)?;

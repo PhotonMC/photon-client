@@ -163,73 +163,104 @@ impl CloudCells {
         self.cells[index as usize]
     }
 
-    /// The fancy clouds' triangles around the camera's cell, in the
-    /// reference's ring order (nearest first), two triangles per face.
+    /// The clouds' triangles around the camera's cell, in the reference's ring order (nearest
+    /// first), two triangles per face. Without `extrude` each cloud is one flat face at its
+    /// bottom in the top colour, seen from both sides (the fast clouds).
     pub fn build(
         &self,
         relative: RelativeCamera,
-        centre_x: i32,
-        centre_z: i32,
+        (centre_x, centre_z): (i32, i32),
         radius_cells: i32,
+        extrude: bool,
     ) -> Vec<CloudVertex> {
         let mut vertices = Vec::new();
-        let mut face = |x: i32, z: i32, direction: usize, inside: bool| {
-            let corners = CORNERS[direction];
-            let corner = |quad_vertex: usize| {
-                let [u, v, w] = corners[if inside { 3 - quad_vertex } else { quad_vertex }];
-                CloudVertex {
-                    position: [
-                        (u + x as f32) * CELL_SIZE,
-                        v * CELL_HEIGHT,
-                        (w + z as f32) * CELL_SIZE,
-                    ],
-                    shade: SHADES[direction],
-                }
+        for (x, z) in ring_cells(radius_cells) {
+            let Some(sides) = self.cell(centre_x + x, centre_z + z) else {
+                continue;
             };
-            for quad_vertex in [0, 1, 2, 0, 2, 3] {
-                vertices.push(corner(quad_vertex));
-            }
-        };
-        let mut cell = |x: i32, z: i32| {
-            let Some([north, east, south, west]) = self.cell(centre_x + x, centre_z + z) else {
-                return;
+            let mut face = |direction, inside, shade| {
+                push_face(&mut vertices, (x, z), (direction, inside), shade);
             };
-            if relative != RelativeCamera::Below {
-                face(x, z, UP, false);
-            }
-            if relative != RelativeCamera::Above {
-                face(x, z, DOWN, false);
-            }
-            if north && z > 0 {
-                face(x, z, NORTH, false);
-            }
-            if south && z < 0 {
-                face(x, z, SOUTH, false);
-            }
-            if west && x > 0 {
-                face(x, z, WEST, false);
-            }
-            if east && x < 0 {
-                face(x, z, EAST, false);
-            }
-            if x.abs() <= 1 && z.abs() <= 1 {
-                for direction in 0..6 {
-                    face(x, z, direction, true);
-                }
-            }
-        };
-        for ring in 0..=2 * radius_cells {
-            for x in -ring..=ring {
-                let z = ring - x.abs();
-                if z >= 0 && z <= radius_cells && x * x + z * z <= radius_cells * radius_cells {
-                    if z != 0 {
-                        cell(x, -z);
-                    }
-                    cell(x, z);
-                }
+            if extrude {
+                extruded_cell(&mut face, relative, (x, z), sides);
+            } else {
+                face(DOWN, false, SHADES[UP]);
+                face(DOWN, true, SHADES[UP]);
             }
         }
         vertices
+    }
+}
+
+/// The cells within the radius around the camera's, ring by ring, nearest first.
+fn ring_cells(radius_cells: i32) -> Vec<(i32, i32)> {
+    let mut cells = Vec::new();
+    for ring in 0..=2 * radius_cells {
+        for x in -ring..=ring {
+            let z = ring - x.abs();
+            if z < 0 || z > radius_cells || x * x + z * z > radius_cells * radius_cells {
+                continue;
+            }
+            if z != 0 {
+                cells.push((x, -z));
+            }
+            cells.push((x, z));
+        }
+    }
+    cells
+}
+
+/// One face of the cell at (`x`, `z`) from the camera's: two triangles; an inward face lists its
+/// corners the other way round.
+fn push_face(
+    vertices: &mut Vec<CloudVertex>,
+    (x, z): (i32, i32),
+    (direction, inside): (usize, bool),
+    shade: f32,
+) {
+    let corners = CORNERS[direction];
+    let corner = |quad_vertex: usize| {
+        let [u, v, w] = corners[if inside { 3 - quad_vertex } else { quad_vertex }];
+        CloudVertex {
+            position: [
+                (u + x as f32) * CELL_SIZE,
+                v * CELL_HEIGHT,
+                (w + z as f32) * CELL_SIZE,
+            ],
+            shade,
+        }
+    };
+    for quad_vertex in [0, 1, 2, 0, 2, 3] {
+        vertices.push(corner(quad_vertex));
+    }
+}
+
+/// A cloud cell as a box: its top when the camera is not below, its bottom when not above, a
+/// side only where the neighbour is empty and it faces the camera, and inward faces right
+/// around the camera.
+fn extruded_cell(
+    face: &mut impl FnMut(usize, bool, f32),
+    relative: RelativeCamera,
+    (x, z): (i32, i32),
+    [north, east, south, west]: [bool; 4],
+) {
+    let faces = [
+        (UP, relative != RelativeCamera::Below),
+        (DOWN, relative != RelativeCamera::Above),
+        (NORTH, north && z > 0),
+        (SOUTH, south && z < 0),
+        (WEST, west && x > 0),
+        (EAST, east && x < 0),
+    ];
+    for (direction, shown) in faces {
+        if shown {
+            face(direction, false, SHADES[direction]);
+        }
+    }
+    if x.abs() <= 1 && z.abs() <= 1 {
+        for (direction, shade) in SHADES.into_iter().enumerate() {
+            face(direction, true, shade);
+        }
     }
 }
 
@@ -296,7 +327,7 @@ mod tests {
     fn a_lone_cell_below_the_camera_shows_its_top_and_the_facing_sides() {
         let cells = CloudCells::from_image(&image(8, 8, &[(4, 4)]));
         // The cell two to the east and two to the south of the camera's.
-        let vertices = cells.build(RelativeCamera::Above, 2, 2, 4);
+        let vertices = cells.build(RelativeCamera::Above, (2, 2), 4, true);
         // Top, plus the west and north sides that face back at the camera.
         assert_eq!(vertices.len(), 3 * 6);
         assert!(vertices.iter().all(|vertex| vertex.position[0] >= 24.0));
@@ -305,9 +336,18 @@ mod tests {
     #[test]
     fn cells_around_the_camera_get_inward_faces() {
         let cells = CloudCells::from_image(&image(8, 8, &[(0, 0)]));
-        let vertices = cells.build(RelativeCamera::Inside, 0, 0, 2);
+        let vertices = cells.build(RelativeCamera::Inside, (0, 0), 2, true);
         // Top and bottom, no outward sides at the centre, six inward faces.
         assert_eq!(vertices.len(), 8 * 6);
+    }
+
+    #[test]
+    fn flat_clouds_are_one_two_sided_face_in_the_top_colour() {
+        let cells = CloudCells::from_image(&image(8, 8, &[(4, 4)]));
+        let vertices = cells.build(RelativeCamera::Above, (2, 2), 4, false);
+        assert_eq!(vertices.len(), 2 * 6);
+        assert!(vertices.iter().all(|vertex| vertex.shade == 1.0));
+        assert!(vertices.iter().all(|vertex| vertex.position[1] == 0.0));
     }
 
     #[test]

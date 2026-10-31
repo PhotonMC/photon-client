@@ -28,14 +28,7 @@ impl Gui {
         let input = Input {
             system: controls.debug.system.clone(),
             memory: controls.debug.memory.usage(),
-            // The video options these read are not stored yet: the game's own defaults.
-            impactors: Some(Impactors {
-                improved_transparency: false,
-                clouds: Clouds::Fancy,
-                biome_blend: 2,
-                filtering: Filtering::None,
-                anisotropy: 4,
-            }),
+            impactors: Some(impactors(&controls.options.quality)),
             version: {
                 let version = photon_net::resources::KnownPack::VANILLA_VERSION;
                 debug::version_line(version, version)
@@ -137,5 +130,25 @@ impl Gui {
             .and_then(|id| usize::try_from(id).ok())
             .and_then(|id| session.registry_names("minecraft:worldgen/biome").get(id))
             .map_or_else(|| "minecraft:plains".to_owned(), Clone::clone)
+    }
+}
+
+/// `DebugEntrySimplePerformanceImpactors`' reads of the stored video options.
+fn impactors(quality: &photon_game::options::QualityOptions) -> Impactors {
+    use photon_game::options::{CloudStatus, TextureFiltering};
+    Impactors {
+        improved_transparency: quality.improved_transparency,
+        clouds: match quality.cloud_status {
+            CloudStatus::Off => Clouds::Off,
+            CloudStatus::Fast => Clouds::Fast,
+            CloudStatus::Fancy => Clouds::Fancy,
+        },
+        biome_blend: quality.biome_blend_radius,
+        filtering: match quality.texture_filtering {
+            TextureFiltering::None => Filtering::None,
+            TextureFiltering::Rgss => Filtering::Rgss,
+            TextureFiltering::Anisotropic => Filtering::Anisotropic,
+        },
+        anisotropy: 1 << quality.max_anisotropy_bit.clamp(1, 3),
     }
 }

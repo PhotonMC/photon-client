@@ -304,14 +304,17 @@ impl Play {
         self.backend
             .set_name_tags(&see_through, (&normal, &offset))?;
         let mut shadows = Vec::new();
-        overlays::entity_shadows(
-            &self.session,
-            &self.entity_textures,
-            &camera,
-            local,
-            view,
-            &mut shadows,
-        );
+        // `EntityRenderer.extractShadow`: no pieces while the option is off.
+        if self.controls.options.quality.entity_shadows {
+            overlays::entity_shadows(
+                &self.session,
+                &self.entity_textures,
+                &camera,
+                local,
+                view,
+                &mut shadows,
+            );
+        }
         self.backend
             .set_draw(photon_render::vulkan::DrawKind::Shadows, &shadows)?;
         let particle_camera = photon_render::particles::ParticleCamera {
@@ -358,6 +361,7 @@ impl Play {
             origin: self.origin,
             lightmap_options: (options.darkness_effect_scale as f32, options.gamma as f32),
             hide_flashes: options.hide_lightning_flashes,
+            cloud_status: options.quality.cloud_status,
         }
     }
 
