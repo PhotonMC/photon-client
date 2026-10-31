@@ -1,7 +1,7 @@
 //! The entries of the friends overlay's lists: their layout, drawing and buttons
 //! (`FriendEntry`, `IncomingEntry`, `OutgoingEntry`).
 //!
-//! Not drawn: the buttons' tooltips and loading states, a scroll bar, the status text scrolling
+//! Not drawn: the buttons' tooltips and loading states, the status text scrolling
 //! when it is too long, and the skins other than a default one.
 
 use super::draw::inside;
@@ -17,6 +17,7 @@ const HEADER_HEIGHT: i32 = 9;
 const SECTION_GAP: i32 = 8;
 const SCROLL_STEP: i32 = 9;
 const ICON_BUTTON: i32 = 20;
+const SCROLLBAR_WIDTH: i32 = 6;
 const GREY: u32 = 0xFFA0_A0A0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -159,6 +160,35 @@ impl FriendsOverlay {
             }
         }
         frame.clip_from(mark, (area.0, area.1, area.0 + area.2, area.1 + area.3));
+        self.draw_scrollbar(frame, atlas, area);
+    }
+
+    /// `AbstractScrollArea.extractScrollbar`: drawn only when the list is taller than its room.
+    fn draw_scrollbar(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, area: (i32, i32, i32, i32)) {
+        let (_, content) = self.rows(self.shown());
+        let max = self.max_scroll();
+        if max == 0 {
+            return;
+        }
+        let (x, y, width, height) = area;
+        let bar_x = x + width - SCROLLBAR_WIDTH;
+        let (bar_y, bar_height) = scroller(self.scroll, max, (height, content));
+        frame.sprite(
+            atlas,
+            "widget/scroller_background",
+            bar_x,
+            y,
+            SCROLLBAR_WIDTH,
+            height,
+        );
+        frame.sprite(
+            atlas,
+            "widget/scroller",
+            bar_x,
+            y + bar_y,
+            SCROLLBAR_WIDTH,
+            bar_height,
+        );
     }
 
     fn draw_entry(
@@ -237,4 +267,11 @@ impl Tab {
     fn received_kind() -> EntryKind {
         EntryKind::Incoming
     }
+}
+
+/// The scroller's offset from the list's top and its height (`scrollBarY`, `scrollerHeight`).
+pub(super) fn scroller(scroll: i32, max: i32, (height, content): (i32, i32)) -> (i32, i32) {
+    let bar = ((height * height) as f32 / content as f32) as i32;
+    let bar = bar.clamp(32, height - 8);
+    (scroll * (height - bar) / max, bar)
 }

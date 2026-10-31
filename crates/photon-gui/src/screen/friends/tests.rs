@@ -137,3 +137,17 @@ impl crate::widgets::edit_box::Clipboard for Memory {
         self.0 = text.to_owned();
     }
 }
+
+#[test]
+fn the_scroller_is_at_least_32_tall_and_slides_over_the_free_room() {
+    // 100 * 100 / 400 = 25, raised to 32; 68 is the room it can slide in.
+    assert_eq!(super::entries::scroller(0, 300, (100, 400)), (0, 32));
+    assert_eq!(super::entries::scroller(150, 300, (100, 400)), (34, 32));
+    assert_eq!(super::entries::scroller(300, 300, (100, 400)), (68, 32));
+}
+
+#[test]
+fn a_barely_tall_list_has_a_long_scroller() {
+    // 100 * 100 / 120 = 83, under the cap of 92.
+    assert_eq!(super::entries::scroller(10, 20, (100, 120)), (8, 83));
+}
