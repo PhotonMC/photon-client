@@ -176,7 +176,11 @@ fn mesh_section(renderer: &BlockRenderer, tints: &BiomeTints, job: Job) -> Built
         key: job.key,
         generation: job.generation,
         visibility: graph.resolve(),
-        mesh: region.mesh,
+        mesh: {
+            let mut mesh = region.mesh;
+            mesh.pack();
+            mesh
+        },
         centre: [0, 1, 2].map(|axis| (corner[axis] + 8 - job.origin[axis]) as f32),
         took: started.elapsed(),
     }

@@ -59,29 +59,25 @@ pub(super) fn terrain_attributes() -> [vk::VertexInputAttributeDescription; 5] {
     ]
 }
 
-/// The attributes of the `section` pipelines' vertices.
-pub(super) fn section_attributes() -> [vk::VertexInputAttributeDescription; 4] {
+/// The attributes of the `section` pipelines' vertices ([`crate::packed_vertex::PackedVertex`]):
+/// the position and the light share the first four 16-bit words.
+pub(super) fn section_attributes() -> [vk::VertexInputAttributeDescription; 3] {
     [
         vk::VertexInputAttributeDescription::default()
             .location(0)
             .binding(0)
-            .format(vk::Format::R32G32B32_SFLOAT)
+            .format(vk::Format::R16G16B16A16_UINT)
             .offset(0),
         vk::VertexInputAttributeDescription::default()
             .location(1)
             .binding(0)
             .format(vk::Format::R32G32_SFLOAT)
-            .offset(12),
+            .offset(8),
         vk::VertexInputAttributeDescription::default()
             .location(2)
             .binding(0)
             .format(vk::Format::R8G8B8A8_UNORM)
-            .offset(20),
-        vk::VertexInputAttributeDescription::default()
-            .location(3)
-            .binding(0)
-            .format(vk::Format::R8G8_UINT)
-            .offset(24),
+            .offset(16),
     ]
 }
 
@@ -255,7 +251,7 @@ pub(super) fn vertex_layout(
             line_attributes().to_vec(),
         ),
         Terrain | Translucent => (
-            std::mem::size_of::<BlockVertex>(),
+            std::mem::size_of::<crate::packed_vertex::PackedVertex>(),
             section_attributes().to_vec(),
         ),
         _ => (std::mem::size_of::<Vertex>(), terrain_attributes().to_vec()),

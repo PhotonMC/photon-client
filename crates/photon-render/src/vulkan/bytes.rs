@@ -28,6 +28,7 @@ macro_rules! plain_vertices {
 plain_vertices! {
     Vertex = 48,
     BlockVertex = 28,
+    crate::packed_vertex::PackedVertex = 20,
     crate::block::outline::LineVertex = 44,
     crate::sky::clouds::CloudVertex = 16,
     crate::sky::SkyVertex = 44,

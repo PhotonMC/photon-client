@@ -322,7 +322,7 @@ pub(super) struct CloudBuffer {
 /// What the arena gives back once the frames that may read it are done.
 pub(super) enum Retired {
     /// A section mesh that was replaced.
-    Section(SectionBuffers),
+    Section(Box<SectionBuffers>),
     /// The index range a section left when its translucent faces were
     /// ordered again.
     Indices(ArenaSlice),
@@ -340,6 +340,8 @@ pub(super) struct SectionBuffers {
     pub(super) groups: super::face_groups::FaceGroups,
     /// Where the mesh sits, for ordering its translucent faces.
     pub(super) centre: [f32; 3],
+    /// The block corner its packed positions count from, as the shader reads it.
+    pub(super) origin: [u32; 2],
     /// When the section first showed and how long it takes to fade in.
     pub(super) fade: SectionFade,
     /// What ordering its translucent faces again needs.

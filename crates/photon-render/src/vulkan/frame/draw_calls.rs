@@ -27,7 +27,7 @@ impl VulkanBackend {
         &self,
         section: &SectionBuffers,
         layout: vk::PipelineLayout,
-        now: std::time::Instant,
+        (now, rgss): (std::time::Instant, f32),
     ) {
         // SAFETY: recording on `command_buffer`; the section's ranges are in arena blocks that
         // exist, which indexing `arena` checks.
@@ -37,7 +37,16 @@ impl VulkanBackend {
                 layout,
                 vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                 160,
-                &section.fade.visibility(now).to_ne_bytes(),
+                // The visibility, the terrain filter the run sets (which the push must not undo),
+                // and the corner the packed positions count from.
+                &[
+                    section.fade.visibility(now).to_bits(),
+                    rgss.to_bits(),
+                    section.origin[0],
+                    section.origin[1],
+                ]
+                .map(u32::to_ne_bytes)
+                .concat(),
             );
             self.device.cmd_bind_vertex_buffers(
                 self.command_buffer,

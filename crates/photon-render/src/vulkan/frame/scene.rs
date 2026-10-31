@@ -345,7 +345,7 @@ impl VulkanBackend {
                 if runs.iter().next().is_none() {
                     continue;
                 }
-                self.bind_section(section, pipeline.layout, now);
+                self.bind_section(section, pipeline.layout, (now, terrain_push[41]));
                 for (first, count) in runs.iter() {
                     self.device
                         .cmd_draw_indexed(self.command_buffer, count, 1, first, 0, 0);

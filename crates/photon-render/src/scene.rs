@@ -113,6 +113,16 @@ pub struct Mesh {
     /// Indices of the translucent faces, drawn after the rest with blending
     /// and without writing depth.
     pub translucent_indices: Vec<u32>,
+    /// The vertices as the terrain pipelines read them, when the builder made them; the upload
+    /// makes them otherwise.
+    pub packed: Option<crate::packed_vertex::PackedMesh>,
+}
+
+impl Mesh {
+    /// Make the packed vertices now (on the thread that builds the mesh) for the upload to use.
+    pub fn pack(&mut self) {
+        self.packed = Some(crate::packed_vertex::PackedMesh::new(&self.vertices));
+    }
 }
 
 /// Where one sprite sits on the atlas, in normalised coordinates.

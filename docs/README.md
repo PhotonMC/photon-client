@@ -28,5 +28,6 @@ Decisions:
 - [0014 Multiplayer-only first release](adr/0014-multiplayer-only-first-release.md)
 - [0015 Signed updates](adr/0015-signed-updates.md)
 - [0016 Instanced entity drawing](adr/0016-instanced-entity-drawing.md)
+- [0017 Packed terrain vertices](adr/0017-packed-terrain-vertices.md)
 
 `records/` holds legacy per-slice parity records that are being converted into case metadata ([ADR 0005](adr/0005-parity-v2.md)).

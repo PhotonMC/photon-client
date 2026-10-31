@@ -55,7 +55,7 @@ impl VulkanBackend {
             // freed after the last of them.
             if let Some(old) = self.sections.remove(&key) {
                 self.retired
-                    .push((self.frames_submitted, Retired::Section(old)));
+                    .push((self.frames_submitted, Retired::Section(Box::new(old))));
             }
             if let Some(section) = self.upload_section(mesh, centre, (fade, true))? {
                 self.sections.insert(key, section);
@@ -80,8 +80,17 @@ impl VulkanBackend {
             if mesh.indices.is_empty() && mesh.translucent_indices.is_empty() {
                 return Ok(None);
             }
-            let vertex_bytes = as_bytes(&mesh.vertices);
-            let vertices = self.arena_upload(vertex_bytes)?;
+            let made;
+            let (packed, origin) = match &mesh.packed {
+                Some(ready) if ready.vertices.len() == mesh.vertices.len() => {
+                    (&ready.vertices, ready.origin)
+                }
+                _ => {
+                    made = crate::packed_vertex::PackedMesh::new(&mesh.vertices);
+                    (&made.vertices, made.origin)
+                }
+            };
+            let vertices = self.arena_upload(as_bytes(packed))?;
             let (opaque, groups) = if grouped {
                 FaceGroups::group(&mesh.vertices, &mesh.indices)
             } else {
@@ -111,6 +120,7 @@ impl VulkanBackend {
                 translucent_index_count: mesh.translucent_indices.len() as u32,
                 groups,
                 centre,
+                origin: crate::packed_vertex::origin_words(origin),
                 fade,
             }))
         }
@@ -127,7 +137,7 @@ impl VulkanBackend {
             let submitted = self.frames_submitted;
             self.retired.extend(
                 old.into_iter()
-                    .map(|section| (submitted, Retired::Section(section))),
+                    .map(|section| (submitted, Retired::Section(Box::new(section)))),
             );
             for (mesh, centre) in blocks {
                 if let Some(section) =
@@ -274,7 +284,7 @@ impl VulkanBackend {
     pub(super) unsafe fn destroy_retired(&mut self, retired: Retired) {
         match retired {
             // SAFETY: the caller's contract.
-            Retired::Section(section) => unsafe { self.destroy_section(section) },
+            Retired::Section(section) => unsafe { self.destroy_section(*section) },
             Retired::Indices(slice) => self.arena_free(slice),
             Retired::Clouds(buffer) => drop(buffer),
         }

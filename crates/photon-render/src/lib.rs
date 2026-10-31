@@ -16,6 +16,7 @@ pub mod item_model;
 pub mod joml;
 pub mod model;
 pub mod objects;
+pub mod packed_vertex;
 pub mod panorama;
 pub mod particles;
 pub mod render_types;

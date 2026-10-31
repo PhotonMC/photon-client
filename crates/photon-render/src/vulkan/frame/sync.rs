@@ -52,7 +52,7 @@ impl VulkanBackend {
                         copy.target != section.vertices && copy.target != section.indices
                     });
                     // SAFETY: the section's last frame has finished (see `# Safety`).
-                    unsafe { self.destroy_section(section) };
+                    unsafe { self.destroy_section(*section) };
                 }
                 // Dropping the buffer frees it; its last frame has finished.
                 Retired::Clouds(buffer) => drop(buffer),
