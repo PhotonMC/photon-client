@@ -181,11 +181,17 @@ impl Play {
         let far = ((render_distance * 16 * 4) as f32).max((CLOUD_RANGE * 16) as f32);
         let bob = self.view_motion(player, partial as f32);
         let locator = self.locator_camera(camera, [y_rot, x_rot], fov, far);
+        let world_partial = self.world_partial(partial) as f32;
         let projection = |eye| player_camera(self.aspect, fov, far, eye, [y_rot, x_rot], bob);
         FrameCamera {
             locator,
             partial: self.world_partial(partial),
-            real_partial: partial,
+            // The local player's own draws (model, shadow, flames) read it.
+            real_partial: if self.session.world().local_player_is_passenger() {
+                self.world_partial(partial)
+            } else {
+                partial
+            },
             eye,
             camera,
             relative,
@@ -193,11 +199,12 @@ impl Play {
             view_projection: projection(relative),
             sky_view_projection: projection([0.0; 3]),
             render_distance,
+            // `FogRenderer.setupFog` and the boss darkening read the world's partial tick.
             fog: crate::world::fog::fog_view(
                 &self.session,
-                (fluid, camera.y, self.boss_fog(partial as f32)),
+                (fluid, camera.y, self.boss_fog(world_partial)),
                 render_distance,
-                partial as f32,
+                world_partial,
             ),
             // The field of view never culls narrower than the option.
             frustum: photon_render::visibility::Frustum::new(
@@ -251,6 +258,8 @@ impl Play {
                 (options.view_bobbing, options.damage_tilt_strength),
             ),
         };
+        // `GameRenderer.renderLevel` spins the view by the world's partial tick.
+        let partial = self.world_partial(f64::from(partial)) as f32;
         let nausea = crate::world::fog::nausea_blend(&self.session, partial);
         let portal = player.portal_effect_intensity(partial);
         let scale = self.controls.options.screen_effect_scale as f32;

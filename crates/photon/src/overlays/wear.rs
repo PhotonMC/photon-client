@@ -4,13 +4,13 @@ use super::*;
 use crate::equipment::arm_poses;
 use crate::equipment::held_items::HandActions;
 use photon_render::entity::tag_rules::{NameRules, entity_name_tag, rules_of};
-use photon_world::EntityView;
+use photon_world::{ClientWorld, EntityView};
 
 /// A frozen level still moves its players (`TickRateManager.isEntityFrozen`), not a mannequin:
 /// the view a player is drawn from reads the running partial tick, which is also returned.
-fn view_of(entity: EntityView<'_>, view: FrameView) -> (FrameView, f32) {
+fn view_of(world: &ClientWorld, entity: EntityView<'_>, view: FrameView) -> (FrameView, f32) {
     let partial = if entity.is_player() {
-        view.real_partial
+        view.player_partial(world.entity_vehicle_id(entity.id()).is_some())
     } else {
         view.partial
     };
@@ -37,7 +37,7 @@ pub fn remote_players(
         if !is_avatar(entity) || entity.is_spectator() {
             continue;
         }
-        let (view, partial) = view_of(entity, view);
+        let (view, partial) = view_of(world, entity, view);
         let Some(mut snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };
@@ -279,7 +279,7 @@ pub fn name_tags(
         see_through: Vec::new(),
         normal: Vec::new(),
     };
-    player_tags(session, (&mut tags, lang), viewer, view.real_partial as f32);
+    player_tags(session, (&mut tags, lang), viewer, view);
     entity_tags(session, (&mut tags, lang), viewer, view.partial as f32);
     (tags.see_through, tags.normal)
 }
@@ -288,7 +288,7 @@ fn player_tags(
     session: &PlaySession,
     (tags, lang): (&mut Tags, &photon_game::text::Lang),
     viewer: photon_render::entity::name_tag::Viewer,
-    partial: f32,
+    view: FrameView,
 ) {
     let world = session.world();
     for entity in world.entities().all() {
@@ -298,6 +298,8 @@ fn player_tags(
         {
             continue;
         }
+        let riding = world.entity_vehicle_id(entity.id()).is_some();
+        let partial = view.player_partial(riding) as f32;
         // A player the server did not tell of has no name to show.
         let Some(name) = session.player_name(entity.uuid) else {
             continue;

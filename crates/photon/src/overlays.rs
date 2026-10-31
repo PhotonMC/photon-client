@@ -54,6 +54,17 @@ pub struct FrameView {
 }
 
 impl FrameView {
+    /// The partial tick a player is drawn at: the running one, unless the player rides something
+    /// (its vehicle is drawn at the world's until the vehicles carry the choice too, so the two
+    /// do not drift apart under `/tick freeze`).
+    pub fn player_partial(&self, riding: bool) -> f64 {
+        if riding {
+            self.partial
+        } else {
+            self.real_partial
+        }
+    }
+
     /// A block's corner relative to the mesh origin.
     fn relative(&self, [x, y, z]: [i32; 3]) -> [f32; 3] {
         [
