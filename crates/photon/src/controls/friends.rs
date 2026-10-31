@@ -150,6 +150,16 @@ impl Controls {
                 .and_then(|screen| screen.clicked(mouse, font)),
             _ => None,
         };
+        self.friends_asked(asked, surface, font);
+    }
+
+    /// What the overlay asked the game for.
+    fn friends_asked(
+        &mut self,
+        asked: Option<FriendsEvent>,
+        surface: &mut WindowSurface,
+        font: &photon_render::gui::font::Font,
+    ) {
         match asked {
             Some(FriendsEvent::Close) => self.close_friends(surface),
             Some(FriendsEvent::Send(name)) => {
@@ -160,8 +170,11 @@ impl Controls {
                     screen.clear_box(font);
                 }
             }
-            // Copying the name is the next slice.
-            Some(FriendsEvent::CopyName) | None => {}
+            Some(FriendsEvent::CopyName) => {
+                use photon_gui::widgets::edit_box::Clipboard;
+                WindowClipboard(surface).set(&self.profile_name);
+            }
+            None => {}
         }
     }
 }

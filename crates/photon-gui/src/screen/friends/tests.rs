@@ -77,6 +77,20 @@ fn the_key_that_opens_the_overlay_closes_it_unless_the_box_is_typed_in() {
     assert_eq!(asked, Some(FriendsEvent::Close));
 }
 
+#[test]
+fn a_click_on_the_profile_name_copies_it() {
+    let Some(root) = std::env::var_os("PHOTON_ASSETS") else {
+        return;
+    };
+    let Some(font) = Font::load(std::path::Path::new(&root)) else {
+        return;
+    };
+    let mut screen = overlay(true);
+    let (x, y, ..) = screen.name_rect(&font);
+    let asked = screen.clicked((f64::from(x + 1), f64::from(y + 1)), &font);
+    assert_eq!(asked, Some(FriendsEvent::CopyName));
+}
+
 struct Memory(String);
 
 impl crate::widgets::edit_box::Clipboard for Memory {

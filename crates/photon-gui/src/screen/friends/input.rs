@@ -6,6 +6,7 @@
 
 use super::draw::inside;
 use super::*;
+use crate::FontRuns;
 use crate::widgets::edit_box::{Clipboard, edit_key};
 
 impl FriendsOverlay {
@@ -29,6 +30,18 @@ impl FriendsOverlay {
             top - BORDER,
             width + 2 * BORDER,
             height + 2 * BORDER + 1,
+        )
+    }
+
+    /// Where the profile name is, which a click copies.
+    pub(super) fn name_rect(&self, font: &Font) -> (i32, i32, i32, i32) {
+        let (left, top, ..) = self.content();
+        let label = font.width_of_runs(&self.texts.profile_label);
+        (
+            left + INPUT_LEFT + label,
+            top + INPUT_TOP + BOX_HEIGHT + PROFILE_TOP,
+            font.width(&self.view.profile_name),
+            9,
         )
     }
 
@@ -67,6 +80,10 @@ impl FriendsOverlay {
         }
         if inside(at, self.button_rect()) {
             return self.send();
+        }
+        if inside(at, self.name_rect(font)) {
+            crate::ui_sound::play_down_sound();
+            return Some(FriendsEvent::CopyName);
         }
         if !inside(at, self.panel_rect()) {
             return Some(FriendsEvent::Close);
