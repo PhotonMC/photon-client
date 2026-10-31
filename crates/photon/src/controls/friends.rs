@@ -27,11 +27,7 @@ impl Controls {
             return Vec::new();
         };
         let open = self.friends.is_some();
-        social.tick(
-            std::time::Instant::now(),
-            (open, true),
-            PresenceStatus::Online,
-        );
+        social.tick(std::time::Instant::now(), (open, true), presence_status());
         let mut toasts = Vec::new();
         while let Some(notice) = social.take_toast() {
             toasts.push(notice_title(&notice));
@@ -168,6 +164,13 @@ impl Controls {
             Some(FriendsEvent::CopyName) | None => {}
         }
     }
+}
+
+/// Presence changes the account's state on the service, so it is posted only when asked for.
+fn presence_status() -> Option<PresenceStatus> {
+    std::env::var_os("PHOTON_FRIENDS_PRESENCE")
+        .is_some_and(|value| value == "1")
+        .then_some(PresenceStatus::Online)
 }
 
 fn listing(names: Vec<String>) -> Listing {

@@ -134,12 +134,12 @@ impl Social {
     /// One game tick: what the thread answered, the next update of the lists when it is due and
     /// the next presence post. `overlay_open` is `screen instanceof FriendsOverlayScreen`;
     /// `toasts` is false in a world with in-game notifications off; `status` is the presence to
-    /// share.
+    /// share, or none to post nothing.
     pub(crate) fn tick(
         &mut self,
         now: Instant,
         (overlay_open, toasts): (bool, bool),
-        status: PresenceStatus,
+        status: Option<PresenceStatus>,
     ) {
         while let Ok(event) = self.events.try_recv() {
             self.receive(event, now, toasts);
@@ -151,7 +151,10 @@ impl Social {
             self.refreshing = true;
             self.send(Command::Refresh);
         }
-        if overlay_open && self.presence_due(now) {
+        if let Some(status) = status
+            && overlay_open
+            && self.presence_due(now)
+        {
             self.update_presence = false;
             self.last_presence = now;
             self.send(Command::Presence(status));

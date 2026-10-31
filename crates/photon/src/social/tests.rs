@@ -32,7 +32,7 @@ fn nothing_is_asked_while_the_friends_list_is_off() {
             accept_invites: true,
         }))
         .unwrap();
-    social.tick(now, (false, true), PresenceStatus::Online);
+    social.tick(now, (false, true), Some(PresenceStatus::Online));
     assert!(!social.list_enabled());
     assert!(commands.try_recv().is_err());
 }
@@ -47,9 +47,9 @@ fn an_enabled_list_is_asked_once_until_the_answer_comes() {
             accept_invites: true,
         }))
         .unwrap();
-    social.tick(now, (false, true), PresenceStatus::Online);
+    social.tick(now, (false, true), Some(PresenceStatus::Online));
     assert_eq!(commands.try_recv(), Ok(Command::Refresh));
-    social.tick(now, (false, true), PresenceStatus::Online);
+    social.tick(now, (false, true), Some(PresenceStatus::Online));
     assert!(commands.try_recv().is_err());
     let data = FriendData {
         friends: vec![friend()],
@@ -62,7 +62,7 @@ fn an_enabled_list_is_asked_once_until_the_answer_comes() {
             hint: None,
         })
         .unwrap();
-    social.tick(now, (false, true), PresenceStatus::Online);
+    social.tick(now, (false, true), Some(PresenceStatus::Online));
     assert_eq!(social.state(), State::Success);
     assert_eq!(social.lists().friends.len(), 1);
     assert!(social.take_changed() && !social.take_changed());
@@ -90,14 +90,30 @@ fn presence_is_posted_only_for_an_open_overlay_with_friends() {
         })
         .unwrap();
     social.refreshing = true;
-    social.tick(later, (false, true), PresenceStatus::Online);
+    social.tick(later, (false, true), Some(PresenceStatus::Online));
     assert!(commands.try_recv().is_err());
-    social.tick(later, (true, true), PresenceStatus::Online);
+    social.tick(later, (true, true), Some(PresenceStatus::Online));
     assert_eq!(
         commands.try_recv(),
         Ok(Command::Presence(PresenceStatus::Online))
     );
     // Not again until the interval has passed.
-    social.tick(later, (true, true), PresenceStatus::Online);
+    social.tick(later, (true, true), Some(PresenceStatus::Online));
     assert!(commands.try_recv().is_err());
+}
+
+#[test]
+fn no_presence_is_posted_without_a_status() {
+    let (mut social, events, commands) = social();
+    let now = Instant::now();
+    events
+        .send(Event::Preferences(Preferences {
+            friends_list: true,
+            accept_invites: true,
+        }))
+        .unwrap();
+    social.tick(now, (true, true), None);
+    while let Ok(command) = commands.try_recv() {
+        assert!(!matches!(command, Command::Presence(_)));
+    }
 }
