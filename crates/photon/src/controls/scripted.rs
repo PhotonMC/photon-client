@@ -127,6 +127,7 @@ impl Controls {
         script_key(&mut self.use_key, held.use_click, held.hold_use);
         script_key(&mut self.pick_key, held.pick, false);
         script_key(&mut self.drop_key, held.drop, false);
+        script_key(&mut self.swap_key, held.swap, false);
     }
 
     /// The scripted creative tab and scroll, and the wheel turned over the open screen.

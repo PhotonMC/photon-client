@@ -23,7 +23,41 @@ pub(super) fn input_key(key: glfw::Key, scancode: glfw::Scancode) -> photon_data
     }
 }
 
+/// The mappings that click, and whether a repeat of the held key clicks again.
+const CLICK_KEYS: [(&str, bool); 5] = [
+    ("key.attack", false),
+    ("key.use", false),
+    ("key.pickItem", false),
+    ("key.drop", true),
+    ("key.swapOffhand", false),
+];
+
 impl Controls {
+    /// The attack, use, pick, drop and swap hands keys (`KeyMapping.set` and `click`): pressed
+    /// with the mouse captured they click and are held, let go they are up. A repeat of a held
+    /// key clicks again for the drop key (`KeyboardHandler.keyPress`). Whether the mapping is
+    /// one of them.
+    pub(super) fn click_key(&mut self, name: &str, (press, down): (bool, bool)) -> bool {
+        let Some(index) = CLICK_KEYS.iter().position(|(key, _)| *key == name) else {
+            return false;
+        };
+        let repeats = CLICK_KEYS[index].1;
+        let keys = [
+            &mut self.attack_key,
+            &mut self.use_key,
+            &mut self.pick_key,
+            &mut self.drop_key,
+            &mut self.swap_key,
+        ];
+        let key = keys.into_iter().nth(index).expect("one key per mapping");
+        if (press || (down && repeats)) && self.captured {
+            key.press();
+        } else if !down {
+            key.release();
+        }
+        true
+    }
+
     /// The attack, use, pick and drop keys as `handleKeybinds` spends them in one tick.
     pub(crate) fn game_keys(&mut self, grabbed: bool) -> photon_game::game_mode::Keys {
         photon_game::game_mode::Keys {
@@ -32,6 +66,7 @@ impl Controls {
             use_clicks: self.use_key.take_clicks(),
             use_held: self.use_key.is_down(),
             pick_clicks: self.pick_key.take_clicks(),
+            swap_clicks: self.swap_key.take_clicks(),
             drop_clicks: self.drop_key.take_clicks(),
             control_down: self.mods.ctrl,
         }

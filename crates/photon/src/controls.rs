@@ -82,6 +82,7 @@ pub struct Controls {
     pub pick_key: AttackKey,
     /// The drop key (Q), which keeps its presses until the tick.
     pub drop_key: AttackKey,
+    pub swap_key: AttackKey,
     pub(super) scroll_wheel: ScrollWheel,
     /// F5 cycles first person, third person from behind and from the front.
     pub camera_type: CameraType,

@@ -174,25 +174,6 @@ impl Controls {
         true
     }
 
-    /// The attack, use, pick and drop keys (`KeyMapping.set` and `click`): pressed with the mouse
-    /// captured they click and are held, let go they are up. A repeat of a held key clicks again
-    /// for the drop key (`KeyboardHandler.keyPress`). Whether the mapping is one of them.
-    fn click_key(&mut self, name: &str, (press, down): (bool, bool)) -> bool {
-        let (key, repeats) = match name {
-            "key.attack" => (&mut self.attack_key, false),
-            "key.use" => (&mut self.use_key, false),
-            "key.pickItem" => (&mut self.pick_key, false),
-            "key.drop" => (&mut self.drop_key, true),
-            _ => return false,
-        };
-        if (press || (down && repeats)) && self.captured {
-            key.press();
-        } else if !down {
-            key.release();
-        }
-        true
-    }
-
     /// `Minecraft.handleKeybinds` for the quick actions key: the dialog of the `quick_actions`
     /// tag opens, when there is one.
     fn open_quick_actions(
@@ -220,6 +201,7 @@ impl Controls {
         self.use_key.release();
         self.pick_key.release();
         self.drop_key.release();
+        self.swap_key.release();
     }
 
     /// `containerTick`: a container the server opens or closes opens or

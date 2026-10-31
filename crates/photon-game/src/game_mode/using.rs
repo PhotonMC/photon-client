@@ -429,6 +429,9 @@ impl GameMode {
         if self.right_click_delay > 0 {
             self.right_click_delay -= 1;
         }
+        for _ in 0..keys.swap_clicks {
+            super::dropping::swap_offhand(ctx, &mut out);
+        }
         for _ in 0..keys.drop_clicks {
             super::dropping::drop_selected(ctx, keys.control_down, &mut out);
         }

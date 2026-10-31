@@ -67,6 +67,7 @@ pub enum PlayerAction {
     DropAllItems = 3,
     DropItem = 4,
     ReleaseUseItem = 5,
+    SwapItemWithOffhand = 6,
     Stab = 7,
 }
 

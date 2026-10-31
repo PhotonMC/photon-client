@@ -2,6 +2,22 @@
 
 use super::{ClientPlayerGameMode, Context, MAIN_HAND, Outgoing, PlayerAction};
 
+/// A press of the swap hands key (not for a spectator): the server is asked to swap the hands,
+/// and the answer sets the slots; nothing changes here before it.
+pub(super) fn swap_offhand(ctx: &mut Context<'_>, out: &mut Vec<Outgoing>) {
+    if ctx.mode == ClientPlayerGameMode::Spectator {
+        return;
+    }
+    out.push(Outgoing::PlayerAction {
+        action: PlayerAction::SwapItemWithOffhand,
+        x: 0,
+        y: 0,
+        z: 0,
+        face: 0,
+        sequence: 0,
+    });
+}
+
 /// A press of the drop key (not for a spectator): the selected stack loses one item, or all with
 /// control down, at once; the server is told even when the hand was empty, and the hand swings
 /// when something went.
@@ -54,5 +70,11 @@ mod tests {
         assert_eq!(packet(PlayerAction::DropItem).encode_body(), expected);
         expected[0] = 3;
         assert_eq!(packet(PlayerAction::DropAllItems).encode_body(), expected);
+        // The swap hands action is the ordinal 6.
+        expected[0] = 6;
+        assert_eq!(
+            packet(PlayerAction::SwapItemWithOffhand).encode_body(),
+            expected
+        );
     }
 }

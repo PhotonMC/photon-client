@@ -38,6 +38,8 @@ pub struct Keys {
     pub use_held: bool,
     /// Presses of the pick item key (the middle button).
     pub pick_clicks: u32,
+    /// Presses of the swap hands key (F).
+    pub swap_clicks: u32,
     /// Presses of the drop key (Q): one item, or the whole stack with control down.
     pub drop_clicks: u32,
     /// `Minecraft.hasControlDown`: either control key, which asks for the
