@@ -247,6 +247,11 @@ impl VulkanBackend {
         Ok(())
     }
 
+    /// Whether the last GUI frame asked for the hand cursor.
+    pub fn gui_hand(&self) -> bool {
+        self.gui_runs.hand
+    }
+
     /// Hand over the next frame's GUI: triangles in GUI units, their runs by
     /// blend, and the window's size in GUI units.
     pub fn set_gui(
@@ -268,6 +273,7 @@ impl VulkanBackend {
             batches: frame.batches.clone(),
             blur: frame.blur,
             item_scissors: frame.item_scissors.clone(),
+            hand: frame.hand,
         };
         if frame.blur.is_some() {
             self.ensure_blur_targets()?;

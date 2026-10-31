@@ -18,6 +18,12 @@ pub(super) fn handoff(backend: VulkanBackend) -> Handoff<VulkanBackend> {
 }
 
 impl Play {
+    /// The hand over a hovered button, when the options allow cursor changes.
+    pub(super) fn show_cursor(&mut self) {
+        let hand = self.controls.options.play.allow_cursor_changes && self.backend.gui_hand();
+        self.surface.set_hand_cursor(hand);
+    }
+
     /// Draws the scene on the render thread (inline in serial mode). The error of the frame
     /// before comes back here, a frame late.
     pub(super) fn submit_scene(
@@ -28,6 +34,7 @@ impl Play {
         if let Some(error) = self.backend.take_error::<VulkanError>() {
             return Err(error.into());
         }
+        self.show_cursor();
         self.flush_bench();
         let presented = self.bench.as_ref().map(Bench::presented);
         self.backend.submit_result(move |backend| {

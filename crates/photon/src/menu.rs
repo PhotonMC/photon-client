@@ -354,6 +354,7 @@ impl Menu {
             self.fit_screen(size);
             self.spin_panorama(client);
             let clear = self.draw_frame(client, size)?;
+            self.show_cursor(client);
             self.gui.sync_glyphs(&mut client.backend)?;
             // A join's screens are not what a capture waits for.
             if self.loading.is_none() && !matches!(self.screen, Screen::Connecting(..)) {
@@ -373,6 +374,12 @@ impl Menu {
             }
         }
         Ok(Choice::Quit)
+    }
+
+    /// The hand over a hovered button, when the options allow cursor changes.
+    fn show_cursor(&self, client: &mut Client) {
+        let hand = self.options.play.allow_cursor_changes && client.backend.gui_hand();
+        client.surface.set_hand_cursor(hand);
     }
 
     /// One window event for the open menu; what it chose, if anything.

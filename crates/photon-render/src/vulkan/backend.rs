@@ -175,4 +175,6 @@ pub(super) struct GuiRuns {
     pub(super) blur: Option<crate::gui::frame::GuiBlur>,
     /// The scissors over runs of item vertices.
     pub(super) item_scissors: Vec<crate::gui::frame::ItemScissor>,
+    /// Whether the frame asked for the hand cursor.
+    pub(super) hand: bool,
 }

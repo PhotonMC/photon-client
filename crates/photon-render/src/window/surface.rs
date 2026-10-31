@@ -64,6 +64,7 @@ impl std::error::Error for WindowSurfaceError {}
 pub struct WindowSurface {
     pub(super) glfw: glfw::Glfw,
     pub(super) window: glfw::PWindow,
+    hand_cursor: bool,
     events: glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
     pub(super) scale: WindowScale,
     /// The window's framebuffer, and the size frames are drawn at when it is another.
@@ -151,6 +152,7 @@ impl WindowSurface {
         Ok(Self {
             glfw,
             window,
+            hand_cursor: false,
             events,
             scale,
             framebuffer: ((framebuffer_width, framebuffer_height), None),
@@ -377,6 +379,15 @@ impl WindowSurface {
             }
         } else {
             self.window.set_cursor_mode(glfw::CursorMode::Normal);
+        }
+    }
+
+    /// Show the hand cursor over a button, or the arrow again.
+    pub fn set_hand_cursor(&mut self, hand: bool) {
+        if hand != self.hand_cursor {
+            self.hand_cursor = hand;
+            let cursor = hand.then(|| glfw::Cursor::standard(glfw::StandardCursor::Hand));
+            self.window.set_cursor(cursor);
         }
     }
 

@@ -211,6 +211,8 @@ pub struct GuiFrame {
     pub cooldowns: Vec<(String, f32)>,
     /// Where the frame behind the screen is blurred, if it is.
     pub blur: Option<GuiBlur>,
+    /// Whether an active button is hovered, so the mouse cursor shows a hand.
+    pub hand: bool,
 }
 
 /// What the player does with the stack a slot shows, as far as the item models read it: for how

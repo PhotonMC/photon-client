@@ -157,16 +157,13 @@ impl Controls {
 
     /// `MouseSettingsScreen`, over the controls screen.
     pub(super) fn open_mouse_settings(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
-        self.mouse_screen = Some(
-            MouseSettingsScreen::new(
-                &assets.creative.font,
-                &assets.lang,
-                Self::gui_size(surface),
-                !self.title_host,
-                &self.options,
-            )
-            .without_missing_effects(&assets.lang),
-        );
+        self.mouse_screen = Some(MouseSettingsScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            Self::gui_size(surface),
+            !self.title_host,
+            &self.options,
+        ));
     }
 
     /// The mouse options the screen shows are the options.

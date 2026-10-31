@@ -149,6 +149,7 @@ impl Widget {
         highlighted: bool,
     ) {
         let rect = arena.0[self.rect];
+        frame.hand |= self.active && highlighted;
         frame.nine_slice(
             atlas,
             button_sprite(self.active, highlighted),
