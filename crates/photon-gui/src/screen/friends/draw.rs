@@ -49,13 +49,18 @@ impl FriendsOverlay {
             (32, 32),
             (0, 0, self.size.0, self.size.1),
         );
-        frame.sprite(
+        frame.nine_slice(
             atlas,
             "friends/background",
-            left - BORDER,
-            top - BORDER,
-            width + 2 * BORDER,
-            height + 2 * BORDER + 1,
+            (236, 34),
+            BORDER,
+            false,
+            (
+                left - BORDER,
+                top - BORDER,
+                width + 2 * BORDER,
+                height + 2 * BORDER + 1,
+            ),
         );
         for tab in [Tab::Friends, Tab::Pending] {
             self.draw_tab(frame, (atlas, font), mouse, tab);
@@ -96,7 +101,7 @@ impl FriendsOverlay {
             (true, false) => "friends/button",
             (false, false) => "friends/button_disabled",
         };
-        frame.sprite(atlas, sprite, x, y, width, height);
+        frame.nine_slice(atlas, sprite, (200, 20), 3, false, (x, y, width, height));
         let label = match tab {
             Tab::Friends => &self.texts.friends_tab,
             Tab::Pending => &self.pending_label,

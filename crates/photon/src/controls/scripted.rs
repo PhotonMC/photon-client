@@ -378,6 +378,9 @@ impl Controls {
                 self.show_saved_hotbars(&assets.lang);
             }
         }
+        if held.friends {
+            self.toggle_friends(surface, assets);
+        }
         if held.advancements && self.advancements.is_none() {
             self.open_advancements(session, surface, assets);
         }
