@@ -147,6 +147,7 @@ mod tooltip;
 use tooltip::*;
 mod block;
 mod creative_op;
+mod spectator_op;
 use block::*;
 mod placement;
 use placement::*;

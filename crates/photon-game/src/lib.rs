@@ -8,6 +8,7 @@ pub use photon_core::dialog;
 pub mod game_mode;
 pub mod hotbar;
 pub mod item;
+pub mod spectator;
 pub use photon_world::item_components;
 pub mod command_block;
 pub mod input;

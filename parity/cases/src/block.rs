@@ -66,6 +66,10 @@ pub fn cases() -> Vec<Value> {
         "case_id": "block/hotbar-entry", "family": "block",
         "operation": "hotbar_entry", "rows": hotbar_entries(),
     }));
+    cases.push(json!({
+        "case_id": "block/spectator-menu", "family": "block",
+        "operation": "spectator_menu", "rows": spectator_rows(),
+    }));
     cases.extend(crate::block_placement::cases());
     cases.push(table("behaviours", "block_behaviours"));
     cases.push(table("tints", "block_tints"));
@@ -93,5 +97,54 @@ fn hotbar_entries() -> Vec<Value> {
         parse("parse-empty-components", json!({"id": "minecraft:stone", "components": {}})),
         parse("parse-air", json!({"id": "minecraft:air", "count": 1})),
         parse("parse-no-id", json!({"count": 3})),
+    ]
+}
+
+/// The spectator menu's rows: a player is its id halves, name and game mode.
+fn spectator_rows() -> Vec<Value> {
+    let player = |hi: &str, lo: &str, name: &str, mode: i32| json!({"hi": hi, "lo": lo, "name": name, "mode": mode});
+    let nine: Vec<Value> = (1..=9).map(|n| player("0", &format!("{n:x}"), &format!("p{n}"), 0)).collect();
+    let row =
+        |label: &str, players: Vec<Value>, steps: &[&str]| json!({"label": label, "players": players, "steps": steps});
+    vec![
+        row("none", vec![], &["select:0", "select:1", "scroll:1", "scroll:-1"]),
+        row(
+            "one",
+            vec![player("0", "1", "solo", 0)],
+            &["select:0", "select:0", "select:0", "select:0", "scroll:1", "scroll:-1"],
+        ),
+        row(
+            "spectators-hidden",
+            vec![player("0", "1", "watcher", 3), player("0", "2", "walker", 0)],
+            &["select:0", "select:0", "select:0", "select:0"],
+        ),
+        row(
+            "order",
+            vec![
+                player("0", "5", "five", 0),
+                player("8000000000000000", "1", "high", 0),
+                player("ffffffffffffffff", "0", "last", 0),
+                player("0", "ffffffffffffffff", "low-max", 0),
+            ],
+            &["select:0", "select:0", "select:2", "select:2"],
+        ),
+        row(
+            "pages",
+            nine,
+            &[
+                "select:0",
+                "select:0",
+                "select:7",
+                "select:7",
+                "select:1",
+                "select:0",
+                "select:0",
+                "select:8",
+                "scroll:1",
+                "scroll:1",
+                "scroll:-1",
+            ],
+        ),
+        row("wheel", vec![player("0", "1", "a", 0)], &["scroll:1", "scroll:1", "scroll:-1", "scroll:-1"]),
     ]
 }

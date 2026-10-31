@@ -472,6 +472,7 @@ fn creative_operation(operation: &str, label: &str, row: &Value) -> Result<Value
     match operation {
         "creative_tabs_operator" => Ok(crate::creative_op::operator_tabs(label)),
         "creative_tag_search" => creative_tag_search(label, row),
+        "spectator_menu" => crate::spectator_op::spectator_menu(label, row),
         "hotbar_entry" => crate::creative_op::hotbar_entry(label, row),
         other => Err(format!("unknown block operation: {other}")),
     }
