@@ -1,6 +1,23 @@
 use super::*;
 
+/// `CommonLinks.SNAPSHOT_BUGS_FEEDBACK` and `CommonLinks.RELEASE_FEEDBACK` (the build is a release).
+const SNAPSHOT_BUGS_FEEDBACK: &str = "https://aka.ms/snapshotbugs?ref=game";
+const RELEASE_FEEDBACK: &str = "https://aka.ms/javafeedback?ref=game";
+
 impl Controls {
+    /// `ConfirmLinkScreen.confirmLink`: the address is asked about over the pause menu.
+    fn ask_about_link(&mut self, url: &str, surface: &WindowSurface, assets: &ScreenAssets) {
+        let screen = ConfirmScreen::link(
+            &assets.creative.font,
+            &assets.lang,
+            Self::gui_size(surface),
+            url,
+            true,
+        )
+        .with_background(ConfirmBackground::Menu { in_world: true });
+        self.link_confirm = Some((screen, ConfirmTarget::Link(url.to_owned())));
+    }
+
     /// `PauseScreen`: the menu opens and the mouse is let go. The game goes
     /// on behind it, as on a server.
     pub(super) fn open_pause(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {
@@ -31,8 +48,7 @@ impl Controls {
         surface.set_cursor_captured(true);
     }
 
-    /// What a pause menu button does: "Back to Game" closes the menu and
-    /// "Disconnect" leaves; the screens the others open are not built.
+    /// What a pause menu button does. Friends is still: it has no service behind it.
     pub(super) fn pause_action(
         &mut self,
         action: PauseAction,
@@ -46,14 +62,29 @@ impl Controls {
             PauseAction::Options => self.open_options(surface, assets),
             PauseAction::Statistics => self.open_stats(surface, assets),
             PauseAction::Advancements => self.open_advancements(session, surface, assets),
-            // `minecraft.player.connection.showDialog(dialog, this)`: over the menu.
-            PauseAction::Custom => {
-                if let Some(dialog) = self.pause_additions.clone() {
-                    let dialog = dialog.resolved(&*session);
-                    self.show_dialog(dialog, surface, assets);
-                }
+            PauseAction::PlayerReporting => self.open_social(session, surface, assets),
+            PauseAction::ReportBugs | PauseAction::Feedback => {
+                let url = match action {
+                    PauseAction::ReportBugs => SNAPSHOT_BUGS_FEEDBACK,
+                    _ => RELEASE_FEEDBACK,
+                };
+                self.ask_about_link(url, surface, assets);
             }
+            PauseAction::Custom => self.show_pause_additions(session, surface, assets),
             _ => {}
+        }
+    }
+
+    // `minecraft.player.connection.showDialog(dialog, this)`: over the menu.
+    fn show_pause_additions(
+        &mut self,
+        session: &PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        if let Some(dialog) = self.pause_additions.clone() {
+            let dialog = dialog.resolved(session);
+            self.show_dialog(dialog, surface, assets);
         }
     }
 }

@@ -50,7 +50,6 @@ pub struct PauseScreen {
 
 /// What the stilled buttons say (ours: the reference has no such state).
 const NO_SERVICES: &str = "Photon does not have the online services this needs yet.";
-const NO_PAGES: &str = "Photon has no bug or feedback page of its own yet.";
 
 fn runs(lang: &Lang, key: &str) -> Vec<Run> {
     lang.runs(
@@ -203,18 +202,13 @@ impl PauseScreen {
         }
     }
 
-    /// The menu of a client without the reference's links and services: the bug and feedback
-    /// buttons, friends and player reporting are shown but still, and say why. The reference's
+    /// The menu of a client without the reference's friends service: the friends button is shown
+    /// but still, and says why. The reference's
     /// menu has them active, so the parity cases build the menu without this.
     pub fn without_services(mut self, lang: &Lang) -> Self {
         for (index, (widget, action)) in self.widgets.iter_mut().enumerate() {
             let (key, fallback) = match action {
-                Some(PauseAction::ReportBugs | PauseAction::Feedback) => {
-                    ("photon.pause.no_pages", NO_PAGES)
-                }
-                Some(PauseAction::Friends | PauseAction::PlayerReporting) => {
-                    ("photon.pause.no_services", NO_SERVICES)
-                }
+                Some(PauseAction::Friends) => ("photon.pause.no_services", NO_SERVICES),
                 _ => continue,
             };
             widget.active = false;
@@ -427,19 +421,19 @@ mod tests {
     }
 
     #[test]
-    fn without_services_stills_the_buttons_that_need_them_only() {
+    fn without_services_stills_friends_only() {
         let mut screen = screen(true);
+        let at = centre(&screen, PauseAction::Friends);
+        assert_eq!(screen.clicked(at), None);
         for action in [
             PauseAction::ReportBugs,
             PauseAction::Feedback,
-            PauseAction::Friends,
             PauseAction::PlayerReporting,
+            PauseAction::Options,
         ] {
             let at = centre(&screen, action);
-            assert_eq!(screen.clicked(at), None);
+            assert_eq!(screen.clicked(at), Some(action));
         }
-        let at = centre(&screen, PauseAction::Options);
-        assert_eq!(screen.clicked(at), Some(PauseAction::Options));
     }
 
     #[test]

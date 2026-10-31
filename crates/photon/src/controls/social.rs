@@ -51,6 +51,10 @@ impl Controls {
     /// The screen closes and the mouse is grabbed again.
     fn close_social(&mut self, surface: &mut WindowSurface) {
         self.social = None;
+        // The pause menu it was opened from is what is left (`SocialInteractionsScreen(this)`).
+        if self.pause.is_some() {
+            return;
+        }
         self.captured = true;
         self.last_cursor = None;
         surface.set_cursor_captured(true);
