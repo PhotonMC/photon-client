@@ -139,6 +139,17 @@ impl Play {
         }
     }
 
+    /// `Timer.getGameTimeDeltaPartialTick(false)`: the partial tick the world is drawn at, which a
+    /// frozen level holds at one so that nothing moves between its last two ticks; the camera
+    /// itself reads the running one.
+    fn world_partial(&self, partial: f64) -> f64 {
+        if self.session.runs_normally() {
+            partial
+        } else {
+            1.0
+        }
+    }
+
     /// `Camera.alignWithEntity` and the projection: the front view turns
     /// round, and a detached camera backs away from the eyes until a block
     /// is in the way.
@@ -173,7 +184,7 @@ impl Play {
         let projection = |eye| player_camera(self.aspect, fov, far, eye, [y_rot, x_rot], bob);
         FrameCamera {
             locator,
-            partial,
+            partial: self.world_partial(partial),
             eye,
             camera,
             relative,
