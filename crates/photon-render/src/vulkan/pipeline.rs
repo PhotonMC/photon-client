@@ -82,7 +82,7 @@ impl VulkanBackend {
         let swirl = kind == PipelineKind::Swirl;
         let gui_glint = kind == PipelineKind::GuiGlint;
         let glint = kind == PipelineKind::Glint || gui_glint;
-        let text = matches!(kind, PipelineKind::Text | PipelineKind::TextTranslucent) || shadow;
+        let text = is_text(kind) || shadow;
         let text_see_through = kind == PipelineKind::TextSeeThrough;
         let gui = matches!(
             kind,
@@ -135,6 +135,7 @@ impl VulkanBackend {
             let dynamic_states = [vk::DynamicState::VIEWPORT, vk::DynamicState::SCISSOR];
             let dynamic_state =
                 vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&dynamic_states);
+            let bias = depth_bias(kind);
             let raster = vk::PipelineRasterizationStateCreateInfo::default()
                 .polygon_mode(vk::PolygonMode::FILL)
                 // The sky's fans are built in either winding.
@@ -145,21 +146,9 @@ impl VulkanBackend {
                 // block's own faces: the reference's polygon offset. The
                 // world border overlay gets its own, smaller offset
                 // (`DepthStencilState`'s own bias factors).
-                .depth_bias_enable(crumbling || world_border)
-                .depth_bias_constant_factor(if crumbling {
-                    10.0
-                } else if world_border {
-                    3.0
-                } else {
-                    0.0
-                })
-                .depth_bias_slope_factor(if crumbling {
-                    1.0
-                } else if world_border {
-                    3.0
-                } else {
-                    0.0
-                });
+                .depth_bias_enable(bias.is_some())
+                .depth_bias_constant_factor(bias.map_or(0.0, |(constant, _)| constant))
+                .depth_bias_slope_factor(bias.map_or(0.0, |(_, slope)| slope));
             let multisample = vk::PipelineMultisampleStateCreateInfo::default()
                 .rasterization_samples(vk::SampleCountFlags::TYPE_1);
             let depth_state = vk::PipelineDepthStencilStateCreateInfo::default()
@@ -335,6 +324,24 @@ fn blends_by_alpha(kind: PipelineKind) -> bool {
 }
 
 /// Whether a pipeline's draws write the depth buffer.
+/// The world text drawn with the text shaders and the font's atlas.
+fn is_text(kind: PipelineKind) -> bool {
+    matches!(
+        kind,
+        PipelineKind::Text | PipelineKind::TextOffset | PipelineKind::TextTranslucent
+    )
+}
+
+/// The polygon offset of a pipeline, constant and slope factors: the crack and the front layer
+/// of outlined text are pulled towards the camera, the world border by less.
+fn depth_bias(kind: PipelineKind) -> Option<(f32, f32)> {
+    match kind {
+        PipelineKind::Crumbling | PipelineKind::TextOffset => Some((10.0, 1.0)),
+        PipelineKind::WorldBorder => Some((3.0, 3.0)),
+        _ => None,
+    }
+}
+
 fn writes_depth(kind: PipelineKind) -> bool {
     matches!(
         kind,
@@ -352,6 +359,7 @@ fn writes_depth(kind: PipelineKind) -> bool {
             | PipelineKind::Portal
             | PipelineKind::Swirl
             | PipelineKind::Text
+            | PipelineKind::TextOffset
             | PipelineKind::Lines
             | PipelineKind::GuiItem
             | PipelineKind::WorldBorder

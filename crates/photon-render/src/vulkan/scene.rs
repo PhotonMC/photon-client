@@ -59,6 +59,24 @@ impl VulkanBackend {
         }
     }
 
+    /// The world text's pipelines: plain, then with the polygon offset.
+    ///
+    /// # Safety
+    ///
+    /// The device and the layout must be live.
+    unsafe fn create_text_pipelines(
+        &self,
+        layout: vk::DescriptorSetLayout,
+    ) -> Result<[Pipeline; 2], VulkanError> {
+        // SAFETY: the caller keeps the device and the layout live.
+        unsafe {
+            Ok([
+                self.create_pipeline(layout, PipelineKind::Text)?,
+                self.create_pipeline(layout, PipelineKind::TextOffset)?,
+            ])
+        }
+    }
+
     /// The entity pipeline, then the one for the entities drawn from shared meshes.
     ///
     /// # Safety
@@ -120,7 +138,7 @@ impl VulkanBackend {
             let crumbling_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::Crumbling)?;
             let held_pipelines = self.create_held_pipelines(descriptors.layout)?;
-            let text_pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Text)?;
+            let text_pipelines = self.create_text_pipelines(descriptors.layout)?;
             let text_see_through_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::TextSeeThrough)?;
             let text_translucent_pipeline =
@@ -160,7 +178,7 @@ impl VulkanBackend {
                 lines_pipelines,
                 crumbling_pipeline,
                 held_pipelines,
-                text_pipeline,
+                text_pipelines,
                 text_see_through_pipeline,
                 text_translucent_pipeline,
                 shadow_pipeline,

@@ -350,7 +350,9 @@ impl VulkanBackend {
             Run::Map => list(&self.map),
             Run::MapDecoration => list(&self.map_decoration),
             Run::NameTagSeeThrough => list(&self.name_tag_see),
-            Run::NameTag => list(&self.name_tag),
+            Run::NameTag | Run::NameTagOffset => {
+                list(&self.name_tag[usize::from(run == Run::NameTagOffset)])
+            }
             Run::Outline | Run::OutlineBacking | Run::Gizmo => self.lines.range(run),
             Run::Cracks => list(&self.breaking),
             Run::Hand => list(&self.hand),

@@ -226,21 +226,24 @@ impl VulkanBackend {
     }
 
     /// Hand over the next frame's name tags: the text seen through blocks,
-    /// which is drawn first, and the text depth-tested. Both sample the GUI
-    /// atlas the font's images are in.
+    /// which is drawn first, the text depth-tested, and the front layer of
+    /// outlined text, pulled towards the camera and drawn last. All sample the
+    /// GUI atlas the font's images are in.
     pub fn set_name_tags(
         &mut self,
         see_through: &[Vertex],
-        normal: &[Vertex],
+        (normal, offset): (&[Vertex], &[Vertex]),
     ) -> Result<(), VulkanError> {
         let mut buffer = std::mem::take(&mut self.name_tag_see.buffer);
         self.fill_vertex_buffer(&mut buffer, see_through)?;
         self.name_tag_see.buffer = buffer;
         self.name_tag_see.count = see_through.len() as u32;
-        let mut buffer = std::mem::take(&mut self.name_tag.buffer);
-        self.fill_vertex_buffer(&mut buffer, normal)?;
-        self.name_tag.buffer = buffer;
-        self.name_tag.count = normal.len() as u32;
+        for (at, vertices) in [normal, offset].into_iter().enumerate() {
+            let mut buffer = std::mem::take(&mut self.name_tag[at].buffer);
+            self.fill_vertex_buffer(&mut buffer, vertices)?;
+            self.name_tag[at].buffer = buffer;
+            self.name_tag[at].count = vertices.len() as u32;
+        }
         Ok(())
     }
 

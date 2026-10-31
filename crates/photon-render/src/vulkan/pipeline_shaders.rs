@@ -92,6 +92,11 @@ const SHADERS: &[(PipelineKind, &Shader, &Shader)] = &[
         &TEXT_FRAGMENT_SHADER,
     ),
     (
+        PipelineKind::TextOffset,
+        &TEXT_VERTEX_SHADER,
+        &TEXT_FRAGMENT_SHADER,
+    ),
+    (
         PipelineKind::TextTranslucent,
         &TEXT_VERTEX_SHADER,
         &TEXT_FRAGMENT_SHADER,

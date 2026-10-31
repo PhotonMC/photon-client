@@ -108,7 +108,7 @@ impl VulkanBackend {
                 portal: DrawList::default(),
                 portal_scene: None,
                 portal_time: 0.0,
-                name_tag: DrawList::default(),
+                name_tag: Default::default(),
                 hand: DrawList::default(),
                 held_counts: [0; 3],
                 lines: LineDraws::default(),

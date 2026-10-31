@@ -96,7 +96,9 @@ pub struct VulkanBackend {
     /// The portal's pipeline and the two textures it layers, once loaded.
     pub(super) portal_scene: Option<super::portal::PortalScene>,
     pub(super) portal_time: f32,
-    pub(super) name_tag: DrawList,
+    /// The name tags' and the world text's depth-tested triangles, then the front layer of the
+    /// outlined text, which is drawn after them.
+    pub(super) name_tag: [DrawList; 2],
     /// The first-person hand's triangles, in view space, and the projection
     /// they are drawn with over a cleared depth.
     pub(super) hand: DrawList,

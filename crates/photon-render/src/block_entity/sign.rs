@@ -105,14 +105,16 @@ pub struct SignTextSubmit {
 /// The world triangles of a sign's text (`TextFeatureRenderer`): an outlined line is drawn eight
 /// times a glyph's shadow offset around in the outline's colour (whatever the line's styles say)
 /// then once over them in its own colour. The outline copies draw no effects (`discardEffects`).
+/// The triangles are added to the plain ones and the front layers of the outlined lines, which the
+/// reference draws with a polygon offset (`Font.DisplayMode.POLYGON_OFFSET`).
 pub fn sign_text_vertices(
     submits: &[SignTextSubmit],
     (font, atlas): (&Font, &crate::gui::GuiAtlas),
-) -> Vec<crate::scene::Vertex> {
+    (vertices, offset): &mut (Vec<crate::scene::Vertex>, Vec<crate::scene::Vertex>),
+) {
     use crate::gui::frame::{effect_quads, glyph_quads};
     use crate::gui::text_effect::effects;
     use crate::objects::display::world_glyphs;
-    let mut vertices = Vec::new();
     for submit in submits {
         let light = crate::block::light::light_uv(submit.light);
         if submit.outline != 0 {
@@ -131,7 +133,7 @@ pub fn sign_text_vertices(
                     }
                     let at = (submit.x + dx as f32, submit.y + dy as f32);
                     let quads = glyph_quads(atlas, font, &plain, at, submit.outline, false);
-                    world_glyphs(&submit.pose.pose, quads, light, &mut vertices);
+                    world_glyphs(&submit.pose.pose, quads, light, &mut *vertices);
                 }
             }
         }
@@ -139,7 +141,11 @@ pub fn sign_text_vertices(
         let mut quads = glyph_quads(atlas, font, &submit.line, at, submit.color, false);
         let bars = effects(font, &submit.line, at, (submit.color, false));
         quads.extend(effect_quads(atlas, bars));
-        world_glyphs(&submit.pose.pose, quads, light, &mut vertices);
+        let layer = if submit.outline != 0 {
+            &mut *offset
+        } else {
+            &mut *vertices
+        };
+        world_glyphs(&submit.pose.pose, quads, light, layer);
     }
-    vertices
 }

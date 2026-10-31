@@ -171,9 +171,9 @@ pub(super) fn cull_mode(kind: PipelineKind) -> vk::CullModeFlags {
     use PipelineKind::*;
     match kind {
         SkyTranslucent | SkyOverlay | Weather | Entity | EntityInstanced | EntityMask
-        | Dissolve | Swirl | Glint | Rays | WorldBorder | Text | TextTranslucent | Shadow
-        | TextSeeThrough | Gui | GuiInvert | GuiHighlight | GuiVignette | GuiLogo | GuiItem
-        | GuiGlint | Lines => vk::CullModeFlags::NONE,
+        | Dissolve | Swirl | Glint | Rays | WorldBorder | Text | TextOffset | TextTranslucent
+        | Shadow | TextSeeThrough | Gui | GuiInvert | GuiHighlight | GuiVignette | GuiLogo
+        | GuiItem | GuiGlint | Lines => vk::CullModeFlags::NONE,
         _ => vk::CullModeFlags::BACK,
     }
 }

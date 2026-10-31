@@ -25,11 +25,11 @@ pub fn sign_texts(
     ),
     view: FrameView,
     (first_person, editing): (bool, SignEditing<'_>),
-) -> Vec<Vertex> {
+) -> (Vec<Vertex>, Vec<Vertex>) {
     let world = session.world();
     let player = session.player();
     let scoping = first_person && player.is_some_and(|player| player.is_scoping());
-    let mut vertices = Vec::new();
+    let mut vertices = (Vec::new(), Vec::new());
     for (x, y, z) in crate::objects::block_entity_items::in_view(world, view) {
         let Some(sign) = world.sign_view((x, y, z)) else {
             continue;
@@ -81,7 +81,7 @@ pub fn sign_texts(
             (scoping || near, block_light(world, (x, y, z))),
             font,
         );
-        vertices.extend(sign_text_vertices(&submits, (font, atlas)));
+        sign_text_vertices(&submits, (font, atlas), &mut vertices);
     }
     vertices
 }

@@ -99,6 +99,8 @@ pub(super) enum Run {
     NameTagSeeThrough,
     /// Name tags tested against the depth.
     NameTag,
+    /// The front layer of outlined world text, pulled towards the camera.
+    NameTagOffset,
     /// The aimed block's outline: lines, with the window's size in the push constants.
     Outline,
     /// The black backing of the high contrast outline, which writes no depth.
@@ -119,7 +121,7 @@ pub(super) enum Run {
 /// What the entities pass draws, in order. The ground items and the entities come first, then the
 /// flat shapes: shadows before what they lie under, the glowing layers, the additive ones, orbs,
 /// maps, and the name tags last.
-pub(super) const ENTITY_RUNS: [Run; 15] = [
+pub(super) const ENTITY_RUNS: [Run; 16] = [
     Run::Ground,
     Run::Entity,
     Run::Mask,
@@ -135,6 +137,7 @@ pub(super) const ENTITY_RUNS: [Run; 15] = [
     Run::MapDecoration,
     Run::NameTagSeeThrough,
     Run::NameTag,
+    Run::NameTagOffset,
 ];
 
 /// What the particles pass draws, in order.
@@ -188,6 +191,7 @@ impl Run {
             | Self::MapDecoration
             | Self::Map
             | Self::NameTag
+            | Self::NameTagOffset
             | Self::NameTagSeeThrough => scene.text_pipeline_of(self),
             Self::Outline | Self::OutlineBacking | Self::Gizmo => scene.lines_pipeline(self),
             Self::Cracks => &scene.crumbling_pipeline,
@@ -208,7 +212,7 @@ impl Run {
             | Self::HeldTranslucent
             | Self::BlockParticle => Sampled::Atlas,
             Self::Map => Sampled::Map,
-            Self::NameTagSeeThrough | Self::NameTag => Sampled::Gui,
+            Self::NameTagSeeThrough | Self::NameTag | Self::NameTagOffset => Sampled::Gui,
             Self::Outline | Self::OutlineBacking | Self::Gizmo => Sampled::Unbound,
             Self::Cracks => Sampled::Crack,
             Self::Entity
@@ -234,7 +238,8 @@ impl SceneResources {
         match run {
             Run::Orb | Run::MapDecoration => &self.text_translucent_pipeline,
             Run::NameTagSeeThrough => &self.text_see_through_pipeline,
-            _ => &self.text_pipeline,
+            Run::NameTagOffset => &self.text_pipelines[1],
+            _ => &self.text_pipelines[0],
         }
     }
 
@@ -286,7 +291,8 @@ mod tests {
         assert!(position(Run::Shadow) < position(Run::Glow));
         assert!(position(Run::Glow) < position(Run::Swirl));
         assert!(position(Run::Rays) < position(Run::Orb));
-        assert_eq!(ENTITY_RUNS.last(), Some(&Run::NameTag));
+        assert_eq!(ENTITY_RUNS.last(), Some(&Run::NameTagOffset));
+        assert!(position(Run::NameTag) < position(Run::NameTagOffset));
         assert!(position(Run::NameTagSeeThrough) < position(Run::NameTag));
     }
 }

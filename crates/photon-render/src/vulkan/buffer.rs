@@ -64,6 +64,9 @@ pub(super) enum PipelineKind {
     /// Text in the world (`TEXT`): the font's glyphs lit by the lightmap and
     /// fogged, tested against the depth.
     Text,
+    /// Text in the world pulled towards the camera (`TEXT_POLYGON_OFFSET`): the front layer of an
+    /// outlined line, which wins over the outline in the same plane.
+    TextOffset,
     /// Text seen through blocks (`TEXT_SEE_THROUGH`): no light, fog or depth.
     TextSeeThrough,
     /// World text's shaders over the entity textures, blended and not written
@@ -248,7 +251,8 @@ pub(super) struct SceneResources {
     /// The pipelines of the held items: opaque, then the quads of translucent sprites
     /// (`ITEM_TRANSLUCENT`).
     pub(super) held_pipelines: [Pipeline; 2],
-    pub(super) text_pipeline: Pipeline,
+    /// The text pipelines: the plain one and the one with the polygon offset.
+    pub(super) text_pipelines: [Pipeline; 2],
     pub(super) text_see_through_pipeline: Pipeline,
     pub(super) text_translucent_pipeline: Pipeline,
     pub(super) shadow_pipeline: Pipeline,

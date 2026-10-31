@@ -297,11 +297,12 @@ impl Play {
             spectating,
             hud_hidden: self.controls.hud_hidden,
         };
-        let (see_through, normal) = self.world_texts(&camera, view);
+        let (see_through, normal, offset) = self.world_texts(&camera, view);
         let mut normal = normal;
         // The leads are a flat colour lit by the lightmap, as the world text is.
         leashes::leashes(&self.session, view, &mut normal);
-        self.backend.set_name_tags(&see_through, &normal)?;
+        self.backend
+            .set_name_tags(&see_through, (&normal, &offset))?;
         let mut shadows = Vec::new();
         overlays::entity_shadows(
             &self.session,
