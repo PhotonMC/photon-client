@@ -56,6 +56,7 @@ mod trial_tick;
 mod vibration;
 mod water;
 mod weather;
+pub use weather::WEATHER_RADIUS;
 
 pub use ambience::{Ambience, AmbientParticle, NoAmbience};
 pub use effects::{

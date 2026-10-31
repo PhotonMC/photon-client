@@ -51,6 +51,8 @@ pub(crate) struct Particles {
     local_player: Option<photon_world::particles::PlayerSpot>,
     /// Where the camera was when the last frame was drawn.
     camera: Vec3,
+    /// `Options.weatherRadius`, which the rain's drops fall within.
+    pub(crate) weather_radius: i32,
     /// The textures (under `textures/`) the types carried here are drawn in, and where each
     /// sits in the packed entity textures once those are made.
     textures: Vec<String>,
@@ -169,6 +171,7 @@ impl Particles {
             dripstone: photon_world::particles::DripstoneAttributes::default(),
             local_player: None,
             camera: Vec3::new(0.0, 0.0, 0.0),
+            weather_radius: photon_world::particles::WEATHER_RADIUS,
             textures,
             rects: HashMap::new(),
             renderer: None,
@@ -425,7 +428,9 @@ impl Particles {
             ambience,
         };
         let camera = (self.camera.x, self.camera.y, self.camera.z);
-        let sound = self.engine.tick_weather(camera, &mut context);
+        let sound = self
+            .engine
+            .tick_weather((camera, self.weather_radius), &mut context);
         self.uniquifier = uniquifier;
         sound
     }

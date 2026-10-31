@@ -18,13 +18,14 @@ pub struct CullView<'a> {
     pub camera: (f64, f64, f64),
     /// `Options.getEffectiveRenderDistance`, in chunks.
     pub render_distance: i32,
+    /// `Options.entityDistanceScaling`.
+    pub distance_scaling: f64,
 }
 
 /// `Entity.viewScale` as `LevelExtractor.extractVisibleEntities` sets it: the render distance
-/// over eight, held between one and two and a half, times the entity distance scaling option
-/// (its default, one).
-fn view_scale(render_distance: i32) -> f64 {
-    (f64::from(render_distance) / 8.0).clamp(1.0, 2.5)
+/// over eight, held between one and two and a half, times the entity distance scaling option.
+fn view_scale(render_distance: i32, distance_scaling: f64) -> f64 {
+    (f64::from(render_distance) / 8.0).clamp(1.0, 2.5) * distance_scaling
 }
 
 /// The entities the frame leaves out.
@@ -33,7 +34,7 @@ pub fn out_of_view(
     sections: &SectionMeshes,
     view: &CullView,
 ) -> BTreeSet<EntityId> {
-    let scale = view_scale(view.render_distance);
+    let scale = view_scale(view.render_distance, view.distance_scaling);
     let bounds = world.dimension();
     let spawners = world
         .spawner_display_places()
@@ -176,6 +177,7 @@ impl super::Play {
                     frustum: &frame.frustum,
                     camera: (frame.camera.x, frame.camera.y, frame.camera.z),
                     render_distance: frame.render_distance,
+                    distance_scaling: self.controls.options.quality.entity_distance_scaling,
                 },
             )
         } else {
@@ -201,5 +203,18 @@ impl super::Play {
                     .count(),
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::view_scale;
+
+    #[test]
+    fn the_distance_scaling_option_multiplies_the_held_view_scale() {
+        assert_eq!(view_scale(2, 1.0), 1.0);
+        assert_eq!(view_scale(2, 0.5), 0.5);
+        assert_eq!(view_scale(32, 2.0), 5.0);
+        assert_eq!(view_scale(12, 1.25), 1.5 * 1.25);
     }
 }

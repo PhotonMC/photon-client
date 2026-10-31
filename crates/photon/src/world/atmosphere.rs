@@ -29,9 +29,8 @@ pub fn rain_fog_target(
 pub fn weather(
     session: &PlaySession,
     tints: &BiomeTints,
-    eye: Vec3,
-    origin: [i32; 3],
-    partial: f32,
+    (eye, origin): (Vec3, [i32; 3]),
+    (partial, radius): (f32, i32),
 ) -> photon_render::sky::weather::WeatherMesh {
     let world = session.world();
     let noise_biome = |x: i32, y: i32, z: i32| world.noise_biome(x, y, z);
@@ -64,7 +63,7 @@ pub fn weather(
         origin,
         session.game_time(),
         partial,
-        session.rain_level(),
+        (session.rain_level(), radius),
     )
 }
 

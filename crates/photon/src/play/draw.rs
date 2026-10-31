@@ -362,6 +362,7 @@ impl Play {
             lightmap_options: (options.darkness_effect_scale as f32, options.gamma as f32),
             hide_flashes: options.hide_lightning_flashes,
             cloud_status: options.quality.cloud_status,
+            weather_radius: options.quality.weather_radius,
         }
     }
 

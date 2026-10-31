@@ -11,13 +11,13 @@ use super::level_events::LevelEventContext;
 use crate::local_player::{LocalSound, LocalSoundSource};
 
 /// `Options.weatherRadius`' default.
-const WEATHER_RADIUS: i32 = 10;
+pub const WEATHER_RADIUS: i32 = 10;
 
 impl ParticleEngine {
     /// One tick of the weather around `camera`: the drops, and the rain's sound if one is heard.
     pub fn tick_weather<F: FnMut() -> RandomSource>(
         &mut self,
-        camera: (f64, f64, f64),
+        (camera, radius): ((f64, f64, f64), i32),
         context: &mut LevelEventContext<'_, F>,
     ) -> Option<LocalSound> {
         let world = context.world;
@@ -28,12 +28,12 @@ impl ParticleEngine {
         let materials = self.terrain_materials();
         let mut random = RandomSource::create((world.game_time() as i64).wrapping_mul(312_987_231));
         let [cx, cy, cz] = [camera.0, camera.1, camera.2].map(photon_core::math::floor_f64);
-        let diameter = 2 * WEATHER_RADIUS + 1;
+        let diameter = 2 * radius + 1;
         let drops = (0.225_f32 * (diameter * diameter) as f32 * rain_level * rain_level) as i32;
         let mut landed = None;
         for _ in 0..drops {
-            let x = cx + random.next_int_bound(diameter).unwrap_or(0) - WEATHER_RADIUS;
-            let z = cz + random.next_int_bound(diameter).unwrap_or(0) - WEATHER_RADIUS;
+            let x = cx + random.next_int_bound(diameter).unwrap_or(0) - radius;
+            let z = cz + random.next_int_bound(diameter).unwrap_or(0) - radius;
             let top = world.motion_blocking_height(x, z);
             let rains = materials
                 .as_ref()

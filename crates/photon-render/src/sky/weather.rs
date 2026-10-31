@@ -59,7 +59,7 @@ pub fn build(
     origin: [i32; 3],
     game_time: i64,
     partial_tick: f32,
-    intensity: f32,
+    (intensity, radius): (f32, i32),
 ) -> WeatherMesh {
     let mut mesh = WeatherMesh::default();
     if intensity <= 0.0 {
@@ -68,11 +68,11 @@ pub fn build(
     let camera_block = camera.map(|value| value.floor() as i32);
     let mut rain = Vec::new();
     let mut snow = Vec::new();
-    for z in camera_block[2] - RADIUS..=camera_block[2] + RADIUS {
-        for x in camera_block[0] - RADIUS..=camera_block[0] + RADIUS {
+    for z in camera_block[2] - radius..=camera_block[2] + radius {
+        for x in camera_block[0] - radius..=camera_block[0] + radius {
             let terrain = (world.height)(x, z);
-            let bottom = (camera_block[1] - RADIUS).max(terrain);
-            let top = (camera_block[1] + RADIUS).max(terrain);
+            let bottom = (camera_block[1] - radius).max(terrain);
+            let top = (camera_block[1] + radius).max(terrain);
             if top - bottom == 0 {
                 continue;
             }
@@ -127,7 +127,7 @@ pub fn build(
         }
     }
     let place = |columns: &[Column], max_alpha: f32, out: &mut Vec<Vertex>| {
-        let radius_squared = (RADIUS * RADIUS) as f32;
+        let radius_squared = (radius * radius) as f32;
         for column in columns {
             let relative_x = (f64::from(column.x) + 0.5 - camera[0]) as f32;
             let relative_z = (f64::from(column.z) + 0.5 - camera[2]) as f32;
@@ -200,7 +200,7 @@ mod tests {
             precipitation: &|_, _, _| Precipitation::Rain,
             light_coords: &|_, _, _| 15 << 20,
         };
-        let mesh = build(&world, [0.5, 70.0, 0.5], [0, 0, 0], 0, 0.0, 1.0);
+        let mesh = build(&world, [0.5, 70.0, 0.5], [0, 0, 0], 0, 0.0, (1.0, 10));
         assert_eq!(mesh.rain.len(), 21 * 21 * 6);
         assert!(mesh.snow.is_empty());
         let heights: Vec<f32> = mesh.rain.iter().map(|vertex| vertex.position[1]).collect();

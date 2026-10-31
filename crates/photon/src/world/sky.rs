@@ -37,6 +37,8 @@ pub struct SkyCamera {
     pub hide_flashes: bool,
     /// `Options.cloudStatus`.
     pub cloud_status: CloudStatus,
+    /// `Options.weatherRadius`.
+    pub weather_radius: i32,
 }
 
 pub struct Sky {
@@ -228,7 +230,12 @@ impl Sky {
         // the way to its target per tick.
         let target = rain_fog_target(session, tints, &self.environment, camera.eye);
         self.rain_fog += (target - self.rain_fog) * camera.frame_ticks * 0.2;
-        let weather = weather(session, tints, camera.eye, camera.origin, partial);
+        let weather = weather(
+            session,
+            tints,
+            (camera.eye, camera.origin),
+            (partial, camera.weather_radius),
+        );
         backend.set_weather(&weather.rain, &weather.snow)?;
         set_world_border(backend, session, camera, partial)?;
         let (y_rot, x_rot) = camera.rotation;
