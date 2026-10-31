@@ -544,7 +544,7 @@ mod tests {
             .at_mut(EntityId(100))
             .expect("the dragon")
             .ticking = true;
-        world.tick_entities();
+        world.tick_entities(false);
         world
     }
 

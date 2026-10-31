@@ -57,7 +57,7 @@ impl ClientWorld {
         if !local_player_is_passenger {
             self.tick_local_player(None);
         }
-        self.tick_entities();
+        self.tick_entities(false);
         self.tick_sky_flash();
     }
 

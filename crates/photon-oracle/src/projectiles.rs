@@ -103,7 +103,7 @@ fn tick_with_events(
     entity_id: EntityId,
 ) -> Result<(), String> {
     apply_events(world, row, tick, entity_id)?;
-    world.tick_entities();
+    world.tick_entities(false);
     Ok(())
 }
 
@@ -148,7 +148,7 @@ pub(super) fn item_entity_ticks_result(request: &Value) -> Result<Value, String>
         let mut ticks = Vec::new();
         for tick in 0..i32_field(row, "tick_count")? {
             apply_events(&mut world, row, tick, entity_id)?;
-            world.tick_entities();
+            world.tick_entities(false);
             let entity = world
                 .entities()
                 .at(entity_id)

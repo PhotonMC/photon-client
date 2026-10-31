@@ -45,7 +45,7 @@ pub(super) fn after_tick(
     breaking: Option<&Value>,
 ) {
     if breaking.is_some_and(|breaking| breaking["rockets"].is_number()) {
-        world.tick_entities();
+        world.tick_entities(false);
         // The player is right-handed, and the rocket is in neither hand.
         world.boost_from_rockets(player, photon_world::RocketHand::default());
     }
@@ -143,7 +143,7 @@ pub(super) fn tick_block_entities(
         world.apply_player_steps(player);
         return Ok(());
     }
-    let pushed = world.tick_after_entities(Some(player));
+    let pushed = world.tick_after_entities(Some(player), true);
     world.set_game_time(world.game_time() + 1);
     pushed.map_err(|unsupported| unsupported.to_string())
 }

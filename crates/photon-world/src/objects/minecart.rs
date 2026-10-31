@@ -334,7 +334,7 @@ mod tests {
             .ticking = true;
         let mut seen = Vec::new();
         for _ in 0..4 {
-            world.tick_entities();
+            world.tick_entities(false);
             seen.push(
                 world
                     .entities()

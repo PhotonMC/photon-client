@@ -19,7 +19,7 @@ fn a_rocket_in_flight_leaves_a_trail_of_sparks() {
     }));
     let spark = photon_data::particle_type::id("firework").unwrap();
     for _ in 0..3 {
-        world.tick_entities();
+        world.tick_entities(false);
         let sparks = world.take_effect_particles();
         assert_eq!(sparks.len(), 1);
         assert_eq!(sparks[0].type_id, spark);
@@ -59,7 +59,7 @@ fn an_attached_rocket_with_a_missing_target_still_leaves_its_trail() {
             255,
         ],
     ));
-    world.tick_entities();
+    world.tick_entities(false);
     assert!(world.take_effect_particles().is_empty());
 
     let mut player = LocalPlayer::new(

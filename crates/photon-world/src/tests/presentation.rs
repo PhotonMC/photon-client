@@ -21,7 +21,7 @@ fn a_walking_player_swings_its_limbs_and_turns_its_body_after_the_way_it_walks()
     assert_eq!(snapshot(&world).walk_speed, 0.0);
     assert_eq!(snapshot(&world).body_yaw, 90.0);
     // Standing still moves nothing.
-    world.tick_entities();
+    world.tick_entities(false);
     assert_eq!(snapshot(&world).walk_speed, 0.0);
     // Walking south (towards +z), 0.2158 a tick, as the server steps it.
     for _ in 0..12 {
@@ -34,7 +34,7 @@ fn a_walking_player_swings_its_limbs_and_turns_its_body_after_the_way_it_walks()
             y_rot: None,
             x_rot: None,
         }));
-        world.tick_entities();
+        world.tick_entities(false);
     }
     let walking = snapshot(&world);
     assert!(walking.walk_speed > 0.5, "{walking:?}");
@@ -51,7 +51,7 @@ fn a_walking_player_swings_its_limbs_and_turns_its_body_after_the_way_it_walks()
     assert!(mid.walk_position > walking.walk_position - walking.walk_speed);
     // It stops, and the swing dies away.
     for _ in 0..30 {
-        world.tick_entities();
+        world.tick_entities(false);
     }
     assert!(snapshot(&world).walk_speed < 0.001);
 }
@@ -96,7 +96,7 @@ fn a_walking_mob_eases_to_each_step_and_faces_where_it_goes() {
     assert_eq!(z_after(&world), 4.5);
     let mut seen = Vec::new();
     for _ in 0..3 {
-        world.tick_entities();
+        world.tick_entities(false);
         seen.push(z_after(&world));
     }
     assert!(
@@ -222,7 +222,7 @@ fn a_cat_lies_on_top_of_a_player_who_sleeps_within_two_blocks_of_it() {
     let lies_on_player = |world: &mut ClientWorld| {
         // No chunk is loaded here, which would leave the cat idle.
         world.entities.at_mut(EntityId(1)).unwrap().ticking = true;
-        world.tick_entities();
+        world.tick_entities(false);
         world
             .entities()
             .at(EntityId(1))
@@ -274,7 +274,7 @@ fn a_guardian_turns_its_head_to_the_local_player_it_aims_at() {
     assert!(world.apply_entity_metadata(EntityId(1), &data));
     // No chunk is loaded here, which would leave the guardian idle.
     world.entities.at_mut(EntityId(1)).unwrap().ticking = true;
-    world.tick_entities();
+    world.tick_entities(false);
     let (y_rot, x_rot, head) = world.entities().at(EntityId(1)).unwrap().rotation();
     assert_eq!((head, y_rot), (-90.0, -90.0));
     // The player's eyes are 1.195 blocks above the guardian's, six away.
@@ -286,7 +286,7 @@ fn a_guardian_turns_its_head_to_the_local_player_it_aims_at() {
     let looked = world.entities().at(EntityId(1)).unwrap().rotation();
     data[2] = 9;
     assert!(world.apply_entity_metadata(EntityId(1), &data));
-    world.tick_entities();
+    world.tick_entities(false);
     assert_eq!(world.entities().at(EntityId(1)).unwrap().rotation(), looked);
 }
 
@@ -354,10 +354,10 @@ fn a_swing_lasts_as_long_as_the_held_spears_and_a_kinetic_hit_kicks_for_ten_tick
     // An empty hand swings over six ticks, the first of which only starts it.
     world.entities_mut().apply_animate(EntityId(9), 0);
     for _ in 0..6 {
-        world.tick_entities();
+        world.tick_entities(false);
     }
     assert!(swinging(&world));
-    world.tick_entities();
+    world.tick_entities(false);
     assert!(!swinging(&world));
     // An iron spear's stab lasts nineteen.
     let iron_spear = photon_data::item::items::ITEMS
@@ -376,10 +376,10 @@ fn a_swing_lasts_as_long_as_the_held_spears_and_a_kinetic_hit_kicks_for_ten_tick
     );
     world.entities_mut().apply_animate(EntityId(9), 0);
     for _ in 0..19 {
-        world.tick_entities();
+        world.tick_entities(false);
     }
     assert!(swinging(&world));
-    world.tick_entities();
+    world.tick_entities(false);
     assert!(!swinging(&world));
 
     // The kick of a hit starts at the game time of the event and is not restarted within ten ticks.
@@ -519,7 +519,7 @@ fn an_ominous_item_spawner_ages_with_each_tick() {
     // As in a loaded chunk.
     world.entities.at_mut(EntityId(4)).unwrap().ticking = true;
     for _ in 0..3 {
-        world.tick_entities();
+        world.tick_entities(false);
     }
     assert_eq!(world.entities().at(EntityId(4)).unwrap().tick_count(), 3);
 }

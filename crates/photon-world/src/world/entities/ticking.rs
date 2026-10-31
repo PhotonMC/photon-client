@@ -3,13 +3,15 @@ use crate::*;
 impl ClientWorld {
     /// `ClientLevel.tickEntities`: every entity the server added that is
     /// ticking moves on a tick, its passengers after it (the local player,
-    /// who has a tick of its own, is not among them unless it rides one).
-    pub fn tick_entities(&mut self) {
+    /// who has a tick of its own, is not among them unless it rides one). While the level is
+    /// frozen (`TickRateManager.isEntityFrozen`) only players and what carries a player tick.
+    pub fn tick_entities(&mut self, frozen: bool) {
         let ticking_entity_ids: Vec<EntityId> = self
             .entities
             .iter()
             .filter(|(_, entity)| entity.ticking && entity.links.vehicle_id.is_none())
             .map(|(&entity_id, _)| entity_id)
+            .filter(|&entity_id| !frozen || !self.entity_is_frozen(entity_id))
             .collect();
         for entity_id in ticking_entity_ids {
             self.tick_entity_tree(entity_id, None);
@@ -22,6 +24,36 @@ impl ClientWorld {
         {
             self.weather_mut().sky_flash_time = 2;
         }
+    }
+
+    /// `TickRateManager.isEntityFrozen` for a level that is not running: an entity that is no
+    /// player and carries none, directly or through its passengers.
+    fn entity_is_frozen(&self, entity_id: EntityId) -> bool {
+        !self.entities.at(entity_id).is_some_and(|e| e.is_player())
+            && !self.carries_player(entity_id)
+    }
+
+    /// `Entity.countPlayerPassengers() > 0`: a player, local or remote, sits in it or in
+    /// something that sits in it.
+    fn carries_player(&self, entity_id: EntityId) -> bool {
+        let mut pending = vec![entity_id];
+        // A vehicle chain is never this deep; the bound only keeps a bad packet from looping.
+        for _ in 0..256 {
+            let Some(id) = pending.pop() else {
+                return false;
+            };
+            for &passenger in self.entity_passengers(id).unwrap_or_default() {
+                let local = self
+                    .local_player
+                    .as_ref()
+                    .is_some_and(|p| p.id == passenger);
+                if local || self.entities.at(passenger).is_some_and(|e| e.is_player()) {
+                    return true;
+                }
+                pending.push(passenger);
+            }
+        }
+        false
     }
 
     pub(crate) fn tick_entity_tree(&mut self, entity_id: EntityId, vehicle_id: Option<EntityId>) {

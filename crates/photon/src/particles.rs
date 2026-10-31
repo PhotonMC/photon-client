@@ -466,6 +466,11 @@ impl Particles {
             self.engine.tick_explosions(&mut context);
             self.uniquifier = uniquifier;
         }
+        // The weather, the animated blocks and the particle engine stand still while the level is
+        // frozen (`ClientLevel.tick` and `Minecraft.tick` gate them on `runsNormally`).
+        if !session.runs_normally() {
+            return sounds;
+        }
         sounds.extend(self.tick_weather(world, ambience));
         if let Some(center) = player {
             sounds.extend(self.animate_blocks(world, center, ambience));

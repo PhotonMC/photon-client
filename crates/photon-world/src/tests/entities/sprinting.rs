@@ -48,7 +48,7 @@ fn runner(data: u8) -> ClientWorld {
 #[test]
 fn a_sprinting_player_the_server_added_kicks_up_flakes_of_the_block_underfoot() {
     let mut world = runner(1 << 3);
-    world.tick_entities();
+    world.tick_entities(false);
     let flakes = world.take_effect_particles();
     assert_eq!(flakes.len(), 1);
     assert_eq!(
@@ -60,7 +60,7 @@ fn a_sprinting_player_the_server_added_kicks_up_flakes_of_the_block_underfoot() 
 
     // Walking only: no flakes.
     let mut walking = runner(0);
-    walking.tick_entities();
+    walking.tick_entities(false);
     assert!(walking.take_effect_particles().is_empty());
 
     // Sprinting but crouching (pose 5): no flakes.
@@ -74,6 +74,6 @@ fn a_sprinting_player_the_server_added_kicks_up_flakes_of_the_block_underfoot() 
             255,
         ],
     ));
-    crouching.tick_entities();
+    crouching.tick_entities(false);
     assert!(crouching.take_effect_particles().is_empty());
 }

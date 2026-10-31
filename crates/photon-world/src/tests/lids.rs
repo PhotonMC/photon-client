@@ -25,12 +25,17 @@ fn a_chest_lid_follows_the_ticks_after_its_block_event() {
     world.apply_block_event(pos, 1, 1);
     assert_eq!(world.chest_openness(pos, None, 1.0), 0.0);
     for _ in 0..5 {
-        world.tick_after_entities(None).unwrap();
+        world.tick_after_entities(None, true).unwrap();
+    }
+    assert!((world.chest_openness(pos, None, 1.0) - 0.5).abs() < 1e-6);
+    // A frozen level (`/tick freeze`) holds the lid where it is.
+    for _ in 0..5 {
+        world.tick_after_entities(None, false).unwrap();
     }
     assert!((world.chest_openness(pos, None, 1.0) - 0.5).abs() < 1e-6);
     world.apply_block_event(pos, 1, 0);
     for _ in 0..5 {
-        world.tick_after_entities(None).unwrap();
+        world.tick_after_entities(None, true).unwrap();
     }
     assert!(world.chest_openness(pos, None, 1.0) < 1e-6);
 }

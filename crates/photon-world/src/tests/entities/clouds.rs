@@ -59,7 +59,7 @@ fn a_lingering_potions_cloud_scatters_swirls_over_its_disc() {
     photon_core::wire::write_varint(crate::tests::wire_particle("entity_effect"), &mut swirl);
     swirl.extend(0xFF33_66CC_u32.to_be_bytes());
     let mut world = cloud(2.0, false, &swirl);
-    world.tick_entities();
+    world.tick_entities(false);
     let specks = world.take_effect_particles();
     // ceil(pi * 2 * 2).
     assert_eq!(specks.len(), 13);
@@ -84,14 +84,14 @@ fn a_lingering_potions_cloud_scatters_swirls_over_its_disc() {
 fn another_particle_drifts_and_a_waiting_cloud_shows_little() {
     let villager = photon_data::particle_type::id("happy_villager").unwrap();
     let mut world = cloud(2.0, false, &[villager as u8]);
-    world.tick_entities();
+    world.tick_entities(false);
     let specks = world.take_effect_particles();
     assert_eq!(specks.len(), 13);
     assert!(specks.iter().all(|speck| speck.spread.1 == 0.01));
 
     let mut waiting = cloud(2.0, true, &[villager as u8]);
     for _ in 0..20 {
-        waiting.tick_entities();
+        waiting.tick_entities(false);
         assert!(waiting.take_effect_particles().len() <= 2);
     }
 }
@@ -105,7 +105,7 @@ fn a_dragons_breath_cloud_keeps_its_particle_and_power() {
     photon_core::wire::write_varint(crate::tests::wire_particle("dragon_breath"), &mut data);
     data.extend(1.0_f32.to_be_bytes());
     let mut world = cloud(1.0, false, &data);
-    world.tick_entities();
+    world.tick_entities(false);
     let specks = world.take_effect_particles();
     assert_eq!(specks.len(), 4);
     for speck in &specks {

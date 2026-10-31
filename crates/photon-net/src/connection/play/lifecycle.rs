@@ -110,7 +110,8 @@ impl PlaySession {
                 let position = player.position();
                 self.world.set_local_player_chunk(position.x, position.z);
             }
-            self.world.tick_entities();
+            self.world
+                .tick_entities(!self.level_info.tick_rate.runs_normally());
             for (left, right) in self.world.take_paddle_packets() {
                 self.send_movement(ServerboundMovement::PaddleBoat { left, right })?;
             }
@@ -145,12 +146,21 @@ impl PlaySession {
         }
         self.tell_world_where_the_player_is();
         self.tick_level_entities(ridden.is_none());
-        if let Err(unsupported) = self.world.tick_after_entities(self.local.player.as_mut()) {
+        self.tick_level_rest();
+        self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))
+    }
+
+    /// `ClientLevel.tick` after the entities: the border, the block entities and (`tickTime`) the
+    /// game time and the clocks move on, all of them only while the level runs normally.
+    fn tick_level_rest(&mut self) {
+        let runs_normally = self.level_info.tick_rate.runs_normally();
+        let player = self.local.player.as_mut();
+        if let Err(unsupported) = self.world.tick_after_entities(player, runs_normally) {
             self.warn_unsupported(&unsupported);
         }
-        // ClientLevel.tickTime: the game time and the clocks move on.
-        self.tick_clocks(self.level_info.game_time + 1);
-        self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))
+        if runs_normally {
+            self.tick_clocks(self.level_info.game_time + 1);
+        }
     }
 
     /// A branch of the movement the port does not carry yet, said once.
@@ -183,7 +193,8 @@ impl PlaySession {
         self.refresh_friendly_ghosts();
         if player_ticks_itself {
             self.world.tick_local_player_effects();
-            self.world.tick_entities();
+            self.world
+                .tick_entities(!self.level_info.tick_rate.runs_normally());
         }
         let rocket = photon_game::item::id_of("minecraft:firework_rocket");
         let hand = photon_world::RocketHand {

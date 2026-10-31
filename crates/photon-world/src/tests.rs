@@ -109,6 +109,7 @@ mod block_light;
 mod campfires;
 mod chunks;
 mod entities;
+mod frozen;
 mod lids;
 mod local_player;
 mod map_data;

@@ -376,7 +376,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 controls.holds_warped_fungus_on_a_stick =
                     held_stick == "minecraft:warped_fungus_on_a_stick";
                 world.set_rider_controls(controls);
-                world.tick_entities();
+                world.tick_entities(false);
                 let mut sent: Vec<photon_world::local_player::ServerboundMovement> = world
                     .take_paddle_packets()
                     .into_iter()

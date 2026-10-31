@@ -334,18 +334,25 @@ impl ClientWorld {
     pub fn tick_after_entities(
         &mut self,
         player: Option<&mut LocalPlayer>,
+        runs_normally: bool,
     ) -> Result<(), Unsupported> {
         let mut player = player;
-        // `ClientLevel.tick`: the border moves on, and the lids, bells and heads the blocks
-        // animate carry on.
-        self.world_border.tick();
-        self.block_animations.tick();
-        self.tick_skulls();
+        // `ClientLevel.tick` and `Level.tickBlockEntities` do these only while the level runs
+        // normally: the border moves on, and the lids, bells and heads the blocks animate carry on.
+        if runs_normally {
+            self.world_border.tick();
+            self.block_animations.tick();
+            self.tick_skulls();
+        }
         // A push runs the block effects once more, so the steps are acted on before and after.
         if let Some(player) = player.as_deref_mut() {
             self.apply_player_steps(player);
         }
-        let pushed = self.tick_block_entities(player.as_deref_mut());
+        let pushed = if runs_normally {
+            self.tick_block_entities(player.as_deref_mut())
+        } else {
+            Ok(())
+        };
         if let Some(player) = player {
             self.apply_player_steps(player);
         }

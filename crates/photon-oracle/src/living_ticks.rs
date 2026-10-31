@@ -134,7 +134,7 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                     other => return Err(format!("unknown event {other}")),
                 }
             }
-            world.tick_entities();
+            world.tick_entities(false);
             let entity = world.entities().at(entity_id).ok_or("entity vanished")?;
             let mut described = json!({
                 "hurt_time": entity.hurt_time(),

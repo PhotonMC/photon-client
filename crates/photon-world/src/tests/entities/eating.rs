@@ -25,7 +25,7 @@ fn a_player_the_server_says_is_eating_throws_crumbs_of_its_food() {
         Some(ClientItemStackState::new(1, bread))
     ));
     // Not eating yet: nothing.
-    world.tick_entities();
+    world.tick_entities(false);
     assert!(world.take_effect_particles().is_empty());
 
     assert!(world.apply_entity_metadata(
@@ -39,7 +39,7 @@ fn a_player_the_server_says_is_eating_throws_crumbs_of_its_food() {
     ));
     let mut thrown = Vec::new();
     for tick in 0..32 {
-        world.tick_entities();
+        world.tick_entities(false);
         let crumbs = world.take_effect_particles();
         if !crumbs.is_empty() {
             thrown.push((tick, crumbs));
@@ -67,7 +67,7 @@ fn a_player_the_server_says_is_eating_throws_crumbs_of_its_food() {
         ))
     ));
     for _ in 0..40 {
-        world.tick_entities();
+        world.tick_entities(false);
     }
     assert!(world.take_effect_particles().is_empty());
 }

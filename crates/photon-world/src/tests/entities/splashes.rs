@@ -38,7 +38,7 @@ fn a_living_entity_entering_water_throws_bubbles_and_splashes() {
     spawn(&mut world, 9, 64.5);
     // Appearing in water is no splash.
     spawn(&mut world, 10, 63.0);
-    world.tick_entities();
+    world.tick_entities(false);
     assert!(world.take_effect_particles().is_empty());
 
     // Sinking one block into it.
@@ -53,7 +53,7 @@ fn a_living_entity_entering_water_throws_bubbles_and_splashes() {
     }));
     let mut thrown = Vec::new();
     for _ in 0..6 {
-        world.tick_entities();
+        world.tick_entities(false);
         thrown.extend(world.take_effect_particles());
     }
     let bubble = photon_data::particle_type::id("bubble").unwrap();
