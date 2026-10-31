@@ -9,12 +9,14 @@
 mod data;
 mod service;
 mod transport;
+mod updates;
 
 pub use data::{
     Friend, FriendData, PresenceEntry, PresenceStatus, ResultCode, parse_friends, parse_presence,
 };
 pub use service::FriendsService;
 pub use transport::{HttpTransport, Method, Reply, Request, Transport, TransportError};
+pub use updates::{Applied, FriendListUpdates, Notice, State};
 
 #[cfg(test)]
 mod tests;

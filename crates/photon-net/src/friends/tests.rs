@@ -233,3 +233,130 @@ fn a_host_that_is_not_https_or_this_machine_is_never_asked() {
     };
     assert_eq!(transport.send(&request), Err(TransportError));
 }
+
+mod updates {
+    use super::*;
+    use crate::friends::{FriendData, FriendListUpdates, Notice, State};
+
+    fn friend(n: u64, name: &str) -> Friend {
+        Friend {
+            id: Uuid::new(1, n),
+            name: name.to_owned(),
+        }
+    }
+
+    fn lists(friends: Vec<Friend>, incoming: Vec<Friend>, outgoing: Vec<Friend>) -> FriendData {
+        FriendData {
+            friends,
+            incoming,
+            outgoing,
+        }
+    }
+
+    #[test]
+    fn codes_map_to_the_states_the_screens_show() {
+        let state = State::for_code;
+        assert_eq!(state(ResultCode::Forbidden), State::TemporaryUnavailable);
+        assert_eq!(
+            state(ResultCode::TooManyRequests),
+            State::TemporaryUnavailable
+        );
+        assert_eq!(
+            state(ResultCode::UnknownProfile),
+            State::UserMayLackActiveProfile
+        );
+        assert_eq!(state(ResultCode::Error), State::GenericError);
+        assert_eq!(state(ResultCode::Unauthorized), State::Unauthorized);
+        assert_eq!(state(ResultCode::Success), State::Success);
+    }
+
+    #[test]
+    fn the_first_answer_sets_the_lists_without_toasts() {
+        let now = Instant::now();
+        let mut updates = FriendListUpdates::new();
+        assert_eq!(updates.state(), State::Loading);
+        let applied = updates.apply(
+            (
+                ResultCode::Success,
+                lists(vec![friend(1, "A")], vec![], vec![]),
+            ),
+            now,
+            true,
+        );
+        assert!(applied.notify && applied.notices.is_empty());
+        assert_eq!(updates.state(), State::Success);
+        assert_eq!(updates.latest().friends.len(), 1);
+    }
+
+    #[test]
+    fn a_change_toasts_by_where_the_player_came_from() {
+        let now = Instant::now();
+        let (a, b, c, d) = (
+            friend(1, "A"),
+            friend(2, "B"),
+            friend(3, "C"),
+            friend(4, "D"),
+        );
+        let mut updates = FriendListUpdates::new();
+        let first = lists(vec![], vec![b.clone()], vec![c.clone()]);
+        updates.apply((ResultCode::Success, first), now, true);
+        let second = lists(vec![a.clone(), b.clone()], vec![d.clone()], vec![c.clone()]);
+        let applied = updates.apply((ResultCode::Success, second), now, true);
+        assert!(applied.notify);
+        assert_eq!(
+            applied.notices,
+            vec![
+                Notice::FriendAdded(a),
+                Notice::RequestAccepted(b),
+                Notice::RequestReceived(d),
+            ]
+        );
+        // The same lists again change nothing and tell nobody.
+        let again = lists(
+            vec![friend(1, "A"), friend(2, "B")],
+            vec![friend(4, "D")],
+            vec![c],
+        );
+        let applied = updates.apply((ResultCode::Success, again), now, true);
+        assert_eq!(applied, Applied::default());
+    }
+
+    #[test]
+    fn toasts_off_still_notifies_the_screens() {
+        let now = Instant::now();
+        let mut updates = FriendListUpdates::new();
+        updates.apply((ResultCode::Success, FriendData::default()), now, false);
+        let data = lists(vec![], vec![], vec![friend(5, "E")]);
+        let applied = updates.apply((ResultCode::Success, data), now, false);
+        assert!(applied.notify && applied.notices.is_empty());
+    }
+
+    #[test]
+    fn a_failure_notifies_and_the_next_success_starts_over_quietly() {
+        let now = Instant::now();
+        let mut updates = FriendListUpdates::new();
+        updates.apply((ResultCode::Success, FriendData::default()), now, true);
+        let failed = updates.apply((ResultCode::Unauthorized, FriendData::default()), now, true);
+        assert!(failed.notify);
+        assert_eq!(updates.state(), State::Unauthorized);
+        let data = lists(vec![friend(1, "A")], vec![], vec![]);
+        let back = updates.apply((ResultCode::Success, data), now, true);
+        assert!(back.notify && back.notices.is_empty());
+    }
+
+    #[test]
+    fn updates_are_due_by_the_hint_and_slower_behind_a_screen() {
+        let now = Instant::now();
+        let mut updates = FriendListUpdates::new();
+        assert!(updates.is_due(now, None, false));
+        updates.apply((ResultCode::Success, FriendData::default()), now, true);
+        let after = |seconds| now + Duration::from_secs(seconds);
+        assert!(!updates.is_due(after(59), None, true));
+        assert!(updates.is_due(after(60), None, true));
+        assert!(!updates.is_due(after(299), None, false));
+        assert!(updates.is_due(after(300), None, false));
+        let hint = Some(Duration::from_secs(10));
+        assert!(updates.is_due(after(10), hint, true));
+        assert!(!updates.is_due(after(49), hint, false));
+    }
+}
