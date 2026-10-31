@@ -85,7 +85,7 @@ impl Controls {
     pub(crate) fn toggle_friends(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {
         if let Some(overlay) = self.friends.as_ref() {
             if !overlay.typing() {
-                self.close_friends(surface);
+                self.close_friends(surface, assets);
             }
             return;
         }
@@ -107,6 +107,7 @@ impl Controls {
         if let Some(social) = self.friends_list.as_mut() {
             social.want_presence();
         }
+        self.friends_from_pause = false;
         self.friends = Some(FriendsOverlay::new(&assets.lang, size, view));
         self.captured = false;
         self.last_cursor = None;
@@ -183,8 +184,14 @@ impl Controls {
         std::mem::take(&mut self.friends_wanted)
     }
 
-    fn close_friends(&mut self, surface: &mut WindowSurface) {
+    /// The overlay closes: the pause menu it was opened from is what is left, otherwise the
+    /// game takes the mouse again.
+    fn close_friends(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {
         self.friends = None;
+        if std::mem::take(&mut self.friends_from_pause) {
+            self.open_pause(surface, assets);
+            return;
+        }
         self.captured = true;
         self.last_cursor = None;
         surface.set_cursor_captured(true);
@@ -254,7 +261,7 @@ impl Controls {
     ) {
         let font = &assets.creative.font;
         match asked {
-            Some(FriendsEvent::Close) => self.close_friends(surface),
+            Some(FriendsEvent::Close) => self.close_friends(surface, assets),
             Some(FriendsEvent::Send(name)) => self.send_request(&name, font),
             Some(FriendsEvent::CopyName) => {
                 use photon_gui::widgets::edit_box::Clipboard;

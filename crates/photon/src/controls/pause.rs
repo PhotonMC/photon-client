@@ -75,9 +75,10 @@ impl Controls {
             }
             PauseAction::Friends => {
                 // The overlay replaces the menu (`Minecraft.toggleFriendsScreen` from the pause
-                // screen); closing it returns to the game.
+                // screen); closing it returns to the menu.
                 self.pause = None;
                 self.toggle_friends(surface, assets);
+                self.friends_from_pause = self.friends.is_some();
             }
             PauseAction::Custom => self.show_pause_additions(session, surface, assets),
         }
