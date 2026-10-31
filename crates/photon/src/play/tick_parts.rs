@@ -55,7 +55,10 @@ impl Play {
     /// events, breaking and block particles.
     pub(super) fn tick_effects(&mut self) {
         let session = &mut self.session;
-        self.animated_atlas.tick();
+        // `Minecraft.runTick`: the textures animate only while the level runs normally.
+        if session.runs_normally() {
+            self.animated_atlas.tick();
+        }
         // What the level's own tick queued (a sulfur block's gas) joins the particles in this tick.
         super::effects::route_level_events(
             session,

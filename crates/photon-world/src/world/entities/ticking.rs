@@ -17,16 +17,22 @@ impl ClientWorld {
             self.tick_entity_tree(entity_id, None);
         }
         // `LightningBolt.tick`: a bolt that is still lit flashes the sky.
-        if self
-            .entities
-            .values()
-            .any(|entity| entity.ticking && entity.lightning().is_some_and(|bolt| bolt.is_lit()))
-        {
+        if self.entities.iter().any(|(&id, entity)| {
+            entity.ticking
+                && entity.lightning().is_some_and(|bolt| bolt.is_lit())
+                && (!frozen || !self.entity_is_frozen(id))
+        }) {
             self.weather_mut().sky_flash_time = 2;
         }
     }
 
-    /// `TickRateManager.isEntityFrozen` for a level that is not running: an entity that is no
+    /// `TickRateManager.isEntityFrozen`: the level does not run normally, and the entity is no
+    /// player and carries none.
+    pub fn is_entity_frozen(&self, entity_id: EntityId, runs_normally: bool) -> bool {
+        !runs_normally && self.entity_is_frozen(entity_id)
+    }
+
+    /// The entity part of `isEntityFrozen`, for a level that is not running: an entity that is no
     /// player and carries none, directly or through its passengers.
     fn entity_is_frozen(&self, entity_id: EntityId) -> bool {
         !self.entities.at(entity_id).is_some_and(|e| e.is_player())

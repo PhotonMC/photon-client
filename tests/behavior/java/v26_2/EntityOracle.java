@@ -179,6 +179,9 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("end_flash_script")) {
             return endFlashScript(request);
         }
+        if (operation.equals("entity_frozen")) {
+            return entityFrozen(request);
+        }
         if (operation.equals("tick_rate_script")) {
             return tickRateScript(request);
         }

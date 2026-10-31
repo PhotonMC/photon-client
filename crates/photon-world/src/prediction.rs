@@ -63,6 +63,8 @@ pub struct DestroyProgress {
     pub z: i32,
     /// The crack stage, 0 to 9.
     pub stage: i32,
+    /// The game time of the last update (`BlockDestructionProgress.updatedRenderTick`).
+    pub updated: i64,
 }
 
 impl ClientWorld {
@@ -252,10 +254,29 @@ impl ClientWorld {
         stage: i32,
     ) {
         if (0..10).contains(&stage) {
-            self.destroying_blocks
-                .insert(entity_id, DestroyProgress { x, y, z, stage });
+            let updated = self.game_time() as i64;
+            self.destroying_blocks.insert(
+                entity_id,
+                DestroyProgress {
+                    x,
+                    y,
+                    z,
+                    stage,
+                    updated,
+                },
+            );
         } else {
             self.destroying_blocks.remove(&entity_id);
+        }
+    }
+
+    /// `ClientLevel.removeBlockBreakingProgress`: every twentieth game tick, a crack nobody has
+    /// updated for more than 400 ticks goes away.
+    pub fn expire_destroy_progress(&mut self) {
+        let game_time = self.game_time() as i64;
+        if game_time % 20 == 0 {
+            self.destroying_blocks
+                .retain(|_, crack| game_time.wrapping_sub(crack.updated) <= 400);
         }
     }
 

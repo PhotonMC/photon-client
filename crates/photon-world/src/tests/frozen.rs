@@ -33,3 +33,30 @@ fn a_frozen_level_ticks_only_players_and_what_carries_one() {
     let ticks = |id| world.entities().at(EntityId(id)).unwrap().tick_count();
     assert_eq!([ticks(1), ticks(2), ticks(3), ticks(4)], [0, 1, 1, 1]);
 }
+
+#[test]
+fn a_frozen_bolt_does_not_hold_the_sky_flash() {
+    let mut world = ClientWorld::default();
+    add_ticking(&mut world, 1, "minecraft:lightning_bolt");
+    world.tick_entities(false);
+    assert_eq!(world.weather().sky_flash_time, 2);
+    world.tick_sky_flash();
+    world.tick_entities(true);
+    assert_eq!(world.weather().sky_flash_time, 1);
+}
+
+#[test]
+fn a_crack_nobody_updates_goes_after_four_hundred_ticks() {
+    let mut world = ClientWorld::default();
+    world.set_game_time(100);
+    world.destroy_block_progress(EntityId(7), 1, 2, 3, 4);
+    world.set_game_time(500);
+    world.expire_destroy_progress();
+    assert_eq!(world.destroying_blocks().len(), 1);
+    world.set_game_time(501);
+    world.expire_destroy_progress();
+    assert_eq!(world.destroying_blocks().len(), 1);
+    world.set_game_time(520);
+    world.expire_destroy_progress();
+    assert!(world.destroying_blocks().is_empty());
+}

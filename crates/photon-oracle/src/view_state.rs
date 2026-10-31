@@ -12,6 +12,7 @@ pub(super) fn view_state_result(operation: &str, request: &Value) -> Option<Resu
         "item_activation_pose" => item_activation_pose_result(request),
         "end_sky_buffer" => Ok(end_sky_buffer_result()),
         "tick_rate_script" => tick_rate_script_result(request),
+        "entity_frozen" => crate::frozen::entity_frozen_result(request),
         "end_flash_script" => end_flash_script_result(request),
         "end_flash_pose" => end_flash_pose_result(request),
         _ => return None,

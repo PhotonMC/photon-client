@@ -90,6 +90,31 @@ pub fn end_sky_buffer() -> Vec<Value> {
     vec![entity("end-sky-buffer", "end_sky_buffer", vec![json!({"label": "all"})])]
 }
 
+/// `isEntityFrozen` for lone entities and for stacks with a player at the bottom, the top and
+/// the middle, at a running, a frozen and a stepping level.
+pub fn entity_frozen() -> Vec<Value> {
+    let row = |label: &str, level: &str, kinds: &[&str], links: &[(usize, usize)]| {
+        let links: Vec<Value> = links.iter().map(|(v, p)| json!([v, p])).collect();
+        json!({"label": format!("{label}, {level}"), "level": level, "entities": kinds, "links": links})
+    };
+    let mut rows = Vec::new();
+    for level in ["running", "frozen", "stepping"] {
+        rows.push(row("lone", level, &["stand", "player", "mannequin"], &[]));
+        rows.push(row("stand with a player", level, &["stand", "player"], &[(0, 1)]));
+        rows.push(row("player with a stand", level, &["player", "stand"], &[(0, 1)]));
+        rows.push(row("stand with a mannequin", level, &["stand", "mannequin"], &[(0, 1)]));
+        rows.push(row("player two levels up", level, &["stand", "stand", "player"], &[(0, 1), (1, 2)]));
+        rows.push(row("a player among two", level, &["stand", "mannequin", "player"], &[(0, 1), (0, 2)]));
+        rows.push(row(
+            "player in a side branch",
+            level,
+            &["stand", "stand", "stand", "player"],
+            &[(0, 1), (0, 2), (2, 3)],
+        ));
+    }
+    vec![entity("entity-frozen", "entity_frozen", rows)]
+}
+
 /// The tick rate manager through scripts of the calls the packets and the game's tick make:
 /// freezing, stepping, stepping without a freeze, a rate below the least, and unfreezing mid-step.
 pub fn tick_rate_script() -> Vec<Value> {

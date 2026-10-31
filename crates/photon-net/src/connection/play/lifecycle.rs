@@ -160,6 +160,7 @@ impl PlaySession {
         }
         if runs_normally {
             self.tick_clocks(self.level_info.game_time + 1);
+            self.world.expire_destroy_progress();
         }
     }
 

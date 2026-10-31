@@ -752,6 +752,63 @@ class EntityDisplayOracle extends EntityDataOracle {
         return result;
     }
 
+    /**
+     * `TickRateManager.isEntityFrozen` of entities with passengers, at a level that runs, is frozen
+     * or is stepping. The entities are allocated without a level: the predicate reads only the
+     * kind and the passenger list.
+     */
+    static JsonObject entityFrozen(final JsonObject request) throws Exception {
+        Game26_2.vanillaRegistries();
+        var unsafe = Reflect.unsafe();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var manager = new net.minecraft.world.TickRateManager();
+            switch (row.get("level").getAsString()) {
+                case "running" -> { }
+                case "frozen" -> manager.setFrozen(true);
+                case "stepping" -> {
+                    manager.setFrozen(true);
+                    manager.setFrozenTicksToRun(2);
+                }
+                default -> throw new IllegalArgumentException(row.get("level").getAsString());
+            }
+            manager.tick();
+            var entities = new java.util.ArrayList<net.minecraft.world.entity.Entity>();
+            for (var kind : row.get("entities").getAsJsonArray()) {
+                Class<?> type = switch (kind.getAsString()) {
+                    case "stand" -> net.minecraft.world.entity.decoration.ArmorStand.class;
+                    case "player" -> net.minecraft.client.player.RemotePlayer.class;
+                    case "mannequin" -> net.minecraft.world.entity.decoration.Mannequin.class;
+                    default -> throw new IllegalArgumentException(kind.getAsString());
+                };
+                var entity = (net.minecraft.world.entity.Entity) unsafe.allocateInstance(type);
+                Reflect.set(entity, "passengers", com.google.common.collect.ImmutableList.of());
+                entities.add(entity);
+            }
+            for (var vehicle = 0; vehicle < entities.size(); vehicle++) {
+                var riders = com.google.common.collect.ImmutableList.<net.minecraft.world.entity.Entity>builder();
+                for (var link : row.get("links").getAsJsonArray()) {
+                    if (link.getAsJsonArray().get(0).getAsInt() == vehicle) {
+                        riders.add(entities.get(link.getAsJsonArray().get(1).getAsInt()));
+                    }
+                }
+                Reflect.set(entities.get(vehicle), "passengers", riders.build());
+            }
+            var frozen = new JsonArray();
+            for (var entity : entities) {
+                frozen.add(manager.isEntityFrozen(entity));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("frozen", frozen);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The real `EndFlashState` ticked through a script of clock times, described after each tick. */
     static JsonObject endFlashScript(final JsonObject request) {
         var rows = new JsonArray();
