@@ -211,7 +211,45 @@ fn arrow_rows() -> Vec<Screen> {
     }
     sequences.push(("arrow-search-down-down", vec![search.clone(), key(DOWN), key(DOWN)]));
     sequences.push(("arrow-search-down-enter", vec![search, key(DOWN), key(ENTER)]));
-    sequences.into_iter().map(|(label, steps)| Screen { steps, ..screen(label) }).collect()
+    let mut rows: Vec<Screen> = sequences.into_iter().map(|(label, steps)| Screen { steps, ..screen(label) }).collect();
+    rows.extend(arrow_edge_rows(&keys));
+    rows
+}
+
+/// The arrow keys at other sizes, deep in the list, over a filter and over an invalid number.
+fn arrow_edge_rows(keys: &dyn Fn(&[i64]) -> Vec<Value>) -> Vec<Screen> {
+    let mut rows = Vec::new();
+    for (name, size) in [("large", (854, 480)), ("small", (320, 110))] {
+        let labels = [
+            (format!("arrow-{name}-down-2"), keys(&[DOWN, DOWN])),
+            (format!("arrow-{name}-done-up-down"), keys(&[TAB, UP, DOWN])),
+            (format!("arrow-{name}-up-left"), keys(&[TAB, UP, LEFT])),
+        ];
+        for (label, steps) in labels {
+            let label = Box::leak(label.into_boxed_str());
+            rows.push(Screen { label, size, steps, ..screen("") });
+        }
+    }
+    rows.push(Screen { steps: keys(&[DOWN; 15]), ..screen("arrow-down-15") });
+    rows.push(Screen { steps: keys(&[DOWN; 40]), ..screen("arrow-down-40") });
+    rows.push(Screen { steps: [keys(&[DOWN; 15]), keys(&[UP; 4])].concat(), ..screen("arrow-down-15-up-4") });
+    for (label, extra) in [
+        ("arrow-filtered-down", vec![DOWN]),
+        ("arrow-filtered-down-up", vec![DOWN, UP]),
+        ("arrow-filtered-down-3", vec![DOWN, DOWN, DOWN]),
+    ] {
+        let steps = [vec![typed("respawn")], keys(&extra)].concat();
+        rows.push(Screen { steps, ..screen(label) });
+    }
+    let invalid = vec![typed("respawn"), click(300, 76), typed("x")];
+    for (label, extra) in [
+        ("arrow-invalid-tab-left", vec![TAB, TAB, LEFT]),
+        ("arrow-invalid-cancel-left", vec![TAB, TAB, TAB, LEFT]),
+        ("arrow-invalid-down-left", vec![TAB, DOWN, LEFT]),
+    ] {
+        rows.push(Screen { steps: [invalid.clone(), keys(&extra)].concat(), ..screen(label) });
+    }
+    rows
 }
 
 pub fn game_rules_screen() -> Value {

@@ -19,12 +19,17 @@ impl Controls {
     /// integrated server sends the player back to the options screen.
     pub fn sync_world_facts(&mut self, session: &PlaySession) {
         let (difficulty, locked) = session.difficulty();
-        self.world_facts = WorldFacts {
+        self.apply_world_facts(WorldFacts {
             difficulty,
             locked,
             hardcore: session.hardcore(),
             gamemaster: session.permission_level() >= 2,
-        };
+        });
+    }
+
+    /// The facts the open screens follow.
+    fn apply_world_facts(&mut self, facts: WorldFacts) {
+        self.world_facts = facts;
         if self
             .world_screen
             .as_ref()
@@ -111,5 +116,47 @@ fn screen_press(
             screen.clicked(lang, mouse, modifiers.contains(glfw::Modifiers::Shift))
         }
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use photon_game::text::Lang;
+    use photon_render::gui::font::Font;
+
+    #[test]
+    fn losing_the_permission_closes_the_rules_and_the_world_settings() {
+        let Some(font) = Font::load(std::path::Path::new(
+            &photon_core::content_root::assets().unwrap_or_default(),
+        )) else {
+            return;
+        };
+        let lang = Lang::default();
+        let mut controls = Controls::default();
+        let facts = WorldFacts {
+            gamemaster: true,
+            ..WorldFacts::default()
+        };
+        controls.apply_world_facts(facts);
+        controls.world_screen = Some(WorldOptionsScreen::new(
+            &font,
+            &lang,
+            (427, 240),
+            true,
+            facts,
+        ));
+        controls.game_rules = Some(photon_gui::screen::game_rules::GameRulesScreen::new(
+            &font,
+            &lang,
+            (427, 240),
+        ));
+        controls.apply_world_facts(facts);
+        assert!(controls.game_rules.is_some() && controls.world_screen.is_some());
+        controls.apply_world_facts(WorldFacts {
+            gamemaster: false,
+            ..facts
+        });
+        assert!(controls.game_rules.is_none() && controls.world_screen.is_none());
     }
 }
