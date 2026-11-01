@@ -58,6 +58,19 @@ pub const fn named(name: &str) -> EntityTypeId {
     panic!("the entity type registry has no such name");
 }
 
+/// The id of the vanilla type `short` (`armadillo`), resolved while compiling: a name the
+/// registry lacks stops the build.
+pub const fn vanilla(short: &str) -> EntityTypeId {
+    let mut index = 0;
+    while index < ENTITY_TYPES.len() {
+        if crate::name::is_vanilla(ENTITY_TYPES[index].name, short) {
+            return EntityTypeId(index as i32);
+        }
+        index += 1;
+    }
+    panic!("the entity type registry has no such name");
+}
+
 /// The id of the entity data serializer with this name (`ITEM_STACK`), resolved while
 /// compiling: a name the registry lacks stops the build.
 pub const fn serializer_named(name: &str) -> i32 {

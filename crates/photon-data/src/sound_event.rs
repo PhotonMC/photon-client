@@ -23,3 +23,28 @@ pub fn id(name: &str) -> Option<i32> {
         .position(|candidate| candidate.name == name)
         .map(|index| index as i32)
 }
+
+/// The full name of the vanilla event `short` (`entity.armadillo.peek`), resolved while
+/// compiling: a name the registry lacks stops the build.
+pub const fn vanilla(short: &str) -> &'static str {
+    let mut index = 0;
+    while index < SOUND_EVENTS.len() {
+        if crate::name::is_vanilla(SOUND_EVENTS[index].name, short) {
+            return SOUND_EVENTS[index].name;
+        }
+        index += 1;
+    }
+    panic!("the sound event registry has no such name");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_short_name_resolves_to_the_full_one() {
+        const PEEK: &str = vanilla("entity.armadillo.peek");
+        assert_eq!(PEEK, "minecraft:entity.armadillo.peek");
+        assert!(id(PEEK).is_some());
+    }
+}

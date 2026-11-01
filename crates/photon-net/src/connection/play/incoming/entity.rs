@@ -463,6 +463,7 @@ impl PlaySession {
             self.local_kinetic_hit(id, event);
             self.local_use_complete(id, event);
             self.show_teleport(id, event);
+            self.world.play_entity_event_sound(id, event);
             self.world.apply_entity_event(id, event);
         }
         Ok(())

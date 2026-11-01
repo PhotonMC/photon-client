@@ -7,6 +7,7 @@ mod dimensions;
 mod drawn;
 mod eating;
 mod entity_collision;
+mod event_sounds;
 mod fireworks;
 mod flags;
 mod living_flags;

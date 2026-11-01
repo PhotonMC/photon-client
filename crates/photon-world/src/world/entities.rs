@@ -326,6 +326,7 @@ impl ClientWorld {
     }
 }
 
+mod event_sounds;
 mod events;
 mod motion;
 mod passengers;
