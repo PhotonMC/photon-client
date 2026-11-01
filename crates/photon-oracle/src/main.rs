@@ -184,6 +184,7 @@ mod display;
 use display::*;
 mod block_models;
 mod block_poses;
+mod delta_tracker;
 mod frozen;
 mod guardian;
 mod view_state;

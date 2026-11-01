@@ -68,6 +68,19 @@ impl TickRateManager {
     }
 }
 
+/// `DeltaTracker.Timer.advanceGameTime`, up to the whole ticks: the ticks the whole milliseconds
+/// since the last call make at the target length of a tick.
+pub fn delta_ticks(elapsed_ms: i64, target_ms: f32) -> f32 {
+    elapsed_ms as f32 / target_ms
+}
+
+/// The whole ticks of a residual, which keeps its fraction.
+pub fn take_whole_ticks(residual: &mut f32) -> i32 {
+    let ticks = *residual as i32;
+    *residual -= ticks as f32;
+    ticks
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -753,6 +753,43 @@ class EntityDisplayOracle extends EntityDataOracle {
     }
 
     /**
+     * The real `DeltaTracker.Timer` fed a clock in milliseconds while the tick rate changes: the
+     * target length of a tick is `Minecraft.getTickTargetMillis`, the longer of the default and the
+     * level's, and only while the level runs.
+     */
+    static JsonObject deltaTrackerScript(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var manager = new net.minecraft.world.TickRateManager();
+            var timer = new net.minecraft.client.DeltaTracker.Timer(20.0F, 0L, defaultMs ->
+                manager.runsNormally() ? Math.max(defaultMs, manager.millisecondsPerTick()) : defaultMs);
+            var states = new JsonArray();
+            for (var step : row.get("steps").getAsJsonArray()) {
+                var call = step.getAsJsonObject();
+                var state = new JsonObject();
+                switch (call.get("call").getAsString()) {
+                    case "rate" -> manager.setTickRate(Oracle.f32(call, "value"));
+                    case "frozen" -> manager.setFrozen(call.get("value").getAsInt() != 0);
+                    case "tick" -> manager.tick();
+                    case "advance" -> state.addProperty("ticks", timer.advanceGameTime(call.get("value").getAsLong()));
+                    default -> throw new IllegalArgumentException(call.get("call").getAsString());
+                }
+                state.addProperty("delta", Oracle.bits(timer.getGameTimeDeltaTicks()));
+                state.addProperty("residual", Oracle.bits(timer.getGameTimeDeltaPartialTick(true)));
+                states.add(state);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("states", states);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * `TickRateManager.isEntityFrozen` of entities with passengers, at a level that runs, is frozen
      * or is stepping. The entities are allocated without a level: the predicate reads only the
      * kind and the passenger list.

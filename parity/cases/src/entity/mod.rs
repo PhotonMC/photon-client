@@ -117,6 +117,7 @@ const ORDER: &[Cases] = &[
     player::item_activation_pose,
     player::end_sky_buffer,
     player::tick_rate_script,
+    player::delta_tracker_script,
     player::entity_frozen,
     player::end_flash_script,
     player::end_flash_pose,

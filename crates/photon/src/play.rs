@@ -241,6 +241,25 @@ struct FrameCamera {
     locator: photon_gui::hud::locator::LocatorCamera,
 }
 
+/// The game's clock: the last frame, when it began and the whole milliseconds (`Util.getMillis`)
+/// at the last frame.
+struct GameClock {
+    last_frame: Instant,
+    epoch: Instant,
+    last_ms: i64,
+}
+
+impl GameClock {
+    fn new() -> Self {
+        let now = Instant::now();
+        Self {
+            last_frame: now,
+            epoch: now,
+            last_ms: 0,
+        }
+    }
+}
+
 /// A joined session with its window, renderer and everything the frames
 /// draw.
 struct Play {
@@ -296,7 +315,7 @@ struct Play {
     /// `DeltaTracker.deltaTickResidual`: the part of a tick the time since the last tick left,
     /// in ticks.
     accumulated: f32,
-    last_frame: Instant,
+    clock: GameClock,
     ticks: u64,
     /// The sound packets that have arrived.
     sounds_heard: usize,

@@ -11,7 +11,7 @@ pub(super) fn view_state_result(operation: &str, request: &Value) -> Option<Resu
         "camera_spin" => camera_spin_result(request),
         "item_activation_pose" => item_activation_pose_result(request),
         "end_sky_buffer" => Ok(end_sky_buffer_result()),
-        "tick_rate_script" => tick_rate_script_result(request),
+        "tick_rate_script" | "delta_tracker_script" => clock_script_result(operation, request),
         "entity_frozen" => crate::frozen::entity_frozen_result(request),
         "end_flash_script" => end_flash_script_result(request),
         "end_flash_pose" => end_flash_pose_result(request),
@@ -57,6 +57,15 @@ fn end_flash_script_result(request: &Value) -> Result<Value, String> {
         rows.push(json!({"label": row["label"], "states": states}));
     }
     Ok(json!({"rows": rows}))
+}
+
+/// The scripts of the tick rate and of the clock that counts its ticks.
+fn clock_script_result(operation: &str, request: &Value) -> Result<Value, String> {
+    if operation == "tick_rate_script" {
+        tick_rate_script_result(request)
+    } else {
+        super::delta_tracker::delta_tracker_script_result(request)
+    }
 }
 
 /// `tick_rate_script`: a `TickRateManager` taken through a script of calls, its state after each.

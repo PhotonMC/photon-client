@@ -135,6 +135,24 @@ pub fn tick_rate_script() -> Vec<Value> {
     vec![entity("tick-rate-script", "tick_rate_script", rows)]
 }
 
+/// The game clock in milliseconds through tick rate changes: a steady twenty, a slow rate (the tick
+/// stretches), a fast rate (it stays at fifty), a freeze (the default length), uneven frame gaps.
+pub fn delta_tracker_script() -> Vec<Value> {
+    let call = |name: &str, value: i64| json!({"call": name, "value": value});
+    let advance = |ms: i64| call("advance", ms);
+    let rate = |value: f64| json!({"call": "rate", "value": f32_bits(value)});
+    let tick = || call("tick", 0);
+    let rows = vec![
+        json!({"label": "steady", "steps": [advance(16), advance(33), advance(50), advance(120), advance(121)]}),
+        json!({"label": "slow rate", "steps": [rate(5.0), tick(), advance(100), advance(350), advance(401), advance(1000)]}),
+        json!({"label": "fast rate", "steps": [rate(100.0), tick(), advance(17), advance(34), advance(300)]}),
+        json!({"label": "frozen", "steps": [rate(5.0), tick(), call("frozen", 1), tick(), advance(60), advance(130), advance(400)]}),
+        json!({"label": "rate mid-frame", "steps": [advance(40), rate(2.0), tick(), advance(300), rate(20.0), tick(), advance(333)]}),
+        json!({"label": "odd rate", "steps": [rate(3.0), tick(), advance(7), advance(341), advance(683), advance(1024)]}),
+    ];
+    vec![entity("delta-tracker-script", "delta_tracker_script", rows)]
+}
+
 /// The End's flashes: clock times through a whole day of intervals (a flash rises, peaks and ends,
 /// the seed changes at each six hundredth tick), a jump back in time, clock zero and a single tick.
 pub fn end_flash_script() -> Vec<Value> {

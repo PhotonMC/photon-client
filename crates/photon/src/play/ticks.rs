@@ -152,7 +152,7 @@ impl Play {
             aspect: size.0 as f32 / size.1 as f32,
             sized_for: size,
             accumulated: 0.0,
-            last_frame: Instant::now(),
+            clock: GameClock::new(),
             ticks: 0,
             sounds_heard: 0,
             sound,
@@ -246,11 +246,16 @@ impl Play {
     /// length in ticks.
     pub(super) fn advance_clock(&mut self) -> f32 {
         let now = Instant::now();
-        let frame_ticks = (now - self.last_frame).as_secs_f32() / TICK_LENGTH.as_secs_f32();
+        let frame_ticks = (now - self.clock.last_frame).as_secs_f32() / TICK_LENGTH.as_secs_f32();
         // `Minecraft.getTickTargetMillis`: the level's tick rate sets the length of a tick.
-        let target = self.session.tick_target_millis() / 1000.0;
-        self.accumulated += (now - self.last_frame).as_secs_f32() / target;
-        self.last_frame = now;
+        // The clock counts whole milliseconds, as `Util.getMillis` does.
+        let current_ms = (now - self.clock.epoch).as_millis() as i64;
+        self.accumulated += photon_world::tick_rate::delta_ticks(
+            current_ms - self.clock.last_ms,
+            self.session.tick_target_millis(),
+        );
+        self.clock.last_ms = current_ms;
+        self.clock.last_frame = now;
         frame_ticks
     }
 

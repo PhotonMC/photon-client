@@ -182,6 +182,9 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("entity_frozen")) {
             return entityFrozen(request);
         }
+        if (operation.equals("delta_tracker_script")) {
+            return deltaTrackerScript(request);
+        }
         if (operation.equals("tick_rate_script")) {
             return tickRateScript(request);
         }
