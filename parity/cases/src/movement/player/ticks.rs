@@ -283,7 +283,16 @@ fn held_back() -> Vec<Value> {
             .concat(),
         ),
         scene("hurt-and-die", floor(), hurt()),
+        Scene::new("hurt-below-the-world", vec![], hurt_then_fall()).start(0.5, -200.0, 0.5).row(),
     ]
+}
+
+/// A player hurt once, then left to fall: below the world the client only goes on ticking, its
+/// flinch counting down (only the server hurts it for being there).
+fn hurt_then_fall() -> Vec<Value> {
+    let mut ticks = keys(14, &[]);
+    merge(&mut ticks[0], json!({"damage": "minecraft:generic"}));
+    ticks
 }
 
 /// A player hurt by each kind of damage, then killed.

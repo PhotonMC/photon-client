@@ -188,9 +188,8 @@ impl LocalPlayer {
         if self.is_in_lava() {
             self.fall_distance *= 0.5;
         }
-        if self.position.y < f64::from(level.world.dimension().min_y - 64) {
-            return unsupported("falling below the world");
-        }
+        // `Entity.checkBelowWorld` hurts a living entity only on the server (`hurt` is a no-op on a
+        // client), so the client's tick goes on below the world floor like any other.
         self.first_tick = false;
         // The rest of LivingEntity.baseTick on a client.
         if self.hurt_time > 0 {
