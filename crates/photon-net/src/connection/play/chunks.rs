@@ -82,9 +82,12 @@ impl PlaySession {
 
     /// Sections whose drawing may have changed since the last call: their
     /// blocks, their light, or a neighbour they cull or shade against.
-    pub fn take_dirty_sections(&mut self) -> Vec<(i32, i32, i32)> {
+    /// Each comes with whether the player changed it (`blockChanged` with the immediate flag).
+    pub fn take_dirty_sections(&mut self) -> Vec<((i32, i32, i32), bool)> {
+        let by_player = std::mem::take(&mut self.effects.player_dirty_sections);
         std::mem::take(&mut self.effects.dirty_sections)
             .into_iter()
+            .map(|section| (section, by_player.contains(&section)))
             .collect()
     }
 
@@ -122,14 +125,27 @@ impl PlaySession {
 
     /// Mark the section holding a block and the sections touching it.
     pub(super) fn mark_block(&mut self, x: i32, y: i32, z: i32) {
+        self.mark_block_from(x, y, z, false);
+    }
+
+    /// `mark_block` for a change the player predicted (update flags with the immediate bit).
+    pub(super) fn mark_block_by_player(&mut self, x: i32, y: i32, z: i32) {
+        self.mark_block_from(x, y, z, true);
+    }
+
+    fn mark_block_from(&mut self, x: i32, y: i32, z: i32, by_player: bool) {
         for dx in [-1, 0, 1] {
             for dy in [-1, 0, 1] {
                 for dz in [-1, 0, 1] {
-                    self.effects.dirty_sections.insert((
+                    let section = (
                         (x + dx).div_euclid(16),
                         (y + dy).div_euclid(16),
                         (z + dz).div_euclid(16),
-                    ));
+                    );
+                    self.effects.dirty_sections.insert(section);
+                    if by_player {
+                        self.effects.player_dirty_sections.insert(section);
+                    }
                 }
             }
         }

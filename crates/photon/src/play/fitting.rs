@@ -33,6 +33,8 @@ impl Play {
             .biome_tints
             .set_blend_radius(quality.biome_blend_radius);
         let leaves_changed = self.sync_cutout_leaves();
+        self.sections
+            .set_prioritize(quality.prioritize_chunk_updates);
         if let Ok(length) = pacing::chunk_fade(self.script.is_some(), quality.chunk_fade) {
             self.sections.set_chunk_fade(length);
         }

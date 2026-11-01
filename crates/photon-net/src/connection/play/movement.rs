@@ -76,7 +76,7 @@ impl PlaySession {
                         | photon_game::game_mode::PlayerAction::DropItem
                         | photon_game::game_mode::PlayerAction::DropAllItems
                 ) {
-                    self.mark_block(x, y, z);
+                    self.mark_block_by_player(x, y, z);
                 }
                 PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID
             }
@@ -85,8 +85,8 @@ impl PlaySession {
                 // in front of the face, and its neighbours.
                 let (dx, dy, dz) =
                     photon_core::direction::Direction::from_3d_data_value(i32::from(face)).step();
-                self.mark_block(x, y, z);
-                self.mark_block(x + dx, y + dy, z + dz);
+                self.mark_block_by_player(x, y, z);
+                self.mark_block_by_player(x + dx, y + dy, z + dz);
                 PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID
             }
             Outgoing::UseItem { .. } => PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,

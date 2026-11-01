@@ -97,3 +97,20 @@ fn a_player_added_before_its_tab_entry_takes_the_entry_when_it_comes() {
     session.social.player_infos.remove(&key);
     assert_eq!(session.player_name(uuid), Some("Npc"));
 }
+
+#[test]
+fn only_the_players_own_change_marks_a_section_as_the_players() {
+    let (mut session, _listener) = session();
+    session.mark_block(8, 8, 8);
+    session.mark_block_by_player(40, 8, 8);
+    let dirty = session.take_dirty_sections();
+    let flag = |key| {
+        dirty
+            .iter()
+            .find(|(section, _)| *section == key)
+            .map(|d| d.1)
+    };
+    assert_eq!(flag((0, 0, 0)), Some(false));
+    assert_eq!(flag((2, 0, 0)), Some(true));
+    assert!(session.take_dirty_sections().is_empty());
+}

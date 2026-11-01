@@ -118,6 +118,29 @@ impl SectionWorkers {
         self.in_flight += 1;
     }
 
+    /// `compileSync`: mesh a section on this thread; it is collected with the others.
+    pub fn compile_now(
+        &mut self,
+        (key, generation): (SectionKey, u64),
+        copy: RegionCopy,
+        origin: [i32; 3],
+        cardinal: photon_world::CardinalLightType,
+        ambient_occlusion: bool,
+    ) {
+        let job = Job {
+            key,
+            generation,
+            copy,
+            origin,
+            cardinal,
+            ambient_occlusion,
+        };
+        let _ = self
+            .sender
+            .send(mesh_section(&self.renderer, &self.tints, job));
+        self.in_flight += 1;
+    }
+
     /// The meshes finished since the last call.
     pub fn collect(&mut self) -> Vec<Built> {
         let built: Vec<Built> = self.built.try_iter().collect();

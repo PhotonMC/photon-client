@@ -2,7 +2,7 @@
 //! and which of them are in view: `LevelRenderer.compileSections`,
 //! `SectionOcclusionGraph`, the culling frustum and the section fade.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -61,8 +61,11 @@ pub struct SectionView {
 /// The dirty sections, the meshes handed out for them, which are in view,
 /// and when each first showed.
 pub struct SectionMeshes {
-    /// Sections waiting to be built.
-    pending: HashSet<SectionKey>,
+    /// Sections waiting to be built, each with whether the player changed it
+    /// (`SectionDirtyState.isDirtyFromPlayer`, which stays set while it waits).
+    pending: HashMap<SectionKey, bool>,
+    /// `prioritizeChunkUpdates`: which dirty sections are built before the frame ends.
+    prioritize: photon_game::options::PrioritizeChunkUpdates,
     /// Sections dirtied since they were last looked at for being empty;
     /// only a change dirties one, so only these can have turned empty.
     unchecked: Vec<SectionKey>,
@@ -131,8 +134,9 @@ impl SectionMeshes {
         tints: Arc<photon_render::block::biome_tint::BiomeTints>,
         chunk_fade: Duration,
     ) -> Self {
-        let pending: HashSet<SectionKey> = session.take_dirty_sections().into_iter().collect();
-        let unchecked = pending.iter().copied().collect();
+        let pending: HashMap<SectionKey, bool> =
+            session.take_dirty_sections().into_iter().collect();
+        let unchecked = pending.keys().copied().collect();
         let worker_count = std::thread::available_parallelism()
             .map_or(2, |count| count.get().saturating_sub(2))
             .clamp(1, 8);
@@ -140,6 +144,7 @@ impl SectionMeshes {
         let low = dimension.min_y.div_euclid(16);
         Self {
             pending,
+            prioritize: photon_game::options::PrioritizeChunkUpdates::None,
             unchecked,
             latest: HashMap::new(),
             next_generation: 0,
@@ -201,11 +206,12 @@ impl SectionMeshes {
         // Built, in flight and waiting: the sections that held something.
         let mut again: Vec<SectionKey> = self.compiled.keys().copied().collect();
         again.extend(self.latest.keys().copied());
-        again.extend(self.pending.iter().copied());
+        again.extend(self.pending.keys().copied());
         backend.clear_sections()?;
         self.clear();
         self.unchecked.extend(again.iter().copied());
-        self.pending.extend(again);
+        self.pending
+            .extend(again.into_iter().map(|key| (key, false)));
         Ok(())
     }
 
@@ -293,9 +299,13 @@ impl SectionMeshes {
         // `ClientLevel.update`: queued light and the light engine, each frame.
         profile::timed(Span::Light, || session.update_light());
         let dirtied = session.take_dirty_sections();
-        self.note_flood_inputs(session, &dirtied);
-        self.unchecked.extend(dirtied.iter().copied());
-        self.pending.extend(dirtied);
+        let keys: Vec<SectionKey> = dirtied.iter().map(|&(key, _)| key).collect();
+        self.note_flood_inputs(session, &keys);
+        self.unchecked.extend(keys);
+        for (key, by_player) in dirtied {
+            let waiting = self.pending.entry(key).or_insert(false);
+            *waiting |= by_player;
+        }
         let camera_block = view.camera.map(|value| value.floor() as i64);
         loop {
             profile::timed(Span::ShowBuilt, || self.show_built(backend, camera_block))?;
@@ -307,9 +317,12 @@ impl SectionMeshes {
                 profile::timed(Span::Ready, || self.ready(session, &visible, camera_block));
             backend.set_visible_sections(self.culling.then_some(visible));
             let nothing_to_hand_out = ordered.is_empty();
-            profile::timed(Span::HandOut, || {
-                self.hand_out(session, ordered, view.origin);
+            let built_now = profile::timed(Span::HandOut, || {
+                self.hand_out(session, ordered, (view.origin, camera_block))
             });
+            if built_now {
+                profile::timed(Span::ShowBuilt, || self.show_built(backend, camera_block))?;
+            }
             let flood_settled = !self.graph_stale && !self.flood.busy();
             if !script_done
                 || (nothing_to_hand_out && self.workers.in_flight() == 0 && flood_settled)
@@ -372,7 +385,7 @@ impl SectionMeshes {
         // A section whose chunk is not here yet is dirtied again when it comes.
         let empty: Vec<SectionKey> = std::mem::take(&mut self.unchecked)
             .into_iter()
-            .filter(|key| self.pending.contains(key))
+            .filter(|key| self.pending.contains_key(key))
             .filter(|&(x, y, z)| world.contains_chunk(x, z) && world.section_is_empty(x, y, z))
             .collect();
         for key in empty {
@@ -398,7 +411,7 @@ impl SectionMeshes {
                 .map(|value| (value.floor() as i32).div_euclid(16));
             return self
                 .pending
-                .iter()
+                .keys()
                 .copied()
                 .filter(|&(x, _, z)| {
                     (x - camera[0]).abs() <= view.view_distance
@@ -440,7 +453,7 @@ impl SectionMeshes {
         let mut ordered: Vec<SectionKey> = visible
             .iter()
             .copied()
-            .filter(|key| self.pending.contains(key))
+            .filter(|key| self.pending.contains_key(key))
             .filter(|&(x, y, z)| {
                 self.compiled.contains_key(&(x, y, z))
                     || *surrounded.entry((x, z)).or_insert_with(|| {
@@ -464,28 +477,59 @@ impl SectionMeshes {
     /// Hand sections to the workers, keeping every worker busy with a
     /// little queued behind it, and spending at most [`COPY_BUDGET`] of the
     /// frame copying.
-    fn hand_out(&mut self, session: &PlaySession, ordered: Vec<SectionKey>, origin: [i32; 3]) {
+    /// Sections `prioritizeChunkUpdates` has built on the spot come back as `true`: they show
+    /// the frame they are dirtied.
+    fn hand_out(
+        &mut self,
+        session: &PlaySession,
+        ordered: Vec<SectionKey>,
+        (origin, camera_block): ([i32; 3], [i64; 3]),
+    ) -> bool {
         let world = session.world();
         let budget = Instant::now();
+        let mut built_now = false;
         for key in ordered {
-            if self.workers.in_flight() >= self.worker_count * 4 || budget.elapsed() > COPY_BUDGET {
+            let now = self.builds_now(key, camera_block);
+            if !now
+                && (self.workers.in_flight() >= self.worker_count * 4
+                    || budget.elapsed() > COPY_BUDGET)
+            {
                 break;
             }
+            built_now |= now;
             self.pending.remove(&key);
             let (min, size, quart_min, quart_size) = SectionWorkers::region(key);
             let copy = world.copy_region(min, size, quart_min, quart_size);
             self.next_generation += 1;
             self.latest.insert(key, self.next_generation);
             let cardinal = world.dimension_environment().cardinal_light_type();
-            self.workers.submit(
-                key,
-                self.next_generation,
-                copy,
-                origin,
-                cardinal,
-                self.ambient_occlusion,
-            );
+            let job = (key, self.next_generation);
+            if now {
+                self.workers
+                    .compile_now(job, copy, origin, cardinal, self.ambient_occlusion);
+            } else {
+                self.workers
+                    .submit(job.0, job.1, copy, origin, cardinal, self.ambient_occlusion);
+            }
         }
+        built_now
+    }
+
+    /// `LevelRenderer.compileSections`: whether a dirty section is compiled before the frame
+    /// goes on rather than by a worker.
+    fn builds_now(&self, key: SectionKey, camera_block: [i64; 3]) -> bool {
+        use photon_game::options::PrioritizeChunkUpdates as Priority;
+        let by_player = self.pending.get(&key).copied().unwrap_or(false);
+        match self.prioritize {
+            Priority::None => false,
+            Priority::PlayerAffected => by_player,
+            Priority::Nearby => by_player || near(key, camera_block),
+        }
+    }
+
+    /// `prioritizeChunkUpdates`.
+    pub fn set_prioritize(&mut self, prioritize: photon_game::options::PrioritizeChunkUpdates) {
+        self.prioritize = prioritize;
     }
 
     /// How many sections wait to be built.

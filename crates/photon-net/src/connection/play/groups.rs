@@ -190,6 +190,8 @@ pub(super) struct Effects {
     /// The entities taken since the last [`Self::take_item_pickups`], flying to their takers.
     pub(super) item_pickups: Vec<photon_world::particles::ItemPickup>,
     pub(super) dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
+    /// The dirty sections the player changed (`SectionDirtyState.isDirtyFromPlayer`).
+    pub(super) player_dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
     pub(super) forgotten_chunks: Vec<(i32, i32)>,
     /// `ClientPacketListener.random`: the pitch of a pickup's sound.
     pub(super) listener_random: photon_core::random::RandomSource,
@@ -324,6 +326,7 @@ impl Default for Effects {
             seen_unsecure_warning: false,
             item_pickups: Vec::new(),
             dirty_sections: std::collections::BTreeSet::new(),
+            player_dirty_sections: std::collections::BTreeSet::new(),
             forgotten_chunks: Vec::new(),
             listener_random: clock_seeded_random(0),
             level_random: clock_seeded_random(0x5DEE_CE66),

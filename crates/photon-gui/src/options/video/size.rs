@@ -2,18 +2,11 @@ use super::*;
 use crate::FontRuns;
 
 /// The options this client has no effect for yet, and what their widgets say.
-const STILL: [(u8, &str, &str); 2] = [
-    (
-        IMPROVED_TRANSPARENCY,
-        "photon.video.no_improved_transparency",
-        "The improved transparency shader is not available yet.",
-    ),
-    (
-        PRIORITIZE_CHUNK_UPDATES,
-        "photon.video.no_prioritize_chunk_updates",
-        "Chunk updates are always built nearest first; this choice has no effect yet.",
-    ),
-];
+const STILL: [(u8, &str, &str); 1] = [(
+    IMPROVED_TRANSPARENCY,
+    "photon.video.no_improved_transparency",
+    "The improved transparency shader is not available yet.",
+)];
 
 /// The fullscreen button.
 pub(super) fn fullscreen_entry(display: &VideoValues) -> (u8, Build) {
