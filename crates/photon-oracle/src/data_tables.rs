@@ -8,6 +8,7 @@ pub(crate) fn table_result(operation: &str) -> Option<Value> {
         "renderer_shadows" => Some(renderer_shadows()),
         "fire_flammability" => Some(fire_flammability()),
         "compostables" => Some(compostables()),
+        "game_rules" => Some(game_rules()),
         _ => None,
     }
 }
@@ -45,4 +46,26 @@ fn compostables() -> Value {
         .map(|(name, chance)| json!({"name": name, "chance": crate::declarations::bits(*chance)}))
         .collect();
     json!({"rows": [{"label": "all", "items": items}]})
+}
+
+/// The built-in game rules: what the in-world rule screen lists and bounds.
+fn game_rules() -> Value {
+    let rules: Vec<Value> = photon_data::game_rules::all()
+        .iter()
+        .map(|rule| {
+            let mut entry = json!({
+                "name": rule.name,
+                "category": rule.category,
+                "type": if rule.bounds.is_some() { "integer" } else { "boolean" },
+                "default": rule.default,
+                "vanilla": rule.vanilla,
+            });
+            if let Some((min, max)) = rule.bounds {
+                entry["min"] = json!(min);
+                entry["max"] = json!(max);
+            }
+            entry
+        })
+        .collect();
+    json!({"rows": [{"label": "all", "rules": rules}]})
 }

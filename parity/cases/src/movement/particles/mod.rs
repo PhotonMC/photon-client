@@ -52,6 +52,7 @@ pub fn cases() -> Vec<Value> {
         table("movement/renderer-shadows", "renderer_shadows", "all"),
         table("movement/fire-flammability", "fire_flammability", "all"),
         table("movement/compostables", "compostables", "all"),
+        table("movement/game-rules", "game_rules", "all"),
         table("movement/block-map-colors", "block_map_colors", "all"),
         table("movement/leaf-particles", "leaf_particles", "all"),
     ]

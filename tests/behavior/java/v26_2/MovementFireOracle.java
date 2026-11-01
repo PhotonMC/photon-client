@@ -52,6 +52,38 @@ class MovementFireOracle extends MovementPickupOracle {
     }
 
     /**
+     * Every game rule, in registry order: its name, category, type, default, the bounds of an
+     * integer, and whether the vanilla feature set turns it on.
+     */
+    static JsonObject gameRules(JsonObject row) throws Exception {
+        var rules = new com.google.gson.JsonArray();
+        for (var rule : net.minecraft.core.registries.BuiltInRegistries.GAME_RULE) {
+            var entry = new JsonObject();
+            entry.addProperty("name", rule.getIdentifier().toString());
+            entry.addProperty("category", rule.category().id().getPath());
+            entry.addProperty("type", rule.gameRuleType().getSerializedName());
+            entry.addProperty("default", castRule(rule).serialize(castRule(rule).defaultValue()));
+            if (rule.argument() instanceof com.mojang.brigadier.arguments.IntegerArgumentType integer) {
+                entry.addProperty("min", integer.getMinimum());
+                entry.addProperty("max", integer.getMaximum());
+            }
+            entry.addProperty("vanilla",
+                rule.requiredFeatures().isSubsetOf(net.minecraft.world.flag.FeatureFlags.VANILLA_SET));
+            rules.add(entry);
+        }
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.add("rules", rules);
+        return entry;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static net.minecraft.world.level.gamerules.GameRule<Object> castRule(
+        net.minecraft.world.level.gamerules.GameRule<?> rule) {
+        return (net.minecraft.world.level.gamerules.GameRule<Object>) rule;
+    }
+
+    /**
      * Each entity type's renderer, built from the renderers' own table with a context that only
      * holds the vanilla model set: the shadow radius and strength it sets in its
      * constructor (`EntityRenderer.shadowRadius`, `shadowStrength`). A type whose renderer cannot

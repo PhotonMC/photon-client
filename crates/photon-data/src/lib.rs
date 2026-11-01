@@ -20,6 +20,7 @@ pub mod entity_shadow;
 pub mod entity_type;
 pub mod fire;
 pub mod game_mode;
+pub mod game_rules;
 pub mod item;
 pub mod item_components;
 pub mod item_stack;

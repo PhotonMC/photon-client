@@ -14,6 +14,7 @@ pub mod entity_shadows;
 pub mod entity_types;
 pub mod entity_variants;
 pub mod fire;
+pub mod game_rules;
 pub mod item;
 pub mod key_mappings;
 pub mod leaves;
