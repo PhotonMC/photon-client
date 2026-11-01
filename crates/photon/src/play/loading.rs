@@ -21,19 +21,18 @@ impl Play {
     }
 
     /// A window event while a reload's overlay is up: the mouse buttons, the wheel, the cursor
-    /// and the characters are ignored, and so are the keys an open screen would take
-    /// (`MouseHandler` and `KeyboardHandler` test `gui.overlay()`); the keys that are held still
-    /// reach the game.
+    /// and the characters are ignored (`MouseHandler` and `KeyboardHandler.charTyped` test
+    /// `gui.overlay()`). Key presses are not gated: an open screen and the global keys still get
+    /// them.
     fn overlay_event(&self, event: &glfw::WindowEvent) -> bool {
         self.gui.is_loading()
-            && match event {
+            && matches!(
+                event,
                 glfw::WindowEvent::MouseButton(..)
-                | glfw::WindowEvent::Scroll(..)
-                | glfw::WindowEvent::CursorPos(..)
-                | glfw::WindowEvent::Char(_) => true,
-                glfw::WindowEvent::Key(..) => self.controls.screen.is_some(),
-                _ => false,
-            }
+                    | glfw::WindowEvent::Scroll(..)
+                    | glfw::WindowEvent::CursorPos(..)
+                    | glfw::WindowEvent::Char(_)
+            )
     }
 
     /// A frame of the loading screen in the place of the level. The first frame closes what was

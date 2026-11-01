@@ -88,7 +88,7 @@ Closed and total issues per milestone on GitHub; these are issue counts, not com
 | [Infra: mod platform](https://github.com/PhotonMC/photon-client/milestone/6) | 1 / 2 |
 | [Infra: launcher and accounts](https://github.com/PhotonMC/photon-client/milestone/7) | 1 / 1 |
 | [M4 Entities](https://github.com/PhotonMC/photon-client/milestone/8) | 1 / 1 |
-| [M5 Text and chat](https://github.com/PhotonMC/photon-client/milestone/9) | 1 / 2 |
+| [M5 Text and chat](https://github.com/PhotonMC/photon-client/milestone/9) | 2 / 2 |
 | [M6 Screens and settings](https://github.com/PhotonMC/photon-client/milestone/10) | 8 / 8 |
 | [M7 Sound](https://github.com/PhotonMC/photon-client/milestone/11) | 2 / 2 |
 | [M8 Particles, effects and block entities](https://github.com/PhotonMC/photon-client/milestone/12) | 6 / 6 |
