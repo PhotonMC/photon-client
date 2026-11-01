@@ -33,6 +33,49 @@ impl Music {
     pub fn game(sound: &str) -> Self {
         Self::new(sound, 12000, 24000, false)
     }
+
+    /// `Musics.MENU`: what plays with no level.
+    pub fn menu() -> Self {
+        Self::new(&track("menu"), 20, 600, true)
+    }
+
+    /// `Musics.CREDITS`, which the credits screen asks for.
+    pub fn credits() -> Self {
+        Self::new(&track("credits"), 0, 0, true)
+    }
+
+    /// `Musics.END_BOSS`: the dragon fight's track.
+    pub fn end_boss() -> Self {
+        Self::new(&track("dragon"), 0, 0, true)
+    }
+
+    /// `Musics.CREATIVE`.
+    pub fn creative() -> Self {
+        Self::game(&track("creative"))
+    }
+
+    /// `Musics.END`.
+    pub fn end() -> Self {
+        Self::new(&track("end"), 6000, 24000, true)
+    }
+
+    /// `Musics.UNDER_WATER`.
+    pub fn under_water() -> Self {
+        Self::game(&track("under_water"))
+    }
+
+    /// `Musics.GAME`.
+    pub fn game_default() -> Self {
+        Self::game(&track("game"))
+    }
+}
+
+/// The id of the music event `name`.
+fn track(name: &str) -> String {
+    format!(
+        "{}:music.{name}",
+        photon_core::identifier::Identifier::DEFAULT_NAMESPACE
+    )
 }
 
 /// `BackgroundMusic`: the music of a place, by the player's circumstances.

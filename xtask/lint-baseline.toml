@@ -960,7 +960,7 @@
 "crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
 
 [registry-name]
-photon = 429
+photon = 426
 photon-core = 10
 photon-data = 65
 photon-game = 574

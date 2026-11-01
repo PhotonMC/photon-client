@@ -102,9 +102,9 @@ impl Carried {
 /// up (`WinScreen.getBackgroundMusic`), else `Musics.MENU`.
 fn screen_or_menu(credits: bool) -> Music {
     if credits {
-        Music::new("minecraft:music.credits", 0, 0, true)
+        Music::credits()
     } else {
-        Music::new("minecraft:music.menu", 20, 600, true)
+        Music::menu()
     }
 }
 
@@ -244,8 +244,9 @@ impl GameMusic {
         if credits {
             return (Some(screen_or_menu(true)), 1.0);
         }
+        // No player yet (the level is still arriving): `getSituationalMusic` answers `MENU`.
         let Some(player) = session.player() else {
-            return (None, 1.0);
+            return (Some(screen_or_menu(false)), 1.0);
         };
         let at = player.position();
         let biome = session
@@ -269,10 +270,7 @@ impl GameMusic {
         let selected = music.and_then(|music| music.select(creative, player.is_under_water()));
         // `Musics.END_BOSS`: the dragon fight's track while a boss bar asks for music in the End.
         if boss_music && session.dimension() == "minecraft:the_end" {
-            return (
-                Some(Music::new("minecraft:music.dragon", 0, 0, true)),
-                volume,
-            );
+            return (Some(Music::end_boss()), volume);
         }
         (selected.cloned(), volume)
     }
@@ -330,5 +328,11 @@ mod tests {
         assert_eq!((credits.min_delay, credits.max_delay), (0, 0));
         assert!(credits.replace_current_music);
         assert_eq!(screen_or_menu(false).sound, "minecraft:music.menu");
+    }
+
+    #[test]
+    fn the_menu_music_is_the_reference_constant_and_the_credits_the_only_screen_with_music() {
+        assert_eq!(screen_or_menu(false), Music::menu());
+        assert_eq!(screen_or_menu(true), Music::credits());
     }
 }

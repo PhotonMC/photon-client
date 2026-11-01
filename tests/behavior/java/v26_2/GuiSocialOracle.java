@@ -363,6 +363,55 @@ class GuiSocialOracle extends GuiCreditsOracle {
         }
     }
 
+    private static JsonObject describe(final net.minecraft.sounds.Music music) {
+        var out = new JsonObject();
+        out.addProperty("sound", music.sound().value().location().toString());
+        out.addProperty("min", music.minDelay());
+        out.addProperty("max", music.maxDelay());
+        out.addProperty("replace", music.replaceCurrentMusic());
+        return out;
+    }
+
+    /**
+     * Every `Musics` constant (found by reflection, so one that is missed shows), and
+     * `BackgroundMusic.select` for each flag combination of the scenario's music sets.
+     */
+    static JsonObject musics(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            if (row.get("kind").getAsString().equals("constants")) {
+                var constants = new JsonArray();
+                for (var field : net.minecraft.sounds.Musics.class.getDeclaredFields()) {
+                    if (java.lang.reflect.Modifier.isStatic(field.getModifiers())
+                        && field.getType() == net.minecraft.sounds.Music.class) {
+                        var one = describe((net.minecraft.sounds.Music) field.get(null));
+                        one.addProperty("name", field.getName());
+                        constants.add(one);
+                    }
+                }
+                out.add("constants", constants);
+            } else {
+                java.util.function.Function<String, java.util.Optional<net.minecraft.sounds.Music>> read = key ->
+                    row.has(key) ? java.util.Optional.of(musicOf(row.getAsJsonObject(key))) : java.util.Optional.empty();
+                var set = new net.minecraft.world.attribute.BackgroundMusic(
+                    read.apply("default"), read.apply("creative"), read.apply("underwater"));
+                var picks = new JsonArray();
+                for (int flags = 0; flags < 4; flags++) {
+                    var pick = set.select((flags & 1) != 0, (flags & 2) != 0);
+                    picks.add(pick.isPresent() ? describe(pick.get()) : new JsonObject());
+                }
+                out.add("picks", picks);
+            }
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     private static net.minecraft.sounds.Music musicOf(JsonObject object) {
         return new net.minecraft.sounds.Music(
             net.minecraft.core.Holder.direct(net.minecraft.sounds.SoundEvent.createVariableRangeEvent(

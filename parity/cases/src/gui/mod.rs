@@ -107,6 +107,7 @@ const ORDER: &[Generator] = &[
     || vec![panels::online_options_screen()],
     || vec![friends::friends_overlay()],
     || vec![crate::sound::music_manager()],
+    || vec![crate::sound::musics()],
     panels::mouse_and_controls,
     || vec![panels::sound_options_screen()],
     || vec![status::hud_hotbar()],

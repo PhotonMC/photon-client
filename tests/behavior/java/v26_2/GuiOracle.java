@@ -109,6 +109,7 @@ public final class GuiOracle extends GuiGameRulesOracle {
                 case "social_interactions_screen" -> socialInteractionsScreen(request);
                 case "debug_options_screen" -> debugOptionsScreen(request);
                 case "music_manager" -> musicManager(request);
+                case "musics" -> musics(request);
                 case "disconnected_screen" -> disconnectedScreen(request);
                 case "tab_list" -> tabList(request);
                 case "container_screen" -> containerScreen(request);

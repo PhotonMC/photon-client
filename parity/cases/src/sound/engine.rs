@@ -305,6 +305,35 @@ pub fn music_manager() -> Value {
     case("gui/music-manager", "gui", "music_manager", json!({ "rows": rows }))
 }
 
+/// Every `Musics` constant, and which music of a set `BackgroundMusic.select` picks for each of
+/// the four flag combinations.
+pub fn musics() -> Value {
+    let game = || music("game", 12000, 24000, false);
+    let creative = || music("creative", 12000, 24000, false);
+    let water = || music("under_water", 12000, 24000, false);
+    let set = |label: &str, default: Option<Value>, creative: Option<Value>, underwater: Option<Value>| {
+        let mut row = json!({"label": label, "kind": "select"});
+        for (key, value) in [("default", default), ("creative", creative), ("underwater", underwater)] {
+            if let Some(value) = value {
+                row[key] = value;
+            }
+        }
+        row
+    };
+    let rows = vec![
+        json!({"label": "constants", "kind": "constants"}),
+        set("empty", None, None, None),
+        set("default-only", Some(game()), None, None),
+        set("with-creative", Some(game()), Some(creative()), None),
+        set("with-underwater", Some(game()), None, Some(water())),
+        set("all-three", Some(game()), Some(creative()), Some(water())),
+        set("no-default", None, Some(creative()), Some(water())),
+        set("underwater-only", None, None, Some(water())),
+        set("creative-only", None, Some(creative()), None),
+    ];
+    case("gui/musics", "gui", "musics", json!({ "rows": rows }))
+}
+
 fn music_waits() -> Vec<Value> {
     let game = music("game", 12000, 24000, false);
     let short = music("menu", 20, 600, true);

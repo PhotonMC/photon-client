@@ -1,7 +1,7 @@
 //! The `sound` family: the sound registry, packets, decoding and engine.
 
 mod engine;
-pub(crate) use engine::music_manager;
+pub(crate) use engine::{music_manager, musics};
 mod packets;
 mod registry;
 
