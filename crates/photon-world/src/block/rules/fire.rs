@@ -31,7 +31,7 @@ pub(super) fn update(
         return state;
     }
     let state_at = |(x, y, z)| (ctx.state_at)(x, y, z);
-    let Some(placed) = placement_state(state_at, pos) else {
+    let Some(placed) = placement_state(state_at, pos, ctx.tags) else {
         return state;
     };
     match property(state, "age") {

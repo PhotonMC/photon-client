@@ -26,13 +26,14 @@ pub fn can_burn(state: BlockStateId) -> bool {
 pub fn survives_at(
     state_at: impl Fn((i32, i32, i32)) -> BlockStateId,
     at: (i32, i32, i32),
+    tags: &super::tags::BlockTags,
 ) -> bool {
     let beside = |direction: Direction| {
         let (dx, dy, dz) = direction.step();
         state_at((at.0 + dx, at.1 + dy, at.2 + dz))
     };
     let below = beside(Direction::Down);
-    if is_soul_fire_base(below) {
+    if is_soul_fire_base(below, tags) {
         return true;
     }
     super::state(below).is_some_and(|info| info.is_face_sturdy(Direction::Up))
@@ -45,6 +46,7 @@ pub fn survives_at(
 pub fn placement_state(
     state_at: impl Fn((i32, i32, i32)) -> BlockStateId,
     at: (i32, i32, i32),
+    tags: &super::tags::BlockTags,
 ) -> Option<BlockStateId> {
     let beside = |direction: Direction| {
         let (dx, dy, dz) = direction.step();
@@ -55,7 +57,7 @@ pub fn placement_state(
         let index = photon_data::block::registry::block_index(name)?;
         Some(photon_data::block::registry::BLOCKS[index].default_state_id())
     };
-    if is_soul_fire_base(below) {
+    if is_soul_fire_base(below, tags) {
         return default_of("minecraft:soul_fire");
     }
     let mut fire = default_of("minecraft:fire")?;
@@ -79,12 +81,10 @@ pub fn placement_state(
     Some(fire)
 }
 
-/// `BlockTags.SOUL_FIRE_BASE_BLOCKS`.
-fn is_soul_fire_base(state: BlockStateId) -> bool {
-    matches!(
-        super::state_or_air(state).block().name,
-        "minecraft:soul_sand" | "minecraft:soul_soil"
-    )
+/// `BlockTags.SOUL_FIRE_BASE_BLOCKS`, as the server sent it.
+fn is_soul_fire_base(state: BlockStateId, tags: &super::tags::BlockTags) -> bool {
+    photon_data::block::registry::block_index(super::state_or_air(state).block().name)
+        .is_some_and(|index| tags.contains(index, "minecraft:soul_fire_base_blocks"))
 }
 
 #[cfg(test)]
@@ -95,6 +95,13 @@ mod tests {
     fn named(name: &str) -> BlockStateId {
         let index = photon_data::block::registry::block_index(name).expect(name);
         photon_data::block::registry::BLOCKS[index].default_state_id()
+    }
+
+    fn soul_bases() -> crate::block::tags::BlockTags {
+        crate::block::tags::BlockTags::of_names(
+            "minecraft:soul_fire_base_blocks",
+            &["minecraft:soul_sand", "minecraft:soul_soil"],
+        )
     }
 
     #[test]
@@ -109,11 +116,15 @@ mod tests {
                 _ => air,
             }
         };
-        assert!(survives_at(on(stone, air), at));
-        assert!(!survives_at(on(air, air), at));
-        assert!(survives_at(on(air, planks), at));
-        assert!(!survives_at(on(air, stone), at));
-        assert!(survives_at(on(named("minecraft:soul_sand"), air), at));
+        assert!(survives_at(on(stone, air), at, &soul_bases()));
+        assert!(!survives_at(on(air, air), at, &soul_bases()));
+        assert!(survives_at(on(air, planks), at, &soul_bases()));
+        assert!(!survives_at(on(air, stone), at, &soul_bases()));
+        assert!(survives_at(
+            on(named("minecraft:soul_sand"), air),
+            at,
+            &soul_bases()
+        ));
     }
 
     #[test]
@@ -126,7 +137,7 @@ mod tests {
             (1, 64, 0) | (0, 65, 0) => planks,
             _ => air,
         };
-        let fire = placement_state(state_at, at).unwrap();
+        let fire = placement_state(state_at, at, &soul_bases()).unwrap();
         assert_eq!(property(fire, "east"), Some("true"));
         assert_eq!(property(fire, "up"), Some("true"));
         assert_eq!(property(fire, "west"), Some("false"));
@@ -135,12 +146,19 @@ mod tests {
             (1, 64, 0) => planks,
             _ => air,
         };
-        let plain = placement_state(on_stone, at).unwrap();
+        let plain = placement_state(on_stone, at, &soul_bases()).unwrap();
         assert_eq!(property(plain, "east"), Some("false"));
-        let soul = placement_state(|_| named("minecraft:soul_soil"), at).unwrap();
+        let soul = placement_state(|_| named("minecraft:soul_soil"), at, &soul_bases()).unwrap();
         assert_eq!(
             crate::block::state_or_air(soul).block().name,
             "minecraft:soul_fire"
+        );
+        // The server decides which blocks are soul fire bases.
+        let none = crate::block::tags::BlockTags::default();
+        let plain = placement_state(|_| named("minecraft:soul_soil"), at, &none).unwrap();
+        assert_eq!(
+            crate::block::state_or_air(plain).block().name,
+            "minecraft:fire"
         );
     }
 }

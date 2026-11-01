@@ -279,12 +279,13 @@ fn ignition(
         photon_core::direction::Direction::from_3d_data_value(i32::from(face)).step();
     let beside = (x + dx, y + dy, z + dz);
     let at = |(x, y, z)| ctx.world.block_state_or_air(x, y, z);
-    if !is_air(ctx.state_at(beside)) || !photon_world::block::fire::survives_at(at, beside) {
+    let tags = ctx.world.block_state_registry().tags();
+    if !is_air(ctx.state_at(beside)) || !photon_world::block::fire::survives_at(at, beside, tags) {
         return None;
     }
     Some((
         beside,
-        photon_world::block::fire::placement_state(at, beside),
+        photon_world::block::fire::placement_state(at, beside, tags),
     ))
 }
 

@@ -38,6 +38,16 @@ impl BlockTags {
         ))
     }
 
+    /// One tag with the named blocks, for a test.
+    #[cfg(test)]
+    pub(crate) fn of_names(tag: &str, names: &[&str]) -> Self {
+        let members = names
+            .iter()
+            .filter_map(|name| photon_data::block::registry::block_index(name))
+            .collect();
+        Self(BTreeMap::from([(tag.to_owned(), members)]))
+    }
+
     /// The blocks of a tag, by registry index.
     pub fn members(&self, tag: &str) -> impl Iterator<Item = usize> + '_ {
         self.0.get(tag).into_iter().flatten().copied()
