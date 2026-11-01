@@ -421,14 +421,28 @@ impl PlaySession {
         Ok(())
     }
 
-    fn on_entity_event(&mut self, (id, event): (EntityId, i8)) -> Result<(), ConnectionError> {
+    /// What the events the local player handles itself change.
+    fn local_player_event(&mut self, id: EntityId, event: i8) {
+        if self.local.player_id != Some(id) {
+            return;
+        }
         // `LocalPlayer.handleEntityEvent`: 24 to 28 set the level.
-        if self.local.player_id == Some(id) && (24..=28).contains(&event) {
+        if (24..=28).contains(&event) {
             self.local.permission_level = i32::from(event) - 24;
         }
         // `Player.handleEntityEvent`: 22 and 23 turn reduced debug info on and off.
-        if self.local.player_id == Some(id) && matches!(event, 22 | 23) {
+        if matches!(event, 22 | 23) {
             self.local.reduced_debug_info = event == 22;
+        }
+    }
+
+    fn on_entity_event(&mut self, (id, event): (EntityId, i8)) -> Result<(), ConnectionError> {
+        self.local_player_event(id, event);
+        // `ClientPacketListener.handleEntityEvent`: 21 and 63 start the sounds of a guardian's
+        // beam and a sniffer's digging, and nothing else.
+        if matches!(event, 21 | 63) {
+            self.effects.entity_sound_events.push((id, event));
+            return Ok(());
         }
         // `ClientPacketListener.handleEntityEvent`: 35 is a totem saving its holder.
         if event == 35 {

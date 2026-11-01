@@ -38,6 +38,31 @@ impl ClientWorld {
         objects::minecart::rail_pos(&|x, y, z| self.block_state_at(x, y, z), at)
     }
 
+    /// `!isOnRails() && getBehavior() instanceof NewMinecartBehavior`: a minecart of the new
+    /// behaviour that is not on a rail, which rolls silently.
+    pub fn minecart_off_rail(&self, entity: crate::entity::EntityView<'_>) -> bool {
+        entity.minecart_track().is_some()
+            && !objects::minecart::on_rails_new(
+                &|x, y, z| self.block_state_at(x, y, z),
+                entity.position(),
+            )
+    }
+
+    /// `Entity.isUnderWater` of an entity the world holds: its eyes are in water (the fluid the
+    /// last tick found there; a client entity is in water wherever its eyes are).
+    pub fn entity_under_water(&self, entity: crate::entity::EntityView<'_>) -> bool {
+        let (x, y, z) = entity.position();
+        let eye_y = y + f64::from(entity.eye_height());
+        let pos = photon_core::binary::BlockPos::new(
+            photon_core::math::floor_f64(x),
+            photon_core::math::floor_f64(eye_y),
+            photon_core::math::floor_f64(z),
+        );
+        let level = crate::local_player::Level::new(self);
+        let info = level.info(pos);
+        info.is_water() && f64::from(pos.y) + f64::from(level.fluid_height(pos, &info)) > eye_y
+    }
+
     /// `OldMinecartBehavior.getPosOffs`: the same this far along the rail from here.
     pub fn minecart_rail_pos_offset(
         &self,

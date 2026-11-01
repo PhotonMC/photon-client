@@ -4,6 +4,8 @@ mod events;
 use events::*;
 mod extras;
 use extras::*;
+mod sound;
+use sound::*;
 
 /// A double a scenario spells as the hex of its bits.
 pub(crate) fn bits64(row: &Value, key: &str) -> Result<f64, String> {
@@ -15,6 +17,29 @@ pub(crate) fn bits64(row: &Value, key: &str) -> Result<f64, String> {
 /// A float as the hex of its bits, which the scenarios compare exactly.
 fn hex(value: f32) -> String {
     format!("{:08x}", value.to_bits())
+}
+
+/// Another entity that stays where it is (what a guardian's beam aims at).
+fn add_second_entity(world: &mut ClientWorld, row: &Value) -> Result<(), String> {
+    let Some(second) = row.get("second") else {
+        return Ok(());
+    };
+    let second_id = entity_id_field(second, "entity_id")?;
+    if !world.apply_entity(EntityInput {
+        entity_id: second_id,
+        uuid: Uuid::new(0, u64::from(second_id.0 as u32)),
+        type_id: photon_data::entity_type::id(string(second, "entity")?)
+            .ok_or("unknown entity type")?,
+        x: bits64(second, "x")?,
+        y: bits64(second, "y")?,
+        z: bits64(second, "z")?,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }) {
+        return Err("second entity was rejected".into());
+    }
+    Ok(())
 }
 
 /// `living_entity_ticks`: a living entity through the packets that hurt or
@@ -51,25 +76,9 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
         }) {
             return Err("entity was rejected".into());
         }
-        // Another entity that stays where it is (what a guardian's beam aims at).
-        if let Some(second) = row.get("second") {
-            let second_id = entity_id_field(second, "entity_id")?;
-            if !world.apply_entity(EntityInput {
-                entity_id: second_id,
-                uuid: Uuid::new(0, u64::from(second_id.0 as u32)),
-                type_id: photon_data::entity_type::id(string(second, "entity")?)
-                    .ok_or("unknown entity type")?,
-                x: bits64(second, "x")?,
-                y: bits64(second, "y")?,
-                z: bits64(second, "z")?,
-                movement: (0.0, 0.0, 0.0),
-                rotation: (0.0, 0.0, 0.0),
-                data: 0,
-            }) {
-                return Err("second entity was rejected".into());
-            }
-        }
+        add_second_entity(&mut world, row)?;
         let mut ticks = Vec::new();
+        let mut following = None;
         for tick in 0..i32_field(row, "tick_count")? {
             for event in row["events"].as_array().ok_or("events must be an array")? {
                 if i32_field(event, "tick")? != tick {
@@ -191,6 +200,9 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                     "creeper" => creeper_extra(entity, &mut described)?,
                     "chicken" => chicken_extra(entity, &mut described)?,
                     "cull" => cull_extra(entity, &mut described)?,
+                    "sound" => {
+                        sound_extra(&mut following, entity, &mut described, (&world, row, tick))?;
+                    }
                     other => return Err(format!("unknown extra {other}")),
                 }
             }

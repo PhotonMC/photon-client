@@ -50,6 +50,11 @@ impl SnifferState {
         self.mode == SnifferMode::Digging
     }
 
+    /// `Sniffer.canPlayDiggingSound`.
+    pub fn can_play_digging_sound(&self) -> bool {
+        self.is_digging() || self.is_searching()
+    }
+
     /// `Sniffer.isSearching`.
     pub fn is_searching(&self) -> bool {
         self.mode == SnifferMode::Searching

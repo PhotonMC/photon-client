@@ -118,7 +118,8 @@ impl LocalPlayer {
 
     /// The mount's landing reached its rider as the mount ticked, before the rider's own tick.
     fn take_mount_landing(&mut self, level: &Level<'_>, vehicle: &crate::VehicleView) {
-        if let Some((distance, modifier)) = vehicle.landing {
+        // Only a mount its rider drives ticks its own fall.
+        if let Some((distance, modifier)) = vehicle.landing.filter(|_| vehicle.controlled) {
             self.cause_fall_damage(level, distance, modifier);
         }
     }

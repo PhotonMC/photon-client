@@ -215,6 +215,22 @@ fn is_rail(state: Option<BlockStateId>) -> bool {
     state.is_some_and(|state| rail_shape(state).is_some())
 }
 
+/// `AbstractMinecart.getCurrentBlockPosOrRailBelow` under the new behaviour, then
+/// `BaseRailBlock.isRail` of what is there: whether a minecart at this place is on its rails.
+pub fn on_rails_new(
+    block_at: &dyn Fn(i32, i32, i32) -> Option<BlockStateId>,
+    (x, y, z): (f64, f64, f64),
+) -> bool {
+    let xt = photon_core::math::floor_f64(x);
+    let mut yt = photon_core::math::floor_f64(y);
+    let zt = photon_core::math::floor_f64(z);
+    let below = photon_core::math::floor_f64(y - 0.1 - f64::from(1.0e-5_f32));
+    if is_rail(block_at(xt, below, zt)) {
+        yt = below;
+    }
+    is_rail(block_at(xt, yt, zt))
+}
+
 /// The rail block a position is on or just above: its coordinates and shape (the part
 /// `getPos` and `getPosOffs` share).
 fn rail_under(

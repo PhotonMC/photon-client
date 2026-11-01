@@ -46,6 +46,12 @@ impl PlaySession {
         std::mem::take(&mut self.effects.tracking_emitters)
     }
 
+    /// The entity events since the last call that start a sound following the entity: 21 for a
+    /// guardian's beam, 63 for a sniffer's digging (`handleEntityEvent`).
+    pub fn take_entity_sound_events(&mut self) -> Vec<(photon_core::ids::EntityId, i8)> {
+        std::mem::take(&mut self.effects.entity_sound_events)
+    }
+
     /// Whether the unsecure-server toast is due (`ClientPacketListener.handleLogin`: the server does
     /// not enforce secure chat and the warning was not shown on this connection), once.
     pub fn take_unsecure_server_warning(&mut self) -> bool {

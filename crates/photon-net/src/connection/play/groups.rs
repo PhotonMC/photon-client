@@ -185,6 +185,9 @@ pub(super) struct Effects {
     pub(super) level_particles: Vec<photon_world::particles::LevelParticles>,
     /// The emitters asked for since the last `take_tracking_emitters`.
     pub(super) tracking_emitters: Vec<photon_world::particles::TrackingRequest>,
+    /// The entity events that start a sound that follows the entity (a guardian's beam, a sniffer's
+    /// digging), since the last `take_entity_sound_events`.
+    pub(super) entity_sound_events: Vec<(EntityId, i8)>,
     /// The stack a totem's animation was asked to show (the latest), until it is taken.
     pub(super) item_activation: Option<photon_world::ClientItemStackState>,
     /// The unsecure-server toast is due (`seenInsecureChatWarning` says whether it was shown).
@@ -325,6 +328,7 @@ impl Default for Effects {
             sounds: Vec::new(),
             level_particles: Vec::new(),
             tracking_emitters: Vec::new(),
+            entity_sound_events: Vec::new(),
             item_activation: None,
             unsecure_warning: false,
             seen_unsecure_warning: false,

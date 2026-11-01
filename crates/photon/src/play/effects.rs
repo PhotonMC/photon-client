@@ -93,6 +93,10 @@ impl Play {
         self.sounds_heard += commands.len();
         if let Some(sound) = self.sound.as_mut() {
             sound.handle(commands, self.session.world());
+            sound.start_entity_sounds(
+                self.session.take_entity_sound_events(),
+                self.session.world(),
+            );
         }
     }
 }

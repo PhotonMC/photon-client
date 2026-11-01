@@ -49,6 +49,7 @@ impl SoundAssets for PackSounds {
 type Followed = Arc<Mutex<HashMap<EntityId, Option<(f64, f64, f64)>>>>;
 
 mod devices;
+mod entity_loops;
 pub use devices::SoundSlot;
 
 /// `SoundManager.prepare`: the `sounds.json` of every pack of every namespace, the lowest pack
@@ -96,6 +97,8 @@ pub struct SoundSystem {
     glide: Arc<Mutex<(Vec3, [f64; 3], bool)>>,
     /// The listener as last placed: where it is, which way it looks and which way is up.
     listener: Mutex<(Vec3, [f64; 3], [f64; 3])>,
+    /// The sounds that follow an entity and change with it.
+    loops: entity_loops::Loops,
 }
 
 impl SoundSystem {
@@ -142,6 +145,7 @@ impl SoundSystem {
             underwater: Arc::new(AtomicBool::new(false)),
             glide: Arc::new(Mutex::new((Vec3::ZERO, [0.0; 3], false))),
             listener: Mutex::new((Vec3::ZERO, [0.0, 0.0, -1.0], [0.0, 1.0, 0.0])),
+            loops: entity_loops::Loops::default(),
         })
     }
 
@@ -275,6 +279,7 @@ impl SoundSystem {
     pub fn reset_level(&mut self) {
         self.engine.stop_all();
         self.jukeboxes.clear();
+        self.loops.clear();
     }
 
     /// What the level events brought: the sounds they play and the songs jukeboxes start and stop.
@@ -523,7 +528,9 @@ impl SoundSystem {
                     .map(|entity| entity.position());
             }
         }
+        self.tick_entity_loops(world);
         self.engine.tick(paused);
+        self.finish_entity_loops(world);
     }
 
     /// The engine's tick with no level: the sounds of the menus.

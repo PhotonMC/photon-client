@@ -31,6 +31,9 @@ pub struct SoundInstance {
     pub relative: bool,
     pub can_start_silent: bool,
     pub can_play: bool,
+    /// Whether the thing the sound follows is silent (`canPlaySound` of an entity's sound), which
+    /// whoever tends the instance keeps up to date.
+    pub silenced: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
     random: RandomSource,
     sound: Option<Sound>,
     /// What a sound that ticks does each tick (`TickableSoundInstance.tick`): it may move, change its
@@ -65,6 +68,7 @@ impl SoundInstance {
             relative: false,
             can_start_silent: false,
             can_play: true,
+            silenced: None,
             random,
             sound: None,
             ticker: None,
@@ -136,6 +140,15 @@ impl SoundInstance {
             stopped: &mut self.stopped,
         });
         self.ticker = Some(ticker);
+    }
+
+    /// `canPlaySound`.
+    pub(super) fn may_play(&self) -> bool {
+        self.can_play
+            && !self
+                .silenced
+                .as_ref()
+                .is_some_and(|silenced| silenced.load(std::sync::atomic::Ordering::Relaxed))
     }
 
     fn is_ticking(&self) -> bool {

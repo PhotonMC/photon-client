@@ -104,7 +104,7 @@ impl<S: ChannelSource> SoundEngine<S> {
         let Some(instance) = self.instances.get_mut(&id) else {
             return PlayResult::NotStarted;
         };
-        if !instance.can_play {
+        if !instance.may_play() {
             return PlayResult::NotStarted;
         }
         if !instance.resolve(&self.registry) {
@@ -376,7 +376,7 @@ impl<S: ChannelSource> SoundEngine<S> {
             if self
                 .instances
                 .get(&id)
-                .is_some_and(|instance| instance.can_play)
+                .is_some_and(|instance| instance.may_play())
             {
                 self.play(id);
             }
@@ -385,7 +385,7 @@ impl<S: ChannelSource> SoundEngine<S> {
             if !self
                 .instances
                 .get(&id)
-                .is_some_and(|instance| instance.can_play)
+                .is_some_and(|instance| instance.may_play())
             {
                 self.stop(id);
             }

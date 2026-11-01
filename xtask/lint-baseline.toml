@@ -296,7 +296,7 @@
 "crates/photon-oracle/src/humanoid_models.rs::held_item_pose_result" = 17
 "crates/photon-oracle/src/humanoid_models.rs::held_item_pose_result::held_poses" = 16
 "crates/photon-oracle/src/light.rs::client_world_light_result" = 12
-"crates/photon-oracle/src/living_ticks.rs::living_entity_ticks_result" = 111
+"crates/photon-oracle/src/living_ticks.rs::living_entity_ticks_result" = 110
 "crates/photon-oracle/src/living_ticks/events/mobs.rs::frog_data_event" = 11
 "crates/photon-oracle/src/living_ticks/events/objects.rs::display_data_event" = 17
 "crates/photon-oracle/src/math_cases.rs::math_result" = 251
@@ -692,7 +692,7 @@
 "crates/photon-oracle/src/light.rs::client_world_block_update_result" = 89
 "crates/photon-oracle/src/light.rs::client_world_light_result" = 154
 "crates/photon-oracle/src/light.rs::client_world_section_lookup_result" = 84
-"crates/photon-oracle/src/living_ticks.rs::living_entity_ticks_result" = 178
+"crates/photon-oracle/src/living_ticks.rs::living_entity_ticks_result" = 166
 "crates/photon-oracle/src/living_ticks/events/objects.rs::display_data_event" = 147
 "crates/photon-oracle/src/living_ticks/extras/objects.rs::display_extra" = 74
 "crates/photon-oracle/src/living_ticks/extras/objects.rs::minecart_extra" = 82

@@ -3,6 +3,7 @@
 
 pub mod ambient;
 pub mod engine;
+pub mod instances;
 pub mod music;
 
 use std::collections::HashMap;

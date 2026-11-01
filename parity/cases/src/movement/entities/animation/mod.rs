@@ -9,6 +9,7 @@ mod farm;
 mod flyers;
 mod objects;
 mod pets;
+mod sounds;
 mod swimmers;
 
 use serde_json::Value;
@@ -25,6 +26,7 @@ pub fn rows() -> Vec<Value> {
         culling::rows(),
         flyers::rows(),
         objects::rows(),
+        sounds::rows(),
     ]
     .concat()
 }

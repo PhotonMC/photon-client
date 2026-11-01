@@ -2,7 +2,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 /** What a row reads back from vehicles, projectiles and displays after a tick. */
-class MovementObjectExtras extends MovementMobExtras {
+class MovementObjectExtras extends MovementSoundExtras {
     static void extraBoat(LivingRow ctx, JsonObject described) throws Exception {
         var entity = ctx.entity();
         var boat = (net.minecraft.world.entity.vehicle.boat.AbstractBoat) entity;
