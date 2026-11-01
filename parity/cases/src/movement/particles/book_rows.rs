@@ -16,6 +16,11 @@ fn player(number: u64, (x, y, z): (f64, f64, f64)) -> Value {
 /// blocks off (which is far), none at all, straight along the west (the turn wraps), south of one,
 /// and two players near one at different distances.
 fn table_row(label: &str, seed: i64, ticks: i64) -> Value {
+    frozen_table_row(label, seed, ticks, false)
+}
+
+/// The same tables on a level that runs, or on one that is frozen (the books stand still).
+fn frozen_table_row(label: &str, seed: i64, ticks: i64, frozen: bool) -> Value {
     let tables = [3, 10, 20, 30, 40, 50];
     let mut blocks: Vec<Value> = (-4..=60).map(|x| put(x, 63, 0, "minecraft:stone")).collect();
     let mut watch = Vec::new();
@@ -40,6 +45,7 @@ fn table_row(label: &str, seed: i64, ticks: i64) -> Value {
         .set("watch", json!(watch))
         .set("book_seed", json!(seed))
         .set("tick_block_entities", json!(true))
+        .set("frozen", json!(frozen))
         .ticks(ticks)
         .seeds(8)
         .describe(0)
@@ -47,5 +53,9 @@ fn table_row(label: &str, seed: i64, ticks: i64) -> Value {
 }
 
 pub fn rows() -> Vec<Value> {
-    vec![table_row("enchanting-table-books", 4711, 90), table_row("enchanting-table-books-other-seed", 99, 70)]
+    vec![
+        table_row("enchanting-table-books", 4711, 90),
+        table_row("enchanting-table-books-other-seed", 99, 70),
+        frozen_table_row("enchanting-table-books-frozen", 4711, 30, true),
+    ]
 }
