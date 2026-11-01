@@ -24,6 +24,7 @@ impl BoatBody {
             paddles: (false, false),
             ride,
             movements: Vec::new(),
+            splash_rolls: 0,
         }
     }
 
@@ -65,6 +66,13 @@ impl BoatBody {
         self.apply_effects_from_blocks(level);
         Ok(paddles)
     }
+
+    /// The part of `AbstractBoat.tick` a boat that nobody here steers still runs: the blocks it
+    /// is in act on it, twice.
+    pub(crate) fn tick_effects_only(&mut self, level: &Level<'_>) {
+        self.apply_effects_from_blocks(level);
+        self.apply_effects_from_blocks(level);
+    }
 }
 
 /// The boat as one tick reads and changes it.
@@ -88,6 +96,9 @@ pub(crate) struct BoatBody {
     pub(crate) paddles: (bool, bool),
     pub(crate) ride: RideState,
     pub(super) movements: Vec<Movement>,
+    /// How many times the boat found itself above a bubble column's top this tick, each a chance
+    /// of a splash (`AbstractBoat.onAboveBubbleColumn`).
+    pub(crate) splash_rolls: u32,
 }
 
 impl InsideBody for BoatBody {
@@ -137,7 +148,9 @@ impl InsideBody for BoatBody {
                     })
                 };
                 // `AbstractBoat.onAboveBubbleColumn` only makes sound and spray on a client.
-                if !nothing_above {
+                if nothing_above {
+                    self.splash_rolls += 1;
+                } else {
                     let drag_down = visit.state.is_some_and(|state| {
                         crate::local_player::property(Some(state), "drag") == Some("true")
                     });

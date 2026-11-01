@@ -68,3 +68,43 @@ fn a_warden_s_heart_beats_every_forty_ticks_and_a_silent_one_is_still() {
     assert_eq!(sound.volume, 5.0);
     assert!((0.8..1.2).contains(&sound.pitch));
 }
+
+#[test]
+fn a_boat_above_a_bubble_column_splashes_now_and_then() {
+    let air = photon_data::block::registry::default_state_named("minecraft:air").0;
+    let column = photon_data::block::registry::default_state_named("minecraft:bubble_column").0;
+    let mut blocks = vec![air; 4_096];
+    // The block the boat stands in: x 0, y 5, z 0.
+    blocks[5 * 256] = column;
+    let biomes = vec![0; 64];
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 1,
+            fluid_count: 1,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+    assert!(world.apply_entity(EntityInput {
+        entity_id: EntityId(9),
+        uuid: Uuid::new(1, 2),
+        type_id: photon_data::entity_type::id("minecraft:oak_boat").unwrap(),
+        x: 0.5,
+        y: 5.0,
+        z: 0.5,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }));
+    let heard = ticked(&mut world, 1000);
+    assert!((5..=60).contains(&heard.len()), "{}", heard.len());
+    let (_, sound) = &heard[0];
+    assert_eq!(sound.event, "minecraft:entity.generic.splash");
+    assert_eq!(sound.source, LocalSoundSource::Neutral);
+    assert_eq!(sound.volume, 1.0);
+    assert!((0.8..1.2).contains(&sound.pitch));
+    assert_eq!(sound.position, (0.5, 5.0, 0.5));
+}

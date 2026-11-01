@@ -10,6 +10,21 @@ pub(super) fn paddle_makes_sound(position: f32) -> bool {
     position % turn <= quarter && (position + step) % turn >= quarter
 }
 
+/// The boat as its tick starts: where it is and was, its size and its ride.
+fn boat_body(entity: &crate::entity::EntityView<'_>) -> Option<BoatBody> {
+    let (width, height, _) = photon_data::entity_type::pick(entity.type_id)?.size;
+    let dimensions =
+        ClientEntityDimensions::scalable(width, height).scale(entity.scale(), entity.scale());
+    let (x, y, z) = entity.position();
+    let (ox, oy, oz) = entity.previous_position();
+    Some(BoatBody::new(
+        Vec3::new(x, y, z),
+        Vec3::new(ox, oy, oz),
+        dimensions,
+        entity.ride.boat_ride,
+    ))
+}
+
 impl ClientWorld {
     /// `AbstractBoat.tick` for the boat the local player rides, between this tick's start and its
     /// movement. Its paddles are queued to be told to the server.
@@ -17,20 +32,9 @@ impl ClientWorld {
         let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
-        let Some(pick) = photon_data::entity_type::pick(entity.type_id) else {
+        let Some(mut body) = boat_body(&entity) else {
             return;
         };
-        let (width, height, _) = pick.size;
-        let dimensions =
-            ClientEntityDimensions::scalable(width, height).scale(entity.scale(), entity.scale());
-        let (x, y, z) = entity.position();
-        let (ox, oy, oz) = entity.previous_position();
-        let mut body = BoatBody::new(
-            Vec3::new(x, y, z),
-            Vec3::new(ox, oy, oz),
-            dimensions,
-            entity.ride.boat_ride,
-        );
         let (mx, my, mz) = entity.motion();
         body.delta = Vec3::new(mx, my, mz);
         body.y_rot = entity.rotation.y_rot.get();
@@ -93,6 +97,85 @@ impl ClientWorld {
             state.is_under_water = body.ride.status.is_some_and(Status::is_under_water);
         }
         self.paddle_packets.push(paddles);
+        self.splash_above_bubble_column(entity_id, body.splash_rolls);
+    }
+
+    /// `AbstractBoat.tick` for a boat the local player does not ride: no one steers it here, and
+    /// where the server put it the blocks still act on it.
+    pub(crate) fn tick_other_boat(&mut self, entity_id: EntityId) {
+        let Some(entity) = self
+            .entities
+            .at(entity_id)
+            .filter(|entity| entity.is_boat())
+        else {
+            return;
+        };
+        let Some(mut body) = boat_body(&entity) else {
+            return;
+        };
+        body.tick_effects_only(&Level::new(self));
+        self.splash_above_bubble_column(entity_id, body.splash_rolls);
+    }
+
+    /// `AbstractBoat.onAboveBubbleColumn` on a client: a boat that is not under water splashes
+    /// now and then, with a sound and a spray.
+    fn splash_above_bubble_column(&mut self, entity_id: EntityId, rolls: u32) {
+        if rolls == 0 {
+            return;
+        }
+        let Some(entity) = self.entities.at(entity_id) else {
+            return;
+        };
+        let (x, y, z) = entity.position();
+        let position = Vec3::new(x, y, z);
+        let dimensions = entity.dimensions();
+        let Ok(found) = crate::fluid::scan(
+            &Level::new(self),
+            (
+                dimensions.make_bounding_box(position),
+                position,
+                dimensions.eye_height(),
+            ),
+            true,
+        ) else {
+            return;
+        };
+        // `Entity.isUnderWater`: the eyes are in water that the boat is in.
+        if found.water.eyes_inside && found.water.height > 0.0 {
+            return;
+        }
+        for _ in 0..rolls {
+            let random = self.entity_sound_random.source();
+            if random.next_int_bound(100) != Ok(0) {
+                continue;
+            }
+            let pitch = 0.8 + 0.4 * random.next_float();
+            let spray = (
+                x + f64::from(random.next_float()),
+                y + 0.7,
+                z + f64::from(random.next_float()),
+            );
+            self.sounds.0.push(crate::local_player::LocalSound::at(
+                photon_data::sound_event::vanilla("entity.generic.splash"),
+                crate::local_player::LocalSoundSource::Neutral,
+                (1.0, pitch),
+                (x, y, z),
+            ));
+            if let Some(type_id) = photon_data::particle_type::id("splash") {
+                self.effect_particles
+                    .0
+                    .push(crate::particles::LevelParticles {
+                        type_id,
+                        data: crate::particles::ParticleData::Plain,
+                        override_limiter: false,
+                        always_show: false,
+                        at: spray,
+                        spread: (0.0, 0.0, 0.0),
+                        max_speed: 1.0,
+                        count: 0,
+                    });
+            }
+        }
     }
 
     /// The paddles the ridden boat's ticks told of since last asked, each to be sent to the server.

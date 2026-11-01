@@ -853,7 +853,7 @@
 "crates/photon-world/src/particles/water.rs::Particle::water_tick" = 91
 "crates/photon-world/src/player/motion.rs::ClientPlayerState::new" = 67
 "crates/photon-world/src/ride/boat/physics.rs::BoatBody::move_self" = 77
-"crates/photon-world/src/ride/boat/world.rs::ClientWorld::tick_ridden_boat" = 79
+"crates/photon-world/src/ride/boat/world.rs::ClientWorld::tick_ridden_boat" = 69
 "crates/photon-world/src/ride/mount/travel.rs::MountBody::move_self" = 62
 "crates/photon-world/src/ride/mount/world.rs::ClientWorld::tick_ridden_mount" = 93
 "crates/photon-world/src/ride/vehicle.rs::ClientWorld::vehicle_view" = 77

@@ -19,6 +19,10 @@ const BITE_EVENT: i8 = 4;
 impl ClientWorld {
     /// The sound `event` makes on this entity, queued for the sound engine.
     pub fn play_entity_event_sound(&mut self, id: EntityId, event: i8) {
+        if let Some(slot) = break_slot(event) {
+            self.play_break_sound(id, slot);
+            return;
+        }
         let Some(entity) = self.entities.at(id) else {
             return;
         };
@@ -61,5 +65,47 @@ impl ClientWorld {
             _ => return,
         };
         self.sounds.0.push(sound);
+    }
+}
+
+/// The slot whose item `LivingEntity.handleEntityEvent` breaks on the event.
+fn break_slot(event: i8) -> Option<EquipmentSlot> {
+    Some(match event {
+        47 => EquipmentSlot::MainHand,
+        48 => EquipmentSlot::OffHand,
+        49 => EquipmentSlot::Head,
+        50 => EquipmentSlot::Chest,
+        51 => EquipmentSlot::Legs,
+        52 => EquipmentSlot::Feet,
+        65 => EquipmentSlot::Body,
+        68 => EquipmentSlot::Saddle,
+        _ => return None,
+    })
+}
+
+impl ClientWorld {
+    /// `LivingEntity.breakItem`: the broken item's sound, at the entity, unless it is silent.
+    fn play_break_sound(&mut self, id: EntityId, slot: EquipmentSlot) {
+        let Some(entity) = self.entities.at(id) else {
+            return;
+        };
+        let Some(event) = entity.equipment(slot).and_then(|stack| stack.break_sound()) else {
+            return;
+        };
+        if entity.is_silent() {
+            return;
+        }
+        let source = if entity.is_player() {
+            LocalSoundSource::Players
+        } else if photon_data::entity_type::pick(entity.type_id).is_some_and(|pick| pick.monster) {
+            LocalSoundSource::Hostile
+        } else {
+            LocalSoundSource::Neutral
+        };
+        let at = entity.position();
+        let pitch = 0.8 + self.entity_sound_random.source().next_float() * 0.4;
+        self.sounds
+            .0
+            .push(LocalSound::at(event, source, (0.8, pitch), at));
     }
 }

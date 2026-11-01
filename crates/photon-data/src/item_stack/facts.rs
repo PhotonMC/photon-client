@@ -50,4 +50,24 @@ impl ClientItemStackState {
     pub fn has_added_component(&self, id: i32) -> bool {
         matches!(self.patched(id), Some(Some(_)))
     }
+
+    /// `DataComponents.BREAK_SOUND`: the sound the stack makes as it breaks. Every item breaks
+    /// with the common sound but a shield and a wolf armor; a patch that removes the component
+    /// silences it, and one that sets a sound is not read (it names the server's registry).
+    pub fn break_sound(&self) -> Option<&'static str> {
+        use crate::name::is_vanilla;
+        if self.patched(ids::BREAK_SOUND).is_some() {
+            return None;
+        }
+        let item = usize::try_from(self.item_registry_id.0)
+            .ok()
+            .and_then(|index| crate::item::registry::ITEMS.get(index))?;
+        Some(if is_vanilla(item.name, "shield") {
+            crate::sound_event::vanilla("item.shield.break")
+        } else if is_vanilla(item.name, "wolf_armor") {
+            crate::sound_event::vanilla("item.wolf_armor.break")
+        } else {
+            crate::sound_event::vanilla("entity.item.break")
+        })
+    }
 }

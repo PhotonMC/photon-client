@@ -1,4 +1,5 @@
 use super::super::*;
+use crate::EquipmentSlot;
 use crate::local_player::LocalSoundSource;
 use photon_core::ids::EntityId;
 
@@ -56,4 +57,41 @@ fn a_cured_zombie_villager_and_biting_fangs_sound_unless_silenced() {
     let sounds = world.take_sounds();
     assert_eq!(sounds[0].event, "minecraft:entity.evoker_fangs.attack");
     assert!((0.85..1.05).contains(&sounds[0].pitch));
+}
+
+#[test]
+fn a_broken_item_sounds_by_its_own_break_sound_and_a_silent_wearer_makes_none() {
+    let mut world = world_with("minecraft:zombie");
+    let item = |name: &str| {
+        ClientItemStackState::new(
+            1,
+            photon_core::ids::ItemId(photon_data::item::registry::index(name).unwrap() as i32),
+        )
+    };
+    let wear = |world: &mut ClientWorld, slot, name: &str| {
+        assert!(
+            world
+                .entities_mut()
+                .apply_equipment(EntityId(9), slot, Some(item(name)))
+        );
+    };
+    wear(
+        &mut world,
+        EquipmentSlot::MainHand,
+        "minecraft:diamond_sword",
+    );
+    wear(&mut world, EquipmentSlot::OffHand, "minecraft:shield");
+    world.play_entity_event_sound(EntityId(9), 47);
+    world.play_entity_event_sound(EntityId(9), 48);
+    // An empty slot breaks nothing.
+    world.play_entity_event_sound(EntityId(9), 49);
+    let sounds = world.take_sounds();
+    assert_eq!(sounds.len(), 2);
+    assert_eq!(sounds[0].event, "minecraft:entity.item.break");
+    assert_eq!(sounds[1].event, "minecraft:item.shield.break");
+    for sound in &sounds {
+        assert_eq!(sound.source, LocalSoundSource::Hostile);
+        assert_eq!(sound.volume, 0.8);
+        assert!((0.8..1.2).contains(&sound.pitch));
+    }
 }

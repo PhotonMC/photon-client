@@ -242,6 +242,8 @@ impl ClientWorld {
         }
         if ridden {
             self.tick_ridden_boat(entity_id);
+        } else {
+            self.tick_other_boat(entity_id);
         }
     }
 
