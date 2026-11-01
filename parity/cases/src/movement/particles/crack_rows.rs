@@ -16,7 +16,13 @@ fn crack(tick: i64, id: i64, x: i64, stage: i64) -> Value {
 /// Two cracks at game time 100; one is refreshed at 501, a stage out of range clears an entry, and a
 /// crack still there at exactly 400 ticks old stays until the next check after that.
 pub fn rows() -> Vec<Value> {
-    vec![row(false), row(true), flash_row(false), flash_row(true)]
+    vec![row(false), row(true), flash_row(false), flash_row(true), time_row(false), time_row(true)]
+}
+
+/// The game time at 100 for four ticks: it moves on a level that runs and stands still on a frozen one.
+fn time_row(frozen: bool) -> Value {
+    let label = if frozen { "game-time-frozen" } else { "game-time" };
+    engine_row(label, vec![time(0, 100)]).set("watch_time", json!(true)).set("frozen", json!(frozen)).ticks(4).row()
 }
 
 /// A sky flash of three ticks counts down on a level that runs and on a frozen one alike.

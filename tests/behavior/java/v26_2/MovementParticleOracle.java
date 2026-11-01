@@ -728,7 +728,8 @@ class MovementParticleOracle extends MovementMenuOracle {
             }
             // The level's own tick, for the rows that watch what it counts down (the sky flash
             // runs down even on a frozen level).
-            if (row.has("watch_flash") && row.get("watch_flash").getAsBoolean()) {
+            if ((row.has("watch_flash") && row.get("watch_flash").getAsBoolean())
+                || (row.has("watch_time") && row.get("watch_time").getAsBoolean())) {
                 level.tick(() -> true);
             }
             if (row.has("tick_entities") && row.get("tick_entities").getAsBoolean()) {
@@ -751,6 +752,9 @@ class MovementParticleOracle extends MovementMenuOracle {
             // Whether each parrot of the scene dances, in the order they were put in.
             for (var parrot : MovementSupport.parrots(level)) {
                 sounds.add("party," + parrot.getId() + "," + parrot.isPartyParrot());
+            }
+            if (row.has("watch_time")) {
+                sounds.add("time," + level.getGameTime());
             }
             if (row.has("watch_flash")) {
                 sounds.add("flash," + getField(level, "skyFlashTime"));

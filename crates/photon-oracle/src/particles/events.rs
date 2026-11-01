@@ -306,6 +306,9 @@ pub(super) fn tick_block_entities(
     if row["expire_cracks"].as_bool() == Some(true) {
         world.tick_cracks(!frozen);
     }
+    if row["watch_time"].as_bool() == Some(true) {
+        world.tick_game_time(!frozen);
+    }
     if row["watch_flash"].as_bool() == Some(true) {
         world.tick_sky_flash();
     }
@@ -326,6 +329,9 @@ pub(super) fn ticked_lines(
 ) -> Vec<String> {
     let mut lines: Vec<String> = ticked.iter().map(sound_line).collect();
     lines.extend(super::extras::party_lines(world));
+    if row["watch_time"].as_bool() == Some(true) {
+        lines.push(format!("time,{}", world.game_time()));
+    }
     if row["watch_flash"].as_bool() == Some(true) {
         lines.push(format!("flash,{}", world.sky_flash_time()));
     }

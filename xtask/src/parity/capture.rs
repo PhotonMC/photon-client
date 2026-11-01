@@ -33,8 +33,14 @@ pub fn capture(oracle: &Oracle, cases: &[&Case]) -> Result<Vec<(String, String, 
         .keys()
         .flat_map(|family| [(*family, 0), (*family, 1)])
         .collect();
-    let threads =
-        std::thread::available_parallelism().map_or(2, |count| (count.get() / 2).clamp(1, 8));
+    // `PHOTON_PARITY_THREADS` lowers the number of Java processes at once (each can hold gigabytes).
+    let threads = std::env::var("PHOTON_PARITY_THREADS")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|&count| count > 0)
+        .unwrap_or_else(|| {
+            std::thread::available_parallelism().map_or(2, |count| (count.get() / 2).clamp(1, 8))
+        });
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
         .build()

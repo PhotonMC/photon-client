@@ -43,6 +43,15 @@ impl ClientWorld {
         self.level_mut().game_time = game_time;
     }
 
+    /// `Level.tickTime` of `ClientLevel.tick`: the game time moves on one tick, only while the
+    /// level runs normally. Whether it did.
+    pub fn tick_game_time(&mut self, runs_normally: bool) -> bool {
+        if runs_normally {
+            self.level_mut().game_time += 1;
+        }
+        runs_normally
+    }
+
     pub fn tick(&mut self) {
         self.world_border.tick();
         self.block_animations.tick();

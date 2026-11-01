@@ -158,7 +158,7 @@ impl PlaySession {
         if let Err(unsupported) = self.world.tick_after_entities(player, runs_normally) {
             self.warn_unsupported(&unsupported);
         }
-        if runs_normally {
+        if self.world.tick_game_time(runs_normally) {
             self.tick_clocks(self.level_info.game_time + 1);
         }
         self.world.tick_cracks(runs_normally);
