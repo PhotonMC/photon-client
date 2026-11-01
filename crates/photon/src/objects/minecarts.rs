@@ -54,11 +54,11 @@ pub fn remote_minecarts(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world
         .entities()
         .drawn_of_kind(|entity| entity.is_minecart())
     {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let Some(name) = photon_data::entity_type::name(entity.type_id) else {
             continue;
         };
@@ -140,11 +140,11 @@ pub fn remote_minecarts(
 /// own), swollen as its fuse runs out and flashing white while it burns.
 pub fn remote_primed_tnt(session: &PlaySession, (view, held): (FrameView, &mut Vec<HeldItem>)) {
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world
         .entities()
         .drawn_of_kind(|entity| entity.is_primed_tnt())
     {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let (Some(snapshot), Some(own)) = (
             world.entity_snapshot_of(entity, partial),
             entity.primed_tnt(),

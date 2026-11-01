@@ -9,11 +9,7 @@ use photon_world::{ClientWorld, EntityView};
 /// A frozen level still moves its players (`TickRateManager.isEntityFrozen`), not a mannequin:
 /// the view a player is drawn from reads the running partial tick, which is also returned.
 fn view_of(world: &ClientWorld, entity: EntityView<'_>, view: FrameView) -> (FrameView, f32) {
-    let partial = if entity.is_player() {
-        view.player_partial(world.entity_vehicle_id(entity.id()).is_some())
-    } else {
-        view.partial
-    };
+    let partial = view.partial_of(world, entity.id());
     (FrameView { partial, ..view }, partial as f32)
 }
 
@@ -298,8 +294,7 @@ fn player_tags(
         {
             continue;
         }
-        let riding = world.entity_vehicle_id(entity.id()).is_some();
-        let partial = view.player_partial(riding) as f32;
+        let partial = view.partial_of(world, entity.id()) as f32;
         // A player the server did not tell of has no name to show.
         let Some(name) = session.player_name(entity.uuid) else {
             continue;

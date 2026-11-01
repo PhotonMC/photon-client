@@ -67,12 +67,7 @@ fn casters(
         let facts = *types
             .entry(entity.type_id)
             .or_insert_with(|| TypeShadow::of_type(entity));
-        // A frozen level still moves its players (`TickRateManager.isEntityFrozen`).
-        let partial = if entity.is_player() {
-            view.player_partial(world.entity_vehicle_id(entity.id()).is_some())
-        } else {
-            view.partial
-        } as f32;
+        let partial = view.partial_of(world, entity.id()) as f32;
         let Some((radius, strength)) = shadow_of(world, camera, entity, facts, partial) else {
             continue;
         };

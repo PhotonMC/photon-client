@@ -52,11 +52,11 @@ pub fn remote_arrows(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world
         .entities()
         .drawn_of_kind(|entity| texture_of(entity).is_some())
     {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let Some(texture) = texture_of(entity) else {
             continue;
         };

@@ -58,13 +58,13 @@ pub fn remote_cube_mobs(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     for (name, texture_path) in [(SLIME, SLIME_TEXTURE), (MAGMA_CUBE, MAGMA_CUBE_TEXTURE)] {
         let Some(type_id) = photon_data::entity_type::id(name) else {
             continue;
         };
         let magma = name == MAGMA_CUBE;
         for entity in world.drawn_mobs_where(|candidate| candidate == type_id) {
+            let partial = view.partial_of(world, entity.id()) as f32;
             let (Some(snapshot), Some(rect)) = (
                 world.entity_snapshot_of(entity, partial),
                 textures.rect(texture_path),
@@ -131,11 +131,11 @@ pub fn remote_sulfur_cubes(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     let Some(type_id) = photon_data::entity_type::id(SULFUR_CUBE) else {
         return;
     };
     for entity in world.drawn_mobs_where(|candidate| candidate == type_id) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let baby = usize::from(entity.is_baby());
         let (Some(snapshot), Some(outer_rect), Some(inner_rect)) = (
             world.entity_snapshot_of(entity, partial),

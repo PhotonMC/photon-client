@@ -64,9 +64,9 @@ pub fn remote_copper_golems(
         return;
     };
     let world = session.world();
-    let partial = view.partial as f32;
     let mut glow = Vec::new();
     for entity in world.drawn_mobs_where(|candidate| candidate == golem) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let (body, eyes) = TEXTURES[usize::from(entity.copper_golem_weather().min(3))];
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot_of(entity, partial),

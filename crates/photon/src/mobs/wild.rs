@@ -331,11 +331,12 @@ pub fn remote_mobs(
     (view, held): (FrameView, &mut Vec<HeldItem>),
     vertices: &mut Vec<Vertex>,
 ) {
-    let (world, partial) = (session.world(), view.partial as f32);
+    let world = session.world();
     models.clear_layers();
     models.instancer.begin_frame();
     let kinds = std::sync::Arc::clone(&models.kinds);
     for entity in world.drawn_mobs_where(|candidate| kinds.contains_key(&candidate)) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let Some(kind) = kinds.get(&entity.type_id).copied() else {
             continue;
         };

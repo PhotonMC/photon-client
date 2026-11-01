@@ -40,12 +40,12 @@ pub fn remote_nautiluses(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     let nautilus = photon_data::entity_type::id("minecraft:nautilus");
     let zombie = photon_data::entity_type::id("minecraft:zombie_nautilus");
     for entity in
         world.drawn_mobs_where(|candidate| Some(candidate) == zombie || Some(candidate) == nautilus)
     {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let is_zombie = Some(entity.type_id) == zombie;
         let Some((layer, texture)) = appearance(entity, is_zombie, &|id| {
             session.registry_names(REGISTRY).get(id).map(String::as_str)

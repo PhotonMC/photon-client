@@ -36,12 +36,12 @@ pub fn remote_frogs(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     let frog = photon_data::entity_type::id("minecraft:frog");
     let tadpole = photon_data::entity_type::id("minecraft:tadpole");
     for entity in
         world.drawn_mobs_where(|candidate| Some(candidate) == frog || Some(candidate) == tadpole)
     {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let is_frog = Some(entity.type_id) == frog;
         let (layer, texture) = if is_frog {
             // The variant the server named by its place in the registry, or the

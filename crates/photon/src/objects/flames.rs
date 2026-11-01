@@ -26,9 +26,9 @@ pub fn flames(
         return;
     };
     let world = session.world();
-    let partial = view.partial as f32;
     let twist = camera_twist(&camera_orientation(view.rotation.0, view.rotation.1));
     for entity in world.entities().drawn_with_invisible() {
+        let partial = view.partial_of(world, entity.id()) as f32;
         if !entity.displays_fire() {
             continue;
         }

@@ -89,9 +89,9 @@ struct Shown<'a> {
 /// Every display the server added, in the pose it is drawn in this frame.
 fn shown(session: &PlaySession, view: FrameView) -> Vec<Shown<'_>> {
     let world = session.world();
-    let partial = view.partial as f32;
     let mut out = Vec::new();
     for entity in world.entities().drawn_of_kind(|e| e.display().is_some()) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let Some(display) = entity.display() else {
             continue;
         };
@@ -266,9 +266,9 @@ pub fn display_texts(
 ) -> (Vec<Vertex>, Vec<Vertex>, Vec<Vertex>) {
     use photon_render::objects::display::text_submit;
     let world = session.world();
-    let partial = view.partial as f32;
     let mut layers = (Vec::new(), Vec::new(), Vec::new());
     for entity in world.entities().drawn_of_kind(|e| e.display().is_some()) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let Some(display) = entity.display() else {
             continue;
         };

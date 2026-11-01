@@ -15,9 +15,9 @@ pub(super) fn remote_humanoids(
     (view, held): (FrameView, &mut Vec<HeldItem>),
     vertices: &mut Vec<Vertex>,
 ) {
-    let (world, partial) = (session.world(), view.partial as f32);
-    let humanoids = std::sync::Arc::clone(&models.humanoids);
+    let (world, humanoids) = (session.world(), std::sync::Arc::clone(&models.humanoids));
     for entity in world.drawn_mobs_where(|candidate| humanoids.contains_key(&candidate)) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let Some(kind) = humanoids.get(&entity.type_id).copied() else {
             continue;
         };

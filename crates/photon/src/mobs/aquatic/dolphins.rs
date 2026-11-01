@@ -33,8 +33,8 @@ pub fn remote_dolphins(
         return;
     };
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world.drawn_mobs_where(|candidate| candidate == dolphin) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let index = usize::from(entity.is_baby());
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot_of(entity, partial),

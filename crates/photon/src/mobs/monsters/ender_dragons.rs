@@ -78,7 +78,6 @@ pub fn remote_ender_dragons(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     let Some(dragon) = photon_data::entity_type::id("minecraft:ender_dragon") else {
         return;
     };
@@ -86,6 +85,7 @@ pub fn remote_ender_dragons(
     let mut beams = Vec::new();
     let mut mask_offset = None;
     for entity in world.drawn_mobs_where(|candidate| candidate == dragon) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let (Some(snapshot), Some(rect), Some(eyes), Some(model)) = (
             world.entity_snapshot_of(entity, partial),
             textures.rect(TEXTURE),

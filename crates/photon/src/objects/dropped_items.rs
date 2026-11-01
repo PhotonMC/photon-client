@@ -38,11 +38,11 @@ pub fn dropped_items(
         return;
     };
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world
         .entities()
         .drawn_of_kind(|entity| entity.type_id == item_type)
     {
+        let partial = view.partial_of(world, entity.id()) as f32;
         if entity.type_id != item_type {
             continue;
         }
@@ -101,11 +101,11 @@ fn ominous_spawners(
         return;
     };
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world
         .entities()
         .drawn_of_kind(|entity| entity.type_id == spawner)
     {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let (true, Some(stack), Some(snapshot)) = (
             entity.type_id == spawner,
             entity.item_stack(),

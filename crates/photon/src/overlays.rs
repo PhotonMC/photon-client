@@ -54,14 +54,19 @@ pub struct FrameView {
 }
 
 impl FrameView {
-    /// The partial tick a player is drawn at: the running one, unless the player rides something
-    /// (its vehicle is drawn at the world's until the vehicles carry the choice too, so the two
-    /// do not drift apart under `/tick freeze`).
-    pub fn player_partial(&self, riding: bool) -> f64 {
-        if riding {
-            self.partial
-        } else {
+    /// The partial tick an entity is drawn at (`LevelExtractor`): the world's for a frozen
+    /// entity, the running one for the rest, which under `/tick freeze` are the players and what
+    /// carries them.
+    pub fn partial_of(
+        &self,
+        world: &photon_world::ClientWorld,
+        id: photon_core::ids::EntityId,
+    ) -> f64 {
+        // A level that runs draws everything at one partial tick.
+        if self.partial != self.real_partial && world.draws_at_running_partial(id) {
             self.real_partial
+        } else {
+            self.partial
         }
     }
 

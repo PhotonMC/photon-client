@@ -32,7 +32,6 @@ pub fn remote_end_crystals(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     let Some(crystal) = photon_data::entity_type::id("minecraft:end_crystal") else {
         return;
     };
@@ -40,6 +39,7 @@ pub fn remote_end_crystals(
         .entities()
         .drawn_of_kind(|entity| entity.type_id == crystal)
     {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let (Some(snapshot), Some(rect), Some(beam_rect), Some(model)) = (
             world.entity_snapshot_of(entity, partial),
             textures.rect(TEXTURE),

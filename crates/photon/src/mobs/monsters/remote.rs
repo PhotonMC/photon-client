@@ -120,7 +120,6 @@ pub fn remote_monsters(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     let ids: Vec<(EntityTypeId, &Monster)> = MONSTERS
         .iter()
         .filter_map(|monster| Some((photon_data::entity_type::id(monster.type_name)?, monster)))
@@ -128,6 +127,7 @@ pub fn remote_monsters(
     let mut glow = Vec::new();
     let mut swirl = Vec::new();
     for entity in world.drawn_mobs_where(|candidate| ids.iter().any(|(id, _)| *id == candidate)) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let Some(monster) = monster_drawn(&ids, entity, sees_ghost(world, view, entity)) else {
             continue;
         };

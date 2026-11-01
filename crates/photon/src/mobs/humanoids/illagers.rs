@@ -122,12 +122,12 @@ pub fn remote_illagers(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     let ids: Vec<(EntityTypeId, &Illager)> = ILLAGERS
         .iter()
         .filter_map(|illager| Some((photon_data::entity_type::id(illager.type_name)?, illager)))
         .collect();
     for entity in world.drawn_mobs_where(|candidate| ids.iter().any(|(id, _)| *id == candidate)) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let Some(illager) = ids
             .iter()
             .find(|(id, _)| *id == entity.type_id)

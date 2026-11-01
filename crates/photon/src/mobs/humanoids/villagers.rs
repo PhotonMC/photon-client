@@ -83,8 +83,8 @@ pub fn remote_villagers(
         return;
     };
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world.drawn_mobs_where(|candidate| candidate == villager || candidate == trader) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let is_villager = entity.type_id == villager;
         let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
@@ -181,8 +181,8 @@ pub fn remote_witches(
         return;
     };
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world.drawn_mobs_where(|candidate| candidate == witch) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot_of(entity, partial),
             textures.rect(WITCH_TEXTURE),

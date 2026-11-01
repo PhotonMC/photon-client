@@ -40,8 +40,8 @@ pub fn remote_striders(
         return;
     };
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world.drawn_mobs_where(|candidate| candidate == strider) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let baby = entity.is_baby();
         let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;

@@ -32,6 +32,13 @@ impl ClientWorld {
         !runs_normally && self.entity_is_frozen(entity_id)
     }
 
+    /// Whether the entity is drawn at the running partial tick under `/tick freeze`: a player, or
+    /// what carries one. (A level that runs draws every entity at it; the two partials are then
+    /// the same.)
+    pub fn draws_at_running_partial(&self, entity_id: EntityId) -> bool {
+        !self.entity_is_frozen(entity_id)
+    }
+
     /// The entity part of `isEntityFrozen`, for a level that is not running: an entity that is no
     /// player and carries none, directly or through its passengers.
     fn entity_is_frozen(&self, entity_id: EntityId) -> bool {

@@ -69,8 +69,8 @@ pub fn remote_golems(
         return;
     };
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world.drawn_mobs_where(|candidate| candidate == iron || candidate == snow) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let is_iron = entity.type_id == iron;
         let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;

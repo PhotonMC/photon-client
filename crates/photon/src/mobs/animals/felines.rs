@@ -69,8 +69,8 @@ pub fn remote_felines(
         return;
     };
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world.drawn_mobs_where(|candidate| candidate == cat || candidate == ocelot) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let is_cat = entity.type_id == cat;
         let baby = entity.is_baby();
         let Some(texture) = (if is_cat {

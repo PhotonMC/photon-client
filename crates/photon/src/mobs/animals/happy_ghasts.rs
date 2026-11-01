@@ -31,8 +31,8 @@ pub fn remote_happy_ghasts(
         return;
     };
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world.drawn_mobs_where(|candidate| candidate == ghast) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let baby = entity.is_baby();
         let (layer, texture, harness) = if baby {
             (

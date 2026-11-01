@@ -29,11 +29,11 @@ pub fn remote_armadillos(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     let Some(armadillo) = photon_data::entity_type::id("minecraft:armadillo") else {
         return;
     };
     for entity in world.drawn_mobs_where(|candidate| candidate == armadillo) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let (layer, texture) = if entity.is_baby() { BABY } else { ADULT };
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot_of(entity, partial),

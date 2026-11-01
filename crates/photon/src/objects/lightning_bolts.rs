@@ -12,11 +12,11 @@ use crate::overlays::FrameView;
 /// The bolts the server added, handed to the rays' buffer.
 pub fn remote_lightning(session: &PlaySession, models: &mut MobModels, view: FrameView) {
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world
         .entities()
         .drawn_of_kind(|entity| entity.is_lightning_bolt())
     {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let (Some(state), Some(snapshot)) = (
             entity.lightning(),
             world.entity_snapshot_of(entity, partial),

@@ -41,12 +41,12 @@ pub fn remote_hoglins(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     for (name, texture_paths, layers) in HOGLINS {
         let Some(type_id) = photon_data::entity_type::id(name) else {
             continue;
         };
         for entity in world.drawn_mobs_where(|candidate| candidate == type_id) {
+            let partial = view.partial_of(world, entity.id()) as f32;
             let baby = entity.is_baby();
             let index = usize::from(baby);
             let (Some(snapshot), Some(rect), Some(model)) = (

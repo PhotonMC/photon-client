@@ -182,9 +182,9 @@ fn ends_light(
 /// lightmap at each vertex).
 pub fn leashes(session: &PlaySession, view: FrameView, vertices: &mut Vec<Vertex>) {
     let world = session.world();
-    let partial = view.partial as f32;
     let game_time = world.game_time() as i64;
     for entity in world.entities().all() {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let Some(holder_id) = entity.leash_holder_id() else {
             continue;
         };

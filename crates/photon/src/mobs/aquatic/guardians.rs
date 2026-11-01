@@ -130,12 +130,12 @@ pub fn remote_guardians(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     let guardian = photon_data::entity_type::id("minecraft:guardian");
     let elder = photon_data::entity_type::id("minecraft:elder_guardian");
     for entity in
         world.drawn_mobs_where(|candidate| Some(candidate) == elder || Some(candidate) == guardian)
     {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let is_elder = Some(entity.type_id) == elder;
         let (layer, texture) = if is_elder {
             ("minecraft:elder_guardian#main", ELDER_TEXTURE)

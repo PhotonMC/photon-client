@@ -74,8 +74,8 @@ fn remote_fish(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     for entity in world.drawn_mobs().filter(|entity| entity.is_fish()) {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };

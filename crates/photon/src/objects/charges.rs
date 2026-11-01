@@ -42,12 +42,12 @@ pub fn remote_charges(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let partial = view.partial as f32;
     let orientation = camera_orientation(view.rotation.0, view.rotation.1);
     for entity in world
         .entities()
         .drawn_of_kind(|entity| is_fireball_or_charge(entity).is_some())
     {
+        let partial = view.partial_of(world, entity.id()) as f32;
         let Some(is_fireball) = is_fireball_or_charge(entity) else {
             continue;
         };
