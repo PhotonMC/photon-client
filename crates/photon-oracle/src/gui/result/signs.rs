@@ -80,19 +80,8 @@ pub(super) fn sign_texts_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
     Ok(json!({"label": row["label"], "submits": submits}))
 }
 
-/// `sign_edit_screen`: the sign editing screen of a face after text and keys, drawn at a time
-/// after it opened, and the lines it would send.
-pub(super) fn sign_edit_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_gui::screen::sign_edit::{SignBoard, SignEditScreen};
-    let (font, atlas) = (&ctx.font, &ctx.atlas);
-    let lang = photon_game::text::Lang::load(&ctx.root);
-    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    let board = match row["kind"].as_str() {
-        Some("standing") => SignBoard::Standing,
-        Some("wall") => SignBoard::Wall,
-        _ => SignBoard::Hanging,
-    };
-    let face = &row["face"];
+/// The four lines of a face, as the plain text the editing screen starts with.
+fn face_messages(lang: &photon_game::text::Lang, face: &Value) -> Result<[String; 4], String> {
     let mut messages: [String; 4] = Default::default();
     for (message, value) in messages
         .iter_mut()
@@ -102,6 +91,25 @@ pub(super) fn sign_edit_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         let component = photon_game::text::Component::from_json(&json).ok_or("component")?;
         *message = lang.plain(&component);
     }
+    Ok(messages)
+}
+
+/// `sign_edit_screen`: the sign editing screen of a face after text and keys, drawn at a time
+/// after it opened, and the lines it would send.
+pub(super) fn sign_edit_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
+    use photon_gui::screen::sign_edit::{SignBoard, SignEditScreen};
+    let (font, atlas) = (&ctx.font, &ctx.atlas);
+    let lang = photon_game::text::Lang::load(&ctx.root);
+    let right_to_left = row["right_to_left"].as_bool().unwrap_or(false);
+    photon_core::bidi::set_default_right_to_left(right_to_left);
+    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
+    let board = match row["kind"].as_str() {
+        Some("standing") => SignBoard::Standing,
+        Some("wall") => SignBoard::Wall,
+        _ => SignBoard::Hanging,
+    };
+    let face = &row["face"];
+    let messages = face_messages(&lang, face)?;
     let color = photon_game::sign::DYES
         .iter()
         .position(|dye| face["color"] == *dye)
@@ -155,6 +163,7 @@ pub(super) fn sign_edit_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         ..GuiFrame::default()
     };
     screen.draw(&mut frame, atlas, font, mouse);
+    photon_core::bidi::set_default_right_to_left(false);
     Ok(json!({
         "label": row["label"],
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),

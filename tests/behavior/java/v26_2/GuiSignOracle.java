@@ -15,6 +15,10 @@ class GuiSignOracle extends GuiTitleOracle {
             int height = row.get("height").getAsInt();
             int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
             int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var languageBefore = net.minecraft.locale.Language.getInstance();
+            if (row.has("right_to_left")) {
+                net.minecraft.locale.Language.inject(clientLanguage("en_us", java.util.Map.of(), row.get("right_to_left").getAsBoolean()));
+            }
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
@@ -98,6 +102,7 @@ class GuiSignOracle extends GuiTitleOracle {
             edit.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
             clockField.set(null, clockBefore);
+            net.minecraft.locale.Language.inject(languageBefore);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));

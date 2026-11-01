@@ -60,6 +60,12 @@ class GuiLanguageOracle extends GuiRecorder {
      */
     static net.minecraft.client.resources.language.ClientLanguage clientLanguage(
             String code, java.util.Map<String, String> added) throws Exception {
+        return clientLanguage(code, added, false);
+    }
+
+    /** The same, told whether the language reads right to left (`LanguageInfo.bidirectional`). */
+    static net.minecraft.client.resources.language.ClientLanguage clientLanguage(
+            String code, java.util.Map<String, String> added, boolean rightToLeft) throws Exception {
         var index = languageIndex();
         var translations = new java.util.HashMap<String, String>();
         try (var jar = GuiOracle.class.getResourceAsStream("/assets/minecraft/lang/en_us.json")) {
@@ -72,7 +78,7 @@ class GuiLanguageOracle extends GuiRecorder {
         }
         translations.putAll(added);
         var constructor = Reflect.constructor(net.minecraft.client.resources.language.ClientLanguage.class, java.util.Map.class, boolean.class);
-        return constructor.newInstance(java.util.Map.copyOf(translations), false);
+        return constructor.newInstance(java.util.Map.copyOf(translations), rightToLeft);
     }
 
     /** What the game's language says of some keys, in a language. */

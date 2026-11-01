@@ -188,6 +188,7 @@ struct Edit {
     mouse: (i64, i64),
     steps: Vec<Value>,
     ms: i64,
+    right_to_left: Option<bool>,
 }
 
 const BLANK: [&str; 4] = ["", "", "", ""];
@@ -206,17 +207,22 @@ fn edit(label: impl Into<String>) -> Edit {
         mouse: (0, 0),
         steps: vec![],
         ms: 0,
+        right_to_left: None,
     }
 }
 
 impl Edit {
     fn row(self) -> Value {
-        json!({
+        let mut row = json!({
             "label": self.label, "kind": self.kind, "wood": self.wood, "front": self.front,
             "face": face(json!(self.lines), self.color, self.glowing, None),
             "width": self.size.0, "height": self.size.1, "mouse": [self.mouse.0, self.mouse.1],
             "steps": self.steps, "ms": self.ms,
-        })
+        });
+        if let Some(right_to_left) = self.right_to_left {
+            row["right_to_left"] = json!(right_to_left);
+        }
+        row
     }
 }
 
@@ -278,12 +284,45 @@ fn typing_rows() -> Vec<Edit> {
     ]
 }
 
+/// Right-to-left text on a sign (the language only says which way it reads): the line is shaped when the language reads right to left, and drawn
+/// in visual order in any language. A line of Arabic letters alone has no glyphs in the headless
+/// reference (its fallback font is not loaded), so every line here has a Latin letter or a bracket.
+fn bidi_rows() -> Vec<Edit> {
+    let arabic =
+        ["\u{645}\u{631}\u{62d}\u{628}\u{627} abc", "abc \u{5e9}\u{5dc}\u{5d5}\u{5dd}", "(\u{627}\u{628})", "x"];
+    let mut rows = Vec::new();
+    for (language, right_to_left) in [("ltr", false), ("rtl", true)] {
+        let label = |name: &str| format!("{name} {language}");
+        rows.push(Edit { right_to_left: Some(right_to_left), lines: arabic, ..edit(label("rtl lines")) });
+        rows.push(Edit {
+            right_to_left: Some(right_to_left),
+            lines: arabic,
+            steps: vec![key("left"), key("left")],
+            ..edit(label("rtl cursor inside"))
+        });
+    }
+    for (language, right_to_left) in [("ltr", false), ("rtl", true)] {
+        let label = |name: &str| format!("{name} {language}");
+        rows.push(Edit {
+            right_to_left: Some(right_to_left),
+            steps: vec![type_text("ab\u{645}\u{631}")],
+            ..edit(label("rtl typed mixed"))
+        });
+        rows.push(Edit {
+            right_to_left: Some(right_to_left),
+            steps: vec![type_text("ab\u{645}\u{631}"), key("left")],
+            ..edit(label("rtl typed left"))
+        });
+    }
+    rows
+}
+
 /// The sign editing screens: each wood, standing, on a wall and hanging,
 /// front and back; the lines typed until the sign is full, moved between
 /// with the arrows and Enter, the cursor in the text and at its end, its
 /// blink, selections by Shift and Control, words erased, the Done button
 /// under the mouse and focused by Tab, dyes and glowing text.
 pub fn sign_edit_screen() -> Value {
-    let rows = [edit_rows(), typing_rows()].concat();
+    let rows = [edit_rows(), typing_rows(), bidi_rows()].concat();
     gui("sign-edit-screen", "sign_edit_screen", rows.into_iter().map(Edit::row).collect())
 }

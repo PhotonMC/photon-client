@@ -249,19 +249,32 @@ impl SignEditScreen {
         let head_width = |line: &[char], end: usize| {
             font.width(&line[..end.min(line.len())].iter().collect::<String>())
         };
+        let right_to_left = photon_core::bidi::default_right_to_left();
         for (index, line) in self.messages.iter().enumerate() {
-            let left = -font.width(line) / 2;
+            // `Font.bidirectionalShaping` in a right-to-left language; then `GuiGraphicsExtractor.text`
+            // draws the string in visual order (`Language.getVisualOrder`) in any language.
+            let shaped = if right_to_left {
+                photon_core::bidi::reorder(line, true)
+            } else {
+                line.clone()
+            };
+            let drawn = if photon_core::bidi::needs_reorder(&shaped, right_to_left) {
+                photon_core::bidi::reorder(&shaped, right_to_left)
+            } else {
+                shaped.clone()
+            };
+            let left = -font.width(&shaped) / 2;
             frame.text(
                 atlas,
                 font,
-                line,
+                &drawn,
                 left,
                 index as i32 * height - middle,
                 colour,
             );
-            let chars: Vec<char> = line.chars().collect();
+            let chars: Vec<char> = shaped.chars().collect();
             if index == self.line && show_cursor && cursor >= chars.len() {
-                let cursor_x = head_width(&chars, cursor) - font.width(line) / 2;
+                let cursor_x = head_width(&chars, cursor) - font.width(&shaped) / 2;
                 frame.text(atlas, font, "_", cursor_x, cursor_y, colour);
             }
         }
