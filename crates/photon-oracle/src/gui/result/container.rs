@@ -227,17 +227,44 @@ fn press_clicks(
             base + std::time::Duration::from_secs(index as u64),
             menu,
         ) {
-            // The player's own click, which the Java oracle's sound manager hears too.
-            if let photon_gui::screen::ScreenAction::SlotState { enabled, .. } = action {
-                let (volume, pitch) =
-                    photon_game::menus::container::crafter_slot_sound_levels(enabled);
-                photon_gui::ui_sound::ask(photon_gui::ui_sound::UiSound {
-                    event: photon_game::menus::container::CRAFTER_SLOT_SOUND,
-                    pitch,
-                    volume,
-                });
-            }
+            ask_slot_sound(&action);
         }
+    }
+    for press in row["presses"].as_array().into_iter().flatten() {
+        let key = press.as_i64().and_then(glfw_key);
+        let Some(key) = key else { continue };
+        let result = screen.key_pressed(
+            key,
+            photon_gui::screen::KeyMods::default(),
+            menu,
+            &mut super::super::NoClipboard,
+        );
+        if let photon_gui::screen::KeyResult::Actions(actions)
+        | photon_gui::screen::KeyResult::Consumed(actions) = result
+        {
+            actions.iter().for_each(ask_slot_sound);
+        }
+    }
+}
+
+/// The player's own click on a crafter slot, which the Java oracle's sound manager hears too.
+fn ask_slot_sound(action: &photon_gui::screen::ScreenAction) {
+    if let photon_gui::screen::ScreenAction::SlotState { enabled, .. } = action {
+        let (volume, pitch) = photon_game::menus::container::crafter_slot_sound_levels(*enabled);
+        photon_gui::ui_sound::ask(photon_gui::ui_sound::UiSound {
+            event: photon_game::menus::container::CRAFTER_SLOT_SOUND,
+            pitch,
+            volume,
+        });
+    }
+}
+
+/// The GLFW key a row's number stands for: the digits.
+fn glfw_key(code: i64) -> Option<glfw::Key> {
+    match code {
+        49 => Some(glfw::Key::Num1),
+        50 => Some(glfw::Key::Num2),
+        _ => None,
     }
 }
 

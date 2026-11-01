@@ -17,6 +17,7 @@ pub struct Screen {
     xp: Option<i64>,
     keys: Vec<&'static str>,
     clicks: Vec<(i64, i64)>,
+    presses: Vec<i64>,
     sync_slot: Option<i64>,
     mouse: (i64, i64),
     size: (i64, i64),
@@ -40,6 +41,7 @@ pub fn screen(menu: &'static str, title_key: &'static str) -> Screen {
         xp: None,
         keys: vec![],
         clicks: vec![],
+        presses: vec![],
         sync_slot: None,
         mouse: (0, 0),
         size: (427, 240),
@@ -77,7 +79,7 @@ impl Screen {
             "label": label, "width": self.size.0, "height": self.size.1, "mouse_x": self.mouse.0,
             "mouse_y": self.mouse.1, "menu": format!("minecraft:{}", self.menu), "title_key": self.title_key,
             "container_id": 4, "game_mode": self.game_mode, "selected": 0, "state_id": 0, "blocks": [],
-            "chunk_radius": 0, "clicks": self.clicks, "keys": self.keys, "slots": self.slot_rows(),
+            "chunk_radius": 0, "clicks": self.clicks, "presses": self.presses, "keys": self.keys, "slots": self.slot_rows(),
         });
         let optional = [
             ("data", self.data.clone()),
@@ -235,6 +237,52 @@ fn brewing_and_beacons() -> Vec<Value> {
     ]
 }
 
+/// A number key over a crafter slot: it switches a switched-off slot on when the hotbar slot it
+/// names holds something (`CrafterScreen.slotClicked`, swap).
+fn crafter_swap_rows() -> Vec<Value> {
+    let crafter = |data: Value| Screen { data: Some(data), ..screen("crafter_3x3", "container.crafter") };
+    vec![
+        Screen {
+            slots: vec![(36, "stone", 1)],
+            sync_slot: Some(36),
+            mouse: (155, 58),
+            presses: vec![49],
+            tooltips: false,
+            ..crafter(json!([1, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+        }
+        .row("crafter-swap-switches-on"),
+        Screen { mouse: (155, 58), presses: vec![49], ..crafter(json!([1, 0, 0, 0, 0, 0, 0, 0, 0, 0])) }
+            .row("crafter-swap-empty-hotbar"),
+        Screen {
+            slots: vec![(37, "stone", 1)],
+            sync_slot: Some(37),
+            mouse: (155, 58),
+            presses: vec![49],
+            tooltips: false,
+            ..crafter(json!([1, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+        }
+        .row("crafter-swap-other-hotbar"),
+        Screen {
+            slots: vec![(36, "stone", 1)],
+            sync_slot: Some(36),
+            mouse: (155, 58),
+            presses: vec![49],
+            tooltips: false,
+            ..crafter(json!([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+        }
+        .row("crafter-swap-already-on"),
+        Screen {
+            slots: vec![(0, "stone", 3), (36, "stone", 1)],
+            sync_slot: Some(36),
+            mouse: (155, 58),
+            presses: vec![49],
+            tooltips: false,
+            ..crafter(json!([1, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+        }
+        .row("crafter-swap-filled-slot"),
+    ]
+}
+
 fn crafters_and_lecterns() -> Vec<Value> {
     let crafter = |data: Value| Screen { data: Some(data), ..screen("crafter_3x3", "container.crafter") };
     let lectern = || screen("lectern", "container.lectern");
@@ -250,7 +298,7 @@ fn crafters_and_lecterns() -> Vec<Value> {
                 and run on and on and on and on and on and on and on and on and on and \
                 on and on and on and on and on and on and on and on and on and on and on \
                 and on and on and on and on and on and on and on and on and on and on";
-    vec![
+    let mut rows = vec![
         crafter(json!([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])).row("crafter-empty"),
         crafter(json!([0, 1, 0, 0, 1, 0, 1, 0, 0, 0])).row("crafter-disabled"),
         crafter(json!([1, 0, 0, 0, 0, 0, 0, 0, 0, 1])).row("crafter-powered"),
@@ -283,7 +331,9 @@ fn crafters_and_lecterns() -> Vec<Value> {
         Screen { mouse: (240, 165), ..book(vec!["One", "Two"]) }.row("lectern-hover-forward"),
         Screen { mouse: (150, 205), ..lectern() }.row("lectern-hover-done"),
         Screen { game_mode: "adventure", ..book(vec!["One", "Two"]) }.row("lectern-adventure"),
-    ]
+    ];
+    rows.extend(crafter_swap_rows());
+    rows
 }
 
 fn merchants() -> Vec<Value> {

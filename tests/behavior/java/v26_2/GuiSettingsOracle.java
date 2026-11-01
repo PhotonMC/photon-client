@@ -703,6 +703,17 @@ class GuiSettingsOracle extends GuiScreenOracle {
                     // no game to reach here; the sound came first.
                 }
             }
+            for (var press : row.getAsJsonArray("presses")) {
+                minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
+                int before = GuiScreenOracle.SilentSounds.ASKED.size();
+                try {
+                    screen.keyPressed(new net.minecraft.client.input.KeyEvent(press.getAsInt(), 0, 0));
+                } catch (NullPointerException stub) {
+                    if (GuiScreenOracle.SilentSounds.ASKED.size() == before) {
+                        throw stub;
+                    }
+                }
+            }
             var asked = new JsonArray();
             GuiScreenOracle.SilentSounds.ASKED.forEach(asked::add);
             out.add("sounds", asked);
