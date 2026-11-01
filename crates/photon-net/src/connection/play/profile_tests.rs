@@ -9,7 +9,7 @@ use photon_protocol::play::{AddEntityObservation, InfoAction, ProfileProperty};
 use super::lifecycle::spawn_reader;
 use super::*;
 
-fn session() -> (PlaySession, TcpListener) {
+pub(super) fn session() -> (PlaySession, TcpListener) {
     let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
     let stream = Transport::from(
         TcpStream::connect(listener.local_addr().expect("address")).expect("connect"),

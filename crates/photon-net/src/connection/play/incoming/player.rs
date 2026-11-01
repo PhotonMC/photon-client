@@ -409,6 +409,7 @@ impl PlaySession {
         if event.event_id == GAME_EVENT_ELDER_GUARDIAN_ID {
             self.show_elder_guardian(event.param as i32);
         }
+        self.play_game_event_sound(event.event_id);
         if event.event_id == GAME_EVENT_WIN_GAME_ID {
             self.local.win_game = true;
         }
@@ -452,6 +453,47 @@ impl PlaySession {
         Ok(())
     }
 
+    /// `PLAY_ARROW_HIT_SOUND` and `PUFFER_FISH_STING`: `Level.playSound(player, ..)` heard by the
+    /// player it names, who is the local one: the arrow's at the eyes, the sting's at the feet.
+    fn play_game_event_sound(&mut self, event_id: u8) {
+        use photon_world::local_player::LocalSoundSource::{Neutral, Players};
+        let Some(player) = self.local.player.as_ref() else {
+            return;
+        };
+        let feet = player.position();
+        let (path, source, volume, pitch, height) = match event_id {
+            GAME_EVENT_PLAY_ARROW_HIT_SOUND_ID => (
+                "entity.arrow.hit_player",
+                Players,
+                0.18,
+                0.45,
+                f64::from(player.eye_height()),
+            ),
+            GAME_EVENT_PUFFER_FISH_STING_ID => ("entity.puffer_fish.sting", Neutral, 1.0, 1.0, 0.0),
+            _ => return,
+        };
+        let name = format!(
+            "{}:{path}",
+            photon_core::identifier::Identifier::DEFAULT_NAMESPACE
+        );
+        let Some(event) =
+            photon_data::sound_event::id(&name).and_then(photon_data::sound_event::name)
+        else {
+            return;
+        };
+        self.world
+            .play_local_sound(photon_world::local_player::LocalSound {
+                relative: false,
+                delay_ticks: 0,
+                follows_player: false,
+                event,
+                source,
+                volume,
+                pitch,
+                position: (feet.x, feet.y + height, feet.z),
+            });
+    }
+
     /// `GUARDIAN_ELDER_EFFECT`: the elder guardian flashes over the screen, at the player, and
     /// with a `param` of 1 the curse is heard.
     fn show_elder_guardian(&mut self, param: i32) {
@@ -488,5 +530,49 @@ impl PlaySession {
                     position: (at.x, at.y, at.z),
                 });
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::connection::play::profile_tests::session;
+    use photon_core::math::Vec3;
+
+    fn arrives(
+        session: &mut PlaySession,
+        event_id: u8,
+    ) -> Vec<photon_world::local_player::LocalSound> {
+        session
+            .on_game_event(GameEventPacket {
+                event_id,
+                param: 0.0,
+            })
+            .expect("handled");
+        session.take_world_sounds()
+    }
+
+    #[test]
+    fn an_arrow_hit_is_heard_at_the_eyes_and_a_puffer_sting_at_the_feet() {
+        let (mut session, _server) = session();
+        session.local.player = Some(photon_world::local_player::LocalPlayer::new(
+            EntityId(1),
+            Vec3::new(8.0, 64.0, -3.0),
+            0.0,
+            0.0,
+            session.local.game_mode,
+            session.link.auto_jump,
+        ));
+        let eye = f64::from(session.local.player.as_ref().expect("player").eye_height());
+        let arrow = arrives(&mut session, GAME_EVENT_PLAY_ARROW_HIT_SOUND_ID);
+        assert_eq!(arrow.len(), 1);
+        assert_eq!(arrow[0].event, "minecraft:entity.arrow.hit_player");
+        assert_eq!((arrow[0].volume, arrow[0].pitch), (0.18, 0.45));
+        assert_eq!(arrow[0].position, (8.0, 64.0 + eye, -3.0));
+        let sting = arrives(&mut session, GAME_EVENT_PUFFER_FISH_STING_ID);
+        assert_eq!(sting.len(), 1);
+        assert_eq!(sting[0].event, "minecraft:entity.puffer_fish.sting");
+        assert_eq!(sting[0].position, (8.0, 64.0, -3.0));
+        assert!(arrives(&mut session, GAME_EVENT_WIN_GAME_ID).is_empty());
     }
 }

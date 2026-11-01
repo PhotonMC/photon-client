@@ -379,6 +379,10 @@ pub const GAME_EVENT_CHANGE_GAME_MODE_ID: u8 = 3;
 
 pub const GAME_EVENT_WIN_GAME_ID: u8 = 4;
 
+pub const GAME_EVENT_PLAY_ARROW_HIT_SOUND_ID: u8 = 6;
+
+pub const GAME_EVENT_PUFFER_FISH_STING_ID: u8 = 9;
+
 pub const GAME_EVENT_ELDER_GUARDIAN_ID: u8 = 10;
 
 // The built-in item registry is not sent in configuration registry data, so the id comes from
