@@ -139,6 +139,11 @@ impl EditBox {
         self
     }
 
+    /// `setTextColor` on a box that exists.
+    pub fn set_colour(&mut self, colour: u32) {
+        self.colour = colour;
+    }
+
     /// `setSuggestion`.
     pub fn set_suggestion(&mut self, suggestion: Option<String>) {
         self.suggestion = suggestion;

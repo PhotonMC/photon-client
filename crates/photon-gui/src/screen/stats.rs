@@ -46,7 +46,7 @@ pub enum StatsAction {
 }
 
 /// `LoadingDotsText.FRAMES`, three tenths of a second each.
-fn loading_dots(millis: u64) -> &'static str {
+pub(crate) fn loading_dots(millis: u64) -> &'static str {
     const FRAMES: [&str; 4] = ["O o o", "o O o", "o o O", "o O o"];
     FRAMES[(millis / 300 % 4) as usize]
 }

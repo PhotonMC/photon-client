@@ -621,6 +621,7 @@
         "GuiDialogOracle.java",
         "GuiItemOracle.java",
         "GuiTutorialOracle.java",
+        "GuiGameRulesOracle.java",
         "GuiTitleOracle.java",
         "GuiTooltipOracle.java",
         "GuiFontOracle.java",

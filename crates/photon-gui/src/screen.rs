@@ -18,6 +18,7 @@ mod dialog_input;
 pub mod disconnected;
 pub mod friends;
 pub mod game_mode;
+pub mod game_rules;
 pub mod jigsaw;
 pub mod pause;
 pub mod restrictions;

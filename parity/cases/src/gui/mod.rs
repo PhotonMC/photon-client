@@ -17,6 +17,7 @@ mod draft;
 mod effects;
 mod fonts;
 mod friends;
+mod game_rules;
 mod hud;
 mod icons;
 mod item_bundle;
@@ -114,6 +115,7 @@ const ORDER: &[Generator] = &[
     || vec![debug::hud_debug_lines()],
     || vec![debug::debug_entries()],
     || vec![debug::debug_options_screen()],
+    || vec![game_rules::game_rules_screen()],
     || vec![stats::stat_format()],
     || vec![stats::stats_screen()],
     || vec![advancements::client_advancements()],

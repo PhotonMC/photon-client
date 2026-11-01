@@ -90,6 +90,8 @@ pub(super) fn dialog_case(
 ) -> Result<Value, String> {
     if operation == "dialog_screen" {
         dialog_screen_case(ctx, row)
+    } else if operation == "game_rules_screen" {
+        game_rules::game_rules_screen_case(ctx, row)
     } else {
         restrictions_screen_case(ctx, row)
     }

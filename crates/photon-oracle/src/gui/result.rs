@@ -56,6 +56,7 @@ mod test_instance;
 use test_block::*;
 use test_instance::*;
 mod debug_options;
+mod game_rules;
 mod social;
 use social::*;
 mod books;
@@ -160,7 +161,7 @@ fn screen_case(
 
 /// The operations whose rows carry the sounds the interface asked for (the Java oracle writes
 /// them after the row's steps).
-const SOUND_OPERATIONS: [&str; 39] = [
+const SOUND_OPERATIONS: [&str; 40] = [
     "container_screen",
     "death_screen",
     "disconnected_screen",
@@ -184,6 +185,7 @@ const SOUND_OPERATIONS: [&str; 39] = [
     "connect_screen",
     "dialog_screen",
     "restrictions_screen",
+    "game_rules_screen",
     "social_interactions_screen",
     "debug_options_screen",
     "video_settings_screen",
@@ -256,7 +258,9 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 "server_form" => server_form_case(&mut ctx, row)?,
                 "connect_screen" => connect_screen_case(&mut ctx, row)?,
                 "confirm_screen" => confirm_screen_case(&mut ctx, row)?,
-                "dialog_screen" | "restrictions_screen" => dialog_case(&mut ctx, row, operation)?,
+                "dialog_screen" | "restrictions_screen" | "game_rules_screen" => {
+                    dialog_case(&mut ctx, row, operation)?
+                }
                 "widgets" => widgets_case(&mut ctx, row)?,
                 "options_screen" => options_screen_case(&mut ctx, row)?,
                 "video_settings_screen" => video_settings_screen_case(&mut ctx, row)?,

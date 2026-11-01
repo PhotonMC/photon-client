@@ -6,7 +6,7 @@ import com.google.gson.JsonObject;
  * drawn (no GPU); their advances come from the game's own font providers, so
  * the layout is the reference's.
  */
-public final class GuiOracle extends GuiTutorialOracle {
+public final class GuiOracle extends GuiGameRulesOracle {
     GuiOracle() {}
 
     /**
@@ -84,6 +84,7 @@ public final class GuiOracle extends GuiTutorialOracle {
                 case "confirm_screen" -> confirmScreen(request);
                 case "dialog_screen" -> dialogScreen(request);
                 case "restrictions_screen" -> restrictionsScreen(request);
+                case "game_rules_screen" -> gameRulesScreen(request);
                 case "widgets" -> widgets(request);
                 case "options_screen" -> optionsScreen(request);
                 case "video_settings_screen" -> settingsScreen(request, "video");
