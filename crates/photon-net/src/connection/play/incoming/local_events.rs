@@ -28,6 +28,36 @@ impl PlaySession {
         }
     }
 
+    /// `LivingEntity.handleEntityEvent` 47 to 52, 65 and 68: the item the local player wears or
+    /// holds breaks, which sounds from the inventory it is still in.
+    pub(super) fn local_break_sound(&mut self, id: EntityId, event: i8) {
+        if self.local.player_id != Some(id) {
+            return;
+        }
+        let Some(slot) = photon_world::ClientWorld::broken_slot(event) else {
+            return;
+        };
+        let Some(menu_slot) = player_menu_slot(slot, self.local.status.selected_slot) else {
+            return;
+        };
+        let Some(stack) = self
+            .world
+            .local_player()
+            .and_then(|state| state.inventory_slot(menu_slot))
+            .cloned()
+        else {
+            return;
+        };
+        let Some(position) = self.local.player.as_ref().map(|player| player.position()) else {
+            return;
+        };
+        self.world.play_item_break(
+            &stack,
+            photon_world::local_player::LocalSoundSource::Players,
+            (position.x, position.y, position.z),
+        );
+    }
+
     /// `Player.handleEntityEvent`: 9 completes the use of the item the player holds, here as on
     /// the server.
     pub(super) fn local_use_complete(&mut self, id: EntityId, event: i8) {
@@ -85,4 +115,19 @@ impl PlaySession {
         }
         self.world.wake_local_player();
     }
+}
+
+/// The slot of the player's inventory menu that holds what the equipment slot does; the local
+/// player has none for a body or a saddle.
+fn player_menu_slot(slot: photon_world::EquipmentSlot, selected: i32) -> Option<i16> {
+    use photon_world::EquipmentSlot;
+    Some(match slot {
+        EquipmentSlot::MainHand => 36 + selected as i16,
+        EquipmentSlot::OffHand => 45,
+        EquipmentSlot::Head => 5,
+        EquipmentSlot::Chest => 6,
+        EquipmentSlot::Legs => 7,
+        EquipmentSlot::Feet => 8,
+        EquipmentSlot::Body | EquipmentSlot::Saddle => return None,
+    })
 }

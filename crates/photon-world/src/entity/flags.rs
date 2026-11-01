@@ -105,6 +105,8 @@ pub(crate) struct EntityState {
     /// creepy (stared at).
     pub(crate) carried_state: i32,
     pub(crate) creepy: bool,
+    /// `EnderMan.hasBeenStaredAt`.
+    pub(crate) stared_at: bool,
     /// `EnderMan.lastStareSound`: the tick of the last stare sound, none yet.
     pub(crate) last_stare_sound: Option<i32>,
     /// Whether a snow golem wears its pumpkin; it does until the data says not.

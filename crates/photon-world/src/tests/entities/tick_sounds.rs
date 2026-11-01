@@ -108,3 +108,27 @@ fn a_boat_above_a_bubble_column_splashes_now_and_then() {
     assert!((0.8..1.2).contains(&sound.pitch));
     assert_eq!(sound.position, (0.5, 5.0, 0.5));
 }
+
+#[test]
+fn an_enderman_stares_when_its_creepy_flag_is_sent_while_stared_at() {
+    let mut world = world_with("minecraft:enderman");
+    // A creepy flag with nothing stared at is silent.
+    assert!(world.apply_entity_metadata(EntityId(9), &[17, 8, 1, 255]));
+    assert!(ticked(&mut world, 1).is_empty());
+    // The stared-at flag alone is no creepy update.
+    assert!(world.apply_entity_metadata(EntityId(9), &[18, 8, 1, 255]));
+    assert!(ticked(&mut world, 1).is_empty());
+    // A creepy update now plays it, from the eyes, whichever way the flag turns.
+    assert!(world.apply_entity_metadata(EntityId(9), &[17, 8, 0, 255]));
+    let sounds: Vec<_> = ticked(&mut world, 1)
+        .into_iter()
+        .map(|(_, sound)| sound)
+        .collect();
+    assert_eq!(sounds.len(), 1);
+    assert_eq!(sounds[0].event, "minecraft:entity.enderman.stare");
+    assert_eq!((sounds[0].volume, sounds[0].pitch), (2.5, 1.0));
+    assert!((sounds[0].position.1 - 64.0 - 2.55).abs() < 0.01);
+    // The next one is inside the four hundred ticks.
+    assert!(world.apply_entity_metadata(EntityId(9), &[17, 8, 1, 255]));
+    assert!(ticked(&mut world, 1).is_empty());
+}

@@ -3,6 +3,9 @@
 use super::*;
 pub(crate) use player::*;
 
+mod enderman;
+#[cfg(test)]
+pub(crate) use enderman::*;
 mod fields;
 pub use fields::*;
 mod goat;

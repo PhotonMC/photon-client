@@ -438,6 +438,7 @@ impl PlaySession {
 
     fn on_entity_event(&mut self, (id, event): (EntityId, i8)) -> Result<(), ConnectionError> {
         self.local_player_event(id, event);
+        self.local_break_sound(id, event);
         // `ClientPacketListener.handleEntityEvent`: 21 and 63 start the sounds of a guardian's
         // beam and a sniffer's digging, and nothing else.
         if matches!(event, 21 | 63) {

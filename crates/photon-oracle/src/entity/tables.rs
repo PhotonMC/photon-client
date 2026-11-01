@@ -462,7 +462,7 @@ pub(super) fn entity_variant_fields_case() -> Result<Value, String> {
         ),
     ];
     Ok(json!({"rows": fields
-        .iter().chain([&super::data_fields::bogged_field()]).chain(super::data_fields::mannequin_fields().iter())
+        .iter().chain([&super::data_fields::bogged_field(), &super::data_fields::stared_at_field()]).chain(super::data_fields::mannequin_fields().iter())
         .map(|(label, data_id, serializer)| {
             json!({"label": label, "data_id": data_id, "serializer": serializer})
         })

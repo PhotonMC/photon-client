@@ -1,10 +1,19 @@
-//! Data ids a variant-fields row checks beyond the tables: the bogged's and the mannequin's.
+//! Data ids a variant-fields row checks beyond the tables: the bogged's, the enderman's and the mannequin's.
 
 /// The sheared flag of a bogged: a boolean on its own id.
 pub(super) fn bogged_field() -> (&'static str, i64, i64) {
     (
         "bogged-sheared",
         i64::from(photon_world::BOGGED_SHEARED_DATA_ID),
+        8,
+    )
+}
+
+/// Whether an enderman has been stared at: a boolean on its own id.
+pub(super) fn stared_at_field() -> (&'static str, i64, i64) {
+    (
+        "enderman-stared-at",
+        i64::from(photon_world::ENDERMAN_STARED_AT_DATA_ID),
         8,
     )
 }

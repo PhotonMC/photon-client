@@ -291,10 +291,7 @@ impl ClientWorld {
         if let Some(counter) = unhappy_counter_from_metadata(entity.type_id, metadata) {
             entity.living.unhappy_counter = counter;
         }
-        let (carrying, creepy) = enderman_flags_from_metadata(entity.type_id, metadata);
-        if let Some(carried) = carrying {
-            entity.living.carried_state = carried;
-        }
+        entity.apply_enderman_data(metadata);
         apply_age_lock_and_goat_data(&mut entity, metadata);
         if let Some(powered) = creeper_powered_from_metadata(entity.type_id, metadata) {
             entity.living.powered = powered;
@@ -377,9 +374,6 @@ impl ClientWorld {
         }
         if let Some(pumpkin) = snow_golem_pumpkin_from_metadata(entity.type_id, metadata) {
             entity.living.bare_head = !pumpkin;
-        }
-        if let Some(creepy) = creepy {
-            entity.set_creepy(creepy);
         }
         let (celebrating, casting) = illager_flags_from_metadata(entity.type_id, metadata);
         if let Some(celebrating) = celebrating {

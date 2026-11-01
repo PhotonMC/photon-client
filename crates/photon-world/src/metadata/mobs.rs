@@ -456,24 +456,6 @@ pub(crate) fn illager_flags_from_metadata(
     (celebrating, casting)
 }
 
-/// The block state an enderman carries (`DATA_CARRY_STATE`, zero for none)
-/// and whether it is creepy (`DATA_CREEPY`), when the data holds them.
-pub(crate) fn enderman_flags_from_metadata(
-    type_id: EntityTypeId,
-    metadata: &[u8],
-) -> (Option<i32>, Option<bool>) {
-    if type_id != photon_data::entity_type::ids::ENDERMAN {
-        return (None, None);
-    }
-    let carrying = find_metadata_field(metadata, ENDERMAN_CARRY_DATA_ID)
-        .filter(|(serializer, _)| *serializer == OPTIONAL_BLOCK_STATE_SERIALIZER_ID)
-        .and_then(|(_, mut value)| photon_core::wire::read_varint(&mut value).ok());
-    (
-        carrying,
-        metadata_boolean_value(metadata, ENDERMAN_CREEPY_DATA_ID),
-    )
-}
-
 /// A bee's flags (`Bee.DATA_FLAGS_ID`) and the game time its anger ends
 /// (`DATA_ANGER_END_TIME`), when the data holds them.
 pub(crate) fn bee_data_from_metadata(

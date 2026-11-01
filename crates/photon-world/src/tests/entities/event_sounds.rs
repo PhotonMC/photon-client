@@ -95,3 +95,22 @@ fn a_broken_item_sounds_by_its_own_break_sound_and_a_silent_wearer_makes_none() 
         assert!((0.8..1.2).contains(&sound.pitch));
     }
 }
+
+#[test]
+fn the_local_player_s_broken_item_sounds_as_a_player_s_and_a_removed_sound_is_silent() {
+    let mut world = ClientWorld::default();
+    let index = |name: &str| photon_data::item::registry::index(name).unwrap() as i32;
+    let pickaxe =
+        ClientItemStackState::new(1, photon_core::ids::ItemId(index("minecraft:iron_pickaxe")));
+    world.play_item_break(&pickaxe, LocalSoundSource::Players, (1.0, 2.0, 3.0));
+    let sounds = world.take_sounds();
+    assert_eq!(sounds.len(), 1);
+    assert_eq!(sounds[0].event, "minecraft:entity.item.break");
+    assert_eq!(sounds[0].source, LocalSoundSource::Players);
+    assert_eq!(
+        (sounds[0].volume, sounds[0].position),
+        (0.8, (1.0, 2.0, 3.0))
+    );
+    assert_eq!(ClientWorld::broken_slot(47), Some(EquipmentSlot::MainHand));
+    assert_eq!(ClientWorld::broken_slot(46), None);
+}

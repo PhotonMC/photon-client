@@ -129,6 +129,7 @@ const ACCESSORS: &[(&str, &str)] = &[
     ("net.minecraft.world.entity.monster.Creeper", "DATA_SWELL_DIR"),
     ("net.minecraft.world.entity.monster.EnderMan", "DATA_CARRY_STATE"),
     ("net.minecraft.world.entity.monster.EnderMan", "DATA_CREEPY"),
+    ("net.minecraft.world.entity.monster.EnderMan", "DATA_STARED_AT"),
     ("net.minecraft.world.entity.monster.Ghast", "DATA_IS_CHARGING"),
     ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_ATTACK_TARGET"),
     ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_MOVING"),

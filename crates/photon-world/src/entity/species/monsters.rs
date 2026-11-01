@@ -96,10 +96,11 @@ impl EntityView<'_> {
 }
 
 impl crate::EntityViewMut<'_> {
-    /// `EnderMan.onSyncedDataUpdated`: every update that leaves it stared at plays the stare.
+    /// `EnderMan.onSyncedDataUpdated` of `DATA_CREEPY`: every update of it plays the stare while
+    /// the enderman has been stared at.
     pub(crate) fn set_creepy(&mut self, creepy: bool) {
         self.living.creepy = creepy;
-        if creepy {
+        if self.living.stared_at {
             self.stare_sound();
         }
     }

@@ -89,12 +89,9 @@ impl ClientWorld {
         let Some(entity) = self.entities.at(id) else {
             return;
         };
-        let Some(event) = entity.equipment(slot).and_then(|stack| stack.break_sound()) else {
+        let Some(stack) = entity.equipment(slot).cloned() else {
             return;
         };
-        if entity.is_silent() {
-            return;
-        }
         let source = if entity.is_player() {
             LocalSoundSource::Players
         } else if photon_data::entity_type::pick(entity.type_id).is_some_and(|pick| pick.monster) {
@@ -102,7 +99,27 @@ impl ClientWorld {
         } else {
             LocalSoundSource::Neutral
         };
-        let at = entity.position();
+        if !entity.is_silent() {
+            self.play_item_break(&stack, source, entity.position());
+        }
+    }
+
+    /// The slot whose item an entity event breaks (`LivingEntity.handleEntityEvent` 47 to 52, 65
+    /// and 68).
+    pub fn broken_slot(event: i8) -> Option<EquipmentSlot> {
+        break_slot(event)
+    }
+
+    /// The sound of a broken stack (`LivingEntity.breakItem`), whose wearer is not silent.
+    pub fn play_item_break(
+        &mut self,
+        stack: &ClientItemStackState,
+        source: LocalSoundSource,
+        at: (f64, f64, f64),
+    ) {
+        let Some(event) = stack.break_sound() else {
+            return;
+        };
         let pitch = 0.8 + self.entity_sound_random.source().next_float() * 0.4;
         self.sounds
             .0
