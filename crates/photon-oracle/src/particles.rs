@@ -301,8 +301,8 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
             ));
             let mut context =
                 LevelEventContext::new(&world, &view, &mut level_random, &mut particle_random);
-            engine.tick_explosions(&mut context);
-            let ticked = engine.tick(&world, &view, &mut level_random, &mut particle_random);
+            let mut ticked = events::tick_level(&mut engine, row, &mut context);
+            ticked.extend(engine.tick(&world, &view, &mut level_random, &mut particle_random));
             sounds.extend(events::ticked_lines(&ticked, (&world, row)));
             ticks.push(tick_record(&engine, pending, sounds, sounds_only));
         }

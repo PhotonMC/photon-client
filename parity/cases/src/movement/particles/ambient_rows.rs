@@ -183,7 +183,7 @@ const RAIN_COLUMNS: [Column; 6] = [
 ];
 
 /// A plane of those columns.
-fn rain_plane() -> Vec<Value> {
+pub(super) fn rain_plane() -> Vec<Value> {
     let mut blocks = Vec::new();
     for x in -15_i64..16 {
         for z in -15_i64..16 {

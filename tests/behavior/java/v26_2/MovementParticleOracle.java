@@ -729,6 +729,7 @@ class MovementParticleOracle extends MovementMenuOracle {
             // The level's own tick, for the rows that watch what it counts down (the sky flash
             // runs down even on a frozen level).
             if ((row.has("watch_flash") && row.get("watch_flash").getAsBoolean())
+                || (row.has("watch_weather") && row.get("watch_weather").getAsBoolean())
                 || (row.has("watch_time") && row.get("watch_time").getAsBoolean())) {
                 level.tick(() -> true);
             }

@@ -306,7 +306,7 @@ pub(super) fn tick_block_entities(
     if row["expire_cracks"].as_bool() == Some(true) {
         world.tick_cracks(!frozen);
     }
-    if row["watch_time"].as_bool() == Some(true) {
+    if row["watch_time"].as_bool() == Some(true) || row["watch_weather"].as_bool() == Some(true) {
         world.tick_game_time(!frozen);
     }
     if row["watch_flash"].as_bool() == Some(true) {
@@ -364,4 +364,28 @@ pub(super) fn animate_tick<F: FnMut() -> RandomSource>(
         .filter(|sound| sound.source != photon_world::local_player::LocalSoundSource::Ambient)
         .map(sound_line)
         .collect())
+}
+
+/// `ClientLevel.tick`'s explosion tracker, then its weather around the camera (which a frozen level
+/// leaves out); the sounds.
+pub(super) fn tick_level<F: FnMut() -> RandomSource>(
+    engine: &mut photon_world::particles::ParticleEngine,
+    row: &Value,
+    context: &mut LevelEventContext<'_, F>,
+) -> Vec<LocalSound> {
+    engine.tick_explosions(context);
+    if row["watch_weather"].as_bool() != Some(true) || row["frozen"].as_bool() == Some(true) {
+        return Vec::new();
+    }
+    let camera = context.view.camera;
+    engine
+        .tick_weather(
+            (
+                (camera.x, camera.y, camera.z),
+                photon_world::particles::WEATHER_RADIUS,
+            ),
+            context,
+        )
+        .into_iter()
+        .collect()
 }
