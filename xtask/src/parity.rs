@@ -12,6 +12,7 @@ mod cases;
 mod java;
 pub(crate) mod pins;
 mod records;
+mod report;
 mod store;
 
 use std::collections::BTreeMap;
@@ -53,8 +54,12 @@ pub fn digest(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 
-/// `cargo xtask parity [--family <name>]... [--recapture]`
+/// `cargo xtask parity [--family <name>]... [--recapture]`, or `parity report [--missing]`
 pub fn run(args: &[String]) -> Result<(), String> {
+    if args.first().map(String::as_str) == Some("report") {
+        let all: Vec<String> = FAMILIES.iter().map(|family| (*family).to_owned()).collect();
+        return report::run(&all, &args[1..]);
+    }
     let mut recapture = false;
     let mut print_cases = false;
     let mut families = Vec::new();

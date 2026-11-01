@@ -15,6 +15,7 @@ mod block;
 mod block_placement;
 mod case;
 mod components;
+pub mod coverage;
 mod entity;
 mod gui;
 mod image;

@@ -28,7 +28,10 @@ Calling the oracle only to produce constants (registry ids, hashes) is not `clie
 cargo xtask parity                      # compare every family
 cargo xtask parity --family gui         # one family (repeatable)
 cargo xtask parity --recapture          # capture Java again even for known keys
+cargo xtask parity report [--missing]   # coverage per family and operation, no Java needed
 ```
+
+`parity report` counts the generated cases per family and operation and joins them with `parity/cases/src/coverage.rs`, which records the Java class each operation exercises; `--missing` lists the operations that have no entry yet. Add an entry when an operation gets its Java class.
 
 The pre-push hook runs parity when engine crates or reference sources changed. Requirements: the local reference installed by `cargo xtask setup` under `.data/` and a Java 25 JDK. See [setup](../development/setup.md).
 
