@@ -98,6 +98,11 @@ impl Carried {
     }
 }
 
+/// `QuartPos.fromBlock` of `Mth.floor`: the quart a coordinate is in.
+fn quart(value: f64) -> i32 {
+    (value.floor() as i32) >> 2
+}
+
 /// `Minecraft.getSituationalMusic` with no level: the credits' own track while their screen is
 /// up (`WinScreen.getBackgroundMusic`), else `Musics.MENU`.
 fn screen_or_menu(credits: bool) -> Music {
@@ -167,6 +172,8 @@ pub struct GameMusic {
     /// The master and music sliders as they were last tick (`Options.createSoundSliderOptionInstance`
     /// reacts when one changes).
     sliders: Option<(f64, f64)>,
+    /// Where the camera was at the last frame (`Camera.position`, which the probe reads).
+    camera: Option<photon_core::math::Vec3>,
 }
 
 /// What the manager asks of the game, for one tick.
@@ -228,7 +235,13 @@ impl GameMusic {
                 .map(|name| read_attributes(data_file(data_root, "worldgen/biome", name).as_ref()))
                 .collect(),
             sliders: None,
+            camera: None,
         }
+    }
+
+    /// The camera's position at the frame just drawn.
+    pub fn set_camera(&mut self, camera: photon_core::math::Vec3) {
+        self.camera = Some(camera);
     }
 
     /// The music manager, which the menus take over when the game ends.
@@ -237,7 +250,7 @@ impl GameMusic {
     }
 
     /// `Minecraft.getSituationalMusic` and `getMusicVolume` for the player: the biome at the
-    /// player's feet over the dimension.
+    /// camera over the dimension.
     fn situation(&self, session: &PlaySession, screen: (bool, bool)) -> (Option<Music>, f32) {
         let (boss_music, credits) = screen;
         // A screen's own music comes first, at full volume (`getMusicVolume`).
@@ -248,14 +261,15 @@ impl GameMusic {
         let Some(player) = session.player() else {
             return (Some(screen_or_menu(false)), 1.0);
         };
-        let at = player.position();
+        // `EnvironmentAttributeSystem`: neither attribute is spatially interpolated, so the biome
+        // layer reads the noise biome of the quart the camera is in, not the player's feet.
+        let at = self.camera.unwrap_or_else(|| {
+            let feet = player.position();
+            photon_core::math::Vec3::new(feet.x, feet.y + f64::from(player.eye_height()), feet.z)
+        });
         let biome = session
             .world()
-            .biome_at(
-                at.x.floor() as i32,
-                at.y.floor() as i32,
-                at.z.floor() as i32,
-            )
+            .noise_biome(quart(at.x), quart(at.y), quart(at.z))
             .and_then(|id| usize::try_from(id).ok())
             .and_then(|id| self.biomes.get(id));
         let music = biome
@@ -320,6 +334,14 @@ impl GameMusic {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_quart_of_a_coordinate_rounds_down_across_zero() {
+        assert_eq!(
+            [3.99, 4.0, 0.0, -0.01, -4.0, -4.01].map(quart),
+            [0, 1, 0, -1, -1, -2]
+        );
+    }
 
     #[test]
     fn the_credits_screen_asks_for_its_own_track_over_the_menu_music() {

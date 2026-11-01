@@ -380,6 +380,12 @@ impl Play {
         Ok(())
     }
 
+    /// Where the camera is this frame, for what listens to it.
+    fn set_camera(&mut self, camera: photon_core::math::Vec3) {
+        self.particles.set_camera(camera);
+        self.music.set_camera(camera);
+    }
+
     /// One frame: the overlays, the sections, the atlas, the sky, then the
     /// GUI and the scene. A finished script captures its frames and stops.
     pub(super) fn draw(
@@ -394,7 +400,7 @@ impl Play {
             return Ok(Flow::Next);
         };
         let frame = self.frame_camera(player);
-        self.particles.set_camera(frame.camera);
+        self.set_camera(frame.camera);
         self.leave_out_of_view(&frame);
         profile::timed(Span::Overlays, || self.draw_overlays(&frame))?;
         // Drop the sections whose chunk went away, then mesh the dirty ones.
