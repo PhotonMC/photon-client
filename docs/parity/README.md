@@ -75,7 +75,3 @@ To add a version:
 - For members renamed since 26.2, add a rename table for that version and consult it inside the lookups of `Reflect`; no call site changes.
 - Where a setup differs in shape, write a class like `Access26_2` for that version.
 - `xtask` compiles `Oracle.java`, `Reflect.java`, `Game26_2.java`, `Access26_2.java` and `ScratchDirectory.java` (the scratch folders of the rows, removed when the run ends) into every family, so a family's `extra_sources` lists only its own helpers.
-
-## Legacy records
-
-`docs/records/` holds 670 per-slice contract and parity records from the first phase of the project (in Turkish). They are being converted into case metadata with a generated coverage report and will then be removed.

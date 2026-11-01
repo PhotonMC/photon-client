@@ -3,7 +3,6 @@
 [files]
 extend-exclude = [
     # Legacy Turkish records, being converted under #12.
-    "docs/records/",
     # Hex tables, ported maths and test data that look like words.
     "crates/photon-core/src/math/fdlibm.rs",
     "parity/cases/src/gui/draft.rs",

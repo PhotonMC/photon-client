@@ -108,6 +108,8 @@ pub const COVERAGE: &[(&str, &str, &str)] = &[
     ("math", "vec3_to_string", "world/phys/Vec3"),
     ("math", "vec3_to_vector3f", "world/phys/Vec3"),
     ("math", "vec3_with", "world/phys/Vec3"),
+    ("bidi", "reorder", "client/resources/language/FormattedBidiReorder"),
+    ("timer", "trace", "client/DeltaTracker"),
     ("nbt", "read", "network/FriendlyByteBuf"),
     ("utf8", "read", "net/minecraft/network/Utf8String"),
 ];
