@@ -157,6 +157,17 @@ impl Hud {
         }
     }
 
+    /// `Hud.playAirBubblePoppedSound`: a bubble is heard popping once, louder and higher as
+    /// more of them are gone.
+    pub(super) fn pop_sound(&mut self, bubble: i32, empty_bubbles: i32) {
+        if self.last_bubble_pop != bubble {
+            let volume = 0.5 + 0.1 * (empty_bubbles - 3 + 1).max(0) as f32;
+            let pitch = 1.0 + 0.1 * (empty_bubbles - 5 + 1).max(0) as f32;
+            self.bubble_pops.push((volume, pitch));
+            self.last_bubble_pop = bubble;
+        }
+    }
+
     /// The empty bubbles all shake on every other tick.
     fn wobble(&mut self, empty_bubbles: i32) -> i32 {
         if empty_bubbles == 10 && self.tick_count % 2 == 0 {
@@ -185,12 +196,16 @@ impl Hud {
             let (full_bubbles, popping, empty_bubbles) =
                 (counts.full, counts.popping, counts.empty);
             let is_popping = counts.is_popping();
+            if !under_water {
+                self.last_bubble_pop = 0;
+            }
             for index in 1..=10 {
                 let x = x_right - (index - 1) * 8 - 9;
                 if index <= full_bubbles {
                     frame.sprite_blend(atlas, t, "hud/air", (x, y_air, 9, 9));
                 } else if is_popping && index == popping && under_water {
                     frame.sprite_blend(atlas, t, "hud/air_bursting", (x, y_air, 9, 9));
+                    self.pop_sound(index, empty_bubbles);
                 } else if index > 10 - empty_bubbles {
                     let wobble = self.wobble(empty_bubbles);
                     frame.sprite_blend(atlas, t, "hud/air_empty", (x, y_air + wobble, 9, 9));

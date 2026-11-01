@@ -17,9 +17,6 @@ use photon_game::sounds::instances::{
 
 use super::*;
 
-/// The namespace of the vanilla names above.
-const NAMESPACE: &str = "minecraft:";
-
 /// What the sounds read of an entity, taken once a tick.
 #[derive(Clone, Copy)]
 struct Snapshot {
@@ -474,4 +471,22 @@ impl Riding {
         underwater: true,
         max_volume: 1.0,
     };
+}
+
+impl SoundSystem {
+    /// `Hud.playAirBubblePoppedSound`: `Player.playSound`, heard from where the player is.
+    pub fn handle_bubble_pops(&mut self, pops: Vec<(f32, f32)>, at: (f64, f64, f64)) {
+        for (volume, pitch) in pops {
+            self.local_sounds += 1;
+            let seed = i64::from(self.local_sounds).wrapping_mul(0x5DEE_CE66_D1CE_4E5B);
+            let name = format!("{NAMESPACE}ui.hud.bubble_pop");
+            let mut instance =
+                SoundInstance::new(&name, SoundSource::Players, RandomSource::create(seed));
+            instance.volume = volume;
+            instance.pitch = pitch;
+            instance.position = at;
+            let id = self.engine.add(instance);
+            self.engine.play(id);
+        }
+    }
 }

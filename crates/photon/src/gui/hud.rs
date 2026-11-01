@@ -12,6 +12,11 @@ impl Gui {
         self.last_tick = std::time::Instant::now();
     }
 
+    /// The air bubble pops the frames drew since the last call.
+    pub fn take_bubble_pops(&mut self) -> Vec<(f32, f32)> {
+        self.hud.take_bubble_pops()
+    }
+
     /// The part of `Hud.tick` that follows the stack in the selected slot: its name shows over
     /// the hotbar for a while after it changes.
     pub fn tick_selected_name(&mut self, session: &photon_net::connection::PlaySession, time: f64) {

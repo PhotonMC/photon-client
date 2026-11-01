@@ -123,8 +123,13 @@ pub(super) fn route_level_events(
             JukeboxChange::Stop { .. } => {}
         }
     }
+    let pops = gui.take_bubble_pops();
     if let Some(sound) = sound {
         sound.handle_level_events(event_sounds, songs);
+        if let Some(player) = session.player() {
+            let at = player.position();
+            sound.handle_bubble_pops(pops, (at.x, at.y, at.z));
+        }
     }
 }
 

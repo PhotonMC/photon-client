@@ -156,6 +156,10 @@ pub struct Hud {
     last_frame_millis: Option<u128>,
     /// The held item's name over the hotbar.
     selected_name: selected_name::SelectedName,
+    /// `Hud.lastBubblePopSoundPlayed`: the bubble whose pop was heard last.
+    last_bubble_pop: i32,
+    /// The pops the frames drew since the sound system last took them: volume and pitch.
+    bubble_pops: Vec<(f32, f32)>,
 }
 
 impl Default for Hud {
@@ -172,11 +176,19 @@ impl Default for Hud {
             scope_scale: 0.0,
             last_frame_millis: None,
             selected_name: selected_name::SelectedName::default(),
+            last_bubble_pop: 0,
+            bubble_pops: Vec::new(),
         }
     }
 }
 
 impl Hud {
+    /// The pops of air bubbles drawn since the last call (`Hud.playAirBubblePoppedSound`): each is
+    /// a `ui.hud.bubble_pop` of this volume and pitch, heard from the local player.
+    pub fn take_bubble_pops(&mut self) -> Vec<(f32, f32)> {
+        std::mem::take(&mut self.bubble_pops)
+    }
+
     /// The waypoint styles the locator bar draws with.
     pub fn set_waypoint_styles(&mut self, styles: WaypointStyles) {
         self.waypoint_styles = styles;
@@ -522,6 +534,24 @@ mod tests {
             HeartType::Poisoned.sprite(true, false, true),
             "hud/heart/poisoned_hardcore_full_blinking"
         );
+    }
+
+    #[test]
+    fn a_bubble_pops_once_louder_and_higher_as_more_are_gone() {
+        let mut hud = Hud::default();
+        hud.pop_sound(9, 1);
+        hud.pop_sound(9, 1);
+        hud.pop_sound(8, 3);
+        hud.pop_sound(7, 5);
+        assert_eq!(
+            hud.take_bubble_pops(),
+            vec![
+                (0.5, 1.0),
+                (0.5 + 0.1 * 1.0, 1.0),
+                (0.5 + 0.1 * 3.0, 1.0 + 0.1 * 1.0)
+            ]
+        );
+        assert!(hud.take_bubble_pops().is_empty());
     }
 }
 

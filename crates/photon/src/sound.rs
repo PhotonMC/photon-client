@@ -50,6 +50,9 @@ type Followed = Arc<Mutex<HashMap<EntityId, Option<(f64, f64, f64)>>>>;
 
 mod devices;
 mod entity_loops;
+
+/// The namespace of the vanilla names the sounds keep without it.
+const NAMESPACE: &str = "minecraft:";
 pub use devices::SoundSlot;
 
 /// `SoundManager.prepare`: the `sounds.json` of every pack of every namespace, the lowest pack
