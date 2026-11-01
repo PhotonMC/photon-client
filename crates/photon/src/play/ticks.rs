@@ -151,7 +151,7 @@ impl Play {
             captured_frames: 0,
             aspect: size.0 as f32 / size.1 as f32,
             sized_for: size,
-            accumulated: Duration::ZERO,
+            accumulated: 0.0,
             last_frame: Instant::now(),
             ticks: 0,
             sounds_heard: 0,
@@ -247,7 +247,9 @@ impl Play {
     pub(super) fn advance_clock(&mut self) -> f32 {
         let now = Instant::now();
         let frame_ticks = (now - self.last_frame).as_secs_f32() / TICK_LENGTH.as_secs_f32();
-        self.accumulated += now - self.last_frame;
+        // `Minecraft.getTickTargetMillis`: the level's tick rate sets the length of a tick.
+        let target = self.session.tick_target_millis() / 1000.0;
+        self.accumulated += (now - self.last_frame).as_secs_f32() / target;
         self.last_frame = now;
         frame_ticks
     }
@@ -255,7 +257,7 @@ impl Play {
     /// The whole ticks the frame did not run are not owed any more (`DeltaTracker` keeps only the
     /// fraction of a tick).
     pub(super) fn drop_owed_ticks(&mut self) {
-        self.accumulated = tick_fraction(self.accumulated);
+        self.accumulated = self.accumulated.fract();
     }
 
     /// The mouse's movement of the frame turns the player.
@@ -361,10 +363,10 @@ impl Play {
         if self.tick_switch() {
             return Ok(None);
         }
-        if self.accumulated < TICK_LENGTH {
+        if self.accumulated < 1.0 {
             return Ok(None);
         }
-        self.accumulated -= TICK_LENGTH;
+        self.accumulated -= 1.0;
         let held = match self.script.as_mut() {
             Some(script) => {
                 if let Some((held, turn, pitch)) = script.next() {
@@ -502,21 +504,4 @@ pub(super) fn share_registries(
     );
     session.set_instruments(photon_game::item::instrument::instruments_of(registries));
     particles.set_jukebox_songs(registries);
-}
-
-/// What is left of `owed` once its whole ticks are taken away.
-fn tick_fraction(owed: Duration) -> Duration {
-    Duration::from_nanos((owed.as_nanos() % TICK_LENGTH.as_nanos()) as u64)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn dropped_ticks_leave_only_the_fraction() {
-        let owed = TICK_LENGTH * 25 + TICK_LENGTH / 4;
-        assert_eq!(tick_fraction(owed), TICK_LENGTH / 4);
-        assert_eq!(tick_fraction(TICK_LENGTH / 2), TICK_LENGTH / 2);
-    }
 }

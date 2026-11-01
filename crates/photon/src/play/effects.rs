@@ -39,7 +39,7 @@ impl Play {
         Vec<photon_render::scene::Vertex>,
         Vec<photon_render::scene::Vertex>,
     ) {
-        let partial = (self.accumulated.as_secs_f64() / TICK_LENGTH.as_secs_f64()) as f32;
+        let partial = self.accumulated;
         let shown = self.camera.activation.shown(partial, self.aspect);
         match shown {
             Some((stack, pose)) if !self.controls.hud_hidden => self.item_layers.activation(

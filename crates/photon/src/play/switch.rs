@@ -150,8 +150,8 @@ impl Play {
         if self.session.switching().is_none() {
             return false;
         }
-        if self.accumulated >= TICK_LENGTH {
-            self.accumulated -= TICK_LENGTH;
+        if self.accumulated >= 1.0 {
+            self.accumulated -= 1.0;
             if let Some(view) = self.controls.switch.as_mut() {
                 view.ticks += 1;
                 if let Shown::Reconfiguring(screen) = &mut view.screen {

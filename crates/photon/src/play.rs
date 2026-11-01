@@ -293,7 +293,9 @@ struct Play {
     captured_frames: u32,
     aspect: f32,
     sized_for: (u32, u32),
-    accumulated: Duration,
+    /// `DeltaTracker.deltaTickResidual`: the part of a tick the time since the last tick left,
+    /// in ticks.
+    accumulated: f32,
     last_frame: Instant,
     ticks: u64,
     /// The sound packets that have arrived.

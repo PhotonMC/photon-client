@@ -103,6 +103,18 @@ impl PlaySession {
         self.level_info.tick_rate.runs_normally()
     }
 
+    /// `Minecraft.getTickTargetMillis`: the length of a client tick, which a level running
+    /// slower than twenty a second stretches; a frozen level keeps the default.
+    pub fn tick_target_millis(&self) -> f32 {
+        const DEFAULT: f32 = 50.0;
+        let rate = &self.level_info.tick_rate;
+        if rate.runs_normally() {
+            DEFAULT.max(rate.milliseconds_per_tick())
+        } else {
+            DEFAULT
+        }
+    }
+
     /// How many entities the world holds besides the player.
     pub fn entity_count(&self) -> usize {
         self.world.entities().all().count()

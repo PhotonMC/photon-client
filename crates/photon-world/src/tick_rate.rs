@@ -36,6 +36,11 @@ impl TickRateManager {
         self.frozen = frozen;
     }
 
+    /// `millisecondsPerTick`.
+    pub fn milliseconds_per_tick(&self) -> f32 {
+        1000.0 / self.tick_rate
+    }
+
     pub fn is_frozen(&self) -> bool {
         self.frozen
     }
@@ -60,5 +65,20 @@ impl TickRateManager {
         if self.frozen_ticks_to_run > 0 {
             self.frozen_ticks_to_run -= 1;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_tick_lasts_a_thousandth_of_the_rate() {
+        let mut manager = TickRateManager::default();
+        assert_eq!(manager.milliseconds_per_tick(), 50.0);
+        manager.set_tick_rate(5.0);
+        assert_eq!(manager.milliseconds_per_tick(), 200.0);
+        manager.set_tick_rate(0.0);
+        assert_eq!(manager.milliseconds_per_tick(), 1000.0);
     }
 }

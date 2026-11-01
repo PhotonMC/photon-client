@@ -157,7 +157,7 @@ impl Play {
         &self,
         player: &photon_world::local_player::LocalPlayer,
     ) -> FrameCamera {
-        let partial = self.accumulated.as_secs_f64() / TICK_LENGTH.as_secs_f64();
+        let partial = f64::from(self.accumulated);
         let (feet, (player_y_rot, player_x_rot)) = self.camera_entity_pose(player, partial);
         let camera_type = self.controls.camera_type;
         let (y_rot, x_rot) = if camera_type == CameraType::ThirdPersonFront {
