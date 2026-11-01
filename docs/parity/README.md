@@ -33,7 +33,7 @@ cargo xtask parity report [--missing]   # coverage per family and operation, no 
 
 `parity report` counts the generated cases per family and operation and joins them with `parity/cases/src/coverage.rs`, which records the Java class each operation exercises; `--missing` lists the operations that have no entry yet. Add an entry when an operation gets its Java class.
 
-The pre-push hook runs parity when engine crates or reference sources changed. Requirements: the local reference installed by `cargo xtask setup` under `.data/` and a Java 25 JDK. See [setup](../development/setup.md).
+The pre-push hook runs parity when engine crates or reference sources changed; a run whose case keys and Rust adapter binary equal an earlier passing run is skipped (`.data/parity/passed`, forced by `--recapture`). Requirements: the local reference installed by `cargo xtask setup` under `.data/` and a Java 25 JDK. See [setup](../development/setup.md).
 
 ## How it works today
 

@@ -84,6 +84,49 @@ pub fn run(args: &[String]) -> Result<(), String> {
     compare(&families, recapture)
 }
 
+/// The families whose cases or oracle sources `changed` touches: a file named for one family
+/// (`parity/cases/src/<family>`, `tests/behavior/java/**/<Family>*Oracle.java`) runs that family,
+/// anything shared runs all of them, and the coverage table (data only) runs none.
+pub fn families_for(changed: &[String]) -> Vec<String> {
+    let all = || {
+        FAMILIES
+            .iter()
+            .map(|family| (*family).to_owned())
+            .collect::<Vec<_>>()
+    };
+    let mut chosen = std::collections::BTreeSet::new();
+    for path in changed {
+        let family = if let Some(rest) = path.strip_prefix("parity/cases/src/") {
+            if rest == "coverage.rs" {
+                continue;
+            }
+            let stem = rest.split(['/', '.']).next().unwrap_or("");
+            let stem = if stem == "block_placement" {
+                "block"
+            } else {
+                stem
+            };
+            FAMILIES.iter().find(|family| **family == stem)
+        } else if let Some(name) = path.strip_prefix("tests/behavior/java/") {
+            let file = name.rsplit('/').next().unwrap_or("").to_lowercase();
+            FAMILIES
+                .iter()
+                .find(|family| file.starts_with(*family) && file.ends_with("oracle.java"))
+        } else if path.starts_with("tests/behavior/") || path.starts_with("parity/cases/") {
+            None
+        } else {
+            continue;
+        };
+        match family {
+            Some(family) => {
+                chosen.insert((*family).to_owned());
+            }
+            None => return all(),
+        }
+    }
+    chosen.into_iter().collect()
+}
+
 /// Whether the local Java reference needed for parity is present.
 pub fn reference_present() -> bool {
     runtime().is_dir()
@@ -126,10 +169,19 @@ pub fn compare(families: &[String], recapture: bool) -> Result<(), String> {
         }
     }
     store.save(&keys_in_use(&cases))?;
+    let stamp = pass_stamp(&cases)?;
+    if !recapture && passed_before(&stamp) {
+        println!(
+            "parity: {} cases unchanged since the last pass, skipped",
+            cases.len()
+        );
+        return Ok(());
+    }
     let failures = adapter_failures(&cases, &store)?;
     let seconds = started.elapsed().as_secs_f32();
     if failures.is_empty() {
         println!("parity: {} cases passed in {seconds:.1}s", cases.len());
+        remember_pass(&stamp);
         return Ok(());
     }
     let report = write_report(&cases, &failures)?;
@@ -258,5 +310,90 @@ fn prune(base: &std::path::Path) {
     let excess = dirs.len().saturating_sub(KEPT_FAILURES);
     for old in dirs.into_iter().take(excess) {
         let _ = std::fs::remove_dir_all(old);
+    }
+}
+
+/// What a pass depends on: every case key (the case lines, the oracle sources, the game and the
+/// JDK) and the Rust adapter binary, built first so that a code change shows in it.
+fn pass_stamp(cases: &[Case]) -> Result<String, String> {
+    process::run(
+        "cargo",
+        &[
+            "build",
+            "--quiet",
+            "--release",
+            "--package",
+            "photon-oracle",
+        ],
+    )?;
+    let binary = std::fs::read(process::root().join("target/release/photon-oracle"))
+        .map_err(|error| format!("Rust adapter: {error}"))?;
+    let keys: String = cases.iter().map(|case| format!("{}\n", case.key)).collect();
+    Ok(digest(format!("{}\n{keys}", digest(&binary)).as_bytes()))
+}
+
+fn pass_file() -> PathBuf {
+    process::root().join(".data/parity/passed")
+}
+
+/// Whether this exact stamp passed last time (any other run overwrites the file).
+fn passed_before(stamp: &str) -> bool {
+    std::fs::read_to_string(pass_file()).is_ok_and(|saved| saved.lines().any(|line| line == stamp))
+}
+
+/// Keeps the stamps of the latest passes, so that a run of one family does not forget the full one.
+fn remember_pass(stamp: &str) {
+    const KEPT: usize = 8;
+    let mut stamps: Vec<String> = std::fs::read_to_string(pass_file())
+        .map(|saved| saved.lines().map(str::to_owned).collect())
+        .unwrap_or_default();
+    stamps.retain(|saved| saved != stamp);
+    stamps.push(stamp.to_owned());
+    let skip = stamps.len().saturating_sub(KEPT);
+    let _ = std::fs::write(pass_file(), stamps[skip..].join("\n"));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::families_for;
+
+    fn files(paths: &[&str]) -> Vec<String> {
+        paths.iter().map(|path| (*path).to_owned()).collect()
+    }
+
+    #[test]
+    fn a_family_file_runs_that_family_only() {
+        let changed = files(&[
+            "parity/cases/src/movement/particles/crack_rows.rs",
+            "tests/behavior/java/v26_2/MovementParticleOracle.java",
+            "parity/cases/src/block_placement/walls.rs",
+        ]);
+        assert_eq!(families_for(&changed), ["block", "movement"]);
+    }
+
+    #[test]
+    fn shared_reference_files_run_every_family() {
+        for shared in [
+            "tests/behavior/java/common/Oracle.java",
+            "tests/behavior/reference.json",
+            "parity/cases/src/bits.rs",
+        ] {
+            assert_eq!(
+                families_for(&files(&[shared])).len(),
+                super::FAMILIES.len(),
+                "{shared}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_coverage_table_and_other_files_run_nothing() {
+        assert!(
+            families_for(&files(&[
+                "parity/cases/src/coverage.rs",
+                "docs/parity/README.md"
+            ]))
+            .is_empty()
+        );
     }
 }

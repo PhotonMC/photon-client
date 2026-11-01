@@ -1,3 +1,10 @@
 #!/bin/sh
 # Tests and parity for the pushed commits; see `cargo xtask pre-push`.
-exec cargo xtask pre-push
+# Runs at the lowest priority and on half the cores so the machine stays usable
+# (set PHOTON_HOOK_JOBS to change the number of build jobs).
+cores=$(nproc 2>/dev/null || echo 4)
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-${PHOTON_HOOK_JOBS:-$(( (cores + 1) / 2 ))}}"
+if command -v ionice >/dev/null 2>&1; then
+    exec nice -n 19 ionice -c3 cargo xtask pre-push
+fi
+exec nice -n 19 cargo xtask pre-push

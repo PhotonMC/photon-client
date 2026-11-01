@@ -103,14 +103,20 @@ pub fn pre_push() -> Result<(), String> {
             .any(|prefix| path.starts_with(prefix))
     });
     let engine_changed = crates.iter().any(|name| name != "xtask");
-    if !(reference_changed || engine_changed) {
+    let families = if engine_changed {
+        parity::FAMILIES.iter().map(|f| (*f).to_owned()).collect()
+    } else if reference_changed {
+        parity::families_for(&changed)
+    } else {
+        Vec::new()
+    };
+    if families.is_empty() {
         return Ok(());
     }
     if !parity::reference_present() {
         println!("parity: no local Java reference, skipped");
         return Ok(());
     }
-    let families: Vec<String> = parity::FAMILIES.iter().map(|f| (*f).to_owned()).collect();
     parity::compare(&families, false)
 }
 
