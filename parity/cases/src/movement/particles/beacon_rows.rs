@@ -106,9 +106,15 @@ fn beacon_row(label: &str, game_time: u64, pyramids: bool) -> Value {
 }
 
 pub fn rows() -> Vec<Value> {
-    vec![
+    let mut rows = vec![
         beacon_row("beacon-beams", 160, true),
         beacon_row("beacon-beams-off-beat", 161, true),
         beacon_row("beacon-beams-no-base", 160, false),
-    ]
+    ];
+    // The same level frozen: its beacons stand still.
+    let mut frozen = beacon_row("beacon-beams", 160, true);
+    frozen["frozen"] = json!(true);
+    frozen["label"] = json!("beacon-beams-frozen");
+    rows.push(frozen);
+    rows
 }

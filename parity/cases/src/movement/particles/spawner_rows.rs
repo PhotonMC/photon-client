@@ -99,5 +99,11 @@ fn trial_row(label: &str) -> Value {
 }
 
 pub fn rows() -> Vec<Value> {
-    vec![spawner_row("spawner-ticks"), trial_row("trial-spawner-ticks")]
+    let mut rows = vec![spawner_row("spawner-ticks"), trial_row("trial-spawner-ticks")];
+    // The same level frozen: its spawners stand still.
+    let mut frozen = spawner_row("spawner-ticks");
+    frozen["frozen"] = json!(true);
+    frozen["label"] = json!("spawner-ticks-frozen");
+    rows.push(frozen);
+    rows
 }
