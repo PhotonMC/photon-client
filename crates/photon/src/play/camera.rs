@@ -139,6 +139,18 @@ impl Play {
         }
     }
 
+    /// `Camera.getCameraEntityPartialTicks`: the camera reads the running partial tick, unless it
+    /// is held by a frozen entity (a mob the spectator looks through), which keeps the world's.
+    fn camera_entity_partial(&self) -> f64 {
+        let running = f64::from(self.accumulated);
+        match self.session.camera_entity() {
+            Some(id) if !self.session.world().draws_at_running_partial(id) => {
+                self.world_partial(running)
+            }
+            _ => running,
+        }
+    }
+
     /// `Timer.getGameTimeDeltaPartialTick(false)`: the partial tick the world is drawn at, which a
     /// frozen level holds at one so that nothing moves between its last two ticks; the camera
     /// itself reads the running one.
@@ -157,7 +169,7 @@ impl Play {
         &self,
         player: &photon_world::local_player::LocalPlayer,
     ) -> FrameCamera {
-        let partial = f64::from(self.accumulated);
+        let partial = self.camera_entity_partial();
         let (feet, (player_y_rot, player_x_rot)) = self.camera_entity_pose(player, partial);
         let camera_type = self.controls.camera_type;
         let (y_rot, x_rot) = if camera_type == CameraType::ThirdPersonFront {
