@@ -23,6 +23,10 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
         typed::<SetChunkCacheCenter>,
     ),
     (
+        PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID,
+        typed::<ChunkBatchStart>,
+    ),
+    (
         PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID,
         typed::<ChunkBatchFinished>,
     ),
@@ -92,11 +96,21 @@ impl ClientboundPacket for SetChunkCacheCenter {
     }
 }
 
+impl ClientboundPacket for ChunkBatchStart {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.chunk_batch.on_batch_start(Instant::now());
+        Ok(())
+    }
+}
+
 impl ClientboundPacket for ChunkBatchFinished {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session
+            .chunk_batch
+            .on_batch_finished(self.0, Instant::now());
+        let desired = session.chunk_batch.desired_chunks_per_tick();
         session.send(PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, |output| {
-            // The chunk batch calculator's starting estimate.
-            output.extend_from_slice(&3.5_f32.to_be_bytes());
+            output.extend_from_slice(&desired.to_be_bytes());
             Ok(())
         })?;
         Ok(())

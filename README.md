@@ -54,7 +54,7 @@ The table is computed by `cargo xtask progress` and checked in CI. Counts of thi
 <!-- progress:start -->
 | Measure | Now |
 | --- | --- |
-| Clientbound play packets handled | 122 / 141 |
+| Clientbound play packets handled | 123 / 141 |
 | Serverbound play packets sent | 62 / 69 |
 | Screens named by the client | 74 / 118 |
 | Entity types with a renderer, named by the client | 156 / 156 |

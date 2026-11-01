@@ -69,6 +69,7 @@ mod structure_blocks;
 mod test_blocks;
 mod test_instances;
 pub use structure_blocks::{StructureBlockSettings, StructureFlags};
+mod chunk_batch;
 mod state;
 mod traffic;
 
@@ -112,6 +113,7 @@ pub struct PlaySession {
     social: Social,
     effects: Effects,
     level_info: LevelInfo,
+    chunk_batch: chunk_batch::ChunkBatchSizeCalculator,
     /// The numbering of the connection's version, for ids that arrive after the packet is parsed.
     registries: std::sync::Arc<VersionRegistries>,
 }

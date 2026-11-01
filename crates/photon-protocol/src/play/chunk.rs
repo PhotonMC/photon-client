@@ -371,14 +371,33 @@ wrapped_packet!(
     SetChunkCacheCenter((i32, i32)) = parse_set_chunk_cache_center_packet
 );
 
-/// `ClientboundChunkBatchFinishedPacket`: the batch size it carries is not read.
-pub struct ChunkBatchFinished;
+/// `ClientboundChunkBatchStartPacket`: no payload.
+pub struct ChunkBatchStart;
+
+impl Decode for ChunkBatchStart {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
+        if !payload.is_empty() {
+            return Err(ConnectionError::Codec("chunk batch start trailing payload"));
+        }
+        Ok(Self)
+    }
+}
+
+/// `ClientboundChunkBatchFinishedPacket`: how many chunks the batch held.
+pub struct ChunkBatchFinished(pub i32);
 
 impl Decode for ChunkBatchFinished {
     fn decode(
-        _payload: &[u8],
+        mut payload: &[u8],
         _registries: &photon_data::version_registries::VersionRegistries,
     ) -> Result<Self, ConnectionError> {
-        Ok(Self)
+        let size = read_varint(&mut payload, "chunk batch size")?;
+        if !payload.is_empty() {
+            return Err(ConnectionError::Codec("chunk batch size trailing payload"));
+        }
+        Ok(Self(size))
     }
 }

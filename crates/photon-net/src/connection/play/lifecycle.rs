@@ -430,6 +430,7 @@ impl PlaySession {
             social,
             effects,
             level_info: LevelInfo::default(),
+            chunk_batch: chunk_batch::ChunkBatchSizeCalculator::new(Instant::now()),
         }
     }
 
