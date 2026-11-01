@@ -103,6 +103,68 @@ class EntityPoseOracle extends EntityLayerOracle {
         return result;
     }
 
+    /** The dispatcher a spawner hands its mob to, which here keeps the pose it is given. */
+    static final class CageDispatcher extends net.minecraft.client.renderer.entity.EntityRenderDispatcher {
+        static final float[] CAPTURED = new float[16];
+
+        CageDispatcher() {
+            super(null, null, null, null, null, null, null, null, null, null, null);
+        }
+
+        @Override
+        public <E extends net.minecraft.world.entity.Entity> net.minecraft.client.renderer.entity.state.EntityRenderState
+            extractEntity(final E entity, final float partialTicks) {
+            return new net.minecraft.client.renderer.entity.state.EntityRenderState();
+        }
+
+        @Override
+        public <S extends net.minecraft.client.renderer.entity.state.EntityRenderState> void submit(
+            final S renderState,
+            final net.minecraft.client.renderer.state.level.CameraRenderState camera,
+            final double x,
+            final double y,
+            final double z,
+            final com.mojang.blaze3d.vertex.PoseStack poseStack,
+            final net.minecraft.client.renderer.SubmitNodeCollector collector) {
+            poseStack.last().pose().get(CAPTURED);
+        }
+    }
+
+    /**
+     * A spawner's cage as the reference's own renderers make it: the spin and scale
+     * `extractSpawnerData` reads off the mob, and the pose `submitEntityInSpawner` gives it.
+     */
+    static JsonObject spawnerCagePose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var dispatcher = (CageDispatcher) UNSAFE.allocateInstance(CageDispatcher.class);
+            var entity = (net.minecraft.world.entity.Entity) UNSAFE.allocateInstance(net.minecraft.world.entity.animal.pig.Pig.class);
+            Reflect.field(net.minecraft.world.entity.Entity.class, "dimensions").set(
+                entity, net.minecraft.world.entity.EntityDimensions.scalable(Oracle.f32(row, "width"), Oracle.f32(row, "height")));
+            var state = new net.minecraft.client.renderer.blockentity.state.SpawnerRenderState();
+            net.minecraft.client.renderer.blockentity.TrialSpawnerRenderer.extractSpawnerData(
+                state, Oracle.f32(row, "partial"), entity, dispatcher,
+                Double.longBitsToDouble(Long.parseUnsignedLong(row.get("o_spin").getAsString(), 16)),
+                Double.longBitsToDouble(Long.parseUnsignedLong(row.get("spin").getAsString(), 16)));
+            net.minecraft.client.renderer.blockentity.SpawnerRenderer.submitEntityInSpawner(
+                new com.mojang.blaze3d.vertex.PoseStack(), null, state.displayEntity, dispatcher, state.spin, state.scale, null);
+            var described = new JsonArray();
+            for (float value : CageDispatcher.CAPTURED) {
+                described.add(Oracle.bits(value));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("spin", Oracle.bits(state.spin));
+            out.addProperty("scale", Oracle.bits(state.scale));
+            out.add("pose", described);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** A trial spawner drop's poses as the reference's own renderer submits them: the growth, the spin, then each copy. */
     static JsonObject ominousItemPose(final JsonObject request) throws Exception {
         var rows = new JsonArray();

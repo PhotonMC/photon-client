@@ -167,6 +167,7 @@ const ORDER: &[Cases] = &[
     items::quadruped,
     items::item_pose,
     items::ominous_pose,
+    items::spawner_cage,
 ];
 
 pub fn cases() -> Vec<Value> {

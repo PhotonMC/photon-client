@@ -4,7 +4,7 @@
 use serde_json::{Value, json};
 
 use super::pose::{Fields, LOOK_WALK, entity, fields, layer_row, table};
-use crate::bits::f32_bits;
+use crate::bits::{f32_bits, f64_bits};
 use crate::line::float_text;
 
 type Bounds = ([f64; 3], [f64; 3]);
@@ -68,6 +68,46 @@ pub fn ominous_pose() -> Vec<Value> {
         rows.push(item_row(format!("sprite-17-{name}"), (age, 0.0), 3, 187, SPRITE));
     }
     vec![entity("ominous-item-pose", "ominous_item_pose", rows)]
+}
+
+/// A spawner's cage (`TrialSpawnerRenderer.extractSpawnerData`, `SpawnerRenderer`): the spin
+/// between two ticks, the scale that fits mobs of several boxes, and the pose that results.
+pub fn spawner_cage() -> Vec<Value> {
+    let mut rows = Vec::new();
+    let mut row = |label: String, spins: (f64, f64), partial: f64, (width, height): (f64, f64)| {
+        rows.push(json!({
+            "label": label,
+            "o_spin": f64_bits(spins.0), "spin": f64_bits(spins.1), "partial": f32_bits(partial),
+            "width": f32_bits(width), "height": f32_bits(height),
+        }));
+    };
+    for (name, size) in [
+        ("pig", (0.9, 0.9)),
+        ("zombie", (0.6, 1.95)),
+        ("chicken", (0.4, 0.7)),
+        ("ghast", (4.0, 4.0)),
+        ("spider", (1.4, 0.9)),
+        ("exact-one", (1.0, 1.0)),
+        ("just-over-one", (1.0001, 0.5)),
+        ("tiny", (0.25, 0.25)),
+        ("tall", (0.3, 2.9)),
+    ] {
+        row(format!("size-{name}"), (3.0, 4.0), 0.5, size);
+    }
+    for (label, spins, partial) in [
+        ("still", (0.0, 0.0), 0.0),
+        ("start", (0.0, 1.0), 0.0),
+        ("end", (0.0, 1.0), 1.0),
+        ("half", (0.0, 1.0), 0.5),
+        ("quarter", (17.5, 18.5), 0.25),
+        ("wrap", (359.0, 360.0), 0.75),
+        ("large", (123456.789, 123457.789), 0.3),
+        ("fraction", (1.1, 2.3), 0.9),
+        ("backwards", (9.0, 8.0), 0.5),
+    ] {
+        row(format!("spin-{label}"), spins, partial, (0.9, 0.9));
+    }
+    vec![entity("spawner-cage-pose", "spawner_cage_pose", rows)]
 }
 
 /// The pig and the cow, grown and baby, from the layer table, posed by the

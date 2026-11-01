@@ -3,12 +3,16 @@ use super::*;
 mod player;
 use player::*;
 mod data_fields;
+mod spawner_cage;
+use spawner_cage::spawner_cage_pose_result;
 mod tables;
 use tables::*;
 
 pub(super) fn entity_family_result(request: &Value) -> Result<Value, String> {
-    if string(request, "operation")? == "entity_data_ids" {
-        return entity_data_ids_result(request);
+    match string(request, "operation")? {
+        "entity_data_ids" => return entity_data_ids_result(request),
+        "spawner_cage_pose" => return spawner_cage_pose_result(request),
+        _ => {}
     }
     entity_result(request)
 }
