@@ -290,13 +290,25 @@ impl Hud {
         } else if locator.is_some() {
             locator::background(frame, atlas, (width, height));
         } else if bar == Bar::Experience {
-            // `ExperienceBar.extractBackground`.
+            // `ExperienceBar.extractBackground`: the empty bar and its fill.
             frame.sprite_blend(
                 atlas,
                 t,
                 "hud/experience_bar_background",
                 (left, top, 182, 5),
             );
+            // The fill is drawn with the background, below the level.
+            let progress = (input.experience_progress * 183.0) as i32;
+            if progress > 0 {
+                frame.sprite_region_blend(
+                    atlas,
+                    t,
+                    "hud/experience_bar_progress",
+                    (182, 5),
+                    (0, 0),
+                    (left, top, progress, 5),
+                );
+            }
         }
         if input.survival {
             // `ContextualBar.extractExperienceLevel`: the level in green,
@@ -319,20 +331,6 @@ impl Hud {
                 &self.waypoint_styles,
                 (width, height),
             );
-        } else if bar == Bar::Experience {
-            // `ExperienceBar.extractRenderState`: every level needs some
-            // experience, so the bar always shows.
-            let progress = (input.experience_progress * 183.0) as i32;
-            if progress > 0 {
-                frame.sprite_region_blend(
-                    atlas,
-                    t,
-                    "hud/experience_bar_progress",
-                    (182, 5),
-                    (0, 0),
-                    (left, top, progress, 5),
-                );
-            }
         }
     }
 
