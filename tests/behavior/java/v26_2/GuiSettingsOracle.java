@@ -645,6 +645,10 @@ class GuiSettingsOracle extends GuiScreenOracle {
             for (String key : keys) {
                 var step = new JsonObject();
                 step.addProperty("key", key);
+                if (key.startsWith("scroll:")) {
+                    screen.mouseScrolled(row.get("mouse_x").getAsInt(), row.get("mouse_y").getAsInt(), 0.0,
+                        Double.parseDouble(key.substring(7)));
+                }
                 if (key.startsWith("type:")) {
                     for (char c : key.substring(5).toCharArray()) {
                         screen.charTyped(new net.minecraft.client.input.CharacterEvent(c));

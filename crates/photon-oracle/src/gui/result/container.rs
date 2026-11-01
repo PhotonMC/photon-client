@@ -123,11 +123,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     let book = photon_world::RecipeBook::default();
     let tags = photon_world::block::tags::ItemTags::default();
     for key in keys {
-        if let Some(text) = key.strip_prefix("type:") {
-            for character in text.chars() {
-                screen.char_typed(character);
-            }
-        }
+        apply_key(&mut *screen, &key, &menu);
         let mut drawn = GuiFrame {
             log: Some(Vec::new()),
             // The game's clock has not advanced: no partial tick.
@@ -180,6 +176,22 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     }
     press_clicks(&mut *screen, &menu, row);
     Ok(json!({"label": row["label"], "steps": steps}))
+}
+
+/// A key step that acts on the screen: `type:` text, or a wheel turn `scroll:<amount>`.
+fn apply_key(
+    screen: &mut dyn photon_gui::screen::Screen,
+    key: &str,
+    menu: &photon_game::menus::container::ContainerMenu,
+) {
+    if let Some(amount) = key.strip_prefix("scroll:") {
+        screen.mouse_scrolled(amount.parse().unwrap_or(0.0), menu);
+    }
+    if let Some(text) = key.strip_prefix("type:") {
+        for character in text.chars() {
+            screen.char_typed(character);
+        }
+    }
 }
 
 /// The keys a container row presses, after the frame with none.
