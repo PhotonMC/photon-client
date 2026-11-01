@@ -201,6 +201,12 @@ pub struct Controls {
     /// "Title Screen" asks first (`deathScreen.quit.confirm`), over the death
     /// screen, which this takes the place of while it is open.
     pub confirm: Option<ConfirmScreen>,
+    /// The game rules screen, over the world settings, and the question about leaving it.
+    pub game_rules: Option<photon_gui::screen::game_rules::GameRulesScreen>,
+    pub game_rules_confirm: Option<ConfirmScreen>,
+    /// The screen opened and has not asked the server yet; the changes Done left to send.
+    game_rules_request: bool,
+    game_rules_outbox: Option<Vec<(String, String)>>,
     /// The chat restrictions screen, over the chat.
     pub restrictions: Option<photon_gui::screen::restrictions::RestrictionsScreen>,
     /// `ConfirmLinkScreen` or a command confirmation, over the chat, and what it asks about.
@@ -431,6 +437,7 @@ mod pack_drop;
 mod pack_prompt;
 mod packs;
 
+mod game_rules;
 mod pause;
 mod restrictions;
 mod unattended;

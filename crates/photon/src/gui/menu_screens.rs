@@ -46,7 +46,7 @@ impl Gui {
         // restrictions are drawn with them, over the settings that opened them.
         if controls.link_confirm.is_some()
             || controls.dialog.is_some()
-            || controls.restrictions.is_some()
+            || controls.has_world_overlay()
             // The social interactions screen opened from the pause menu replaces it.
             || controls.social.is_some()
         {

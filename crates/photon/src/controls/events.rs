@@ -210,6 +210,7 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) -> Result {
+        self.game_rules_tick(session, assets)?;
         let size = surface.scale();
         let (width, height) = (size.gui_scaled_width(), size.gui_scaled_height());
         // `Player.mayBuild`: not in adventure or spectator.

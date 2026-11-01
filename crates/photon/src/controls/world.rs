@@ -4,16 +4,13 @@ use photon_gui::options::world::{WorldFacts, WorldOptionsScreen, WorldPress};
 impl Controls {
     /// `WorldOptionsScreen`, over the options screen.
     pub(super) fn open_world(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
-        self.world_screen = Some(
-            WorldOptionsScreen::new(
-                &assets.creative.font,
-                &assets.lang,
-                Self::gui_size(surface),
-                !self.title_host,
-                self.world_facts,
-            )
-            .without_game_rules(&assets.lang),
-        );
+        self.world_screen = Some(WorldOptionsScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            Self::gui_size(surface),
+            !self.title_host,
+            self.world_facts,
+        ));
     }
 
     /// What the server last said about the world: the difficulty and its lock, a hardcore level,
@@ -35,6 +32,9 @@ impl Controls {
         {
             self.world_screen = None;
         }
+        if !self.world_facts.gamemaster {
+            self.drop_game_rules();
+        }
     }
 
     /// A scripted press of the primary button on the world settings: whether they are open.
@@ -55,8 +55,7 @@ impl Controls {
         true
     }
 
-    /// An event for the open world settings. Game Rules has no screen to open yet, so pressing
-    /// it does nothing.
+    /// An event for the open world settings.
     pub(super) fn world_options_event(
         &mut self,
         event: glfw::WindowEvent,
@@ -65,6 +64,10 @@ impl Controls {
     ) {
         use glfw::WindowEvent;
         let lang = &assets.lang;
+        // The game rules it opened are over it.
+        if self.game_rules.is_some() {
+            return self.game_rules_event(event, surface, assets);
+        }
         // The restrictions it opened are over it.
         if self.restrictions.is_some() {
             return self.restrictions_event(event, surface, assets);
@@ -84,6 +87,7 @@ impl Controls {
         match press {
             Some(WorldPress::Done) => self.world_screen = None,
             Some(WorldPress::Restrictions) => self.open_restrictions(surface, assets),
+            Some(WorldPress::GameRules) => self.open_game_rules(surface, assets),
             _ => {}
         }
     }

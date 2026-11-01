@@ -72,13 +72,7 @@ pub struct WorldOptionsScreen {
     tooltips: Vec<Option<Holder>>,
     focus: Option<usize>,
     input: Cell<InputType>,
-    /// Whether the Game Rules button is still, with a reason (ours: the screen it opens is not
-    /// built yet).
-    no_game_rules: bool,
 }
-
-/// What the stilled Game Rules button says.
-const NO_GAME_RULES: &str = "The game rules screen is not available yet.";
 
 fn runs(lang: &Lang, key: &str) -> Vec<Run> {
     lang.runs(&Component::translatable(key), &Style::default())
@@ -207,23 +201,7 @@ impl WorldOptionsScreen {
             tooltips,
             focus: None,
             input: Cell::new(InputType::Mouse),
-            no_game_rules: false,
         }
-    }
-
-    /// The screen with the Game Rules button shown but still, saying why. The reference's button
-    /// is active for a gamemaster, so the parity cases build the screen without this.
-    #[must_use]
-    pub fn without_game_rules(mut self, lang: &Lang) -> Self {
-        self.no_game_rules = true;
-        let reason = Component::translatable_or("photon.world.no_game_rules", NO_GAME_RULES);
-        for (index, (part, widget)) in self.widgets.iter_mut().enumerate() {
-            if *part == Part::GameRules {
-                widget.active = false;
-                self.tooltips[index] = Some(Holder::of(lang, &reason));
-            }
-        }
-        self
     }
 
     pub fn size(&self) -> (i32, i32) {
@@ -240,11 +218,7 @@ impl WorldOptionsScreen {
     pub fn rebuild(&mut self, font: &Font, lang: &Lang, size: (i32, i32), facts: WorldFacts) {
         let focus = self.focus;
         let screen = Self::new(font, lang, size, self.in_world, facts);
-        *self = if self.no_game_rules {
-            screen.without_game_rules(lang)
-        } else {
-            screen
-        };
+        *self = screen;
         self.focus = focus;
     }
 
@@ -391,16 +365,5 @@ mod tests {
             screen.clicked(&Lang::default(), at, false),
             Some(WorldPress::GameRules)
         );
-    }
-
-    #[test]
-    fn the_game_rules_button_is_still_without_its_screen_and_stays_so_after_a_rebuild() {
-        let (font, lang) = (Font::default(), Lang::default());
-        let mut screen = screen(gamemaster()).without_game_rules(&lang);
-        let at = game_rules(&screen);
-        assert_eq!(screen.clicked(&lang, at, false), None);
-        screen.rebuild(&font, &lang, (320, 180), gamemaster());
-        let at = game_rules(&screen);
-        assert_eq!(screen.clicked(&lang, at, false), None);
     }
 }

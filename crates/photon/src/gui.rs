@@ -112,6 +112,7 @@ mod menu_screens;
 mod preview;
 mod spectator;
 mod title;
+mod world_overlay;
 
 #[cfg(test)]
 mod tests {
