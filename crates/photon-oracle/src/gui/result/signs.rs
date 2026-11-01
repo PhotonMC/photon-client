@@ -1,4 +1,5 @@
 use super::*;
+use photon_game::input::event::PreeditEvent;
 
 /// `sign_texts`: what a sign's text submits, each line's pose, place, runs, light and colours.
 pub(super) fn sign_texts_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
@@ -80,6 +81,20 @@ pub(super) fn sign_texts_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
     Ok(json!({"label": row["label"], "submits": submits}))
 }
 
+/// The composition a `preedit` step makes: its blocks, the one in focus and the caret.
+fn preedit_event(step: &Value) -> Result<PreeditEvent, String> {
+    let blocks: Vec<Vec<u16>> = step["blocks"]
+        .as_array()
+        .ok_or("blocks")?
+        .iter()
+        .map(|block| block.as_str().unwrap_or_default().encode_utf16().collect())
+        .collect();
+    let full_text = blocks.concat();
+    let caret = step["caret"].as_i64().unwrap_or(0) as i32;
+    let focused = step["focused"].as_i64().unwrap_or(0) as i32;
+    PreeditEvent::new(full_text, caret, blocks, focused).map_err(|error| format!("{error:?}"))
+}
+
 /// The four lines of a face, as the plain text the editing screen starts with.
 fn face_messages(lang: &photon_game::text::Lang, face: &Value) -> Result<[String; 4], String> {
     let mut messages: [String; 4] = Default::default();
@@ -92,6 +107,58 @@ fn face_messages(lang: &photon_game::text::Lang, face: &Value) -> Result<[String
         *message = lang.plain(&component);
     }
     Ok(messages)
+}
+
+/// The key a `key` step names.
+fn glfw_key(name: &str) -> Result<glfw::Key, String> {
+    const KEYS: [(&str, glfw::Key); 11] = [
+        ("tab", glfw::Key::Tab),
+        ("backspace", glfw::Key::Backspace),
+        ("delete", glfw::Key::Delete),
+        ("enter", glfw::Key::Enter),
+        ("left", glfw::Key::Left),
+        ("right", glfw::Key::Right),
+        ("up", glfw::Key::Up),
+        ("down", glfw::Key::Down),
+        ("home", glfw::Key::Home),
+        ("end", glfw::Key::End),
+        ("a", glfw::Key::A),
+    ];
+    KEYS.iter()
+        .find(|(known, _)| *known == name)
+        .map(|(_, key)| *key)
+        .ok_or_else(|| format!("unknown key {name}"))
+}
+
+/// One step of a `sign_edit_screen` row: text typed, a key pressed or a composition changed.
+fn sign_step(
+    screen: &mut photon_gui::screen::sign_edit::SignEditScreen,
+    step: &Value,
+    font: &photon_render::gui::font::Font,
+) -> Result<(), String> {
+    match step["do"].as_str() {
+        Some("type") => {
+            for character in step["text"].as_str().unwrap_or_default().chars() {
+                screen.char_typed(font, character);
+            }
+        }
+        Some("preedit") => {
+            let event = (step["clear"] != true)
+                .then(|| preedit_event(step))
+                .transpose()?;
+            screen.preedit_updated(event.as_ref(), font, 0);
+        }
+        Some("key") => {
+            let name = step["key"].as_str().unwrap_or_default();
+            let control = name.starts_with("ctrl+");
+            let name = name.trim_start_matches("ctrl+");
+            let shift = name.starts_with("shift+");
+            let key = glfw_key(name.trim_start_matches("shift+"))?;
+            screen.key_pressed(font, key, (control, shift), &mut crate::gui::NoClipboard);
+        }
+        other => return Err(format!("unknown step {other:?}")),
+    }
+    Ok(())
 }
 
 /// `sign_edit_screen`: the sign editing screen of a face after text and keys, drawn at a time
@@ -123,35 +190,7 @@ pub(super) fn sign_edit_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         Some(0),
     );
     for step in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
-        match step["do"].as_str() {
-            Some("type") => {
-                for character in step["text"].as_str().unwrap_or_default().chars() {
-                    screen.char_typed(font, character);
-                }
-            }
-            Some("key") => {
-                let name = step["key"].as_str().unwrap_or_default();
-                let control = name.starts_with("ctrl+");
-                let name = name.trim_start_matches("ctrl+");
-                let shift = name.starts_with("shift+");
-                let key = match name.trim_start_matches("shift+") {
-                    "tab" => glfw::Key::Tab,
-                    "backspace" => glfw::Key::Backspace,
-                    "delete" => glfw::Key::Delete,
-                    "enter" => glfw::Key::Enter,
-                    "left" => glfw::Key::Left,
-                    "right" => glfw::Key::Right,
-                    "up" => glfw::Key::Up,
-                    "down" => glfw::Key::Down,
-                    "home" => glfw::Key::Home,
-                    "end" => glfw::Key::End,
-                    "a" => glfw::Key::A,
-                    other => return Err(format!("unknown key {other}")),
-                };
-                screen.key_pressed(font, key, (control, shift), &mut crate::gui::NoClipboard);
-            }
-            other => return Err(format!("unknown step {other:?}")),
-        }
+        sign_step(&mut screen, step, font)?;
     }
     let mouse = (
         row["mouse"][0].as_i64().unwrap_or(0) as i32,

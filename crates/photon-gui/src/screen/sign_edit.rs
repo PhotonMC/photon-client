@@ -3,6 +3,7 @@
 //! on the line being edited, and Done under it.
 
 use crate::{FontRuns, FrameRuns};
+use photon_game::input::event::PreeditEvent;
 use photon_game::text::{Component, Lang, Run, Style};
 
 use crate::layout::Arena;
@@ -37,9 +38,25 @@ impl SignBoard {
 /// `SignEditScreen.MAGIC_TEXT_SCALE`.
 const STANDING_TEXT_SCALE: f32 = 0.976_562_8;
 
-/// `TextCursorUtils.isCursorVisible`: on for 300 ms, off for 300.
-fn cursor_visible(millis: u64) -> bool {
-    (millis / 300).is_multiple_of(2)
+use crate::widgets::preedit::{PreeditOverlay, cursor_visible};
+
+/// A line as the sign shows it: shaped when the language reads right to left
+/// (`Font.bidirectionalShaping`), then in visual order whatever the language
+/// (`GuiGraphicsExtractor.text` through `Language.getVisualOrder`). The shaped line, which the
+/// cursor is measured in, and the line as it is drawn.
+fn visual_line(line: &str) -> (String, String) {
+    let right_to_left = photon_core::bidi::default_right_to_left();
+    let shaped = if right_to_left {
+        photon_core::bidi::reorder(line, true)
+    } else {
+        line.to_owned()
+    };
+    let drawn = if photon_core::bidi::needs_reorder(&shaped, right_to_left) {
+        photon_core::bidi::reorder(&shaped, right_to_left)
+    } else {
+        shaped.clone()
+    };
+    (shaped, drawn)
 }
 
 /// `AbstractSignEditScreen` with the face being edited.
@@ -58,6 +75,10 @@ pub struct SignEditScreen {
     size: (i32, i32),
     /// `cursorBlinkStartTime`, on the frame's clock: the first frame's when not given.
     opened_at: Option<u64>,
+    /// The composition an input method is making, with the cursor it asks for.
+    preedit: Option<PreeditOverlay>,
+    /// `updateInputPosition`: the whole numbers of the cursor on the screen at the last `draw`.
+    preedit_input: (i32, i32),
 }
 
 impl SignEditScreen {
@@ -103,6 +124,8 @@ impl SignEditScreen {
             done_focused: false,
             size,
             opened_at: now,
+            preedit: None,
+            preedit_input: (0, 0),
         };
         screen.resize(size);
         screen
@@ -210,10 +233,13 @@ impl SignEditScreen {
             true,
         );
         self.draw_sign(frame, atlas, font);
+        if let Some(overlay) = &self.preedit {
+            overlay.draw(frame, atlas, font, self.size, self.preedit_input);
+        }
     }
 
     /// `extractSign`: the board, then the text, each in its pose about the sign's middle.
-    fn draw_sign(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font) {
+    fn draw_sign(&mut self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font) {
         let middle = self.size.0 as f32 / 2.0;
         let mark = frame.mark();
         let (offset, text_scale) = match self.board {
@@ -232,13 +258,25 @@ impl SignEditScreen {
             }
         };
         let mark = frame.mark();
-        self.draw_text(frame, atlas, font);
+        let cursor = self.draw_text(frame, atlas, font);
         frame.transform_from(mark, [text_scale, 0.0, 0.0, text_scale, middle, offset]);
+        // The overlay sits where the cursor is on the screen, the whole numbers of it.
+        if let (Some(_), Some((x, y))) = (&self.preedit, cursor) {
+            self.preedit_input = (
+                (x as f32 * text_scale + middle) as i32,
+                (y as f32 * text_scale + offset) as i32,
+            );
+        }
+    }
+
+    /// `preeditUpdated`: an input method has text in the making, or none any more.
+    pub fn preedit_updated(&mut self, event: Option<&PreeditEvent>, font: &Font, now: u64) {
+        self.preedit = event.map(|event| PreeditOverlay::new(event, font, self.line_height(), now));
     }
 
     /// `extractSignText`: the four lines centred, the cursor on the edited one (`_` after its
     /// end, a bar inside it) while it blinks on, and the selection over the text.
-    fn draw_text(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font) {
+    fn draw_text(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font) -> Option<(i32, i32)> {
         let colour = self.colour;
         let opened_at = self.opened_at.unwrap_or(frame.millis);
         let show_cursor = cursor_visible(frame.millis.saturating_sub(opened_at));
@@ -249,20 +287,10 @@ impl SignEditScreen {
         let head_width = |line: &[char], end: usize| {
             font.width(&line[..end.min(line.len())].iter().collect::<String>())
         };
-        let right_to_left = photon_core::bidi::default_right_to_left();
+        let needs_position = self.preedit.is_some();
+        let mut position = None;
         for (index, line) in self.messages.iter().enumerate() {
-            // `Font.bidirectionalShaping` in a right-to-left language; then `GuiGraphicsExtractor.text`
-            // draws the string in visual order (`Language.getVisualOrder`) in any language.
-            let shaped = if right_to_left {
-                photon_core::bidi::reorder(line, true)
-            } else {
-                line.clone()
-            };
-            let drawn = if photon_core::bidi::needs_reorder(&shaped, right_to_left) {
-                photon_core::bidi::reorder(&shaped, right_to_left)
-            } else {
-                shaped.clone()
-            };
+            let (shaped, drawn) = visual_line(line);
             let left = -font.width(&shaped) / 2;
             frame.text(
                 atlas,
@@ -273,22 +301,28 @@ impl SignEditScreen {
                 colour,
             );
             let chars: Vec<char> = shaped.chars().collect();
-            if index == self.line && show_cursor && cursor >= chars.len() {
+            if index == self.line && (show_cursor || needs_position) && cursor >= chars.len() {
                 let cursor_x = head_width(&chars, cursor) - font.width(&shaped) / 2;
-                frame.text(atlas, font, "_", cursor_x, cursor_y, colour);
+                if show_cursor {
+                    frame.text(atlas, font, "_", cursor_x, cursor_y, colour);
+                }
+                position = Some((cursor_x, cursor_y));
             }
         }
         let line = &self.messages[self.line];
         let chars: Vec<char> = line.chars().collect();
         let half = font.width(line) / 2;
         let cursor_x = head_width(&chars, cursor) - half;
-        if cursor < chars.len() && show_cursor {
-            let opaque = colour | 0xFF00_0000;
-            frame.fill(
-                atlas,
-                (cursor_x, cursor_y - 1, cursor_x + 1, cursor_y + height),
-                opaque,
-            );
+        if cursor < chars.len() {
+            if show_cursor {
+                let opaque = colour | 0xFF00_0000;
+                frame.fill(
+                    atlas,
+                    (cursor_x, cursor_y - 1, cursor_x + 1, cursor_y + height),
+                    opaque,
+                );
+            }
+            position = Some((cursor_x, cursor_y));
         }
         if selection != cursor {
             let start = head_width(&chars, cursor.min(selection)) - half;
@@ -298,5 +332,6 @@ impl SignEditScreen {
                 (start.min(end), cursor_y, start.max(end), cursor_y + height),
             );
         }
+        position
     }
 }

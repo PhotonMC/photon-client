@@ -256,7 +256,7 @@
 "crates/photon-gui/src/screen/servers.rs::JoinMultiplayerScreen::draw_server" = 18
 "crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw" = 12
 "crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw_entry" = 14
-"crates/photon-gui/src/widgets/edit_box.rs::EditBox::draw_formatted" = 18
+"crates/photon-gui/src/widgets/edit_box.rs::EditBox::draw_formatted" = 15
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::key_pressed" = 23
 "crates/photon-gui/src/widgets/edit_box.rs::edit_key" = 11
 "crates/photon-gui/src/widgets/multiline.rs::MultilineTextField::key_pressed" = 31
@@ -289,7 +289,6 @@
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 17
 "crates/photon-oracle/src/gui/result/settings.rs::language_screen_case" = 19
 "crates/photon-oracle/src/gui/result/settings.rs::options_screen_case" = 13
-"crates/photon-oracle/src/gui/result/signs.rs::sign_edit_screen_case" = 18
 "crates/photon-oracle/src/gui/result/social.rs::social_interactions_screen_case" = 18
 "crates/photon-oracle/src/gui/result/title.rs::join_multiplayer_screen_case" = 11
 "crates/photon-oracle/src/gui/result/title.rs::server_form_case" = 16
@@ -623,7 +622,7 @@
 "crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw" = 86
 "crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw_entry" = 105
 "crates/photon-gui/src/screen/title.rs::TitleScreen::new" = 104
-"crates/photon-gui/src/widgets/edit_box.rs::EditBox::draw_formatted" = 95
+"crates/photon-gui/src/widgets/edit_box.rs::EditBox::draw_formatted" = 90
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::key_pressed" = 64
 "crates/photon-gui/src/widgets/multiline.rs::MultilineTextField::key_pressed" = 86
 "crates/photon-gui/src/widgets/text_field.rs::TextField::key_pressed" = 70
@@ -679,7 +678,6 @@
 "crates/photon-oracle/src/gui/result/settings.rs::language_screen_case" = 103
 "crates/photon-oracle/src/gui/result/settings.rs::options_screen_case" = 64
 "crates/photon-oracle/src/gui/result/settings.rs::video_settings_screen_case" = 100
-"crates/photon-oracle/src/gui/result/signs.rs::sign_edit_screen_case" = 74
 "crates/photon-oracle/src/gui/result/signs.rs::sign_texts_case" = 76
 "crates/photon-oracle/src/gui/result/social.rs::social_interactions_screen_case" = 120
 "crates/photon-oracle/src/gui/result/title.rs::join_multiplayer_screen_case" = 83

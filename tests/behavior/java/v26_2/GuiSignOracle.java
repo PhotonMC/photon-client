@@ -23,6 +23,7 @@ class GuiSignOracle extends GuiTitleOracle {
             var minecraft = screen.minecraft();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            set(minecraft, "textInputManager", unsafe.allocateInstance(NoTextArea.class));
             SilentSounds.ASKED.clear();
             var clockField = Reflect.field(net.minecraft.util.Util.class, "timeSource");
             var clockBefore = clockField.get(null);
@@ -65,6 +66,14 @@ class GuiSignOracle extends GuiTitleOracle {
                 switch (step.get("do").getAsString()) {
                     case "type" -> step.get("text").getAsString().codePoints().forEach(cp ->
                         edit.charTyped(new net.minecraft.client.input.CharacterEvent(cp)));
+                    case "preedit" -> {
+                        var blocks = new java.util.ArrayList<String>();
+                        if (step.has("blocks")) {
+                            step.getAsJsonArray("blocks").forEach(part -> blocks.add(part.getAsString()));
+                        }
+                        edit.preeditUpdated(step.has("clear") ? null : new net.minecraft.client.input.PreeditEvent(
+                            String.join("", blocks), step.get("caret").getAsInt(), blocks, step.get("focused").getAsInt()));
+                    }
                     case "key" -> {
                         String name = step.get("key").getAsString();
                         int modifiers = 0;
@@ -337,6 +346,17 @@ class GuiSignOracle extends GuiTitleOracle {
             return true;
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException(error);
+        }
+    }
+
+    /** A text input manager with no window to tell where the input is (`IMEPreeditOverlay` does). */
+    static final class NoTextArea extends com.mojang.blaze3d.platform.TextInputManager {
+        NoTextArea() {
+            super(null);
+        }
+
+        @Override
+        public void setTextInputArea(int x0, int y0, int x1, int y1) {
         }
     }
 }

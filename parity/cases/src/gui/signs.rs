@@ -250,6 +250,38 @@ fn edit_rows() -> Vec<Edit> {
     rows
 }
 
+fn preedit(blocks: &[&str], focused: i64, caret: i64) -> Value {
+    json!({"do": "preedit", "blocks": blocks, "focused": focused, "caret": caret})
+}
+
+/// A composition an input method is making, drawn in its panel by the cursor of the line being
+/// edited: one block, several with the second in focus, the caret inside, a cursor between letters,
+/// a small window with no room below, a long composition pushed back inside, and one that ends.
+fn preedit_rows() -> Vec<Edit> {
+    let named = |label: &str, steps: Vec<Value>, ms: i64| Edit {
+        steps,
+        ms,
+        lines: WRITTEN,
+        ..edit(format!("preedit {label}"))
+    };
+    vec![
+        named("one block", vec![preedit(&["nihao"], 0, 5)], 0),
+        named("blocks", vec![preedit(&["ni", "hao", "ma"], 1, 2)], 0),
+        named("caret inside", vec![preedit(&["abcdef"], 0, 3)], 0),
+        named("caret blinked off", vec![preedit(&["abcdef"], 0, 3)], 300),
+        named("cursor inside", vec![key("left"), key("left"), preedit(&["xy"], 0, 1)], 0),
+        named("cursor inside off", vec![key("left"), preedit(&["xy"], 0, 1)], 450),
+        named("cleared", vec![preedit(&["xy"], 0, 1), json!({"do": "preedit", "clear": true})], 0),
+        named("replaced", vec![preedit(&["xy"], 0, 1), preedit(&["abc", "d"], 0, 4)], 0),
+        Edit { size: (120, 90), ..named("small window", vec![preedit(&["the composition is long"], 0, 4)], 0) },
+        Edit {
+            size: (427, 130),
+            ..named("no room below", vec![key("down"), key("down"), key("down"), preedit(&["abc"], 0, 3)], 0)
+        },
+        Edit { kind: "hanging", ..named("hanging", vec![preedit(&["ko", "x"], 1, 1)], 0) },
+    ]
+}
+
 fn typing_rows() -> Vec<Edit> {
     let words = ["one two three", "", "", ""];
     let written = |label: &str, steps: Vec<Value>| Edit { lines: WRITTEN, steps, ..edit(label) };
@@ -323,6 +355,6 @@ fn bidi_rows() -> Vec<Edit> {
 /// blink, selections by Shift and Control, words erased, the Done button
 /// under the mouse and focused by Tab, dyes and glowing text.
 pub fn sign_edit_screen() -> Value {
-    let rows = [edit_rows(), typing_rows(), bidi_rows()].concat();
+    let rows = [edit_rows(), typing_rows(), bidi_rows(), preedit_rows()].concat();
     gui("sign-edit-screen", "sign_edit_screen", rows.into_iter().map(Edit::row).collect())
 }

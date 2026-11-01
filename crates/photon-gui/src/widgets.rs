@@ -5,6 +5,7 @@ pub mod cycle;
 pub mod edit_box;
 pub mod multiline;
 pub mod navigation;
+pub mod preedit;
 pub mod scroll_area;
 pub mod slider;
 pub mod text_area;

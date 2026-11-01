@@ -5,6 +5,8 @@
 //! characters, where the reference counts UTF-16 units; the two agree for
 //! what fits a search box.
 
+use crate::widgets::preedit::PreeditOverlay;
+use photon_game::input::event::PreeditEvent;
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
@@ -39,6 +41,10 @@ pub trait Clipboard {
 /// `EditBox`.
 #[derive(Debug, Clone)]
 pub struct EditBox {
+    /// The composition an input method is making (`preeditOverlay`) and where the cursor was drawn
+    /// at the last `draw`, which the overlay sits at.
+    preedit: Option<PreeditOverlay>,
+    cursor_at: std::cell::Cell<(i32, i32)>,
     value: Vec<char>,
     cursor: usize,
     highlight: usize,
@@ -92,6 +98,8 @@ impl EditBox {
     /// A box of an inner width and a longest text.
     pub fn new(width: i32, max_length: usize) -> Self {
         Self {
+            preedit: None,
+            cursor_at: std::cell::Cell::new((0, 0)),
             value: Vec::new(),
             cursor: 0,
             highlight: 0,
@@ -103,6 +111,26 @@ impl EditBox {
             shadow: true,
             editable: true,
             changes: 0,
+        }
+    }
+
+    /// `preeditUpdated`: an input method has text in the making (`None` when it has none), at the
+    /// time `now` in milliseconds.
+    pub fn preedit_updated(&mut self, event: Option<&PreeditEvent>, font: &Font, now: u64) {
+        self.preedit = event.map(|event| PreeditOverlay::new(event, font, 9 + 1, now));
+    }
+
+    /// The composition's panel over the box, at the cursor of the last `draw`; the reference draws it
+    /// after everything else of the screen, so a screen calls this last.
+    pub fn draw_preedit(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        font: &Font,
+        screen: (i32, i32),
+    ) {
+        if let Some(overlay) = &self.preedit {
+            overlay.draw(frame, atlas, font, screen, self.cursor_at.get());
         }
     }
 
@@ -508,13 +536,7 @@ impl EditBox {
             };
             draw_x += draw_text(frame, &half, self.display_pos, draw_x, colour) + 1;
         }
-        let mut cursor_x = draw_x;
-        if !cursor_on_screen {
-            cursor_x = if shown.cursor > 0 { right + 4 } else { text_x };
-        } else if shown.insert {
-            cursor_x -= 1;
-            draw_x -= 1;
-        }
+        let (cursor_x, draw_x) = cursor_columns(&shown, cursor_on_screen, (text_x, right), draw_x);
         if !chars.is_empty() && cursor_on_screen && (shown.cursor as usize) < chars.len() {
             let rest: String = chars[shown.cursor as usize..].iter().collect();
             draw_text(frame, &rest, self.cursor, draw_x, colour);
@@ -537,6 +559,7 @@ impl EditBox {
                 ),
             );
         }
+        self.cursor_at.set((cursor_x, text_y));
         if blink && cursor_on_screen {
             if shown.insert {
                 frame.fill(
@@ -548,6 +571,24 @@ impl EditBox {
                 plain(frame, "_", cursor_x, colour);
             }
         }
+    }
+}
+
+/// Where the cursor is drawn and where the rest of the text starts: after the text before the
+/// cursor, a pixel back for the bar of an insert cursor, or at an edge when the cursor is off the
+/// box.
+fn cursor_columns(
+    shown: &Shown,
+    on_screen: bool,
+    (text_x, right): (i32, i32),
+    draw_x: i32,
+) -> (i32, i32) {
+    if !on_screen {
+        (if shown.cursor > 0 { right + 4 } else { text_x }, draw_x)
+    } else if shown.insert {
+        (draw_x - 1, draw_x - 1)
+    } else {
+        (draw_x, draw_x)
     }
 }
 
