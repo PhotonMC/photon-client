@@ -86,7 +86,7 @@ fn join_with_packs(
     packs: &PackSource,
     root: &std::path::Path,
 ) -> Result<PlaySession> {
-    let task = JoinTask::start(server, packs.clone());
+    let task = JoinTask::start(Target::Address(server), packs.clone());
     loop {
         crate::packs::serve_reload(packs, &mut |loaded| match crate::resources::with_packs(
             root, loaded,
@@ -173,7 +173,7 @@ pub(crate) struct JoinTask {
 }
 
 impl JoinTask {
-    pub(crate) fn start(server: SocketAddr, packs: PackSource) -> Self {
+    pub(crate) fn start(target: Target, packs: PackSource) -> Self {
         // A scripted run starts on a level that has loaded; a player joins as the reference does.
         let wait = if env::var_os("PHOTON_SCRIPT").is_some() {
             JoinWait::Chunks
@@ -186,12 +186,16 @@ impl JoinTask {
         std::thread::Builder::new()
             .name("Server Connector".to_owned())
             .spawn(move || {
-                let _ = send.send(join(server, &shared, wait, &packs).map_err(|error| {
-                    match error.downcast_ref::<ConnectionError>() {
-                        Some(ConnectionError::Disconnected(reason)) => (**reason).clone(),
-                        _ => Component::literal(error.to_string()),
-                    }
-                }));
+                let result = match target.resolve() {
+                    Some(server) => join(server, &shared, wait, &packs).map_err(|error| {
+                        match error.downcast_ref::<ConnectionError>() {
+                            Some(ConnectionError::Disconnected(reason)) => (**reason).clone(),
+                            _ => Component::literal(error.to_string()),
+                        }
+                    }),
+                    None => Err(target::unknown_host()),
+                };
+                let _ = send.send(result);
             })
             .expect("a thread to connect on");
         Self { status, result }
@@ -239,25 +243,6 @@ struct FrameCamera {
     frustum: photon_render::visibility::Frustum,
     /// What the locator bar reads of the camera.
     locator: photon_gui::hud::locator::LocatorCamera,
-}
-
-/// The game's clock: the last frame, when it began and the whole milliseconds (`Util.getMillis`)
-/// at the last frame.
-struct GameClock {
-    last_frame: Instant,
-    epoch: Instant,
-    last_ms: i64,
-}
-
-impl GameClock {
-    fn new() -> Self {
-        let now = Instant::now();
-        Self {
-            last_frame: now,
-            epoch: now,
-            last_ms: 0,
-        }
-    }
 }
 
 /// A joined session with its window, renderer and everything the frames
@@ -617,6 +602,7 @@ mod effects;
 mod fitting;
 mod friends;
 pub(crate) use fitting::fit_swapchain;
+mod clock;
 mod gizmo;
 mod glints;
 mod loading;
@@ -627,8 +613,11 @@ mod render_link;
 mod schedule;
 mod social_toast;
 mod switch;
+mod target;
+use clock::GameClock;
 pub(crate) use loading::LoadingView;
 pub(crate) use switch::SwitchView;
+pub(crate) use target::Target;
 mod tick_parts;
 mod ticks;
 mod tutorial;

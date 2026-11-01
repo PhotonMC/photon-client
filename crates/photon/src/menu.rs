@@ -23,7 +23,7 @@ use photon_net::connection::PlaySession;
 use self::draw::draw_screen;
 use self::input::{confirm_event, failed_event};
 use crate::gui::Gui;
-use crate::play::{self, Client, Exit, JoinTask};
+use crate::play::{self, Client, Exit, JoinTask, Target};
 
 mod audio;
 mod credits;
@@ -33,6 +33,7 @@ mod icons;
 mod input;
 pub(crate) mod panorama;
 mod pings;
+pub(crate) use pings::resolve;
 mod servers;
 mod settings;
 mod startup;
@@ -112,7 +113,7 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
             menu.screen = menu.server_list(gui_size(&client));
         }
         if std::mem::take(&mut scripted_join) {
-            menu.connect(server, None, gui_size(&client));
+            menu.connect(Target::Address(server), None, gui_size(&client));
         }
         let choice = menu.run(&mut client)?;
         client.audio = Some(menu.into_audio());
@@ -254,12 +255,12 @@ impl Menu {
     }
 
     /// `ConnectScreen.startConnecting`: the join starts on its own thread.
-    fn connect(&mut self, server: SocketAddr, ip: Option<&str>, size: (i32, i32)) {
+    fn connect(&mut self, target: Target, ip: Option<&str>, size: (i32, i32)) {
         let packs = crate::packs::shared();
         crate::packs::prepare(&packs, ip);
         self.screen = Screen::Connecting(
             ConnectScreen::new(self.gui.lang(), size),
-            JoinTask::start(server, packs),
+            JoinTask::start(target, packs),
             None,
         );
     }

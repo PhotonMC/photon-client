@@ -41,7 +41,7 @@ fn ping(ip: &str) -> Pinged {
 
 /// The address a server's `ip` names (`ServerAddress.parseString`, then
 /// `ServerNameResolver.resolveAddress` with its SRV redirect).
-pub(super) fn resolve(ip: &str) -> Option<std::net::SocketAddr> {
+pub(crate) fn resolve(ip: &str) -> Option<std::net::SocketAddr> {
     let with_port = address_with_port(ip);
     let (host, port) = with_port.rsplit_once(':')?;
     let host = host.trim_start_matches('[').trim_end_matches(']');
