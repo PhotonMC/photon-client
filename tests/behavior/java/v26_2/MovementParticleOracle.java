@@ -647,6 +647,11 @@ class MovementParticleOracle extends MovementMenuOracle {
                     level.setSkyFlashTime(event.get("time").getAsInt());
                     continue;
                 }
+                if (event.get("type").getAsString().equals("border_lerp")) {
+                    level.getWorldBorder().lerpSizeBetween(event.get("from").getAsLong(), event.get("to").getAsLong(),
+                        event.get("ticks").getAsLong(), level.getGameTime());
+                    continue;
+                }
                 if (event.get("type").getAsString().equals("game_time")) {
                     level.setTimeFromServer(event.get("time").getAsLong());
                     continue;
@@ -729,6 +734,7 @@ class MovementParticleOracle extends MovementMenuOracle {
             // The level's own tick, for the rows that watch what it counts down (the sky flash
             // runs down even on a frozen level).
             if ((row.has("watch_flash") && row.get("watch_flash").getAsBoolean())
+                || (row.has("watch_border") && row.get("watch_border").getAsBoolean())
                 || (row.has("watch_weather") && row.get("watch_weather").getAsBoolean())
                 || (row.has("watch_time") && row.get("watch_time").getAsBoolean())) {
                 level.tick(() -> true);
@@ -756,6 +762,9 @@ class MovementParticleOracle extends MovementMenuOracle {
             }
             if (row.has("watch_time")) {
                 sounds.add("time," + level.getGameTime());
+            }
+            if (row.has("watch_border")) {
+                sounds.add("border," + String.format("%016x", Double.doubleToLongBits(level.getWorldBorder().getSize())));
             }
             if (row.has("watch_flash")) {
                 sounds.add("flash," + getField(level, "skyFlashTime"));

@@ -61,7 +61,7 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
                 state,
             );
         }
-        "game_time" | "sky_flash" => set_clock(event, world)?,
+        "game_time" | "sky_flash" | "border_lerp" => set_clock(event, world)?,
         "fireworks" => queue_fireworks(event, world)?,
         _ => return Ok(false),
     }
@@ -286,6 +286,9 @@ pub(super) fn heard(
 
 /// A `game_time` or `sky_flash` event: what the level counts, set to the number given.
 fn set_clock(event: &Value, world: &mut ClientWorld) -> Result<(), String> {
+    if event["type"].as_str() == Some("border_lerp") {
+        return lerp_border(event, world);
+    }
     let number = event["time"].as_i64().ok_or("the time must be a number")?;
     if event["type"].as_str() == Some("sky_flash") {
         world.set_sky_flash_time(number as i32);
@@ -306,8 +309,14 @@ pub(super) fn tick_block_entities(
     if row["expire_cracks"].as_bool() == Some(true) {
         world.tick_cracks(!frozen);
     }
-    if row["watch_time"].as_bool() == Some(true) || row["watch_weather"].as_bool() == Some(true) {
+    if row["watch_time"].as_bool() == Some(true)
+        || row["watch_border"].as_bool() == Some(true)
+        || row["watch_weather"].as_bool() == Some(true)
+    {
         world.tick_game_time(!frozen);
+    }
+    if row["watch_border"].as_bool() == Some(true) {
+        world.tick_world_border(!frozen);
     }
     if row["watch_flash"].as_bool() == Some(true) {
         world.tick_sky_flash();
@@ -331,6 +340,12 @@ pub(super) fn ticked_lines(
     lines.extend(super::extras::party_lines(world));
     if row["watch_time"].as_bool() == Some(true) {
         lines.push(format!("time,{}", world.game_time()));
+    }
+    if row["watch_border"].as_bool() == Some(true) {
+        lines.push(format!(
+            "border,{:016x}",
+            world.world_border().size().to_bits()
+        ));
     }
     if row["watch_flash"].as_bool() == Some(true) {
         lines.push(format!("flash,{}", world.sky_flash_time()));
@@ -388,4 +403,15 @@ pub(super) fn tick_level<F: FnMut() -> RandomSource>(
         )
         .into_iter()
         .collect()
+}
+
+/// `ClientboundSetBorderLerpSizePacket`: the border shrinks or grows over `ticks`.
+fn lerp_border(event: &Value, world: &mut ClientWorld) -> Result<(), String> {
+    let number = |key: &str| event[key].as_i64().ok_or(format!("{key} must be a number"));
+    world.apply_world_border_lerp_size(
+        number("from")? as f64,
+        number("to")? as f64,
+        number("ticks")?,
+    );
+    Ok(())
 }

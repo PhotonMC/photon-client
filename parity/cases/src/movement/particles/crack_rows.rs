@@ -26,6 +26,8 @@ pub fn rows() -> Vec<Value> {
         time_row(true),
         weather_row(false),
         weather_row(true),
+        border_row(false),
+        border_row(true),
     ]
 }
 
@@ -33,6 +35,17 @@ pub fn rows() -> Vec<Value> {
 fn time_row(frozen: bool) -> Value {
     let label = if frozen { "game-time-frozen" } else { "game-time" };
     engine_row(label, vec![time(0, 100)]).set("watch_time", json!(true)).set("frozen", json!(frozen)).ticks(4).row()
+}
+
+/// A border shrinking from 100 to 60 over eight ticks: it moves on a level that runs, not a frozen one.
+fn border_row(frozen: bool) -> Value {
+    let label = if frozen { "border-frozen" } else { "border" };
+    let lerp = json!({"tick": 0, "type": "border_lerp", "from": 100, "to": 60, "ticks": 8});
+    engine_row(label, vec![time(0, 100), lerp])
+        .set("watch_border", json!(true))
+        .set("frozen", json!(frozen))
+        .ticks(4)
+        .row()
 }
 
 /// Rain over a column mix for three ticks: the drops fall on a level that runs and not on a frozen one.

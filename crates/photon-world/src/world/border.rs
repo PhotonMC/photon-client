@@ -5,6 +5,13 @@ impl ClientWorld {
         &self.world_border
     }
 
+    /// `ClientLevel.tick`'s `WorldBorder.tick`: the border moves on only while the level runs normally.
+    pub fn tick_world_border(&mut self, runs_normally: bool) {
+        if runs_normally {
+            self.world_border.tick();
+        }
+    }
+
     /// Apply the client listener's initialize-border packet sequence.
     pub fn apply_world_border_initialize(&mut self, input: ClientWorldBorderInitialization) {
         self.world_border.set_center(input.center_x, input.center_z);
