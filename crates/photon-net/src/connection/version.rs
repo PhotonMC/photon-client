@@ -21,6 +21,22 @@ pub fn development_version() -> Option<Version> {
 /// is taken as the newest version, so it never holds a login back for long.
 const STATUS_WAIT: Duration = Duration::from_secs(3);
 
+/// The protocol each server last answered with, by address: what the server list's ping saw, or
+/// an earlier connection, so that joining does not ask the server again before it logs in (the
+/// reference client sends no status request before a login).
+fn remembered() -> &'static std::sync::Mutex<std::collections::HashMap<SocketAddr, i32>> {
+    static SEEN: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<SocketAddr, i32>>> =
+        std::sync::OnceLock::new();
+    SEEN.get_or_init(Default::default)
+}
+
+/// Note the protocol the server at `address` answered with.
+pub fn remember_protocol(address: SocketAddr, protocol: i32) {
+    if let Ok(mut seen) = remembered().lock() {
+        seen.insert(address, protocol);
+    }
+}
+
 /// The version to speak to the server at `address` (reached under `host` where that is not the
 /// address's own): from the protocol the server list last saw (`hint`), else from a status
 /// request. A protocol that is not a supported version, or a server that does not answer, gives
@@ -34,7 +50,13 @@ pub fn select_version(
     if let Some(version) = development_version() {
         return version;
     }
-    hint.or_else(|| answered_protocol(address, host, timeout.min(STATUS_WAIT)))
+    let seen = || remembered().lock().ok()?.get(&address).copied();
+    hint.or_else(seen)
+        .or_else(|| {
+            let asked = answered_protocol(address, host, timeout.min(STATUS_WAIT))?;
+            remember_protocol(address, asked);
+            Some(asked)
+        })
         .and_then(Version::from_protocol)
         .unwrap_or(Version::NEWEST)
 }
@@ -69,6 +91,20 @@ mod tests {
         assert_eq!(
             select_version((nowhere(), None), wait, Some(776)),
             Version::V26_2
+        );
+    }
+
+    #[test]
+    fn a_protocol_a_server_answered_with_before_is_not_asked_again() {
+        if development_version().is_some() {
+            return;
+        }
+        // A port nothing listens on, so that only the memory can answer.
+        let address = SocketAddr::from(([127, 0, 0, 1], 10));
+        remember_protocol(address, 775);
+        assert_eq!(
+            select_version((address, None), Duration::from_millis(50), None),
+            Version::V26_1
         );
     }
 

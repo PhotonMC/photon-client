@@ -33,6 +33,7 @@ fn ping(ip: &str) -> Pinged {
             let status = ServerStatus::parse(&trace.status_response)?;
             if let Some((_, protocol)) = &status.version {
                 crate::updates::note_server_protocol(*protocol);
+                photon_net::connection::remember_protocol(address, *protocol);
             }
             Some(Pinged::answered(&status, trace.round_trip_ms))
         })
