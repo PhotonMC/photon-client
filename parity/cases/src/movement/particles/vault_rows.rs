@@ -57,5 +57,10 @@ fn vault_row(label: &str, game_time: u64) -> Value {
 }
 
 pub fn rows() -> Vec<Value> {
-    vec![vault_row("vault-ticks", 160), vault_row("vault-ticks-off-beat", 161)]
+    let mut rows = vec![vault_row("vault-ticks", 160), vault_row("vault-ticks-off-beat", 161)];
+    // The same level frozen: its block entities stand still.
+    let mut frozen = vault_row("vault-ticks-frozen", 160);
+    frozen["frozen"] = json!(true);
+    rows.push(frozen);
+    rows
 }

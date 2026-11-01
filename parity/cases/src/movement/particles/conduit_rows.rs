@@ -82,5 +82,10 @@ fn conduit_row(label: &str, game_time: u64) -> Value {
 }
 
 pub fn rows() -> Vec<Value> {
-    vec![conduit_row("conduit-shells", 160), conduit_row("conduit-shells-off-beat", 161)]
+    let mut rows = vec![conduit_row("conduit-shells", 160), conduit_row("conduit-shells-off-beat", 161)];
+    // The same level frozen: its block entities stand still.
+    let mut frozen = conduit_row("conduit-shells-frozen", 160);
+    frozen["frozen"] = json!(true);
+    rows.push(frozen);
+    rows
 }
