@@ -63,6 +63,9 @@ pub(super) struct LocalState {
     pub(super) stats: std::collections::HashMap<StatKey, i32>,
     /// An `AwardStats` was handled since the statistics screen last looked.
     pub(super) stats_updated: bool,
+    /// What the server last said the game rules are (`handleGameRuleValues`), until the rule
+    /// screen takes it.
+    pub(super) game_rule_values: Option<Vec<(String, String)>>,
     /// `LocalPlayer.shouldShowDeathScreen`: off when the level respawns at once.
     pub(super) show_death_screen: bool,
     /// The message of a death the death screen is yet to show.
@@ -290,6 +293,7 @@ impl Default for LocalState {
             received_items: Vec::new(),
             stats: std::collections::HashMap::new(),
             stats_updated: false,
+            game_rule_values: None,
             show_death_screen: true,
             death: None,
             win_game: false,

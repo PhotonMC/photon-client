@@ -47,6 +47,7 @@ mod last_seen;
 mod level_load;
 pub use level_load::LoadingReason;
 use level_load::{LevelLoadTracker, PlayerNeed};
+mod game_rules;
 mod lifecycle;
 mod menu_sync;
 mod movement;
@@ -259,6 +260,29 @@ mod tests {
         again.extend([8, 0, 2]);
         session.handle_bytes(&again).unwrap();
         assert_eq!(session.stat(jump), 2);
+    }
+
+    #[test]
+    fn game_rule_values_wait_for_the_rule_screen_and_old_ones_are_dropped() {
+        let (mut session, _far_end) = detached();
+        assert!(session.take_game_rule_values().is_none());
+        let mut body = varint(PLAY_CLIENTBOUND_GAME_RULE_VALUES_PACKET_ID as u32);
+        photon_protocol::play::encode_set_game_rules(
+            &mut body,
+            &[("minecraft:pvp".into(), "false".into())],
+        )
+        .unwrap();
+        session.handle_bytes(&body).unwrap();
+        // Asking again drops what no screen took (the reference ignores it with no screen).
+        session.request_game_rules().unwrap();
+        assert!(session.take_game_rule_values().is_none());
+        session.handle_bytes(&body).unwrap();
+        let values = session.take_game_rule_values().unwrap();
+        assert_eq!(
+            values,
+            vec![("minecraft:pvp".to_string(), "false".to_string())]
+        );
+        assert!(session.take_game_rule_values().is_none());
     }
 
     #[test]

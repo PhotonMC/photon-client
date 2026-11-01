@@ -33,6 +33,8 @@ mod chunk;
 pub use chunk::*;
 mod commands;
 pub use commands::*;
+mod game_rules;
+pub use game_rules::*;
 mod dialog;
 pub use dialog::DialogEvent;
 pub use dialog::{ClearDialog, DialogHolder, ShowDialog, encode_custom_click_action};

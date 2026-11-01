@@ -3,6 +3,10 @@ use super::*;
 /// The packets of this family, by packet id.
 pub(super) const DECODERS: &[(i32, Decoder)] = &[
     (
+        PLAY_CLIENTBOUND_GAME_RULE_VALUES_PACKET_ID,
+        typed::<GameRuleValues>,
+    ),
+    (
         PLAY_CLIENTBOUND_RECIPE_BOOK_ADD_PACKET_ID,
         typed::<RecipeBookAdd>,
     ),
@@ -67,6 +71,13 @@ impl ClientboundPacket for UpdateRecipes {
         let update = self.0;
         session.world.apply_recipe_property_sets(update.sets);
         session.world.apply_stonecutter_recipes(update.stonecutter);
+        Ok(())
+    }
+}
+
+impl ClientboundPacket for GameRuleValues {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.local.game_rule_values = Some(self.0);
         Ok(())
     }
 }
