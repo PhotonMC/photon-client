@@ -33,6 +33,8 @@ blocks! {
     POTENT_SULFUR = potent_sulfur,
     REDSTONE_WIRE = redstone_wire,
     STRUCTURE_BLOCK = structure_block,
+    SUSPICIOUS_GRAVEL = suspicious_gravel,
+    SUSPICIOUS_SAND = suspicious_sand,
     TEST_BLOCK = test_block,
     WARPED_NYLIUM = warped_nylium,
     WATER = water,

@@ -16,6 +16,15 @@ fn queue_block_event(event: &Value, world: &mut ClientWorld) -> Result<(), Strin
     Ok(())
 }
 
+/// What a level event carries: its data, or the number of the block state it names.
+fn level_event_data(event: &Value) -> Result<i32, String> {
+    if event.get("state").is_some() {
+        Ok(super::state_of(event)?.0)
+    } else {
+        i32_field(event, "data")
+    }
+}
+
 /// A `level_event` (the event, the block and the data) or `block_event` (the block) event, queued
 /// in the world as the client would; false for an event of another kind.
 pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, String> {
@@ -27,11 +36,9 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
         ))
     };
     match string(event, "type")? {
-        "level_event" => world.apply_level_event(
-            i32_field(event, "event")?,
-            pos()?,
-            i32_field(event, "data")?,
-        ),
+        "level_event" => {
+            world.apply_level_event(i32_field(event, "event")?, pos()?, level_event_data(event)?);
+        }
         "explode" => queue_explosion(event, world)?,
         "global_level_event" => {
             world.apply_global_level_event(i32_field(event, "event")?, pos()?);

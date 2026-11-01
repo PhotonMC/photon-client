@@ -32,6 +32,7 @@ mod hit;
 mod jukebox;
 mod leaves;
 mod level_events;
+mod level_events_blocks;
 mod level_events_dripstone;
 mod level_events_last;
 mod level_events_more;

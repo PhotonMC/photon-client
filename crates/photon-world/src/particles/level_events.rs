@@ -1,8 +1,6 @@
 //! `LevelEventHandler.levelEvent`: the sounds and particles a level event plays, drawn from the
 //! level's random in the order the reference draws them.
 
-use photon_core::binary::BlockPos;
-use photon_core::ids::BlockStateId;
 use photon_core::math::fdlibm_pow;
 use photon_core::random::RandomSource;
 use photon_data::particle_type;
@@ -377,18 +375,8 @@ impl ParticleEngine {
             }
             2000 => self.shoot_particles(context, (pos, data), "smoke"),
             2010 => self.shoot_particles(context, (pos, data), "white_smoke"),
-            2001 => {
-                if let Some(sound) = level_event.break_sound() {
-                    // `playSound`'s seed.
-                    context.level_random.next_long();
-                    sounds.push(sound);
-                }
-                let at = BlockPos::new(pos.0, pos.1, pos.2);
-                self.add_destroy_block_effect(
-                    context.world,
-                    (at, BlockStateId(data)),
-                    &mut context.particle_random,
-                );
+            2001 | 3008 => {
+                sounds.extend(self.block_state_event(context, (event, pos), data));
             }
             2008 => self.level_add(
                 context,
@@ -518,7 +506,7 @@ impl ParticleEngine {
 
 /// `Level.playLocalSound(BlockPos, ..)`: at the block's middle, its seed drawn from the level's
 /// random after its pitch.
-fn local_sound(
+pub(super) fn local_sound(
     event: &'static str,
     source: LocalSoundSource,
     (volume, pitch): (f32, f32),

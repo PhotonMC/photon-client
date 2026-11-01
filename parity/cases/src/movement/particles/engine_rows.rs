@@ -206,6 +206,27 @@ fn engine_rows_8() -> Vec<Value> {
 
 fn engine_rows_9() -> Vec<Value> {
     vec![
+        // The events that carry a block state: a block broken plays its break sound (louder, lower) with
+        // its crumbs, nothing but crumbs for air; a brushable block finished plays its own sound, any
+        // other block only the crumbs.
+        engine_row(
+            "level-event-block-states",
+            vec![
+                level_event_block(0, 2001, (0, 64, 0), "minecraft:stone"),
+                level_event_block(0, 2001, (1, 64, 0), "minecraft:glass"),
+                level_event_block(1, 2001, (2, 64, 0), "minecraft:white_wool"),
+                level_event_block(1, 2001, (3, 64, 0), "minecraft:air"),
+                level_event_block(1, 3008, (4, 64, 0), "minecraft:suspicious_sand"),
+                level_event_block(2, 3008, (5, 64, 0), "minecraft:suspicious_gravel"),
+                level_event_block(2, 3008, (6, 64, 0), "minecraft:stone"),
+            ],
+        )
+        .seeds(40)
+        // The crumbs take their picture from the block's model: here the one blank sprite. Their own
+        // draws come from an unseeded random in the reference, so only the sounds are compared.
+        .set("marker_block", json!("minecraft:barrier"))
+        .set("sounds_only", json!(true))
+        .row(),
         // A note block struck plays its instrument: a tuned one pitched by its note with a note rising from it,
         // a mob head's at its own pitch, a custom head's not at all (no head above); any other block nothing.
         engine_row(

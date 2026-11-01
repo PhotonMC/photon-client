@@ -446,7 +446,7 @@
 "crates/photon-world/src/particles/firework.rs::Particle::firework_starter_tick" = 18
 "crates/photon-world/src/particles/hit.rs::Mark::of" = 23
 "crates/photon-world/src/particles/hit.rs::Particle::hit_provider" = 21
-"crates/photon-world/src/particles/level_events.rs::ParticleEngine::level_event" = 18
+"crates/photon-world/src/particles/level_events.rs::ParticleEngine::level_event" = 17
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::last_level_event" = 15
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::sculk_charge" = 11
 "crates/photon-world/src/particles/particle.rs::Particle::move_by" = 17
@@ -707,7 +707,7 @@
 "crates/photon-oracle/src/model_layers.rs::entity_block_layers_result" = 68
 "crates/photon-oracle/src/movement.rs::movement_result" = 475
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 101
-"crates/photon-oracle/src/particles.rs::particle_engine_result" = 160
+"crates/photon-oracle/src/particles.rs::particle_engine_result" = 156
 "crates/photon-oracle/src/particles.rs::particle_quads_result" = 62
 "crates/photon-oracle/src/particles.rs::particle_terrain_result" = 148
 "crates/photon-oracle/src/particles/factory.rs::particle_of" = 285
@@ -845,7 +845,7 @@
 "crates/photon-world/src/particles/explosion.rs::ParticleEngine::explosion_particle" = 67
 "crates/photon-world/src/particles/firework.rs::Particle::firework_starter_tick" = 74
 "crates/photon-world/src/particles/hit.rs::Particle::hit_provider" = 103
-"crates/photon-world/src/particles/level_events.rs::ParticleEngine::level_event" = 77
+"crates/photon-world/src/particles/level_events.rs::ParticleEngine::level_event" = 68
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::last_level_event" = 76
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::sculk_charge" = 104
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create" = 96

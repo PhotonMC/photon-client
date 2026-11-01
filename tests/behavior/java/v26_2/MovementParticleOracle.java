@@ -654,9 +654,12 @@ class MovementParticleOracle extends MovementMenuOracle {
                     continue;
                 }
                 if (event.get("type").getAsString().equals("level_event")) {
+                    // A block's state number is the data of the events that carry one.
+                    int data = event.has("state")
+                        ? net.minecraft.world.level.block.Block.getId(MovementSupport.state(event.getAsJsonObject("state")))
+                        : event.get("data").getAsInt();
                     level.levelEvent(event.get("event").getAsInt(), new net.minecraft.core.BlockPos(
-                        event.get("x").getAsInt(), event.get("y").getAsInt(), event.get("z").getAsInt()),
-                        event.get("data").getAsInt());
+                        event.get("x").getAsInt(), event.get("y").getAsInt(), event.get("z").getAsInt()), data);
                     continue;
                 }
                 if (event.get("type").getAsString().equals("fireworks")) {
@@ -740,12 +743,17 @@ class MovementParticleOracle extends MovementMenuOracle {
             MovementSupport.watchLines(row, level).forEach(sounds::add);
             MovementSupport.regionLines(row, level).forEach(sounds::add);
             counted.add("sounds", sounds);
-            counted.addProperty("particles", groupParticles(engine).size());
-            counted.addProperty("emitters", groupParticles(engine, net.minecraft.client.particle.ParticleRenderType.NO_RENDER).size());
+            // A row that compares only the sounds leaves the particles out: some are drawn from a random
+            // nobody seeds.
+            boolean soundsOnly = row.has("sounds_only") && row.get("sounds_only").getAsBoolean();
+            counted.addProperty("particles", soundsOnly ? 0 : groupParticles(engine).size());
+            counted.addProperty("emitters", soundsOnly ? 0
+                : groupParticles(engine, net.minecraft.client.particle.ParticleRenderType.NO_RENDER).size());
             ticks.add(counted);
         }
         entry.add("ticks", ticks);
-        var inGroup = groupParticles(engine);
+        var inGroup = row.has("sounds_only") && row.get("sounds_only").getAsBoolean()
+            ? new java.util.ArrayList<net.minecraft.client.particle.Particle>() : groupParticles(engine);
         long digest = FNV_OFFSET;
         var first = new JsonArray();
         int limit = row.get("describe").getAsInt();

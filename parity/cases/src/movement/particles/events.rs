@@ -104,6 +104,11 @@ pub fn level_event(tick: i64, event: i64, pos: Block, data: i64) -> Value {
     json!({"tick": tick, "type": "level_event", "event": event, "x": pos.0, "y": pos.1, "z": pos.2, "data": data})
 }
 
+/// A level event whose data is a block state (a broken block's, a brushed block's).
+pub fn level_event_block(tick: i64, event: i64, pos: Block, block: &str) -> Value {
+    json!({"tick": tick, "type": "level_event", "event": event, "x": pos.0, "y": pos.1, "z": pos.2, "state": {"block": block}})
+}
+
 pub fn global_level_event(tick: i64, event: i64, pos: Block, data: i64) -> Value {
     json!({"tick": tick, "type": "global_level_event", "event": event, "x": pos.0, "y": pos.1, "z": pos.2, "data": data})
 }

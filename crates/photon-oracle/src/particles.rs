@@ -122,6 +122,43 @@ fn status_of(name: &str) -> Result<ParticleStatus, String> {
 }
 
 /// `particle_engine`: the engine asked for particles by the level and by the packet.
+/// The digest of no particles at all.
+const EMPTY_DIGEST: &str = "cbf29ce484222325";
+
+/// What one tick of the engine leaves to compare. A row that compares only the sounds leaves the
+/// particles out: some are drawn from a random nobody seeds in the reference.
+fn tick_record(
+    engine: &photon_world::particles::ParticleEngine,
+    pending: usize,
+    sounds: Vec<String>,
+    sounds_only: bool,
+) -> Value {
+    let (particles, emitters) = if sounds_only {
+        (0, 0)
+    } else {
+        (engine.particle_count(), engine.emitter_count())
+    };
+    json!({
+        "pending": pending,
+        "particles": particles,
+        "sounds": sounds,
+        "emitters": emitters,
+    })
+}
+
+/// The digest of the particles left and the first of them, or of none when only the sounds count.
+fn final_digest(
+    engine: &photon_world::particles::ParticleEngine,
+    (world, partials): (&photon_world::ClientWorld, &[f32]),
+    (limit, sounds_only): (usize, bool),
+) -> (String, Vec<Value>) {
+    if sounds_only {
+        (EMPTY_DIGEST.to_owned(), Vec::new())
+    } else {
+        digest_group(engine, (world, partials), limit)
+    }
+}
+
 pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
@@ -170,6 +207,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
         let partials = f32_bits(&row["partials"])?;
         let events = row["events"].as_array().ok_or("events must be an array")?;
         let mut ticks = Vec::new();
+        let sounds_only = row["sounds_only"].as_bool().unwrap_or(false);
         let mut environments = ambience::Environments::load(row)?;
         for tick in 0..i32_field(row, "tick_count")? {
             let mut sounds = Vec::new();
@@ -266,16 +304,11 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
             engine.tick_explosions(&mut context);
             let ticked = engine.tick(&world, &view, &mut level_random, &mut particle_random);
             sounds.extend(events::ticked_lines(&ticked, (&world, row)));
-            ticks.push(json!({
-                "pending": pending,
-                "particles": engine.particle_count(),
-                "sounds": sounds,
-                "emitters": engine.emitter_count(),
-            }));
+            ticks.push(tick_record(&engine, pending, sounds, sounds_only));
         }
         let limit =
             usize::try_from(i32_field(row, "describe")?).map_err(|error| error.to_string())?;
-        let (digest, first) = digest_group(&engine, (&world, &partials), limit);
+        let (digest, first) = final_digest(&engine, (&world, &partials), (limit, sounds_only));
         out.push(json!({
             "label": string(row, "label")?,
             "ticks": ticks,
