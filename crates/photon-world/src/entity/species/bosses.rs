@@ -35,7 +35,11 @@ impl EntityViewMut<'_> {
     /// beat and the flight history, then the position eases to the last packet's. Nothing
     /// fades its motion and its head does not turn after anything; while it dies, none of it.
     pub(crate) fn tick_ender_dragon(&mut self, targets: &EntityTargets) {
-        self.ender_dragon_mut().begin_ai_step();
+        let silent = self.status.silent;
+        let (flap, growl) = self.ender_dragon_mut().begin_ai_step(silent);
+        self.sound_requests.extend(flap.map(TickSound::DragonFlap));
+        self.sound_requests
+            .extend(growl.map(TickSound::DragonGrowl));
         if self.as_view().is_dead_or_dying() {
             return;
         }
@@ -202,7 +206,9 @@ impl EntityViewMut<'_> {
             return;
         }
         let (pose, tick_count) = (self.status.pose, self.tick_count);
-        self.kind.breeze_state().tick(pose, tick_count);
+        if self.kind.breeze_state().tick(pose, tick_count) && !self.status.silent {
+            self.sound_requests.push(TickSound::BreezeWhirl);
+        }
     }
 
     /// `Sniffer.onSyncedDataUpdated(DATA_STATE)`.
@@ -225,7 +231,9 @@ impl EntityViewMut<'_> {
     pub(crate) fn tick_warden(&mut self) {
         if self.is_warden() {
             let tick_count = self.tick_count;
-            self.warden_mut().tick(tick_count);
+            if self.warden_mut().tick(tick_count) && !self.status.silent {
+                self.sound_requests.push(TickSound::WardenHeartbeat);
+            }
         }
     }
 }

@@ -76,13 +76,14 @@ impl CopperGolemAnimations {
 
     /// One client tick: `Mob.baseTick` first asks, with the entity's source,
     /// whether the golem would make an ambient sound (it has none, so nothing
-    /// else is drawn), then `setupAnimationStates` runs (not without AI).
+    /// else is drawn), then `setupAnimationStates` runs (not without AI). Whether the head
+    /// spin sounds on this tick.
     pub(crate) fn tick(
         &mut self,
         action: GolemAction,
         tick_count: i32,
         (no_ai, alive): (bool, bool),
-    ) {
+    ) -> bool {
         if alive {
             let chance = self.random.next_int_bound(1000).unwrap_or(0);
             let before = self.ambient_sound_time;
@@ -92,7 +93,7 @@ impl CopperGolemAnimations {
             }
         }
         if no_ai {
-            return;
+            return false;
         }
         let interactions = [
             (GolemAction::GettingItem, &mut self.playing.get_item),
@@ -110,7 +111,7 @@ impl CopperGolemAnimations {
         if action != GolemAction::Idle {
             self.playing.idle.stop();
             self.idle_animation_start_tick = 0;
-            return;
+            return false;
         }
         if self.idle_animation_start_tick == tick_count {
             self.playing.idle.start(tick_count);
@@ -120,8 +121,9 @@ impl CopperGolemAnimations {
         }
         // `tickCount == idleAnimationStartTick + 10.0F`, compared as floats.
         if tick_count as f32 == self.idle_animation_start_tick as f32 + 10.0 {
-            // The head spin's sound would play here.
             self.idle_animation_start_tick = 0;
+            return true;
         }
+        false
     }
 }

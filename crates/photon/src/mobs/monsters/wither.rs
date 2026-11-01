@@ -88,7 +88,7 @@ pub(super) fn flier_hand_items(
 
 /// `BreezeRenderer.extractRenderState`: the animation states the breeze runs.
 pub(super) fn breeze_state(entity: EntityView<'_>, partial: f32) -> BreezeRenderState {
-    let own = entity.breeze().copied().unwrap_or_default();
+    let own = entity.breeze().cloned().unwrap_or_default();
     BreezeRenderState {
         age_in_ticks: entity.tick_count() as f32 + partial,
         idle: own.idle,

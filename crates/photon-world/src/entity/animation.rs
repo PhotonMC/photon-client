@@ -84,9 +84,7 @@ impl EntityViewMut<'_> {
                     self.tick_count,
                     (self.as_view().is_no_ai(), self.status.alive),
                 );
-                self.kind
-                    .copper_golem_state()
-                    .tick(action, tick_count, flags);
+                self.copper_golem_tick(action, tick_count, flags);
             }
             Some("minecraft:polar_bear") => self.living.polar_bear.tick(),
             Some("minecraft:fox") => self.living.fox.tick(),
@@ -100,6 +98,23 @@ impl EntityViewMut<'_> {
 }
 
 impl EntityViewMut<'_> {
+    /// `CopperGolem.tick` on the client; it asks for the spin's sound unless it is silent.
+    fn copper_golem_tick(
+        &mut self,
+        action: crate::mobs::copper_golem::GolemAction,
+        tick_count: i32,
+        flags: (bool, bool),
+    ) {
+        let spins = self
+            .kind
+            .copper_golem_state()
+            .tick(action, tick_count, flags);
+        if spins && !self.status.silent {
+            let weathering = self.living.copper_golem_weather;
+            self.sound_requests.push(TickSound::CopperSpin(weathering));
+        }
+    }
+
     /// What a horse, a llama or a camel does of its own each tick (`aiStep`).
     fn tick_horse_like(&mut self, game_time: u64) {
         let (alive, camel) = (

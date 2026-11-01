@@ -237,11 +237,8 @@ impl ClientWorld {
                     type_id: entity.type_id,
                     tick_count: 0,
                     first_tick: true,
-                    start_block: (
-                        photon_core::math::floor_f64(entity.x),
-                        photon_core::math::floor_f64(entity.y),
-                        photon_core::math::floor_f64(entity.z),
-                    ),
+                    sound_requests: Vec::new(),
+                    start_block: block_of(entity.x, entity.y, entity.z),
                     on_ground: false,
                     tracking: Tracking::at(entity.x, entity.y, entity.z),
                     always_ticking: entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
@@ -337,6 +334,7 @@ mod store;
 pub use rockets::RocketHand;
 pub use store::Entities;
 mod targets;
+mod tick_sounds;
 mod ticking;
 
 impl Entities {
@@ -481,4 +479,13 @@ impl ClientWorld {
                 .as_ref()
                 .is_some_and(|player| player.id == entity_id)
     }
+}
+
+/// The block a position lies in.
+fn block_of(x: f64, y: f64, z: f64) -> (i32, i32, i32) {
+    (
+        photon_core::math::floor_f64(x),
+        photon_core::math::floor_f64(y),
+        photon_core::math::floor_f64(z),
+    )
 }

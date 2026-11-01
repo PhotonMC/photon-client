@@ -164,6 +164,8 @@ pub struct EnderDragonState {
     pub history: FlightHistory,
     flap_time: f32,
     old_flap_time: f32,
+    /// `EnderDragon.growlTime`: the ticks until it growls.
+    growl_time: i32,
     phase: DragonPhase,
     dragon_death_time: i32,
     /// `EnderDragon.nearestCrystal`, by its id: the crystal whose beam it is healed by.
@@ -180,6 +182,7 @@ impl EnderDragonState {
             history: FlightHistory::default(),
             flap_time: 0.0,
             old_flap_time: 0.0,
+            growl_time: 100,
             phase: DragonPhase::default(),
             dragon_death_time: 0,
             nearest_crystal: None,
@@ -326,9 +329,24 @@ impl EnderDragonState {
         mth_lerp_f32(partial, self.old_flap_time, self.flap_time)
     }
 
-    /// The start of `EnderDragon.aiStep` on the client: the flap time is kept.
-    pub(crate) fn begin_ai_step(&mut self) {
+    /// The start of `EnderDragon.aiStep` on the client: a wing beat is heard, a growl is heard
+    /// when its time is up, and the flap time is kept. The pitches of the two sounds, when
+    /// there are any (a silent dragon makes none).
+    pub(crate) fn begin_ai_step(&mut self, silent: bool) -> (Option<f32>, Option<f32>) {
+        let cos = |time: f32| mth_cos_f64(f64::from(time * (std::f64::consts::PI * 2.0) as f32));
+        // `isFlapping`: the cosine of the wing's turn rises through -0.3.
+        let flaps = cos(self.old_flap_time) <= -0.3 && cos(self.flap_time) >= -0.3;
+        let flap = (flaps && !silent).then(|| 0.8 + self.random.next_float() * 0.3);
+        let mut growl = None;
+        if !silent && !self.phase.is_sitting() {
+            self.growl_time -= 1;
+            if self.growl_time < 0 {
+                growl = Some(0.8 + self.random.next_float() * 0.3);
+                self.growl_time = 200 + self.random.next_int_bound(200).unwrap_or(0);
+            }
+        }
         self.old_flap_time = self.flap_time;
+        (flap, growl)
     }
 
     /// What the rest of `aiStep` does while the dragon is not dying: the wings beat

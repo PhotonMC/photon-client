@@ -5,7 +5,7 @@
 use crate::animation_state::AnimationState;
 use crate::entity::ClientEntityPose;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BreezeState {
     pub idle: AnimationState,
     pub shoot: AnimationState,
@@ -13,6 +13,9 @@ pub struct BreezeState {
     pub slide_back: AnimationState,
     pub inhale: AnimationState,
     pub long_jump: AnimationState,
+    /// `Breeze.soundTick`: the ticks left until the next whirl.
+    sound_tick: i32,
+    random: crate::entity_random::EntityRandom,
 }
 
 impl BreezeState {
@@ -32,8 +35,8 @@ impl BreezeState {
         }
     }
 
-    /// `Breeze.tick` on the client, before the rest of the tick.
-    pub(crate) fn tick(&mut self, pose: ClientEntityPose, tick_count: i32) {
+    /// `Breeze.tick` on the client, before the rest of the tick: whether a whirl sounds.
+    pub(crate) fn tick(&mut self, pose: ClientEntityPose, tick_count: i32) -> bool {
         if pose == ClientEntityPose::LongJumping {
             self.long_jump.start_if_stopped(tick_count);
         }
@@ -42,5 +45,14 @@ impl BreezeState {
             self.slide_back.start(tick_count);
             self.slide.stop();
         }
+        self.sound_tick = if self.sound_tick == 0 {
+            self.random
+                .source()
+                .next_int_between_inclusive(1, 80)
+                .unwrap_or(1)
+        } else {
+            self.sound_tick - 1
+        };
+        self.sound_tick == 0
     }
 }

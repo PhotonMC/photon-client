@@ -65,10 +65,11 @@ impl WardenState {
         40 - (anger * 30.0).floor() as i32
     }
 
-    /// `Warden.tick` on the client, after the rest of the tick (the beat's
-    /// sound and the digging particles are left out).
-    pub(crate) fn tick(&mut self, tick_count: i32) {
-        if tick_count % self.heart_beat_delay() == 0 {
+    /// `Warden.tick` on the client, after the rest of the tick (the digging particles are left
+    /// out): whether the heart beat on this tick, which sounds when the warden is not silent.
+    pub(crate) fn tick(&mut self, tick_count: i32) -> bool {
+        let beat = tick_count % self.heart_beat_delay() == 0;
+        if beat {
             self.heart = 10;
         }
         self.tendril_old = self.tendril;
@@ -79,6 +80,7 @@ impl WardenState {
         if self.heart > 0 {
             self.heart -= 1;
         }
+        beat
     }
 
     /// `Warden.getTendrilAnimation`.

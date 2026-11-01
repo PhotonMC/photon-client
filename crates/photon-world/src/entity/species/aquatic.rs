@@ -67,7 +67,8 @@ impl EntityViewMut<'_> {
 
     /// `Guardian.aiStep`'s client half, while the guardian lives: the beam's
     /// target (which the world resolves from its id) is where the head turns.
-    pub(crate) fn tick_guardian(&mut self, target: Option<crate::mobs::guardian::GuardianTarget>) {
+    pub(crate) fn tick_guardian(&mut self, targets: &EntityTargets) {
+        let target = targets.guardian;
         if !self.is_guardian() || !self.status.alive {
             return;
         }
@@ -81,6 +82,7 @@ impl EntityViewMut<'_> {
             position: self.position(),
             eye_height,
             target,
+            stand_below: targets.stand_below,
         };
         let mut pose = crate::mobs::guardian::GuardianPose {
             y_rot: self.rotation.y_rot.get(),
@@ -91,9 +93,12 @@ impl EntityViewMut<'_> {
         };
         let has_target = self.living.guardian_target != 0;
         let duration = self.guardian_attack_duration();
-        self.kind
-            .guardian_state()
-            .tick(&place, has_target, duration, &mut pose);
+        let state = self.kind.guardian_state();
+        let flops = state.flops(&place, pose.motion.1);
+        state.tick(&place, has_target, duration, &mut pose);
+        if flops && !self.status.silent {
+            self.sound_requests.push(TickSound::GuardianFlop);
+        }
         self.rotation.y_rot = JavaF32::new(pose.y_rot);
         self.rotation.x_rot = JavaF32::new(pose.x_rot);
         self.rotation.y_head_rot = JavaF32::new(pose.y_head_rot);

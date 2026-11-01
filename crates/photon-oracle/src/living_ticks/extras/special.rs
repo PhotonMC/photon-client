@@ -21,7 +21,7 @@ pub(crate) fn bat_extra(entity: EntityView<'_>, described: &mut Value) -> Result
 }
 
 pub(crate) fn breeze_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
-    let state = entity.breeze().copied().unwrap_or_default();
+    let state = entity.breeze().cloned().unwrap_or_default();
     let age = entity.tick_count() as f32;
     for (name, animation) in [
         ("idle", state.idle),

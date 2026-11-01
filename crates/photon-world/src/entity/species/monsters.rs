@@ -94,3 +94,31 @@ impl EntityView<'_> {
         self.living.animal.creeper_swelling(partial)
     }
 }
+
+impl crate::EntityViewMut<'_> {
+    /// `EnderMan.onSyncedDataUpdated`: every update that leaves it stared at plays the stare.
+    pub(crate) fn set_creepy(&mut self, creepy: bool) {
+        self.living.creepy = creepy;
+        if creepy {
+            self.stare_sound();
+        }
+    }
+
+    /// `EnderMan.playStareSound`: the sound is asked for once in four hundred ticks, and not by a
+    /// silent enderman (which still counts the time).
+    pub(crate) fn stare_sound(&mut self) {
+        let tick_count = self.tick_count;
+        if self
+            .living
+            .last_stare_sound
+            .is_some_and(|last| tick_count < last.saturating_add(400))
+        {
+            return;
+        }
+        self.living.last_stare_sound = Some(tick_count);
+        if !self.status.silent {
+            self.sound_requests
+                .push(crate::entity::TickSound::EndermanStare);
+        }
+    }
+}

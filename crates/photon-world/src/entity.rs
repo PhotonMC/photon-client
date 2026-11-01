@@ -15,6 +15,8 @@ pub struct ClientEntity {
     pub type_id: EntityTypeId,
     pub(crate) tick_count: i32,
     pub(crate) first_tick: bool,
+    /// The sounds the tick asked for since the world last played them.
+    pub(crate) sound_requests: Vec<TickSound>,
     /// `FallingBlockEntity.getStartPos`: the block the entity was added in.
     pub(crate) start_block: (i32, i32, i32),
     pub(crate) on_ground: bool,
@@ -56,6 +58,8 @@ mod pose;
 pub use pose::*;
 mod projectile;
 pub(crate) use projectile::*;
+mod tick_sounds;
+pub(crate) use tick_sounds::TickSound;
 mod rotation;
 pub use position::{Interpolation, Motion, Position};
 pub use rotation::Rotation;

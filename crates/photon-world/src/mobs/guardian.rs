@@ -20,6 +20,8 @@ pub(crate) struct GuardianPlace {
     pub eye_height: f32,
     /// The entity the beam aims at, if the world holds a living one by that id.
     pub target: Option<GuardianTarget>,
+    /// The block below can be stood on.
+    pub stand_below: bool,
 }
 
 /// The entity a guardian's beam aims at (`getActiveAttackTarget`).
@@ -62,6 +64,8 @@ pub struct GuardianState {
     spikes_animation: f32,
     spikes_animation_old: f32,
     attack_time: i32,
+    /// `clientSideTouchedGround`.
+    touched_ground: bool,
     /// `Mob.ambientSoundTime`.
     ambient_sound_time: i32,
     /// `clientSideCachedAttackTarget`: once found, the entity is kept (and
@@ -90,6 +94,7 @@ impl GuardianState {
             spikes_animation: 0.0,
             spikes_animation_old: 0.0,
             attack_time: 0,
+            touched_ground: false,
             ambient_sound_time: 0,
             cached_target: None,
             random: EntityRandom(random),
@@ -186,6 +191,17 @@ impl GuardianState {
         if has_target {
             pose.y_rot = pose.y_head_rot;
         }
+    }
+
+    /// The ground part of `Guardian.aiStep`, run before `tick` (which only then moves it): whether
+    /// it flops, leaving the ground it touched going down.
+    pub(crate) fn flops(&mut self, place: &GuardianPlace, motion_y: f64) -> bool {
+        if place.in_water {
+            return false;
+        }
+        let flops = motion_y > 0.0 && self.touched_ground;
+        self.touched_ground = motion_y < 0.0 && place.stand_below;
+        flops
     }
 
     /// The part of `aiStep` that runs when the target is known: the head

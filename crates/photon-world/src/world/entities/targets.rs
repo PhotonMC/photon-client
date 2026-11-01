@@ -92,7 +92,33 @@ impl ClientWorld {
             guardian: self.guardian_target_of(entity_id),
             wither: self.wither_targets_of(entity_id),
             dragon: self.entities().dragon_crystals(entity_id),
+            stand_below: self.guardian_stands_on_block(entity_id),
         }
+    }
+
+    /// `Level.loadedAndEntityCanStandOn(blockPosition().below(), guardian)`: the block below a
+    /// guardian is loaded and its collision shape has a full top face. Asked of guardians only.
+    fn guardian_stands_on_block(&self, entity_id: EntityId) -> bool {
+        let Some(entity) = self
+            .entities
+            .at(entity_id)
+            .filter(|entity| entity.is_guardian())
+        else {
+            return false;
+        };
+        let (x, y, z) = entity.position();
+        let (x, y, z) = (
+            photon_core::math::floor_f64(x),
+            photon_core::math::floor_f64(y) - 1,
+            photon_core::math::floor_f64(z),
+        );
+        self.block_state_at(x, y, z).is_some_and(|state| {
+            crate::block::state::is_shape_full_block(
+                &crate::block::states()
+                    .collision(crate::block::state_or_air(state))
+                    .face_shape(photon_core::direction::Direction::Up),
+            )
+        })
     }
 
     /// The two entities a wither's side heads look at, by the ids it holds.

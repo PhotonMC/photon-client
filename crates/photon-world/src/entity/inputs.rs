@@ -90,6 +90,8 @@ pub(crate) struct EntityTargets {
     pub guardian: Option<crate::mobs::guardian::GuardianTarget>,
     pub wither: [Option<crate::mobs::guardian::GuardianTarget>; 2],
     pub dragon: crate::mobs::ender_dragon::DragonCrystals,
+    /// Whether the block below can be stood on (`loadedAndEntityCanStandOn`), for a guardian.
+    pub stand_below: bool,
 }
 
 pub struct EntityInput {

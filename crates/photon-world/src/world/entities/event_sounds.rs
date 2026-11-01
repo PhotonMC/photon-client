@@ -5,11 +5,7 @@
 
 use crate::local_player::{LocalSound, LocalSoundSource};
 use crate::*;
-
-const ARMADILLO: EntityTypeId = photon_data::entity_type::vanilla("armadillo");
-const ARMOR_STAND: EntityTypeId = photon_data::entity_type::vanilla("armor_stand");
-const ZOMBIE_VILLAGER: EntityTypeId = photon_data::entity_type::vanilla("zombie_villager");
-const EVOKER_FANGS: EntityTypeId = photon_data::entity_type::vanilla("evoker_fangs");
+use photon_data::entity_type::ids::{ARMADILLO, ARMOR_STAND, EVOKER_FANGS, ZOMBIE_VILLAGER};
 
 /// `Armadillo.handleEntityEvent`.
 const PEEK_EVENT: i8 = 64;

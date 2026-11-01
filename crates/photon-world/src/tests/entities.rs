@@ -20,4 +20,5 @@ mod splashes;
 mod sprinting;
 mod status;
 mod teleport;
+mod tick_sounds;
 mod tick_state;

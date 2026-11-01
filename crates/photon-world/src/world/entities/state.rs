@@ -379,7 +379,7 @@ impl ClientWorld {
             entity.living.bare_head = !pumpkin;
         }
         if let Some(creepy) = creepy {
-            entity.living.creepy = creepy;
+            entity.set_creepy(creepy);
         }
         let (celebrating, casting) = illager_flags_from_metadata(entity.type_id, metadata);
         if let Some(celebrating) = celebrating {

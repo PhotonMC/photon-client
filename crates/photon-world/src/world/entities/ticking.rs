@@ -78,6 +78,7 @@ impl ClientWorld {
         self.throw_water_splash(entity_id);
         self.throw_eating_particles(entity_id);
         self.tick_entity_once(entity_id);
+        self.play_tick_sounds(entity_id);
         self.throw_effect_particles(entity_id);
         self.throw_cloud_particles(entity_id);
         self.throw_free_rocket_trail(entity_id);
