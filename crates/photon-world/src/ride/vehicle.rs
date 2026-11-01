@@ -45,6 +45,8 @@ pub struct VehicleView {
     pub can_sprint: bool,
     /// `PlayerRideableJumping.canJump`: whether the rider's jump key charges a jump.
     pub can_jump: bool,
+    /// The fall its mount passed on to it this tick: distance and damage modifier.
+    pub landing: Option<(f64, f32)>,
 }
 
 /// `Vec3.yRot`: a point turned about the vertical axis.
@@ -180,15 +182,26 @@ impl ClientWorld {
             under_water: true,
             // Only a camel and a player can sprint (`Entity.canSprint`).
             can_sprint: camel,
-            can_jump: match driven {
-                Some(crate::MountKind::Horse) => true,
-                Some(crate::MountKind::Camel) => vehicle.horse().is_none_or(|horse| {
-                    !horse.camel.refuses_to_move(self.level().game_time as i64)
-                        && horse.camel.dash_cooldown() == 0
-                }),
-                _ => false,
-            },
+            can_jump: self.can_jump(vehicle, driven),
+            landing: vehicle.ride.mount_ride.landing,
         })
+    }
+
+    /// `PlayerRideableJumping.canJump` of the mount the player drives: a horse always, a camel
+    /// unless it is held still or dashing.
+    fn can_jump(
+        &self,
+        vehicle: crate::entity::EntityView<'_>,
+        driven: Option<crate::MountKind>,
+    ) -> bool {
+        match driven {
+            Some(crate::MountKind::Horse) => true,
+            Some(crate::MountKind::Camel) => vehicle.horse().is_none_or(|horse| {
+                !horse.camel.refuses_to_move(self.level().game_time as i64)
+                    && horse.camel.dash_cooldown() == 0
+            }),
+            _ => false,
+        }
     }
 
     /// `Camel.getPassengerAttachmentPoint`: where the body is as it sits or rises, and the seat
@@ -255,6 +268,7 @@ impl ClientWorld {
                 .is_some_and(Status::is_under_water),
             can_sprint: false,
             can_jump: false,
+            landing: None,
         })
     }
 }

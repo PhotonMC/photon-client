@@ -1,4 +1,5 @@
 use super::*;
+use crate::local_player::LocalPlayer;
 
 impl MountBody {
     /// `LivingEntity.checkFallDamage` on a client: the fluids are looked at again, and a fall adds
@@ -7,7 +8,9 @@ impl MountBody {
         &mut self,
         level: &Level<'_>,
         ya: f64,
+        pos: BlockPos,
     ) -> Result<(), Unsupported> {
+        self.state.landing = None;
         // `Strider.checkFallDamage`: in lava a fall is forgiven.
         if self.kind == MountKind::Strider && self.is_in_lava() {
             self.state.fall_distance = 0.0;
@@ -20,9 +23,29 @@ impl MountBody {
             self.state.fall_distance -= f64::from(ya as f32);
         }
         if self.on_ground {
+            if self.state.fall_distance > 0.0 {
+                self.state.landing = self.landing_for_rider(level, pos);
+            }
             self.state.fall_distance = 0.0;
         }
         Ok(())
+    }
+
+    /// `propagateFallToPassengers`: the fall the block landed on gives, when this kind of mount
+    /// passes it on. A pig and a strider always do; a horse and a camel only when it would hurt
+    /// them (`calculateFallDamage` above nothing).
+    fn landing_for_rider(&self, level: &Level<'_>, pos: BlockPos) -> Option<(f64, f32)> {
+        let (distance, modifier) = LocalPlayer::landing_fall(level, pos, self.state.fall_distance)?;
+        if matches!(self.kind, MountKind::Horse | MountKind::Camel) {
+            let damage = ((distance + 1.0e-6 - self.attributes.safe_fall_distance)
+                * f64::from(modifier)
+                * self.attributes.fall_damage_multiplier)
+                .floor();
+            if damage <= 0.0 {
+                return None;
+            }
+        }
+        Some((distance, modifier))
     }
 
     /// `Entity.applyEffectsFromBlocks`.

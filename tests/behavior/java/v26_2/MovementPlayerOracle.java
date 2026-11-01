@@ -461,9 +461,6 @@ class MovementPlayerOracle extends MovementWorldOracle {
             }
             described.add("rockets", rocketPositions);
             if (vehicle != null) {
-                // The fall of a vehicle that lands is passed on to its passenger (its sounds); that
-                // is not ported, so a ridden tick's sounds are not compared.
-                described.add("sounds", new JsonArray());
                 described.add("vehicle", describeVehicle(vehicle));
             }
             if (input.has("attack")) {

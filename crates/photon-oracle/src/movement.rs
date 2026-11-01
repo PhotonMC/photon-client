@@ -456,8 +456,6 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 })
                 .collect();
             sounds.sort();
-            // The fall of a vehicle that lands is passed on to its passenger, which is not ported.
-            sounds.retain(|_| ridden.is_none());
             let mut described = json!({
                 "sounds": sounds,
                 "x": format!("{:016x}", position.x.to_bits()),

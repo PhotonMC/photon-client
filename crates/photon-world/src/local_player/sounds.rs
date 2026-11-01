@@ -195,7 +195,12 @@ impl LocalPlayer {
 
     /// `LivingEntity.causeFallDamage`, for the sounds: a fall that would hurt makes the player's
     /// small or big fall sound and the block's. Whether it would is the result.
-    fn cause_fall_damage(&mut self, level: &Level<'_>, distance: f64, modifier: f32) -> bool {
+    pub(crate) fn cause_fall_damage(
+        &mut self,
+        level: &Level<'_>,
+        distance: f64,
+        modifier: f32,
+    ) -> bool {
         if self.abilities.may_fly {
             return false;
         }
@@ -222,12 +227,41 @@ impl LocalPlayer {
             (self.position.y - f64::from(0.2_f32)).floor() as i32,
             self.position.z.floor() as i32,
         );
-        if let Some(sound_type) = Self::sound_type_of(level, pos) {
+        // Air makes none: a rider lands in the air above its mount's feet.
+        if !level.info(pos).is_air()
+            && let Some(sound_type) = Self::sound_type_of(level, pos)
+        {
             self.play_player_sound(
                 sound_type.fall_sound(),
                 sound_type.volume * 0.5,
                 sound_type.pitch * 0.75,
             );
+        }
+    }
+
+    /// What `Block.fallOn` of the block landed on makes of a fall: the distance and the damage
+    /// modifier its entity's `causeFallDamage` is given, or none when the block forgives it.
+    pub(crate) fn landing_fall(
+        level: &Level<'_>,
+        pos: BlockPos,
+        distance: f64,
+    ) -> Option<(f64, f32)> {
+        use photon_data::block::classes::BlockClass;
+        let id = level
+            .state_id(pos)
+            .unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID);
+        let state = crate::block::state_or_air(id);
+        let is = |class: BlockClass| state.block().class.lineage().any(|own| own == class);
+        if is(BlockClass::HayBlock) || is(BlockClass::HoneyBlock) {
+            Some((distance, 0.2))
+        } else if is(BlockClass::SlimeBlock) || is(BlockClass::PowderSnowBlock) {
+            None
+        } else if is(BlockClass::PointedDripstoneBlock) && Self::is_dripstone_tip_up(state) {
+            Some((distance + 2.5, 2.0))
+        } else if is(BlockClass::BedBlock) {
+            Some((distance * 0.5, 1.0))
+        } else {
+            Some((distance, 1.0))
         }
     }
 

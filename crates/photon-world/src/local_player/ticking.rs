@@ -51,6 +51,7 @@ impl LocalPlayer {
             can_sprint: boat.can_sprint,
             can_jump: boat.can_jump,
         });
+        self.take_mount_landing(&level, boat);
         // `ClientLevel.tickPassenger`: the old position first, then the count; `Entity.rideTick`
         // stills the player before its own tick.
         self.old_position = self.position;
@@ -75,14 +76,7 @@ impl LocalPlayer {
             on_ground: self.on_ground,
             horizontal_collision: self.horizontal_collision,
         });
-        if boat.controlled {
-            self.sent.push(ServerboundMovement::MoveVehicle {
-                position: boat.position,
-                y_rot: boat.y_rot,
-                x_rot: boat.x_rot,
-                on_ground: boat.on_ground,
-            });
-        }
+        self.send_vehicle_move(boat);
         self.tick_ambient_sounds(&level);
         if self.sprinting != self.was_sprinting {
             self.sent.push(ServerboundMovement::PlayerCommand {
@@ -120,6 +114,25 @@ impl LocalPlayer {
             boat_input,
             jump: self.ride_jump.take(),
         })
+    }
+
+    /// The mount's landing reached its rider as the mount ticked, before the rider's own tick.
+    fn take_mount_landing(&mut self, level: &Level<'_>, vehicle: &crate::VehicleView) {
+        if let Some((distance, modifier)) = vehicle.landing {
+            self.cause_fall_damage(level, distance, modifier);
+        }
+    }
+
+    /// The vehicle's own position, which its authority tells the server.
+    fn send_vehicle_move(&mut self, vehicle: &crate::VehicleView) {
+        if vehicle.controlled {
+            self.sent.push(ServerboundMovement::MoveVehicle {
+                position: vehicle.position,
+                y_rot: vehicle.y_rot,
+                x_rot: vehicle.x_rot,
+                on_ground: vehicle.on_ground,
+            });
+        }
     }
 
     pub(super) fn player_tick(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {

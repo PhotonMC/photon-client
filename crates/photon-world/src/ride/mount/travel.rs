@@ -81,7 +81,7 @@ impl MountBody {
 
         let effect_pos = self.get_on_pos(level, 0.2);
         let effect_info = level.info(effect_pos);
-        self.check_fall_damage(level, movement.y)?;
+        self.check_fall_damage(level, movement.y, effect_pos)?;
 
         if moved_vertically && self.state.vertical_collision || self.state.horizontal_collision {
             self.restitute_movement_after_collisions(

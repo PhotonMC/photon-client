@@ -34,6 +34,9 @@ pub struct MountState {
     pub lava_height: f64,
     /// Whether it was in water or lava at the last look (`Entity.isInLiquid`).
     pub in_liquid: bool,
+    /// The fall it passed on to its rider this tick (`propagateFallToPassengers`): the distance
+    /// and the damage modifier the block landed on gave it.
+    pub landing: Option<(f64, f32)>,
 }
 
 /// The values are finite, so the comparison is a total one.
@@ -51,6 +54,7 @@ impl Default for MountState {
             jump_pending_scale: 0.0,
             lava_height: 0.0,
             in_liquid: false,
+            landing: None,
         }
     }
 }
@@ -86,6 +90,8 @@ pub(crate) struct Attributes {
     pub(crate) friction_modifier: f32,
     pub(crate) air_drag_modifier: f32,
     pub(crate) water_movement_efficiency: f32,
+    pub(crate) safe_fall_distance: f64,
+    pub(crate) fall_damage_multiplier: f64,
 }
 
 /// Whether an entity type is one of the horses a saddle makes rideable (`AbstractHorse` that is
@@ -110,6 +116,13 @@ pub(super) fn mount_attributes(
     kind: MountKind,
 ) -> Attributes {
     let attribute = |name: &str, default: f64| entity.attribute_value(name).unwrap_or(default);
+    let namespaced = |name: &str| {
+        format!(
+            "{}:{name}",
+            photon_core::identifier::Identifier::DEFAULT_NAMESPACE
+        )
+    };
+    let horse_fall = matches!(kind, MountKind::Horse | MountKind::Camel);
     Attributes {
         // `getRiddenSpeed`: a pig's is its speed times 0.225 (and its boost, which is one here).
         base_speed: attribute("minecraft:movement_speed", 0.7),
@@ -132,6 +145,15 @@ pub(super) fn mount_attributes(
         friction_modifier: attribute("minecraft:friction_modifier", 1.0) as f32,
         air_drag_modifier: attribute("minecraft:air_drag_modifier", 1.0) as f32,
         water_movement_efficiency: attribute("minecraft:water_movement_efficiency", 0.0) as f32,
+        // `AbstractHorse` and `Camel` hurt from six blocks up and by half.
+        safe_fall_distance: attribute(
+            &namespaced("safe_fall_distance"),
+            if horse_fall { 6.0 } else { 3.0 },
+        ),
+        fall_damage_multiplier: attribute(
+            &namespaced("fall_damage_multiplier"),
+            if horse_fall { 0.5 } else { 1.0 },
+        ),
     }
 }
 
