@@ -270,6 +270,13 @@ impl ClientWorld {
         }
     }
 
+    /// The cracks' share of `ClientLevel.tick`: it runs only while the level runs normally.
+    pub fn tick_cracks(&mut self, runs_normally: bool) {
+        if runs_normally {
+            self.expire_destroy_progress();
+        }
+    }
+
     /// `ClientLevel.removeBlockBreakingProgress`: every twentieth game tick, a crack nobody has
     /// updated for more than 400 ticks goes away.
     pub fn expire_destroy_progress(&mut self) {

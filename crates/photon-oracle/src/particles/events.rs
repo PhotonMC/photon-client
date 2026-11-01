@@ -297,7 +297,7 @@ pub(super) fn tick_block_entities(
 ) -> usize {
     let frozen = row["frozen"].as_bool() == Some(true);
     if row["expire_cracks"].as_bool() == Some(true) {
-        world.expire_destroy_progress();
+        world.tick_cracks(!frozen);
     }
     if row["tick_entities"].as_bool() == Some(true) {
         world.tick_entities(frozen);

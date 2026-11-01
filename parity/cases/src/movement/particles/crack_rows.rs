@@ -16,6 +16,11 @@ fn crack(tick: i64, id: i64, x: i64, stage: i64) -> Value {
 /// Two cracks at game time 100; one is refreshed at 501, a stage out of range clears an entry, and a
 /// crack still there at exactly 400 ticks old stays until the next check after that.
 pub fn rows() -> Vec<Value> {
+    vec![row(false), row(true)]
+}
+
+/// The same script on a level that runs, and on one that is frozen (its cracks never expire).
+fn row(frozen: bool) -> Value {
     let events = vec![
         time(0, 100),
         crack(0, 7, 1, 3),
@@ -31,10 +36,11 @@ pub fn rows() -> Vec<Value> {
         time(7, 920),
         time(8, 940),
     ];
-    let row = engine_row("crack-expiry", events)
+    let label = if frozen { "crack-expiry-frozen" } else { "crack-expiry" };
+    engine_row(label, events)
         .set("expire_cracks", json!(true))
         .set("watch_cracks", json!(true))
+        .set("frozen", json!(frozen))
         .ticks(9)
-        .row();
-    vec![row]
+        .row()
 }

@@ -703,18 +703,24 @@ class MovementParticleOracle extends MovementMenuOracle {
             }
             var counted = new JsonObject();
             counted.addProperty("pending", pending.size());
-            // `ClientLevel.tick`'s expiry of cracks nobody updates.
-            if (row.has("expire_cracks") && row.get("expire_cracks").getAsBoolean()) {
-                Reflect.invoke(level, net.minecraft.client.multiplayer.ClientLevel.class,
-                    "removeBlockBreakingProgress", new Class<?>[0]);
-            }
             // `/tick freeze`: the level's own tick rate manager stands still, as the entities and the
             // block entities read it.
-            if (row.has("frozen") && row.get("frozen").getAsBoolean()) {
+            boolean frozenLevel = row.has("frozen") && row.get("frozen").getAsBoolean();
+            if (frozenLevel) {
                 var manager = new net.minecraft.world.TickRateManager();
                 manager.setFrozen(true);
                 manager.tick();
                 setField(level, "tickRateManager", manager);
+            }
+            // `ClientLevel.tick`'s expiry of cracks nobody updates, which a frozen level leaves out:
+            // the level's own tick decides.
+            if (row.has("expire_cracks") && row.get("expire_cracks").getAsBoolean()) {
+                if (frozenLevel) {
+                    level.tick(() -> true);
+                } else {
+                    Reflect.invoke(level, net.minecraft.client.multiplayer.ClientLevel.class,
+                        "removeBlockBreakingProgress", new Class<?>[0]);
+                }
             }
             if (row.has("tick_entities") && row.get("tick_entities").getAsBoolean()) {
                 level.tickEntities();
