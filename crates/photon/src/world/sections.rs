@@ -494,7 +494,8 @@ impl SectionMeshes {
                 && (self.workers.in_flight() >= self.worker_count * 4
                     || budget.elapsed() > COPY_BUDGET)
             {
-                break;
+                // A later section the player changed is still built on the spot.
+                continue;
             }
             built_now |= now;
             self.pending.remove(&key);
