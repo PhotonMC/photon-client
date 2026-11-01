@@ -30,8 +30,6 @@ pub(super) const MAX_LOADING: usize = 4;
 pub(super) const RETRY: Duration = Duration::from_secs(5 * 60);
 /// How many downloaded capes the entity textures have room for at once.
 pub(crate) const CAPE_SLOT_COUNT: usize = 32;
-/// A skin's width and height in the places; a cape has the same width and half the height.
-const SIDE: usize = 64;
 
 /// The name of a place in the entity textures.
 pub(crate) fn slot_name(index: usize) -> String {
@@ -326,12 +324,13 @@ fn region_of(
     rgba: &[u8],
 ) -> photon_render::vulkan::AtlasRegion {
     let image = &textures.image;
+    let side = ((rect[2] - rect[0]) * image.width as f32).round() as usize;
     photon_render::vulkan::AtlasRegion {
         level: 0,
         x: (rect[0] * image.width as f32).round() as u32,
         y: (rect[1] * image.height as f32).round() as u32,
-        width: SIDE as u32,
-        height: (rgba.len() / (SIDE * 4)) as u32,
+        width: side as u32,
+        height: (rgba.len() / (side * 4)) as u32,
         rgba: rgba.to_vec(),
     }
 }
@@ -344,9 +343,10 @@ fn blit(textures: &mut EntityTextures, rect: TextureRect, rgba: &[u8]) {
         (rect[0] * width).round() as usize,
         (rect[1] * height).round() as usize,
     );
-    for row in 0..rgba.len() / (SIDE * 4) {
+    let side = ((rect[2] - rect[0]) * width).round() as usize;
+    for row in 0..rgba.len() / (side * 4) {
         let to = ((top + row) * image.width as usize + left) * 4;
-        image.rgba[to..to + SIDE * 4].copy_from_slice(&rgba[row * SIDE * 4..(row + 1) * SIDE * 4]);
+        image.rgba[to..to + side * 4].copy_from_slice(&rgba[row * side * 4..(row + 1) * side * 4]);
     }
 }
 

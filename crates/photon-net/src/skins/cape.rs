@@ -2,12 +2,16 @@
 //! reads a cape of any size, as the model's texture coordinates are fractions of it; places of
 //! one size hold them here, so a larger cape of a whole multiple is sampled down to it.
 
-/// The width and height of a cape, in pixels.
+/// The width and height of a cape the model reads, in pixels.
 pub const CAPE_WIDTH: usize = 64;
 pub const CAPE_HEIGHT: usize = 32;
+/// The width and height of a place for a cape: twice the model's, so that a cape of that size is
+/// kept whole (a smaller one is doubled, which draws the same).
+pub const PLACE_WIDTH: usize = CAPE_WIDTH * 2;
+pub const PLACE_HEIGHT: usize = CAPE_HEIGHT * 2;
 
-/// The pixels of a cape image (RGBA bytes) as 64 by 32; an error where its size is not that of
-/// a cape or a whole multiple of it.
+/// The pixels of a cape image (RGBA bytes) as the place holds them; an error where its size is
+/// not that of a cape or a whole multiple of it.
 pub fn fit_cape(rgba: &[u8], width: usize, height: usize) -> Result<Vec<u8>, String> {
     let scale = width / CAPE_WIDTH;
     if scale == 0
@@ -19,13 +23,10 @@ pub fn fit_cape(rgba: &[u8], width: usize, height: usize) -> Result<Vec<u8>, Str
             "Discarding incorrectly sized ({width}x{height}) cape texture"
         ));
     }
-    if scale == 1 {
-        return Ok(rgba.to_vec());
-    }
-    let mut out = Vec::with_capacity(CAPE_WIDTH * CAPE_HEIGHT * 4);
-    for y in 0..CAPE_HEIGHT {
-        for x in 0..CAPE_WIDTH {
-            let from = ((y * scale) * width + x * scale) * 4;
+    let mut out = Vec::with_capacity(PLACE_WIDTH * PLACE_HEIGHT * 4);
+    for y in 0..PLACE_HEIGHT {
+        for x in 0..PLACE_WIDTH {
+            let from = ((y * height / PLACE_HEIGHT) * width + x * width / PLACE_WIDTH) * 4;
             out.extend_from_slice(&rgba[from..from + 4]);
         }
     }
@@ -43,17 +44,26 @@ mod tests {
     }
 
     #[test]
-    fn a_cape_of_the_size_is_kept() {
-        let cape = image(64, 32);
-        assert_eq!(fit_cape(&cape, 64, 32).unwrap(), cape);
+    fn a_cape_of_the_model_size_is_doubled() {
+        let out = fit_cape(&image(64, 32), 64, 32).unwrap();
+        assert_eq!(out.len(), 128 * 64 * 4);
+        // The pixel at (5, 9) of the place is the one at (2, 4).
+        let at = (9 * 128 + 5) * 4;
+        assert_eq!(out[at..at + 2], [2, 4]);
+    }
+
+    #[test]
+    fn a_cape_of_the_place_size_is_kept() {
+        let cape = image(128, 64);
+        assert_eq!(fit_cape(&cape, 128, 64).unwrap(), cape);
     }
 
     #[test]
     fn a_larger_cape_is_sampled_down() {
-        let out = fit_cape(&image(128, 64), 128, 64).unwrap();
-        assert_eq!(out.len(), 64 * 32 * 4);
+        let out = fit_cape(&image(256, 128), 256, 128).unwrap();
+        assert_eq!(out.len(), 128 * 64 * 4);
         // The pixel at (3, 5) is the one at (6, 10) of the larger image.
-        let at = (5 * 64 + 3) * 4;
+        let at = (5 * 128 + 3) * 4;
         assert_eq!(out[at..at + 2], [6, 10]);
     }
 

@@ -22,9 +22,9 @@ fn textures() -> EntityTextures {
     named.extend((0..SLOT_COUNT).map(|index| (slot_name(index), blank(64))));
     named.extend((0..CAPE_SLOT_COUNT).map(|index| {
         let cape = DecodedImage {
-            width: 64,
-            height: 32,
-            rgba: vec![0; 64 * 32 * 4],
+            width: 128,
+            height: 64,
+            rgba: vec![0; 128 * 64 * 4],
         };
         (cape_slot_name(index), cape)
     }));
@@ -52,11 +52,11 @@ fn loader(property: &ProfileProperty, _: &KeyCell, _: &Path) -> Option<Loaded> {
         rgba: Arc::new(vec![fill; 64 * 64 * 4]),
         cape: property.value.ends_with("+cape").then(|| worker::Cape {
             hash: format!("{}-cape", property.value),
-            rgba: Arc::new(vec![b'c'; 64 * 32 * 4]),
+            rgba: Arc::new(vec![b'c'; 128 * 64 * 4]),
         }),
         elytra: property.value.ends_with("+elytra").then(|| worker::Cape {
             hash: format!("{}-elytra", property.value),
-            rgba: Arc::new(vec![b'e'; 64 * 32 * 4]),
+            rgba: Arc::new(vec![b'e'; 128 * 64 * 4]),
         }),
     })
 }
@@ -222,10 +222,10 @@ fn a_loaded_cape_is_written_to_a_place_of_its_own_and_shared() {
         (cape[1] * height).round() as usize,
     );
     let at = |x: usize, y: usize| atlas.image.rgba[(y * atlas.image.width as usize + x) * 4];
-    assert_eq!((at(x, y), at(x + 63, y + 31)), (b'c', b'c'));
-    // The written places are the skin's and the cape's, the cape being half as high.
+    assert_eq!((at(x, y), at(x + 127, y + 63)), (b'c', b'c'));
+    // The written places are the skin's and the cape's, the cape being 128 wide.
     let heights: Vec<u32> = skins.take_dirty().iter().map(|r| r.height).collect();
-    assert_eq!(heights, [64, 32]);
+    assert_eq!(heights, [64, 64]);
     let second = settle(&mut skins, &mut atlas, &who(2, &properties, false));
     assert_eq!(second.cape, Some(cape));
     assert!(skins.take_dirty().is_empty());

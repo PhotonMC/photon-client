@@ -61,9 +61,9 @@ fn skin_slots() -> impl Iterator<Item = (String, photon_render::DecodedImage)> {
         })
         .chain((0..crate::skins::CAPE_SLOT_COUNT).map(|index| {
             let blank = photon_render::DecodedImage {
-                width: 64,
-                height: 32,
-                rgba: vec![0; 64 * 32 * 4],
+                width: photon_net::skins::PLACE_WIDTH as u32,
+                height: photon_net::skins::PLACE_HEIGHT as u32,
+                rgba: vec![0; photon_net::skins::PLACE_WIDTH * photon_net::skins::PLACE_HEIGHT * 4],
             };
             (crate::skins::cape_slot_name(index), blank)
         }))
