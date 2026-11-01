@@ -33,14 +33,29 @@ pub fn run(families: &[String], args: &[String]) -> Result<(), String> {
 fn java_class(family: &str, operation: &str) -> Option<&'static str> {
     parity_cases::coverage::COVERAGE
         .iter()
+        .chain(
+            parity_cases::coverage::INFERRED
+                .iter()
+                .flat_map(|part| part.iter()),
+        )
         .find(|(f, o, _)| *f == family && *o == operation)
         .map(|(_, _, class)| *class)
 }
 
+/// The evidence class of a family (docs/parity/README.md): the registry family only compares
+/// constants, every other family compares the Java client's behaviour with Rust's.
+fn evidence_class(family: &str) -> &'static str {
+    if family == "registry" {
+        "constants"
+    } else {
+        "client-parity"
+    }
+}
+
 fn print_report(counts: &Counts, missing: bool) {
     println!(
-        "{:<10} {:>7} {:>11} {:>10}",
-        "family", "cases", "operations", "with class"
+        "{:<10} {:<13} {:>7} {:>11} {:>10}",
+        "family", "evidence", "cases", "operations", "with class"
     );
     let (mut cases, mut operations, mut known) = (0, 0, 0);
     for (family, ops) in counts {
@@ -49,10 +64,17 @@ fn print_report(counts: &Counts, missing: bool) {
             .filter(|op| java_class(family, op).is_some())
             .count();
         let total: usize = ops.values().sum();
-        println!("{family:<10} {total:>7} {:>11} {with_class:>10}", ops.len());
+        println!(
+            "{family:<10} {:<13} {total:>7} {:>11} {with_class:>10}",
+            evidence_class(family),
+            ops.len()
+        );
         (cases, operations, known) = (cases + total, operations + ops.len(), known + with_class);
     }
-    println!("{:<10} {cases:>7} {operations:>11} {known:>10}", "all");
+    println!(
+        "{:<10} {:<13} {cases:>7} {operations:>11} {known:>10}",
+        "all", ""
+    );
     if missing {
         for (family, ops) in counts {
             for (operation, count) in ops {
