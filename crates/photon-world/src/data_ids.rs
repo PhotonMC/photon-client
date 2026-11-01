@@ -34,6 +34,8 @@ pub const DATA_IDS: &[(&str, &str, u8)] = &[
     ("net.minecraft.world.entity.decoration.ArmorStand", "DATA_HEAD_POSE", ARMOR_STAND_HEAD_POSE_DATA_ID),
     ("net.minecraft.world.entity.monster.EnderMan", "DATA_CREEPY", ENDERMAN_CREEPY_DATA_ID),
     ("net.minecraft.world.entity.monster.EnderMan", "DATA_STARED_AT", ENDERMAN_STARED_AT_DATA_ID),
+    ("net.minecraft.world.entity.Interaction", "DATA_WIDTH_ID", INTERACTION_WIDTH_DATA_ID),
+    ("net.minecraft.world.entity.Interaction", "DATA_HEIGHT_ID", INTERACTION_HEIGHT_DATA_ID),
     ("net.minecraft.world.entity.animal.equine.AbstractHorse", "DATA_ID_FLAGS", HORSE_FLAGS_DATA_ID),
     ("net.minecraft.world.entity.animal.equine.Horse", "DATA_ID_TYPE_VARIANT", HORSE_VARIANT_DATA_ID),
     ("net.minecraft.world.entity.animal.equine.AbstractChestedHorse", "DATA_ID_CHEST", HORSE_CHEST_DATA_ID),

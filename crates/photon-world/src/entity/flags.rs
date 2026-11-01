@@ -105,6 +105,8 @@ pub(crate) struct EntityState {
     /// creepy (stared at).
     pub(crate) carried_state: i32,
     pub(crate) creepy: bool,
+    /// `Interaction.getWidth` and `getHeight`, one block each until the data says.
+    pub(crate) interaction_size: Option<(JavaF32, JavaF32)>,
     /// `EnderMan.hasBeenStaredAt`.
     pub(crate) stared_at: bool,
     /// `EnderMan.lastStareSound`: the tick of the last stare sound, none yet.

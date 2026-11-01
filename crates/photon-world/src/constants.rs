@@ -246,6 +246,9 @@ pub const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
 pub const ENDERMAN_CREEPY_DATA_ID: u8 = 17;
 /// Where it keeps whether it has been stared at (`DATA_STARED_AT`, a boolean).
 pub const ENDERMAN_STARED_AT_DATA_ID: u8 = 18;
+/// Where an interaction's width and height (floats) sit among its data.
+pub const INTERACTION_WIDTH_DATA_ID: u8 = 8;
+pub const INTERACTION_HEIGHT_DATA_ID: u8 = 9;
 pub const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
 /// Where an abstract horse's flags (a byte: eating 16, standing 32, mouth open
 /// 64), a horse's variant data (an int) and a chested horse's chest (a

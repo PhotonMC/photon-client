@@ -489,12 +489,24 @@ impl EntityView<'_> {
                 ));
             }
         }
+        if self.type_id == photon_data::entity_type::ids::INTERACTION {
+            // `Interaction.getDimensions`: scalable, by the width and height the data holds.
+            let (width, height) = self.interaction_size();
+            return Some(ClientEntityDimensions::scalable(width, height));
+        }
         (!self.is_player() && self.has_sleeping_size())
             .then(|| ClientEntityDimensions::from_values(0.2, 0.2, 0.2, false))
     }
 }
 
 impl EntityView<'_> {
+    /// `Interaction.getWidth` and `getHeight`.
+    pub(crate) fn interaction_size(&self) -> (f32, f32) {
+        self.living
+            .interaction_size
+            .map_or((1.0, 1.0), |(width, height)| (width.get(), height.get()))
+    }
+
     /// `Entity.isPickable` of the entity as it stands: the type's answer,
     /// and a player who only watches is not aimed at.
     pub fn is_pickable(&self) -> bool {

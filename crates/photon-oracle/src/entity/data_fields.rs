@@ -18,6 +18,22 @@ pub(super) fn stared_at_field() -> (&'static str, i64, i64) {
     )
 }
 
+/// An interaction's width and height: floats on ids of their own.
+pub(super) fn interaction_fields() -> [(&'static str, i64, i64); 2] {
+    [
+        (
+            "interaction-width",
+            i64::from(photon_world::INTERACTION_WIDTH_DATA_ID),
+            3,
+        ),
+        (
+            "interaction-height",
+            i64::from(photon_world::INTERACTION_HEIGHT_DATA_ID),
+            3,
+        ),
+    ]
+}
+
 /// An avatar's model layers (a byte) and a mannequin's profile, immovable flag (a boolean) and
 /// description (an optional component).
 pub(super) fn mannequin_fields() -> [(&'static str, i64, i64); 4] {
@@ -47,4 +63,13 @@ pub(super) fn mannequin_fields() -> [(&'static str, i64, i64); 4] {
             6,
         ),
     ]
+}
+
+/// Every field a variant-fields row checks beyond the tables, in the order of the reference's list.
+pub(super) fn extra_fields() -> Vec<(&'static str, i64, i64)> {
+    [bogged_field(), stared_at_field()]
+        .into_iter()
+        .chain(interaction_fields())
+        .chain(mannequin_fields())
+        .collect()
 }

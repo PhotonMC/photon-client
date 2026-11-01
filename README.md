@@ -94,7 +94,7 @@ Closed and total issues per milestone on GitHub; these are issue counts, not com
 | [M8 Particles, effects and block entities](https://github.com/PhotonMC/photon-client/milestone/12) | 6 / 6 |
 | [M9 Server compatibility](https://github.com/PhotonMC/photon-client/milestone/13) | 5 / 5 |
 | [M10 Parity closure and distribution](https://github.com/PhotonMC/photon-client/milestone/14) | 0 / 1 |
-| [Parity leftovers](https://github.com/PhotonMC/photon-client/milestone/15) | 8 / 26 |
+| [Parity leftovers](https://github.com/PhotonMC/photon-client/milestone/15) | 9 / 26 |
 | [R1 First release](https://github.com/PhotonMC/photon-client/milestone/16) | 4 / 8 |
 | [Later (post-1.0)](https://github.com/PhotonMC/photon-client/milestone/17) | 0 / 6 |
 <!-- milestones:end -->

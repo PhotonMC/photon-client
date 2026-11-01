@@ -29,6 +29,18 @@ pub(crate) fn enderman_stared_at_from_metadata(
 }
 
 impl crate::entity::EntityViewMut<'_> {
+    /// What the data of the two types with their own size or flags says.
+    pub(crate) fn apply_enderman_and_interaction_data(&mut self, metadata: &[u8]) {
+        self.apply_enderman_data(metadata);
+        if self.type_id == photon_data::entity_type::ids::INTERACTION {
+            let (width, height) = self.as_view().interaction_size();
+            let width = metadata_float_value(metadata, INTERACTION_WIDTH_DATA_ID).unwrap_or(width);
+            let height =
+                metadata_float_value(metadata, INTERACTION_HEIGHT_DATA_ID).unwrap_or(height);
+            self.living.interaction_size = Some((JavaF32::new(width), JavaF32::new(height)));
+        }
+    }
+
     /// What an enderman's data says: the block it carries, and the two flags. The data is
     /// assigned in the order of its ids, so the callback of the creepy flag sees the stared-at
     /// flag as it was before this packet.

@@ -132,3 +132,24 @@ fn an_enderman_stares_when_its_creepy_flag_is_sent_while_stared_at() {
     assert!(world.apply_entity_metadata(EntityId(9), &[17, 8, 1, 255]));
     assert!(ticked(&mut world, 1).is_empty());
 }
+
+#[test]
+fn an_interaction_is_as_big_as_its_data_says() {
+    let mut world = world_with("minecraft:interaction");
+    let entity = world.entities().at(EntityId(9)).unwrap();
+    assert_eq!(
+        (entity.bb_height(), entity.dimensions().width()),
+        (1.0, 1.0)
+    );
+    let mut data = vec![8, 3];
+    data.extend(2.5_f32.to_be_bytes());
+    data.extend([9, 3]);
+    data.extend(0.5_f32.to_be_bytes());
+    data.push(255);
+    assert!(world.apply_entity_metadata(EntityId(9), &data));
+    let entity = world.entities().at(EntityId(9)).unwrap();
+    assert_eq!(
+        (entity.bb_height(), entity.dimensions().width()),
+        (0.5, 2.5)
+    );
+}

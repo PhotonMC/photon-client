@@ -30,6 +30,7 @@ entity_types! {
     GLOW_SQUID = glow_squid,
     GUARDIAN = guardian,
     HOGLIN = hoglin,
+    INTERACTION = interaction,
     ILLUSIONER = illusioner,
     MOOSHROOM = mooshroom,
     PANDA = panda,

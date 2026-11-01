@@ -291,7 +291,7 @@ impl ClientWorld {
         if let Some(counter) = unhappy_counter_from_metadata(entity.type_id, metadata) {
             entity.living.unhappy_counter = counter;
         }
-        entity.apply_enderman_data(metadata);
+        entity.apply_enderman_and_interaction_data(metadata);
         apply_age_lock_and_goat_data(&mut entity, metadata);
         if let Some(powered) = creeper_powered_from_metadata(entity.type_id, metadata) {
             entity.living.powered = powered;
