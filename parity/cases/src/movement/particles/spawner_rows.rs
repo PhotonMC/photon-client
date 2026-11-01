@@ -98,8 +98,51 @@ fn trial_row(label: &str) -> Value {
         .row()
 }
 
+/// Trial spawners whose block state the server changes while the client ticks: each one goes
+/// through other states at ticks 15, 30 and 45 (the client follows the block, it decides nothing).
+fn trial_changes_row(label: &str) -> Value {
+    let route = ["inactive", "waiting_for_players", "active", "cooldown", "ejecting_reward"];
+    let mut blocks = Vec::new();
+    let mut places = Vec::new();
+    let mut described = Vec::new();
+    let mut events = Vec::new();
+    for (index, first) in route.iter().enumerate() {
+        let x = 3 * index as i64;
+        let props = |state: &str| json!({"trial_spawner_state": state, "ominous": "false"});
+        blocks.push(put_with(
+            x,
+            64,
+            0,
+            "minecraft:trial_spawner",
+            &[("trial_spawner_state", first), ("ominous", "false")],
+        ));
+        places.push(json!({"x": x, "y": 64, "z": 0}));
+        described.push(json!({"x": x, "y": 64, "z": 0, "trial": true, "next": 30, "entity": "minecraft:zombie"}));
+        for (step, tick) in [15_i64, 30, 45].into_iter().enumerate() {
+            let state = route[(index + step + 1) % route.len()];
+            events.push(json!({
+                "tick": tick, "type": "set_block", "x": x, "y": 64, "z": 0,
+                "state": {"block": "minecraft:trial_spawner", "properties": props(state)},
+            }));
+        }
+    }
+    engine_row(label, events)
+        .blocks(blocks)
+        .set("spawners", json!(described))
+        .set("watch", json!(places))
+        .set("tick_block_entities", json!(true))
+        .ticks(60)
+        .seeds(3000)
+        .describe(6)
+        .row()
+}
+
 pub fn rows() -> Vec<Value> {
-    let mut rows = vec![spawner_row("spawner-ticks"), trial_row("trial-spawner-ticks")];
+    let mut rows = vec![
+        spawner_row("spawner-ticks"),
+        trial_row("trial-spawner-ticks"),
+        trial_changes_row("trial-spawner-state-changes"),
+    ];
     // The same level frozen: its spawners stand still.
     let mut frozen = spawner_row("spawner-ticks");
     frozen["frozen"] = json!(true);
