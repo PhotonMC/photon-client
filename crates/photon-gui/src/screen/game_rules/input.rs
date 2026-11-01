@@ -270,7 +270,7 @@ impl GameRulesScreen {
         }
     }
 
-    /// A key: Escape asks to close, Tab moves the focus, Enter and Space press the focused
+    /// A key: Escape asks to close, Tab and the arrows move the focus, Enter and Space press the focused
     /// button, and the box with the focus edits.
     pub fn key_pressed(
         &mut self,
@@ -282,8 +282,7 @@ impl GameRulesScreen {
         if key == glfw::Key::Escape {
             return Some(self.close_requested());
         }
-        if key == glfw::Key::Tab {
-            self.tab(!shift);
+        if self.move_focus(key, shift) {
             return None;
         }
         let enter = matches!(

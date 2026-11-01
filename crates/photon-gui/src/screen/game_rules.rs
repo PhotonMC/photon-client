@@ -5,6 +5,7 @@
 //!
 //! Not handled: the arrow keys between the list's controls.
 
+mod arrows;
 mod draw;
 mod input;
 

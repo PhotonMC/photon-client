@@ -59,6 +59,10 @@ fn typed(text: &str) -> Value {
 const TAB: i64 = 258;
 const ENTER: i64 = 257;
 const ESCAPE: i64 = 256;
+const DOWN: i64 = 264;
+const UP: i64 = 265;
+const LEFT: i64 = 263;
+const RIGHT: i64 = 262;
 
 /// What the screen shows before and after the answer, for a few windows.
 fn shown_rows() -> Vec<Screen> {
@@ -157,7 +161,57 @@ fn focus_rows() -> Vec<Screen> {
     rows.push(Screen { steps: vec![key(TAB), key(ENTER)], ..screen("tab-enter-done") });
     rows.push(Screen { steps: vec![click(300, 76), key(TAB), key(ENTER)], ..screen("changed-tab-enter-done") });
     rows.push(Screen { steps: [tabs(4), vec![key(ENTER)]].concat(), ..screen("tab-enter-toggle") });
+    let back = |count: usize| vec![json!({"do": "key", "key": TAB, "shift": true}); count];
+    for (label, count) in [("shift-tab-1", 1), ("shift-tab-2", 2), ("shift-tab-3", 3)] {
+        rows.push(Screen { steps: back(count), ..screen(label) });
+    }
+    rows.push(Screen { steps: [vec![key(TAB)], back(2)].concat(), ..screen("tab-shift-tab-2") });
+    rows.extend(arrow_rows());
     rows
+}
+
+/// The focus by the arrow keys, from nothing, from each button, from the search box and inside
+/// the list.
+fn arrow_rows() -> Vec<Screen> {
+    let search = click(213, 24);
+    let keys = |codes: &[i64]| codes.iter().copied().map(key).collect::<Vec<_>>();
+    let mut sequences: Vec<(&str, Vec<Value>)> = vec![
+        ("arrow-down", keys(&[DOWN])),
+        ("arrow-up", keys(&[UP])),
+        ("arrow-down-2", keys(&[DOWN, DOWN])),
+        ("arrow-down-3-up", keys(&[DOWN, DOWN, DOWN, UP])),
+        ("arrow-down-up-up", keys(&[DOWN, DOWN, UP, UP])),
+        ("arrow-list-right", keys(&[DOWN, RIGHT])),
+        ("arrow-list-left", keys(&[DOWN, LEFT])),
+        ("arrow-list-int-left", keys(&[DOWN, DOWN, LEFT])),
+        ("arrow-list-int-right", keys(&[DOWN, DOWN, RIGHT])),
+        ("arrow-list-3-left", keys(&[DOWN, DOWN, DOWN, LEFT])),
+        ("arrow-list-3-right", keys(&[DOWN, DOWN, DOWN, RIGHT])),
+        ("arrow-list-left-right", keys(&[DOWN, LEFT, RIGHT])),
+        ("arrow-list-left-up", keys(&[DOWN, LEFT, UP])),
+        ("arrow-list-left-down", keys(&[DOWN, LEFT, DOWN])),
+        ("arrow-up-up", keys(&[UP, UP])),
+        ("arrow-up-down", keys(&[UP, DOWN])),
+        ("arrow-last-down", [&[TAB][..], &[UP, DOWN]].concat().iter().copied().map(key).collect()),
+        ("arrow-last-left", [&[TAB][..], &[UP, LEFT]].concat().iter().copied().map(key).collect()),
+        ("arrow-last-right", [&[TAB][..], &[UP, RIGHT]].concat().iter().copied().map(key).collect()),
+        ("arrow-last-up", [&[TAB][..], &[UP, UP]].concat().iter().copied().map(key).collect()),
+        ("arrow-left", keys(&[LEFT])),
+        ("arrow-right", keys(&[RIGHT])),
+    ];
+    for (name, tabs) in [("done", 1), ("cancel", 2)] {
+        for (dir, code) in [("down", DOWN), ("up", UP), ("left", LEFT), ("right", RIGHT)] {
+            let mut steps = vec![key(TAB); tabs];
+            steps.push(key(code));
+            sequences.push((Box::leak(format!("arrow-{name}-{dir}").into_boxed_str()), steps));
+        }
+    }
+    for (dir, code) in [("down", DOWN), ("up", UP), ("left", LEFT), ("right", RIGHT)] {
+        sequences.push((Box::leak(format!("arrow-search-{dir}").into_boxed_str()), vec![search.clone(), key(code)]));
+    }
+    sequences.push(("arrow-search-down-down", vec![search.clone(), key(DOWN), key(DOWN)]));
+    sequences.push(("arrow-search-down-enter", vec![search, key(DOWN), key(ENTER)]));
+    sequences.into_iter().map(|(label, steps)| Screen { steps, ..screen(label) }).collect()
 }
 
 pub fn game_rules_screen() -> Value {
