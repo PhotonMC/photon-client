@@ -643,6 +643,10 @@ class MovementParticleOracle extends MovementMenuOracle {
                         event.get("stage").getAsInt());
                     continue;
                 }
+                if (event.get("type").getAsString().equals("sky_flash")) {
+                    level.setSkyFlashTime(event.get("time").getAsInt());
+                    continue;
+                }
                 if (event.get("type").getAsString().equals("game_time")) {
                     level.setTimeFromServer(event.get("time").getAsLong());
                     continue;
@@ -722,6 +726,11 @@ class MovementParticleOracle extends MovementMenuOracle {
                         "removeBlockBreakingProgress", new Class<?>[0]);
                 }
             }
+            // The level's own tick, for the rows that watch what it counts down (the sky flash
+            // runs down even on a frozen level).
+            if (row.has("watch_flash") && row.get("watch_flash").getAsBoolean()) {
+                level.tick(() -> true);
+            }
             if (row.has("tick_entities") && row.get("tick_entities").getAsBoolean()) {
                 level.tickEntities();
             }
@@ -742,6 +751,9 @@ class MovementParticleOracle extends MovementMenuOracle {
             // Whether each parrot of the scene dances, in the order they were put in.
             for (var parrot : MovementSupport.parrots(level)) {
                 sounds.add("party," + parrot.getId() + "," + parrot.isPartyParrot());
+            }
+            if (row.has("watch_flash")) {
+                sounds.add("flash," + getField(level, "skyFlashTime"));
             }
             if (row.has("watch_cracks")) {
                 sounds.add("cracks," + ((java.util.Map<?, ?>) getField(level, "destroyingBlocks")).size());

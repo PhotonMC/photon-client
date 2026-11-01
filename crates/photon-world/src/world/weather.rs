@@ -68,6 +68,11 @@ impl ClientWorld {
         }
     }
 
+    /// `ClientLevel.setSkyFlashTime`.
+    pub fn set_sky_flash_time(&mut self, time: i32) {
+        self.weather_mut().sky_flash_time = time;
+    }
+
     /// `ClientLevel.skyFlashTime`, without the option that hides the flash.
     pub fn sky_flash_time(&self) -> i32 {
         self.weather().sky_flash_time

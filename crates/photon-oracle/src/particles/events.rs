@@ -61,11 +61,7 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
                 state,
             );
         }
-        "game_time" => world.set_game_time(
-            event["time"]
-                .as_u64()
-                .ok_or("the game time must be a number")?,
-        ),
+        "game_time" | "sky_flash" => set_clock(event, world)?,
         "fireworks" => queue_fireworks(event, world)?,
         _ => return Ok(false),
     }
@@ -288,6 +284,17 @@ pub(super) fn heard(
     lines
 }
 
+/// A `game_time` or `sky_flash` event: what the level counts, set to the number given.
+fn set_clock(event: &Value, world: &mut ClientWorld) -> Result<(), String> {
+    let number = event["time"].as_i64().ok_or("the time must be a number")?;
+    if event["type"].as_str() == Some("sky_flash") {
+        world.set_sky_flash_time(number as i32);
+    } else {
+        world.set_game_time(number as u64);
+    }
+    Ok(())
+}
+
 /// The block entities of the level tick, for the rows that ask for it, as they do after the
 /// entities and before the level's own tick; then how many particles wait to join the engine.
 pub(super) fn tick_block_entities(
@@ -298,6 +305,9 @@ pub(super) fn tick_block_entities(
     let frozen = row["frozen"].as_bool() == Some(true);
     if row["expire_cracks"].as_bool() == Some(true) {
         world.tick_cracks(!frozen);
+    }
+    if row["watch_flash"].as_bool() == Some(true) {
+        world.tick_sky_flash();
     }
     if row["tick_entities"].as_bool() == Some(true) {
         world.tick_entities(frozen);
@@ -316,6 +326,9 @@ pub(super) fn ticked_lines(
 ) -> Vec<String> {
     let mut lines: Vec<String> = ticked.iter().map(sound_line).collect();
     lines.extend(super::extras::party_lines(world));
+    if row["watch_flash"].as_bool() == Some(true) {
+        lines.push(format!("flash,{}", world.sky_flash_time()));
+    }
     if row["watch_cracks"].as_bool() == Some(true) {
         lines.push(format!("cracks,{}", world.destroying_blocks().len()));
     }
