@@ -32,21 +32,15 @@ pub fn parse_entity_id_prefix(input: &[u8]) -> Result<i32, ConnectionError> {
 }
 
 /// `ClientboundDamageEventPacket`: the entity hurt, and the registry id of the damage type that
-/// hurt it (`None` when the packet carries the type itself instead of naming one, which a server
-/// that syncs its registries does not do). The rest (the causes, the place) is not read.
+/// hurt it (`DamageType.STREAM_CODEC` is `holderRegistry`: the plain registry id, not the holder's
+/// id plus one). The rest (the causes, the place) is not read.
 pub fn parse_damage_event_packet(
     input: &[u8],
 ) -> Result<(EntityId, Option<usize>), ConnectionError> {
     let mut input = input;
     let id = EntityId(read_varint(&mut input, "damage event entity id")?);
-    // `ByteBufCodecs.holder`: the registry id plus one, or zero for a type written out.
-    let holder = read_varint(&mut input, "damage event type")?;
-    Ok((
-        id,
-        usize::try_from(holder)
-            .ok()
-            .and_then(|value| value.checked_sub(1)),
-    ))
+    let registry_id = read_varint(&mut input, "damage event type")?;
+    Ok((id, usize::try_from(registry_id).ok()))
 }
 
 /// `ClientboundHurtAnimationPacket`: the entity and the yaw the blow came from.

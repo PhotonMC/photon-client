@@ -136,21 +136,21 @@ fn a_hurt_animation_names_the_entity_and_the_yaw_of_the_blow() {
 }
 
 #[test]
-fn a_damage_event_names_the_entity_and_the_type_by_registry_id_plus_one() {
+fn a_damage_event_names_the_entity_and_the_type_by_plain_registry_id() {
     let mut payload = Vec::new();
     photon_core::wire::write_varint(300, &mut payload);
     photon_core::wire::write_varint(5, &mut payload);
     assert_eq!(
         parse_damage_event_packet(&payload).unwrap(),
-        (EntityId(300), Some(4))
+        (EntityId(300), Some(5))
     );
-    // A type written out in the packet is not one the registry names.
-    let mut direct = Vec::new();
-    photon_core::wire::write_varint(7, &mut direct);
-    photon_core::wire::write_varint(0, &mut direct);
+    // The first type is id zero, not a type written out.
+    let mut first = Vec::new();
+    photon_core::wire::write_varint(7, &mut first);
+    photon_core::wire::write_varint(0, &mut first);
     assert_eq!(
-        parse_damage_event_packet(&direct).unwrap(),
-        (EntityId(7), None)
+        parse_damage_event_packet(&first).unwrap(),
+        (EntityId(7), Some(0))
     );
     assert!(parse_damage_event_packet(&payload[..2]).is_err());
 }
