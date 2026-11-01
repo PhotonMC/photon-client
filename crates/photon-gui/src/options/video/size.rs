@@ -2,7 +2,7 @@ use super::*;
 use crate::FontRuns;
 
 /// The options this client has no effect for yet, and what their widgets say.
-const STILL: [(u8, &str, &str); 3] = [
+const STILL: [(u8, &str, &str); 2] = [
     (
         IMPROVED_TRANSPARENCY,
         "photon.video.no_improved_transparency",
@@ -12,11 +12,6 @@ const STILL: [(u8, &str, &str); 3] = [
         PRIORITIZE_CHUNK_UPDATES,
         "photon.video.no_prioritize_chunk_updates",
         "Chunk updates are always built nearest first; this choice has no effect yet.",
-    ),
-    (
-        AUTOSAVE,
-        "photon.video.no_autosave",
-        "There is no world saving on this client: the server saves the world.",
     ),
 ];
 
