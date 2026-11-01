@@ -69,8 +69,34 @@ fn choose(
     }))
 }
 
-/// The signed-in player, from the refresh token in the credential store.
+/// How long a resumed sign-in is reused: the resume is several requests to the account services
+/// (seconds), and the access token it yields outlives this.
+const RESUMED_FOR: std::time::Duration = std::time::Duration::from_secs(30 * 60);
+
+/// The signed-in player, resumed once and kept for a while: the title looks it up as the game
+/// opens, so a join that follows does not wait for the services (the reference joins with the
+/// session it already holds). Callers that arrive during a resume wait for it.
 fn stored() -> Result<Option<Account>, String> {
+    type Resumed = (std::time::Instant, Option<Account>);
+    static KEPT: std::sync::Mutex<Option<Resumed>> = std::sync::Mutex::new(None);
+    let mut kept = KEPT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some((at, account)) = kept.as_ref()
+        && at.elapsed() < RESUMED_FOR
+    {
+        return Ok(account.clone());
+    }
+    let account = resume_stored()?;
+    // Only a found sign-in is kept: a failure or no sign-in is asked again at the next join.
+    if account.is_some() {
+        *kept = Some((std::time::Instant::now(), account.clone()));
+    }
+    Ok(account)
+}
+
+/// The signed-in player, from the refresh token in the credential store.
+fn resume_stored() -> Result<Option<Account>, String> {
     let client = signin::ClientId::from_environment();
     let host = session_host();
     let store = crate::keyring_store::os_store();
