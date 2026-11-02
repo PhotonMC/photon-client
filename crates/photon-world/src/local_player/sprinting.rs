@@ -121,7 +121,7 @@ impl LocalPlayer {
         let right_end = seg_end.add_vec3(right_offset);
 
         let mut obstacle_height = f32::from_bits(1);
-        'boxes: for (_, shape) in level.block_collisions(test_box, self.fall_distance)? {
+        'boxes: for (_, shape) in self.block_collisions_in(level, test_box)? {
             for bounds in shape.to_aabbs() {
                 if bounds.intersects_vec3(left_begin, left_end)
                     || bounds.intersects_vec3(right_begin, right_end)

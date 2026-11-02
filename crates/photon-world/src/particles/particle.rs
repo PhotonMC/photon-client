@@ -463,8 +463,11 @@ impl Particle {
         {
             let movement = Vec3::new(xa, ya, za);
             // A shape that depends on who asks is not carried yet: the particle stays where it is.
-            let colliders = Level::new(world)
-                .block_collisions(self.bounding_box.expand_towards_vec3(movement), 0.0);
+            let colliders = Level::new(world).block_collisions(
+                self.bounding_box.expand_towards_vec3(movement),
+                0.0,
+                None,
+            );
             let Ok(colliders) = colliders else {
                 return;
             };

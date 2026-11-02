@@ -14,6 +14,7 @@ macro_rules! cached {
 mod connected;
 mod hinged;
 mod singles;
+pub use singles::scaffolding_collision;
 
 use photon_core::direction::Direction;
 use photon_core::shape::{Shapes, VoxelShape};

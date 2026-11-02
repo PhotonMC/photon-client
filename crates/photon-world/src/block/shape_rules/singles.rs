@@ -16,6 +16,8 @@ type All = [(Direction, VoxelShape); 6];
 struct Scaffolding {
     stable: VoxelShape,
     unstable: VoxelShape,
+    /// `SHAPE_UNSTABLE_BOTTOM`: the slab a leaning scaffolding is stood on.
+    bottom: VoxelShape,
 }
 
 mod wire;

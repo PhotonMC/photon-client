@@ -298,10 +298,6 @@ impl LocalPlayer {
     }
 }
 
-pub(super) fn unsupported<T>(what: impl Into<String>) -> Result<T, Unsupported> {
-    Err(Unsupported(what.into()))
-}
-
 /// `BlockGetter.getFurthestCorner`.
 pub(super) fn furthest_corner(direction: Vec3) -> [i32; 3] {
     let x_dot = direction.x.abs();

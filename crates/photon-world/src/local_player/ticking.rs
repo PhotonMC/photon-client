@@ -9,7 +9,7 @@ impl LocalPlayer {
         world: &ClientWorld,
         keys: Input,
     ) -> Result<Vec<ServerboundMovement>, Unsupported> {
-        let level = Level::new(world);
+        let level = Level::new(world).descending(self.is_shift_key_down());
         self.sent.clear();
         self.input.set_key_states(keys);
 
@@ -40,7 +40,7 @@ impl LocalPlayer {
         keys: Input,
         boat: &crate::VehicleView,
     ) -> Result<RideTick, Unsupported> {
-        let level = Level::new(world);
+        let level = Level::new(world).descending(self.is_shift_key_down());
         self.sent.clear();
         self.ride_jump = None;
         self.input.set_key_states(keys);
@@ -247,6 +247,15 @@ impl LocalPlayer {
         }
     }
 
+    /// The blocks the player collides with in `area`, as the level answers it.
+    pub(super) fn block_collisions_in(
+        &self,
+        level: &Level<'_>,
+        area: Aabb,
+    ) -> Result<Vec<(BlockPos, VoxelShape)>, Unsupported> {
+        level.block_collisions(area, self.fall_distance, Some(self.position.y))
+    }
+
     pub(super) fn handle_on_climbable(
         &mut self,
         level: &Level<'_>,
@@ -260,10 +269,11 @@ impl LocalPlayer {
         let x = java_math::clamp(delta.x, -max, max);
         let z = java_math::clamp(delta.z, -max, max);
         let mut y = java_math::max(delta.y, -max);
-        if y < 0.0 && self.is_shift_key_down() && !self.abilities.flying {
-            if level.info(self.block_position()).name == "minecraft:scaffolding" {
-                return unsupported("climbing scaffolding");
-            }
+        if y < 0.0
+            && level.info(self.block_position()).name != "minecraft:scaffolding"
+            && self.is_shift_key_down()
+            && !self.abilities.flying
+        {
             y = 0.0;
         }
         Ok(Vec3::new(x, y, z))

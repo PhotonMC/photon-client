@@ -165,6 +165,33 @@ fn climbing_rows() -> Vec<Value> {
     ]
 }
 
+/// Scaffolding holds whoever is above it and is not sneaking; inside it, it climbs.
+fn scaffolding_rows() -> Vec<Value> {
+    let tower = |bottom: &str, distance: &str, height: i64| {
+        column_with(0, 0, 64, 64 + height, "minecraft:scaffolding", &[("bottom", bottom), ("distance", distance)])
+    };
+    vec![
+        Scene::new("scaffolding-land-on-top", cat![floor(), tower("false", "0", 3)], keys(30, &[]))
+            .start(0.5, 75.0, 0.5)
+            .row(),
+        Scene::new("scaffolding-sneak-through", cat![floor(), tower("false", "0", 3)], keys(30, &["sneak"]))
+            .start(0.5, 67.0, 0.5)
+            .row(),
+        Scene::new("scaffolding-climb-inside", cat![floor(), tower("false", "0", 6)], keys(24, &["forward"]))
+            .start(0.5, 64.0, 0.5)
+            .row(),
+        Scene::new("scaffolding-sink-inside", cat![floor(), tower("false", "0", 6)], keys(24, &["sneak"]))
+            .start(0.5, 68.0, 0.5)
+            .row(),
+        Scene::new("scaffolding-walk-through-side", cat![floor(), tower("false", "0", 3)], keys(20, &["forward"]))
+            .start(0.5, 64.0, -2.5)
+            .row(),
+        Scene::new("scaffolding-leaning-bottom", cat![floor(), tower("true", "2", 1)], keys(30, &[]))
+            .start(0.5, 66.0, 0.5)
+            .row(),
+    ]
+}
+
 /// Ceilings, streams, lava, slime and ladders at a ledge.
 /// Ceilings, streams, lava and ladders.
 fn obstacle_rows() -> Vec<Value> {
@@ -386,6 +413,7 @@ pub fn local_player_ticks() -> Value {
         walking_rows(),
         stepping_rows(),
         climbing_rows(),
+        scaffolding_rows(),
         obstacle_rows(),
         landing_rows(),
         held_back(),

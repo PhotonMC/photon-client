@@ -13,9 +13,31 @@ pub(super) fn scaffolding() -> &'static Scaffolding {
         let edges = merged(Shapes::rotate_horizontal(&box_z(16.0, 0.0, 2.0, 0.0, 2.0)));
         Scaffolding {
             unstable: Shapes::or_many(&stable, &[column_xz(16.0, 0.0, 2.0), edges]),
+            bottom: column_xz(16.0, 0.0, 2.0),
             stable,
         }
     })
+}
+
+/// `ScaffoldingBlock.getCollisionShape`, for whoever asks: `feet` is the height of its feet
+/// (`None` with no entity asking, which counts as above) and `descending` whether it sneaks.
+pub fn scaffolding_collision(
+    (distance, bottom): (i32, bool),
+    feet: Option<(f64, i32)>,
+    descending: bool,
+) -> VoxelShape {
+    // `EntityCollisionContext.isAbove`: the feet over the top of `shape`, which is `top` blocks
+    // above the block's own base.
+    let above =
+        |top: i32| feet.is_none_or(|(y, base)| y > f64::from(base + top) - f64::from(1.0e-5_f32));
+    let shapes = scaffolding();
+    if above(1) && !descending {
+        shapes.stable.clone()
+    } else if distance != 0 && bottom && above(0) {
+        shapes.bottom.clone()
+    } else {
+        Shapes::empty()
+    }
 }
 
 pub(super) fn lectern_base() -> VoxelShape {

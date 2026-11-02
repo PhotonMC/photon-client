@@ -56,7 +56,7 @@ impl Level<'_> {
     ) -> Result<Option<BlockPos>, Unsupported> {
         let mut main: Option<BlockPos> = None;
         let mut main_distance = f64::MAX;
-        for (pos, _) in self.block_collisions(area, fall_distance)? {
+        for (pos, _) in self.block_collisions(area, fall_distance, Some(position.y))? {
             let dx = f64::from(pos.x) + 0.5 - position.x;
             let dy = f64::from(pos.y) + 0.5 - position.y;
             let dz = f64::from(pos.z) + 0.5 - position.z;
@@ -146,13 +146,14 @@ impl Level<'_> {
         }
     }
 
-    /// `getBlockCollisions` for the player, who has fallen `fall_distance`:
-    /// powder snow holds it only once it falls far enough. Scaffolding is
-    /// refused until its shape is ported.
+    /// `getBlockCollisions` for an entity that has fallen `fall_distance` and stands at `feet_y`
+    /// (none for a particle): powder snow holds it only once it falls far enough, and a
+    /// scaffolding holds whoever is above it and not sneaking.
     pub(crate) fn block_collisions(
         &self,
         area: Aabb,
         fall_distance: f64,
+        feet_y: Option<f64>,
     ) -> Result<Vec<(BlockPos, VoxelShape)>, Unsupported> {
         let registry = &self.world.block_state_registry;
         let collisions = self.world.collect_block_collisions_with(area, |state, at| {
@@ -165,19 +166,34 @@ impl Level<'_> {
                 && let Some(shape) = self.lava_surface_shape(state, at, bottom)
             {
                 shape
+            } else if is_block(state, "minecraft:scaffolding") {
+                self.scaffolding_collision(state, at, feet_y)
             } else {
                 registry.collision_shape_at(state, at)
             })
         });
-        let mut out = Vec::with_capacity(collisions.len());
-        for collision in collisions {
-            let info = self.info(collision.position);
-            if info.name == "minecraft:scaffolding" {
-                return unsupported(format!("entity-dependent collision shape of {}", info.name));
-            }
-            out.push((collision.position, collision.shape));
-        }
-        Ok(out)
+        Ok(collisions
+            .into_iter()
+            .map(|collision| (collision.position, collision.shape))
+            .collect())
+    }
+
+    /// `ScaffoldingBlock.getCollisionShape` for the entity asking.
+    fn scaffolding_collision(
+        &self,
+        state: BlockStateId,
+        at: [i32; 3],
+        feet_y: Option<f64>,
+    ) -> VoxelShape {
+        let distance = crate::block::rules::property(state, "distance")
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(0);
+        let bottom = crate::block::rules::property(state, "bottom") == Some("true");
+        crate::block::shape_rules::scaffolding_collision(
+            (distance, bottom),
+            feet_y.map(|y| (y, at[1])),
+            self.descending,
+        )
     }
 
     /// `Level.getEntityCollisions` for the local player: the boxes of the entities it cannot pass
@@ -217,7 +233,7 @@ impl Level<'_> {
             .into_iter()
             .collect();
         out.extend(
-            self.block_collisions(area, fall_distance)?
+            self.block_collisions(area, fall_distance, Some(source.y))?
                 .into_iter()
                 .map(|(_, shape)| shape),
         );
@@ -231,7 +247,9 @@ impl Level<'_> {
         fall_distance: f64,
         source: Vec3,
     ) -> Result<bool, Unsupported> {
-        Ok(self.block_collisions(area, fall_distance)?.is_empty()
+        Ok(self
+            .block_collisions(area, fall_distance, Some(source.y))?
+            .is_empty()
             && self.world.no_border_collision(
                 Some(crate::collision::ClientWorldCollisionSource { position: source }),
                 area,
@@ -469,6 +487,8 @@ pub(crate) struct Level<'a> {
     /// The way a piston is moving the entity (`PistonMovingBlockEntity.NOCLIP`): the moving block
     /// it moves with lets it through.
     pub(crate) no_clip: Option<photon_core::direction::Direction>,
+    /// Whether the entity asking is sneaking (`Entity.isDescending`): scaffolding lets it down.
+    pub(crate) descending: bool,
 }
 
 impl<'a> Level<'a> {
@@ -477,7 +497,13 @@ impl<'a> Level<'a> {
             world,
             lava_stand: None,
             no_clip: None,
+            descending: false,
         }
+    }
+
+    /// The level as an entity that sneaks, or not, sees it.
+    pub(crate) fn descending(self, descending: bool) -> Self {
+        Self { descending, ..self }
     }
 
     /// The level as seen by an entity that can stand on lava, with its feet at `bottom`.
