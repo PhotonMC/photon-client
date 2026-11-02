@@ -74,6 +74,8 @@ mod fish;
 
 pub use fish::*;
 
+mod effects;
+
 mod flyers;
 
 pub use flyers::*;

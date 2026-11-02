@@ -108,6 +108,7 @@ pub type Place<'a> = &'a dyn Fn(&MobModel, TextureRect, Option<u32>) -> Vec<Vert
 mod gates;
 mod parrots;
 mod skull;
+mod spin;
 
 /// The layer types armor is drawn in, by `HumanoidArmorLayer`.
 const HUMANOID: &str = "humanoid";

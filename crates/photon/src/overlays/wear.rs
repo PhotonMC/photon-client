@@ -212,6 +212,7 @@ fn remote_back(
     let parrots = [true, false].map(|left| entity.shoulder_parrot(left));
     let carried = shoulder_parrots(armor, parrots, textures, (state, placement));
     vertices.extend(glowing(session, entity, carried));
+    vertices.extend(super::spin::spin_effect(armor, textures, placement));
     vertices
 }
 
@@ -240,6 +241,7 @@ pub(super) fn local_back(
         textures,
         (state, placement),
     ));
+    vertices.extend(super::spin::spin_effect(armor, textures, placement));
     vertices
 }
 

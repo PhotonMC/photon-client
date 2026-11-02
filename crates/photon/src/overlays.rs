@@ -137,9 +137,13 @@ pub const SHADOW_TEXTURE: &str = "misc/shadow";
 
 /// The textures of the overlays that the entity texture packs besides the mobs': the orbs', the
 /// shadows' and the items' glint.
-pub const SHARED_TEXTURES: [&str; 3] = [
+/// `SpinAttackEffectLayer`'s texture, which the riptide swirl wears.
+pub const SPIN_ATTACK_TEXTURE: &str = "entity/trident/trident_riptide";
+
+pub const SHARED_TEXTURES: [&str; 4] = [
     ORB_TEXTURE,
     SHADOW_TEXTURE,
+    SPIN_ATTACK_TEXTURE,
     photon_render::render_types::ITEM_GLINT_TEXTURE,
 ];
 
@@ -153,6 +157,7 @@ mod local_state;
 mod remote_placement;
 mod shadow_radius;
 mod shadows;
+mod spin;
 pub use cracks::cracks;
 pub use hand_maps::HeldMap;
 pub use light::*;
