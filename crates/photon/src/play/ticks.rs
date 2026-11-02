@@ -323,6 +323,11 @@ impl Play {
         );
         self.controls
             .receive_dialogs(&mut self.session, &mut self.surface, &self.screen_assets);
+        self.controls.receive_query_answers(
+            &mut self.session,
+            &mut self.surface,
+            &self.screen_assets,
+        );
         self.controls
             .receive_win_game(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls

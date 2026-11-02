@@ -91,7 +91,7 @@ fn read_string(input: &mut &[u8]) -> Result<String, ReadError> {
     String::from_utf8(bytes.to_vec()).map_err(|_| decoder_error(input))
 }
 
-fn read_payload(input: &mut &[u8], id: u8) -> Result<FieldValue, ReadError> {
+fn read_payload(input: &mut &[u8], id: u8, sorted: bool) -> Result<FieldValue, ReadError> {
     match id {
         1 => Ok(FieldValue::Byte(read_bytes(input, 1)?[0] as i8)),
         2 => {
@@ -130,15 +130,15 @@ fn read_payload(input: &mut &[u8], id: u8) -> Result<FieldValue, ReadError> {
             ))
         }
         8 => Ok(FieldValue::Str(read_string(input)?)),
-        9 => read_list(input),
-        10 => Ok(FieldValue::Compound(read_compound(input)?)),
+        9 => read_list(input, sorted),
+        10 => Ok(FieldValue::Compound(read_compound(input, sorted)?)),
         11 => read_int_array(input),
         12 => read_long_array(input),
         _ => Err(decoder_error(input)),
     }
 }
 
-fn read_list(input: &mut &[u8]) -> Result<FieldValue, ReadError> {
+fn read_list(input: &mut &[u8], sorted: bool) -> Result<FieldValue, ReadError> {
     let element_id = read_required_byte(input)?;
     let count = read_i32(input)?;
     if count < 0 {
@@ -147,7 +147,7 @@ fn read_list(input: &mut &[u8]) -> Result<FieldValue, ReadError> {
 
     let mut values = Vec::new();
     for _ in 0..count {
-        let value = read_payload(input, element_id)?;
+        let value = read_payload(input, element_id, sorted)?;
         values.push(unwrap_list_element(element_id, value));
     }
     Ok(FieldValue::List(values))
@@ -201,27 +201,38 @@ fn read_long_array(input: &mut &[u8]) -> Result<FieldValue, ReadError> {
     Ok(FieldValue::LongArray(values))
 }
 
-fn read_compound(input: &mut &[u8]) -> Result<Vec<Field>, ReadError> {
+fn read_compound(input: &mut &[u8], sorted: bool) -> Result<Vec<Field>, ReadError> {
     let mut fields: Vec<Field> = Vec::new();
     loop {
         let field_id = read_required_byte(input)?;
         if field_id == 0 {
-            fields.sort_by(|a, b| a.key.cmp(&b.key));
+            if sorted {
+                fields.sort_by(|a, b| a.key.cmp(&b.key));
+            }
             return Ok(fields);
         }
         let key = read_name(input)?;
-        let value = read_payload(input, field_id)?;
+        let value = read_payload(input, field_id, sorted)?;
         fields.push(Field { key, value });
     }
 }
 
 /// Read one root tag: `None` for the end marker, otherwise any NBT payload.
 pub fn read_any_nbt(input: &mut &[u8]) -> Result<Option<FieldValue>, ReadError> {
+    read_root(input, true)
+}
+
+/// Like [`read_any_nbt`], but every compound keeps its fields in wire order.
+pub fn read_any_nbt_wire_order(input: &mut &[u8]) -> Result<Option<FieldValue>, ReadError> {
+    read_root(input, false)
+}
+
+fn read_root(input: &mut &[u8], sorted: bool) -> Result<Option<FieldValue>, ReadError> {
     let id = read_byte(input)?;
     if id == 0 {
         return Ok(None);
     }
-    read_payload(input, id).map(Some)
+    read_payload(input, id, sorted).map(Some)
 }
 
 /// Read one root tag: `None` for the end marker, otherwise a compound.

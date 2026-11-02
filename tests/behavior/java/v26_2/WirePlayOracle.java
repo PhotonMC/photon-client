@@ -9,6 +9,7 @@ import net.minecraft.network.protocol.game.ClientboundChunksBiomesPacket;
 import net.minecraft.network.protocol.game.ClientboundCustomChatCompletionsPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerCombatEndPacket;
 import net.minecraft.network.protocol.game.ClientboundServerDataPacket;
+import net.minecraft.network.protocol.game.ClientboundTagQueryPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerCombatEnterPacket;
 import net.minecraft.network.protocol.game.ClientboundMoveVehiclePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerLookAtPacket;
@@ -36,6 +37,7 @@ final class WirePlayOracle {
                 case "projectile_power" -> power(ClientboundProjectilePowerPacket.STREAM_CODEC.decode(input));
                 case "chunks_biomes" -> chunksBiomes(ClientboundChunksBiomesPacket.STREAM_CODEC.decode(input));
                 case "server_data" -> serverData(ClientboundServerDataPacket.STREAM_CODEC.decode(buffer));
+                case "tag_query" -> tagQuery(ClientboundTagQueryPacket.STREAM_CODEC.decode(input));
                 case "combat_enter" -> combatEnter(ClientboundPlayerCombatEnterPacket.STREAM_CODEC.decode(input));
                 case "combat_end" -> combatEnd(ClientboundPlayerCombatEndPacket.STREAM_CODEC.decode(input));
                 case "custom_chat_completions" -> completions(ClientboundCustomChatCompletionsPacket.STREAM_CODEC.decode(input));
@@ -135,6 +137,21 @@ final class WirePlayOracle {
         var fields = new JsonObject();
         fields.addProperty("motd", packet.motd().getString());
         packet.iconBytes().ifPresent(icon -> fields.addProperty("icon", HexFormat.of().formatHex(icon)));
+        return fields;
+    }
+
+    /** What F3+I writes of the tag: `Tag.toString` for a block, the pretty text less UUID and Pos for an entity. */
+    private static JsonObject tagQuery(ClientboundTagQueryPacket packet) {
+        var fields = new JsonObject();
+        fields.addProperty("transaction", packet.getTransactionId());
+        var tag = packet.getTag();
+        if (tag != null) {
+            fields.addProperty("compact", tag.toString());
+            fields.addProperty("pretty", net.minecraft.nbt.NbtUtils.toPrettyComponent(tag).getString());
+            tag.remove("UUID");
+            tag.remove("Pos");
+            fields.addProperty("entity", net.minecraft.nbt.NbtUtils.toPrettyComponent(tag).getString());
+        }
         return fields;
     }
 

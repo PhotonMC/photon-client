@@ -529,6 +529,9 @@ pub struct DebugKeys {
     /// `KeyboardHandler.usedDebugKeyAsModifier`: a combination with F3 was used, so letting go of
     /// it does not toggle the overlay.
     pub(super) used: bool,
+    /// Whether Shift was held with the debug key being run (F3+I reads the tag from the client
+    /// then).
+    pub(super) shift: bool,
     pub entries: photon_gui::hud::debug::EntryList,
     /// What the frame loop last said of itself: the frames a second, the limit and the present mode.
     pub frame: photon_gui::hud::debug::FrameStats,

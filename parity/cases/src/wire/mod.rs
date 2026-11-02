@@ -12,6 +12,7 @@ mod play;
 mod registry;
 mod stats;
 mod status;
+mod tag_text;
 mod tags;
 
 use serde_json::Value;
@@ -24,6 +25,7 @@ pub fn cases() -> Vec<Value> {
     cases.extend(advancements::cases());
     cases.extend(stats::cases());
     cases.extend(play::cases());
+    cases.extend(tag_text::cases());
     cases.extend(status::cases());
     cases
 }

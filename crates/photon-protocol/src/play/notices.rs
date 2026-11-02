@@ -104,3 +104,35 @@ impl Decode for ServerDataPacket {
         Ok(Self { motd, icon })
     }
 }
+
+/// `ClientboundTagQueryPacket`: the tag the server read for a query the client sent, or none.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TagQueryPacket {
+    pub transaction_id: i32,
+    pub tag: Option<Vec<photon_core::nbt::Field>>,
+}
+
+impl Decode for TagQueryPacket {
+    fn decode(
+        mut payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
+        let input = &mut payload;
+        let transaction_id = read_varint(input, "tag query transaction")?;
+        // `readNbt`: the end tag is none, anything but a compound is refused.
+        let tag = match photon_core::nbt::read_any_nbt_wire_order(input)
+            .map_err(|_| ConnectionError::Codec("tag query tag"))?
+        {
+            None => None,
+            Some(photon_core::nbt::FieldValue::Compound(fields)) => Some(fields),
+            Some(_) => return Err(ConnectionError::Codec("tag query not a compound")),
+        };
+        if !input.is_empty() {
+            return Err(ConnectionError::Codec("tag query trailing payload"));
+        }
+        Ok(Self {
+            transaction_id,
+            tag,
+        })
+    }
+}

@@ -146,6 +146,7 @@ impl Controls {
         modifiers: glfw::Modifiers,
         (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
     ) -> Result {
+        self.debug.shift = modifiers.contains(glfw::Modifiers::Shift);
         if self.debug.down && self.run_debug_key(key, (session, surface, assets))? {
             if let Some(screen) = self.debug_options.as_mut() {
                 screen.refresh(&self.debug.entries);

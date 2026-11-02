@@ -3,6 +3,10 @@ use super::*;
 /// The packets of this family, by packet id.
 pub(super) const DECODERS: &[(i32, Decoder)] = &[
     (
+        PLAY_CLIENTBOUND_TAG_QUERY_PACKET_ID,
+        typed::<TagQueryPacket>,
+    ),
+    (
         PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID,
         typed::<StartConfiguration>,
     ),
@@ -147,6 +151,17 @@ impl ClientboundPacket for OpenSignEditor {
 impl ClientboundPacket for OpenBook {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.menus.opened_book = Some(u8::from(self.0 != 0));
+        Ok(())
+    }
+}
+
+/// `handleTagQueryPacket`: an answer to no query that waits is dropped.
+impl ClientboundPacket for TagQueryPacket {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session
+            .social
+            .debug_queries
+            .answer(self.transaction_id, self.tag);
         Ok(())
     }
 }

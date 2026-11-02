@@ -84,12 +84,13 @@ impl Controls {
         event: &glfw::WindowEvent,
         (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
     ) -> std::result::Result<bool, Box<dyn std::error::Error>> {
-        let glfw::WindowEvent::Key(key, _, glfw::Action::Press, _) = *event else {
+        let glfw::WindowEvent::Key(key, _, glfw::Action::Press, modifiers) = *event else {
             return Ok(false);
         };
         if !self.debug.down {
             return Ok(false);
         }
+        self.debug.shift = modifiers.contains(glfw::Modifiers::Shift);
         if self.run_debug_key(key, (session, surface, assets))? {
             return Ok(true);
         }

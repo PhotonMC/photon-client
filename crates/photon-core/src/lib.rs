@@ -29,6 +29,7 @@ pub mod server_links;
 pub mod sha1;
 pub mod shape;
 pub mod smooth;
+pub mod snbt;
 pub mod sound_packets;
 pub mod sync_cell;
 pub mod tags;

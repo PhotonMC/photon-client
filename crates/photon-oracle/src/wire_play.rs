@@ -6,7 +6,7 @@ use photon_core::math::Vec3;
 use photon_protocol::play::{
     ChunksBiomes, CustomChatCompletions, Decode, EntityAnchor, MoveVehiclePacket, PlayerCombatEnd,
     PlayerCombatEnter, PlayerLookAtPacket, PlayerRotationPacket, ProjectilePowerPacket,
-    ServerDataPacket, resolve_player_rotation,
+    ServerDataPacket, TagQueryPacket, resolve_player_rotation,
 };
 use photon_world::ClientPlayerGameMode;
 use photon_world::local_player::LocalPlayer;
@@ -94,6 +94,17 @@ fn notice_fields(packet: &str, bytes: &[u8]) -> Result<Option<Value>, String> {
             let mut fields = json!({"motd": motd});
             if let Some(icon) = &p.icon {
                 fields["icon"] = json!(icon.iter().map(|b| format!("{b:02x}")).collect::<String>());
+            }
+            fields
+        }),
+        "tag_query" => TagQueryPacket::decode(bytes, &registries).ok().map(|p| {
+            let mut fields = json!({"transaction": p.transaction_id});
+            if let Some(tag) = p.tag {
+                let root = photon_core::nbt::FieldValue::Compound(tag.clone());
+                fields["compact"] = json!(photon_core::snbt::compact(&root));
+                fields["pretty"] = json!(photon_core::snbt::pretty(&root));
+                fields["entity"] =
+                    json!(photon_core::snbt::pretty_compound_without(&tag, &["UUID", "Pos"]));
             }
             fields
         }),
