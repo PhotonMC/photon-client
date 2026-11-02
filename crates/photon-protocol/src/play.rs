@@ -50,6 +50,8 @@ pub use error::*;
 pub use explode::*;
 mod look;
 pub use look::*;
+mod debug_packets;
+pub use debug_packets::*;
 mod notices;
 pub use notices::*;
 mod packet;

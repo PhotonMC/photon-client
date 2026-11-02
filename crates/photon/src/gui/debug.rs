@@ -54,7 +54,7 @@ impl Gui {
         let footer = list.is_overlay_visible().then(|| {
             debug::footer(
                 &FooterKeys::defaults(),
-                (false, false, false, false),
+                controls.debug.charts.footer_state(),
                 (false, false),
             )
         });

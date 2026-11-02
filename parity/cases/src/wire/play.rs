@@ -109,6 +109,47 @@ fn notices() -> Vec<Value> {
     cases
 }
 
+fn block(x: i32, y: i32, z: i32) -> String {
+    let packed = ((i64::from(x) & 0x3FF_FFFF) << 38) | ((i64::from(z) & 0x3FF_FFFF) << 12) | (i64::from(y) & 0xFFF);
+    hex(&packed.to_be_bytes())
+}
+
+fn samples(values: &[i64], type_number: i64) -> String {
+    let mut out = varint_hex(values.len() as i64);
+    for value in values {
+        out += &hex(&value.to_be_bytes());
+    }
+    out + &varint_hex(type_number)
+}
+
+fn charts() -> Vec<Value> {
+    let mut cases = Vec::new();
+    for (label, hex) in [
+        ("plain", hex(&1_234_567_i64.to_be_bytes())),
+        ("negative", hex(&(-5_i64).to_be_bytes())),
+        ("max", hex(&i64::MAX.to_be_bytes())),
+    ] {
+        cases.extend(framed("pong_response", label, hex));
+    }
+    for (label, hex) in [
+        ("four", samples(&[50_000_000, 40_000_000, 10_000, 9_990_000], 0)),
+        ("empty", samples(&[], 0)),
+        ("long", samples(&[1; 7], 0)),
+        ("bad-type", samples(&[1, 2], 1)),
+        ("negative-type", samples(&[1], -1)),
+    ] {
+        cases.extend(framed("debug_sample", label, hex));
+    }
+    for (label, hex) in [
+        ("plain", block(10, 64, -3) + &block(1, 2, 3)),
+        ("negative", block(-30_000_000, -64, 29_999_999) + &block(-1, -1, -1)),
+        ("same", block(0, 0, 0) + &block(0, 0, 0)),
+    ] {
+        cases.extend(framed("game_test_highlight", label, hex));
+    }
+    cases
+}
+
 fn packets() -> Vec<Value> {
     let mut cases = Vec::new();
     for (label, hex) in [
@@ -151,6 +192,7 @@ fn packets() -> Vec<Value> {
         cases.extend(framed("combat_end", label, hex));
     }
     cases.extend(notices());
+    cases.extend(charts());
     cases
 }
 

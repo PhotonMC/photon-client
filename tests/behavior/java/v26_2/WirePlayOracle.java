@@ -10,6 +10,9 @@ import net.minecraft.network.protocol.game.ClientboundCustomChatCompletionsPacke
 import net.minecraft.network.protocol.game.ClientboundPlayerCombatEndPacket;
 import net.minecraft.network.protocol.game.ClientboundServerDataPacket;
 import net.minecraft.network.protocol.game.ClientboundTagQueryPacket;
+import net.minecraft.network.protocol.game.ClientboundDebugSamplePacket;
+import net.minecraft.network.protocol.game.ClientboundGameTestHighlightPosPacket;
+import net.minecraft.network.protocol.ping.ClientboundPongResponsePacket;
 import net.minecraft.network.protocol.game.ClientboundLowDiskSpaceWarningPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerCombatEnterPacket;
 import net.minecraft.network.protocol.game.ClientboundMoveVehiclePacket;
@@ -41,6 +44,9 @@ final class WirePlayOracle {
                 case "tag_query" -> tagQuery(ClientboundTagQueryPacket.STREAM_CODEC.decode(input));
                 case "combat_enter" -> combatEnter(ClientboundPlayerCombatEnterPacket.STREAM_CODEC.decode(input));
                 case "low_disk_space" -> lowDisk(ClientboundLowDiskSpaceWarningPacket.STREAM_CODEC.decode(input));
+                case "pong_response" -> pong(ClientboundPongResponsePacket.STREAM_CODEC.decode(input));
+                case "debug_sample" -> debugSample(input);
+                case "game_test_highlight" -> highlight(ClientboundGameTestHighlightPosPacket.STREAM_CODEC.decode(input));
                 case "combat_end" -> combatEnd(ClientboundPlayerCombatEndPacket.STREAM_CODEC.decode(input));
                 case "custom_chat_completions" -> completions(ClientboundCustomChatCompletionsPacket.STREAM_CODEC.decode(input));
                 default -> throw new IllegalArgumentException("Unknown play packet");
@@ -114,6 +120,33 @@ final class WirePlayOracle {
 
     private static JsonObject combatEnter(ClientboundPlayerCombatEnterPacket packet) {
         return new JsonObject();
+    }
+
+    private static JsonObject pong(ClientboundPongResponsePacket packet) {
+        var fields = new JsonObject();
+        fields.addProperty("time", Long.toString(packet.time()));
+        return fields;
+    }
+
+    private static JsonObject debugSample(FriendlyByteBuf input) {
+        // The sample type is an enum over registered debug subscriptions.
+        Game26_2.bootstrap();
+        var packet = ClientboundDebugSamplePacket.STREAM_CODEC.decode(input);
+        var samples = new JsonArray();
+        for (long value : packet.sample()) {
+            samples.add(Long.toString(value));
+        }
+        var fields = new JsonObject();
+        fields.add("sample", samples);
+        fields.addProperty("type", packet.debugSampleType().ordinal());
+        return fields;
+    }
+
+    private static JsonObject highlight(ClientboundGameTestHighlightPosPacket packet) {
+        var fields = new JsonObject();
+        fields.addProperty("absolute", packet.absolutePos().toShortString());
+        fields.addProperty("relative", packet.relativePos().toShortString());
+        return fields;
     }
 
     private static JsonObject lowDisk(ClientboundLowDiskSpaceWarningPacket packet) {

@@ -39,6 +39,8 @@ mod chat_session;
 mod chat_validation;
 mod chunks;
 mod command_blocks;
+mod debug_charts;
+pub use debug_charts::{ChartRequests, GameTestHighlight, SampleLog};
 mod debug_query;
 pub use debug_query::{DebugQuery, DebugQueryAnswer};
 mod containers;

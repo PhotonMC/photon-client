@@ -418,6 +418,8 @@ mod credits_attribution;
 
 mod death;
 mod debug_actions;
+mod debug_charts;
+pub use debug_charts::ChartFlags;
 mod debug_inspect;
 mod debug_options;
 mod debug_profile;
@@ -533,6 +535,8 @@ pub struct DebugKeys {
     /// then).
     pub(super) shift: bool,
     pub entries: photon_gui::hud::debug::EntryList,
+    /// The charts F3+1 to F3+4 switch.
+    pub charts: ChartFlags,
     /// What the frame loop last said of itself: the frames a second, the limit and the present mode.
     pub frame: photon_gui::hud::debug::FrameStats,
     /// The machine the system entry names, taken from the backend.

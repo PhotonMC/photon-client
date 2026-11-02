@@ -170,6 +170,7 @@ pub(super) struct Social {
     pub(super) server_updates: Vec<ServerDataPacket>,
     /// `ClientPacketListener.debugQueryHandler`.
     pub(super) debug_queries: super::debug_query::DebugQueries,
+    pub(super) charts: super::debug_charts::DebugCharts,
     pub(super) custom_completions: std::collections::BTreeSet<String>,
     pub(super) player_infos: std::collections::BTreeMap<(u64, u64), PlayerInfo>,
     /// `ClientPacketListener.seenPlayers`: the players whose entity was added, by id and name,

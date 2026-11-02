@@ -235,6 +235,9 @@ fn last_death_of(info: &SpawnInfoObservation) -> Option<GlobalBlock> {
 impl PlaySession {
     fn on_login(&mut self, login: LoginObservation) -> Result<(), ConnectionError> {
         self.social.next_chat_index = 0;
+        // `handleLogin`: `debugSubscriber.clear()`, and a new level for the extractor.
+        self.social.charts.forget_subscriptions();
+        self.clear_game_test_highlights();
         self.world
             .set_server_simulation_distance(login.simulation_distance);
         let bounds = self.state.dimension_bounds(&login.spawn_info);
@@ -339,6 +342,7 @@ impl PlaySession {
         if swapped {
             // The players of the old level are gone, and the profiles they kept.
             self.social.entity_profiles.clear();
+            self.clear_game_test_highlights();
             // A new dimension is a new `ClientLevel` with no respawn data yet, and new level data
             // that keeps the difficulty but not its lock.
             self.level_info.respawn = None;

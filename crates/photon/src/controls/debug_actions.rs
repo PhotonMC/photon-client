@@ -135,6 +135,10 @@ impl Controls {
             glfw::Key::H => self.debug_advanced_tooltips(assets),
             glfw::Key::I => self.debug_copy_recreate(session, surface, assets),
             glfw::Key::P => self.debug_pause_on_focus_loss(assets),
+            glfw::Key::Num1 => self.debug.charts.toggle_profiler(&mut self.debug.entries),
+            glfw::Key::Num2 => self.debug.charts.toggle_fps(&mut self.debug.entries),
+            glfw::Key::Num3 => self.debug.charts.toggle_network(&mut self.debug.entries),
+            glfw::Key::Num4 => self.debug.charts.toggle_lightmap(&mut self.debug.entries),
             _ => return false,
         }
         true

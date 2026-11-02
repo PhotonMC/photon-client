@@ -18,6 +18,18 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
         PLAY_CLIENTBOUND_PING_PACKET_ID,
         typed::<photon_protocol::common::ClientboundPingPacket>,
     ),
+    (
+        PLAY_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
+        typed::<PongResponsePacket>,
+    ),
+    (
+        PLAY_CLIENTBOUND_DEBUG_SAMPLE_PACKET_ID,
+        typed::<DebugSamplePacket>,
+    ),
+    (
+        PLAY_CLIENTBOUND_GAME_TEST_HIGHLIGHT_POS_PACKET_ID,
+        typed::<GameTestHighlightPos>,
+    ),
     (PLAY_CLIENTBOUND_UPDATE_TAGS_PACKET_ID, typed::<UpdateTags>),
     (PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID, typed::<Disconnect>),
 ];
@@ -56,6 +68,29 @@ impl ClientboundPacket for photon_protocol::common::ClientboundPingPacket {
             photon_protocol::common::ServerboundPongPacket::new(self.id).encode(output);
             Ok(())
         })?;
+        Ok(())
+    }
+}
+
+/// `handlePongResponse`: `PingDebugMonitor.onPongReceived`.
+impl ClientboundPacket for PongResponsePacket {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_pong_response(self.time);
+        Ok(())
+    }
+}
+
+/// `handleDebugSample`.
+impl ClientboundPacket for DebugSamplePacket {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_debug_sample(&self.sample)
+    }
+}
+
+/// `handleGameTestHighlightPos`.
+impl ClientboundPacket for GameTestHighlightPos {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_game_test_highlight((self.absolute, self.relative));
         Ok(())
     }
 }

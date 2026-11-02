@@ -4,10 +4,10 @@
 use photon_core::ids::EntityId;
 use photon_core::math::Vec3;
 use photon_protocol::play::{
-    ChunksBiomes, CustomChatCompletions, Decode, EntityAnchor, LowDiskSpaceWarning,
-    MoveVehiclePacket, PlayerCombatEnd, PlayerCombatEnter, PlayerLookAtPacket,
-    PlayerRotationPacket, ProjectilePowerPacket, ServerDataPacket, TagQueryPacket,
-    resolve_player_rotation,
+    ChunksBiomes, CustomChatCompletions, DebugSamplePacket, Decode, EntityAnchor,
+    GameTestHighlightPos, LowDiskSpaceWarning, MoveVehiclePacket, PlayerCombatEnd,
+    PlayerCombatEnter, PlayerLookAtPacket, PlayerRotationPacket, PongResponsePacket,
+    ProjectilePowerPacket, ServerDataPacket, TagQueryPacket, resolve_player_rotation,
 };
 use photon_world::ClientPlayerGameMode;
 use photon_world::local_player::LocalPlayer;
@@ -120,6 +120,19 @@ fn notice_fields(packet: &str, bytes: &[u8]) -> Result<Option<Value>, String> {
 fn combat_fields(packet: &str, bytes: &[u8]) -> Result<Option<Value>, String> {
     let registries = crate::case_ids::registries();
     Ok(match packet {
+        "pong_response" => PongResponsePacket::decode(bytes, &registries)
+            .ok()
+            .map(|p| json!({"time": p.time.to_string()})),
+        "debug_sample" => DebugSamplePacket::decode(bytes, &registries).ok().map(|p| {
+            let sample: Vec<String> = p.sample.iter().map(i64::to_string).collect();
+            json!({"sample": sample, "type": 0})
+        }),
+        "game_test_highlight" => GameTestHighlightPos::decode(bytes, &registries)
+            .ok()
+            .map(|p| {
+                let short = |(x, y, z): (i32, i32, i32)| format!("{x}, {y}, {z}");
+                json!({"absolute": short(p.absolute), "relative": short(p.relative)})
+            }),
         "low_disk_space" => LowDiskSpaceWarning::decode(bytes, &registries)
             .ok()
             .map(|_| json!({})),
