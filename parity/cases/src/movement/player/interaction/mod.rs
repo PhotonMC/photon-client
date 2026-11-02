@@ -191,6 +191,10 @@ impl Interaction {
         Self { scene: self.scene.raining(level), ..self }
     }
 
+    pub fn thundering(self) -> Self {
+        Self { scene: self.scene.thundering(), ..self }
+    }
+
     pub fn auto_jump(self) -> Self {
         Self { scene: self.scene.auto_jump(), ..self }
     }

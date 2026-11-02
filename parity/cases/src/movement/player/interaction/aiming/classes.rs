@@ -15,8 +15,19 @@ fn once() -> Vec<Value> {
 }
 
 /// A row that clicks the entity with `item` (nothing when it is empty) from the aim `x_rot`.
-fn clicked(label: &str, entity: Value, (item, x_rot): (&'static str, f64), clicks: Vec<Value>) -> Value {
+fn clicked(label: &str, entity: Value, aim: (&'static str, f64), clicks: Vec<Value>) -> Value {
+    clicked_in(label, entity, aim, (clicks, false))
+}
+
+/// The same, in a thunderstorm when asked.
+fn clicked_in(
+    label: &str,
+    entity: Value,
+    (item, x_rot): (&'static str, f64),
+    (clicks, storm): (Vec<Value>, bool),
+) -> Value {
     let aimed = facing(label, vec![entity], clicks).x_rot(x_rot);
+    let aimed = if storm { aimed.raining(1.0).thundering() } else { aimed };
     if item.is_empty() { aimed.row() } else { aimed.main_hand(item).count(2).row() }
 }
 
@@ -218,6 +229,20 @@ fn placed_table() -> Vec<Placed> {
         placed("use-chest-boat-with-stone", "oak_chest_boat", "minecraft:stone"),
         Placed { sneaking: true, ..placed("use-chest-boat-sneaking", "oak_chest_boat", "minecraft:stone") },
         placed("use-interaction-with-stone", "interaction", "minecraft:stone"),
+        // A worried panda in thunder is scared and passes the click, even on its back; without the
+        // gene or the thunder it is righted by the click.
+        Placed {
+            flags: &["on_back", "worried", "stormy"],
+            ..placed("use-scared-panda-on-back-with-stone", "panda", "minecraft:stone")
+        },
+        Placed {
+            flags: &["on_back", "worried"],
+            ..placed("use-worried-panda-on-back-with-stone", "panda", "minecraft:stone")
+        },
+        Placed {
+            flags: &["on_back", "stormy"],
+            ..placed("use-stormy-panda-on-back-with-stone", "panda", "minecraft:stone")
+        },
         Placed {
             flags: &["responds"],
             ..placed("use-responding-interaction-with-stone", "interaction", "minecraft:stone")
@@ -233,11 +258,12 @@ fn placed_rows() -> Vec<Value> {
         .map(|row| {
             let [x, y, z] = row.at;
             let mut entity = super::mob(31, row.kind, x, y, z);
-            for flag in row.flags {
+            for flag in row.flags.iter().filter(|flag| **flag != "stormy") {
                 entity[*flag] = json!(true);
             }
             let clicks = if row.sneaking { sneaking_click() } else { once() };
-            clicked(row.label, entity, (row.item, row.aim), clicks)
+            let storm = row.flags.contains(&"stormy");
+            clicked_in(row.label, entity, (row.item, row.aim), (clicks, storm))
         })
         .collect()
 }

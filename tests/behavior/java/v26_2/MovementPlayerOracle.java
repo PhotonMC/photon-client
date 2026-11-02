@@ -242,6 +242,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         net.minecraft.world.entity.Interaction.class, "DATA_RESPONSE_ID").get(null);
                     interaction.getEntityData().set(accessor, true);
                 }
+                if (described.has("worried") && entity instanceof net.minecraft.world.entity.animal.panda.Panda worried) {
+                    worried.setMainGene(net.minecraft.world.entity.animal.panda.Panda.Gene.WORRIED);
+                }
                 if (described.has("on_back") && entity instanceof net.minecraft.world.entity.animal.panda.Panda panda) {
                     panda.setOnBack(true);
                 }

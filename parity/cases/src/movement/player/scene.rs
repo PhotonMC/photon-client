@@ -56,6 +56,8 @@ pub struct Scene {
     block_entities: Vec<Value>,
     /// The rain level, with the sky lit so that the rain can reach the player.
     rain: Option<f64>,
+    /// Whether the rain comes with thunder.
+    thunder: bool,
     frozen: bool,
     /// Block animations to report after each tick: the report's key and the block's place.
     watched: Vec<(&'static str, (i64, i64, i64))>,
@@ -77,6 +79,7 @@ impl Scene {
             camera_entity: None,
             flying_speed: None,
             rain: None,
+            thunder: false,
             block_entities: Vec::new(),
             frozen: false,
             watched: Vec::new(),
@@ -165,6 +168,11 @@ impl Scene {
         Self { rain: Some(level), ..self }
     }
 
+    /// Thunder along with the rain, so that the level is thundering at rain level one.
+    pub fn thundering(self) -> Self {
+        Self { thunder: true, ..self }
+    }
+
     pub fn row(self) -> Value {
         let mut row = json!({
             "label": self.label, "blocks": self.blocks, "chunk_radius": 1, "entity_id": 7,
@@ -192,7 +200,7 @@ impl Scene {
             row["camera_entity"] = json!(id);
         }
         if let Some(rain) = self.rain {
-            row["weather"] = json!([f32_bits(rain), f32_bits(0.0)]);
+            row["weather"] = json!([f32_bits(rain), f32_bits(if self.thunder { 1.0 } else { 0.0 })]);
             row["light"] = json!(true);
         }
         if let Some(speed) = self.flying_speed {

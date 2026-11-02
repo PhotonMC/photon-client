@@ -1,8 +1,7 @@
 //! The `mobInteract` of the classes that answer one fixed way on the client: ocelot, dolphin, iron
 //! golem, allay, bogged, piglin, panda, happy ghast and armadillo.
 //!
-//! Not covered: a scared panda (no row: it needs the worried gene under thunder), the data a panda's righting
-//! clears on the client, an allay
+//! Not covered: the data a panda's righting clears on the client, an allay
 //! whose duplication is cooling down (or whose hand shows a tick early), a sheared bogged, a piglin
 //! whose brain refuses to admire, the iron golem's health after a repair and its attribute-based
 //! maximum, and the sounds.

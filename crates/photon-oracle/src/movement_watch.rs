@@ -94,6 +94,11 @@ pub(super) fn apply_species_data(
             [photon_world::mobs::armadillo::STATE_DATA_ID, 36, 2, 255],
         ),
         ("on_back", [photon_world::PANDA_FLAGS_DATA_ID, 0, 16, 255]),
+        // The worried gene (id two) as the main gene, which a dominant gene alone decides.
+        (
+            "worried",
+            [photon_world::PANDA_MAIN_GENE_DATA_ID, 0, 2, 255],
+        ),
         ("dancing", [photon_world::ALLAY_DANCING_DATA_ID, 8, 1, 255]),
         (
             "responds",
