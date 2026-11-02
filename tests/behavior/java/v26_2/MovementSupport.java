@@ -290,14 +290,18 @@ class MovementSupport {
         setField(listener, "potionBrewing", net.minecraft.world.item.alchemy.PotionBrewing.bootstrap(
             net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS));
 
+        // A row can name the nether, whose dimension type evaporates water.
+        boolean nether = row.has("dimension") && row.get("dimension").getAsString().equals("nether");
         var dimensionType = registries.lookupOrThrow(
-            net.minecraft.core.registries.Registries.DIMENSION_TYPE).getOrThrow(
-            net.minecraft.world.level.dimension.BuiltinDimensionTypes.OVERWORLD);
+            net.minecraft.core.registries.Registries.DIMENSION_TYPE).getOrThrow(nether
+                ? net.minecraft.world.level.dimension.BuiltinDimensionTypes.NETHER
+                : net.minecraft.world.level.dimension.BuiltinDimensionTypes.OVERWORLD);
         var level = new net.minecraft.client.multiplayer.ClientLevel(
             listener,
             new net.minecraft.client.multiplayer.ClientLevel.ClientLevelData(
                 net.minecraft.world.Difficulty.PEACEFUL, false, false),
-            net.minecraft.world.level.Level.OVERWORLD, dimensionType, 8, 8, null, false, 0L, 63);
+            nether ? net.minecraft.world.level.Level.NETHER : net.minecraft.world.level.Level.OVERWORLD,
+            dimensionType, 8, 8, null, false, 0L, 63);
 
         // The level's random starts from the clock; both sides start it from one seed.
         ((net.minecraft.util.RandomSource) Reflect.field(net.minecraft.world.level.Level.class, "random").get(level))

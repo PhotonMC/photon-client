@@ -87,9 +87,10 @@ fn iron_bars_join(
     let block = state.block();
     let other = neighbour.block();
     let opposite = side_property(direction.opposite());
+    let bars = |block: u16| tags.contains(usize::from(block), "minecraft:bars");
     let joins = neighbour.block == state.block
-        || tags.contains(usize::from(neighbour.block), "minecraft:bars")
-            && tags.contains(usize::from(state.block), "minecraft:bars")
+        || bars(neighbour.block)
+            && bars(state.block)
             && opposite.is_some_and(|property| {
                 other.value(u32::from(neighbour.offset), property).is_some()
             });

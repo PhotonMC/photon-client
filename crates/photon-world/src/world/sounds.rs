@@ -377,6 +377,9 @@ pub enum LevelEvent {
     OreSparks { pos: (i32, i32, i32) },
     /// A lit campfire put out (`CampfireBlock.dowse` on a client).
     CampfireDowse { pos: (i32, i32, i32), signal: bool },
+    /// Water poured out of a bucket where it evaporates (`BucketItem.emptyContents`): eight
+    /// puffs of large smoke in the block.
+    WaterEvaporates { pos: (i32, i32, i32) },
     /// A trial spawner's tick (`TrialSpawner.tickClient`), less its spin: the particles of its
     /// state and its ambient sound.
     TrialSpawnerTick { pos: (i32, i32, i32) },

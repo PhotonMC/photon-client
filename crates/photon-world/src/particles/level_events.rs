@@ -257,8 +257,8 @@ impl ParticleEngine {
             | LevelEvent::ParrotImitation { .. }
             | LevelEvent::Geyser { .. }
             | LevelEvent::GeyserSound { .. } => self.block_entity_level_event(level_event, context),
-            LevelEvent::OreSparks { pos } => {
-                self.redstone_ore_particles(pos, context);
+            LevelEvent::OreSparks { .. } | LevelEvent::WaterEvaporates { .. } => {
+                self.block_puff_level_event(level_event, context);
                 Vec::new()
             }
             LevelEvent::PistonSound => {
@@ -267,6 +267,19 @@ impl ParticleEngine {
                 context.level_random.next_float();
                 Vec::new()
             }
+        }
+    }
+
+    /// The particles a touch of a block throws: ore dust, or steam off poured water.
+    fn block_puff_level_event<F: FnMut() -> RandomSource>(
+        &mut self,
+        level_event: LevelEvent,
+        context: &mut LevelEventContext<'_, F>,
+    ) {
+        match level_event {
+            LevelEvent::OreSparks { pos } => self.redstone_ore_particles(pos, context),
+            LevelEvent::WaterEvaporates { pos } => self.water_evaporation(pos, context),
+            _ => {}
         }
     }
 

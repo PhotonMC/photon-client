@@ -16,6 +16,7 @@ pub struct DimensionEnvironment {
     pub skybox: DimensionSkybox,
     pub cardinal_light_type: CardinalLightType,
     pub piglins_zombify: bool,
+    pub water_evaporates: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -31,6 +32,8 @@ pub struct DimensionEnvironmentInput {
     pub cardinal_light_type: CardinalLightType,
     /// `EnvironmentAttributes.PIGLINS_ZOMBIFY` of the dimension type.
     pub piglins_zombify: bool,
+    /// `EnvironmentAttributes.WATER_EVAPORATES` of the dimension type.
+    pub water_evaporates: bool,
 }
 
 impl DimensionEnvironment {
@@ -46,6 +49,7 @@ impl DimensionEnvironment {
             skybox: input.skybox,
             cardinal_light_type: input.cardinal_light_type,
             piglins_zombify: input.piglins_zombify,
+            water_evaporates: input.water_evaporates,
         }
     }
 
@@ -73,6 +77,7 @@ impl DimensionEnvironment {
                 skybox: DimensionSkybox::None,
                 cardinal_light_type: CardinalLightType::Nether,
                 piglins_zombify: false,
+                water_evaporates: true,
             }),
             "minecraft:the_end" => Self::new(DimensionEnvironmentInput {
                 has_fixed_time: true,
@@ -85,6 +90,7 @@ impl DimensionEnvironment {
                 skybox: DimensionSkybox::End,
                 cardinal_light_type: CardinalLightType::Default,
                 piglins_zombify: true,
+                water_evaporates: false,
             }),
             "minecraft:overworld_caves" => Self::new(DimensionEnvironmentInput {
                 has_fixed_time: false,
@@ -97,6 +103,7 @@ impl DimensionEnvironment {
                 skybox: DimensionSkybox::Overworld,
                 cardinal_light_type: CardinalLightType::Default,
                 piglins_zombify: true,
+                water_evaporates: false,
             }),
             _ => Self::new(DimensionEnvironmentInput {
                 has_fixed_time: false,
@@ -109,6 +116,7 @@ impl DimensionEnvironment {
                 skybox: DimensionSkybox::Overworld,
                 cardinal_light_type: CardinalLightType::Default,
                 piglins_zombify: true,
+                water_evaporates: false,
             }),
         }
     }
@@ -116,6 +124,11 @@ impl DimensionEnvironment {
     /// Whether piglins and hoglins turn into their zombified kin here.
     pub fn piglins_zombify(&self) -> bool {
         self.piglins_zombify
+    }
+
+    /// Whether water poured out of a bucket boils away here.
+    pub fn water_evaporates(&self) -> bool {
+        self.water_evaporates
     }
 
     pub fn has_fixed_time(&self) -> bool {

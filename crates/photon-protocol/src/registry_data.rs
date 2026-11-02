@@ -88,9 +88,8 @@ impl PackedRegistryEntry {
             Some(FieldValue::Double(value)) => *value,
             _ => return Err(ReadError::DecoderError),
         };
-        let logical_height = match find_field(fields, "logical_height") {
-            Some(FieldValue::Int(value)) => *value,
-            _ => return Err(ReadError::DecoderError),
+        let Some(FieldValue::Int(logical_height)) = find_field(fields, "logical_height") else {
+            return Err(ReadError::DecoderError);
         };
         let ambient_light = match find_field(fields, "ambient_light") {
             Some(FieldValue::Float(value)) => *value,
@@ -109,7 +108,7 @@ impl PackedRegistryEntry {
             CardinalLightType::from_wire,
         )?;
 
-        let piglins_zombify = piglins_zombify(fields)?;
+        let (piglins_zombify, water_evaporates) = gameplay_attributes(fields)?;
 
         DimensionEnvironment::from_wire(
             DimensionEnvironmentInput {
@@ -118,11 +117,12 @@ impl PackedRegistryEntry {
                 has_ceiling,
                 has_ender_dragon_fight,
                 coordinate_scale,
-                logical_height,
+                logical_height: *logical_height,
                 ambient_light,
                 skybox,
                 cardinal_light_type,
                 piglins_zombify,
+                water_evaporates,
             },
             bounds.height,
         )
@@ -131,20 +131,30 @@ impl PackedRegistryEntry {
     }
 }
 
-/// The dimension type's `gameplay/piglins_zombify` attribute: the default
-/// (true) when the map leaves it out, else the value or the boolean modifier
-/// applied to that default.
-fn piglins_zombify(fields: &[photon_core::nbt::Field]) -> Result<bool, ReadError> {
-    const DEFAULT: bool = true;
+/// The `piglins_zombify` and `water_evaporates` attributes of the dimension type.
+fn gameplay_attributes(fields: &[photon_core::nbt::Field]) -> Result<(bool, bool), ReadError> {
+    Ok((
+        boolean_attribute(fields, "gameplay/piglins_zombify", true)?,
+        boolean_attribute(fields, "gameplay/water_evaporates", false)?,
+    ))
+}
+
+/// A boolean attribute of the dimension type (`name` after `minecraft:`): `default` when the map
+/// leaves it out, else the value or the boolean modifier applied to that default.
+fn boolean_attribute(
+    fields: &[photon_core::nbt::Field],
+    name: &str,
+    default: bool,
+) -> Result<bool, ReadError> {
     let Some(attributes) = find_field(fields, "attributes") else {
-        return Ok(DEFAULT);
+        return Ok(default);
     };
     let FieldValue::Compound(attributes) = attributes else {
         return Err(ReadError::DecoderError);
     };
-    match find_field(attributes, "minecraft:gameplay/piglins_zombify") {
-        None => Ok(DEFAULT),
-        Some(FieldValue::Compound(entry)) => modified_boolean(entry, DEFAULT),
+    match find_field(attributes, &format!("minecraft:{name}")) {
+        None => Ok(default),
+        Some(FieldValue::Compound(entry)) => modified_boolean(entry, default),
         Some(value) => decode_bool(value).ok_or(ReadError::DecoderError),
     }
 }
@@ -538,5 +548,34 @@ mod tests {
             with_attributes(modifier("blend", 0)),
             Err(ReadError::DecoderError)
         );
+    }
+
+    #[test]
+    fn dimension_type_entry_reads_the_water_evaporates_attribute() {
+        let evaporates = |attributes: Option<Vec<Field>>| {
+            let FieldValue::Compound(mut fields) = dimension_type_environment_data() else {
+                unreachable!()
+            };
+            if let Some(attributes) = attributes {
+                fields.push(Field {
+                    key: "attributes".to_owned(),
+                    value: FieldValue::Compound(attributes),
+                });
+            }
+            PackedRegistryEntry::new(
+                Identifier::parse("p08:test").expect("identifier"),
+                Some(FieldValue::Compound(fields)),
+            )
+            .dimension_type_environment()
+            .expect("valid environment")
+            .expect("environment data")
+            .water_evaporates()
+        };
+        // False while the map leaves it out, as the nether's map sets it.
+        assert!(!evaporates(None));
+        assert!(evaporates(Some(vec![Field {
+            key: "minecraft:gameplay/water_evaporates".to_owned(),
+            value: FieldValue::Byte(1),
+        }])));
     }
 }

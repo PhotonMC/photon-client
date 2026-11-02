@@ -334,6 +334,24 @@ impl ParticleEngine {
         }
     }
 
+    /// `BucketItem.emptyContents` where water evaporates: eight puffs of large smoke at random
+    /// places in the block.
+    pub(super) fn water_evaporation<F: FnMut() -> RandomSource>(
+        &mut self,
+        (x, y, z): (i32, i32, i32),
+        context: &mut LevelEventContext<'_, F>,
+    ) {
+        for _ in 0..8 {
+            let random = &mut *context.level_random;
+            let at = (
+                f64::from(x) + f64::from(random.next_float()),
+                f64::from(y) + f64::from(random.next_float()),
+                f64::from(z) + f64::from(random.next_float()),
+            );
+            self.level_add(context, "large_smoke", at, (0.0, 0.0, 0.0));
+        }
+    }
+
     /// `FurnaceBlock`, `BlastFurnaceBlock` and `SmokerBlock` lit: a crackle one time in ten, and
     /// smoke (and a furnace's flame) out of the front, or a smoker's out of the top.
     fn furnace<F: FnMut() -> RandomSource>(

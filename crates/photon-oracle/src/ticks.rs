@@ -42,15 +42,40 @@ fn placed_blocks(
 /// The seed `Level.random` starts from in the movement scenes, on both sides.
 pub(super) const LEVEL_SEED: i64 = 20_261_026;
 
+/// The level a row starts from: its random starts from one seed on both sides (the reference's
+/// starts from the clock), and in the dimension the row names.
+fn fresh_world(row: &Value, bounds: photon_world::DimensionBounds) -> ClientWorld {
+    let mut world = crate::case_ids::world(bounds);
+    world.fix_level_seed(LEVEL_SEED);
+    enter_dimension(&mut world, row, bounds);
+    world
+}
+
+/// The nether, when the row names it: its dimension type decides what water does.
+fn enter_dimension(world: &mut ClientWorld, row: &Value, bounds: photon_world::DimensionBounds) {
+    if row["dimension"].as_str() != Some("nether") {
+        return;
+    }
+    let key = "minecraft:the_nether";
+    let input = photon_world::DimensionInput {
+        key,
+        dimension_type_id: 0,
+        seed: 0,
+        is_debug: false,
+        is_flat: false,
+        sea_level: 63,
+    };
+    let environment = photon_world::DimensionEnvironment::for_builtin_dimension(key);
+    world.replace_dimension_with_environment(input, bounds, environment);
+}
+
 pub(super) fn movement_world(row: &Value) -> Result<ClientWorld, String> {
     use photon_data::block::registry;
     use photon_world::{DimensionBounds, SectionInput};
     // The overworld's bounds, as the reference level is built with.
     let dimension = DimensionBounds::new(-64, 384);
     let placed = placed_blocks(row)?;
-    let mut world = crate::case_ids::world(dimension);
-    // The reference's level random starts from the clock; both sides start it from one seed.
-    world.fix_level_seed(LEVEL_SEED);
+    let mut world = fresh_world(row, dimension);
     let radius = i32_field(row, "chunk_radius")?;
     let biomes = vec![particles::biome_id(row)?; 64];
     for chunk_x in -radius..=radius {

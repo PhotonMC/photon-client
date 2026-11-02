@@ -24,6 +24,27 @@ impl ClientWorld {
             .push(LevelEvent::CampfireDowse { pos, signal });
     }
 
+    /// Water poured out where it evaporates (`BucketItem.emptyContents`): the hiss, its pitch
+    /// from the level's random, and the steam for the particle engine.
+    pub fn evaporate_water(&mut self, pos: (i32, i32, i32)) {
+        let first = self.next_level_float();
+        let pitch = 2.6 + (first - self.next_level_float()) * 0.8;
+        let at = (
+            f64::from(pos.0) + 0.5,
+            f64::from(pos.1) + 0.5,
+            f64::from(pos.2) + 0.5,
+        );
+        self.push_sound(local_player::LocalSound::at(
+            "minecraft:block.fire.extinguish",
+            local_player::LocalSoundSource::Blocks,
+            (0.5, pitch),
+            at,
+        ));
+        self.level_events
+            .0
+            .push(LevelEvent::WaterEvaporates { pos });
+    }
+
     /// The ticker a lit campfire has on a client: the smoke is asked of the particle engine,
     /// which draws it from the level's random source. A campfire that went out loses the ticker
     /// with its state; one that is not there any more loses it here.

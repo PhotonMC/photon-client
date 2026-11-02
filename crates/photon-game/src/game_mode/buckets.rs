@@ -143,6 +143,21 @@ fn empty_contents(
             empty_contents(ctx, (item, content), beside, None)
         });
     }
+    put_fluid(ctx, (item, content), pos, (state, container))
+}
+
+/// The end of `BucketItem.emptyContents` once the fluid fits: it boils away where water
+/// evaporates, goes into a container, or replaces the block.
+fn put_fluid(
+    ctx: &mut Context<'_>,
+    (item, content): (ItemId, Content),
+    pos: Pos,
+    (state, container): (BlockStateId, Option<bool>),
+) -> bool {
+    if content == Content::Water && ctx.world.dimension_environment().water_evaporates() {
+        ctx.world.evaporate_water(pos);
+        return true;
+    }
     // The client sets nothing in most containers; the server's waterlogging arrives.
     if container.is_some() {
         if let Some((wet, flags)) = rules::client_waterlogging(state) {

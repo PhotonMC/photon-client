@@ -308,6 +308,18 @@ fn bucket_rows() -> Vec<Value> {
     ]
 }
 
+/// Water poured out in the nether boils away: a hiss and steam, and nothing placed.
+fn nether_bucket_rows() -> Vec<Value> {
+    let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
+    let around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3), (0, 64, 1)];
+    let steps =
+        [uses(1, Some(&top_of), &around).clicks(1).inventory().go(), uses(3, Some(&top_of), &around).inventory().go()]
+            .concat();
+    vec![in_nether(
+        using("water-bucket-in-nether", vec![], steps).main_hand("minecraft:water_bucket").count(1).x_rot(39.0).row(),
+    )]
+}
+
 fn bucket_rows_2() -> Vec<Value> {
     let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
     let around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3), (0, 64, 1)];
@@ -419,6 +431,21 @@ fn bucket_rows_3() -> Vec<Value> {
 }
 
 pub fn rows() -> Vec<Value> {
-    [using_rows_1(), using_rows_2(), using_rows_3(), using_rows_4(), bucket_rows(), bucket_rows_2(), bucket_rows_3()]
-        .concat()
+    [
+        using_rows_1(),
+        using_rows_2(),
+        using_rows_3(),
+        using_rows_4(),
+        bucket_rows(),
+        bucket_rows_2(),
+        bucket_rows_3(),
+        nether_bucket_rows(),
+    ]
+    .concat()
+}
+
+/// A row run in the nether's dimension type instead of the overworld's.
+fn in_nether(mut row: Value) -> Value {
+    row["dimension"] = json!("nether");
+    row
 }
