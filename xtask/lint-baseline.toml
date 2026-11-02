@@ -669,7 +669,7 @@
 "crates/photon-oracle/src/gui/result/books.rs::book_view_case" = 78
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 85
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 61
-"crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 147
+"crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 146
 "crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 67
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 98
 "crates/photon-oracle/src/gui/result/settings.rs::chat_options_screen_case" = 74
@@ -890,7 +890,6 @@
 "crates/photon/src/particles.rs::Particles::vertices" = 78
 "crates/photon/src/play/draw.rs::Play::draw" = 74
 "crates/photon/src/play/ticks.rs::Play::start" = 144
-"crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/window_probe/version.rs::model_scene" = 72
 "crates/photon/src/window_probe/world.rs::load_world" = 90
 "crates/photon/src/world/signs.rs::sign_texts" = 66

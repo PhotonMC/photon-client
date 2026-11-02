@@ -20,9 +20,7 @@ pub(super) fn row_stack(slot: &Value) -> Result<photon_world::ClientItemStackSta
 }
 
 pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    let root = &ctx.root;
-    let font = &ctx.font;
-    let atlas = &ctx.atlas;
+    let (root, font, atlas) = (&ctx.root, &ctx.font, &ctx.atlas);
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     use photon_gui::screen::Screen;
     use photon_gui::screen::generic::{EnchantText, GenericScreen, Titles};
@@ -64,6 +62,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     let shared_font = std::sync::Arc::new(crate::fonts::load_font(root).ok_or("font")?);
     let titles = Titles {
         title: lang.text(row["title_key"].as_str().ok_or("title_key")?),
+        title_runs: None,
         inventory: lang.text("container.inventory"),
         font: shared_font.clone(),
         repair_cost: lang.text("container.repair.cost"),

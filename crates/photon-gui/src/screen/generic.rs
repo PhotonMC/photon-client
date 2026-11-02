@@ -104,6 +104,9 @@ pub fn slot_position(kind: MenuKind, index: usize) -> (i32, i32) {
 #[derive(Debug, Clone)]
 pub struct Titles {
     pub title: String,
+    /// The title as the server sent it, with its styles; none draws `title` plain (an ItemsAdder menu draws pictures and
+    /// colours through them).
+    pub title_runs: Option<Vec<photon_game::text::Run>>,
     pub inventory: String,
     /// The font the anvil's name box measures with.
     pub font: std::sync::Arc<Font>,
@@ -446,6 +449,7 @@ mod tests {
     fn titles() -> Titles {
         Titles {
             title: "Chest".to_owned(),
+            title_runs: None,
             inventory: "Inventory".to_owned(),
             font: std::sync::Arc::new(Font::default()),
             repair_cost: String::new(),

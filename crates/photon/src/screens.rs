@@ -53,6 +53,21 @@ impl ScreenAssets {
         })
     }
 
+    /// A container's title as the network wrote it: in plain words and as styled runs.
+    fn container_title(&self, mut data: &[u8]) -> (String, Vec<photon_game::text::Run>) {
+        let component = photon_core::nbt::read_any_nbt(&mut data)
+            .ok()
+            .flatten()
+            .and_then(|tag| photon_game::text::Component::from_nbt(&tag));
+        let Some(component) = component else {
+            return Default::default();
+        };
+        let runs = self
+            .lang
+            .runs(&component, &photon_game::text::Style::default());
+        (self.lang.plain(&component), runs)
+    }
+
     /// The screen of a container the server opened: `title_nbt` is the
     /// menu's title as the network wrote it.
     pub fn container_screen(
@@ -72,19 +87,14 @@ impl ScreenAssets {
                 may_build,
             ));
         }
-        let mut data = title_nbt;
-        let title = photon_core::nbt::read_any_nbt(&mut data)
-            .ok()
-            .flatten()
-            .and_then(|tag| photon_game::text::Component::from_nbt(&tag))
-            .map(|component| self.lang.plain(&component))
-            .unwrap_or_default();
+        let (title, title_runs) = self.container_title(title_nbt);
         Box::new(GenericScreen::new(
             kind,
             width,
             height,
             Titles {
                 title,
+                title_runs: Some(title_runs),
                 inventory: self.lang.text("container.inventory"),
                 font: self.creative.font.clone(),
                 repair_cost: self.lang.text("container.repair.cost"),

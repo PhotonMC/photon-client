@@ -196,6 +196,33 @@ impl GenericScreen {
         }
     }
 
+    /// The title, in the styles the server gave it; the dispenser centres it and the others keep
+    /// it at the corner.
+    fn draw_title(&self, draw: &mut ScreenDraw<'_, '_>, (left, top): (i32, i32), width: i32) {
+        let (label_x, label_y) = transform::title_label(self.kind);
+        let title_x = if matches!(
+            self.kind,
+            MenuKind::Dispenser | MenuKind::Furnace(_) | MenuKind::Brewing | MenuKind::Crafter
+        ) {
+            (width - draw.font.width(&self.titles.title)) / 2
+        } else {
+            label_x
+        };
+        let plain = [photon_game::text::Run {
+            text: self.titles.title.clone(),
+            style: photon_game::text::Style::default(),
+        }];
+        let runs = crate::draw_runs(self.titles.title_runs.as_deref().unwrap_or(&plain));
+        draw.frame.styled_text_runs(
+            draw.atlas,
+            draw.font,
+            &runs,
+            (left + title_x, top + label_y),
+            0xFF40_4040,
+            false,
+        );
+    }
+
     /// The labels of the screen (and, for the beacon, its buttons), which the reference draws
     /// with them: the title and the inventory's, or the beacon's two powers.
     pub(super) fn draw_labels(
@@ -229,24 +256,7 @@ impl GenericScreen {
         } else if self.kind == MenuKind::Merchant {
             self.draw_merchant_labels(draw, menu, (left, top));
         } else {
-            // The dispenser centres its title; the others keep it at the corner.
-            let (label_x, label_y) = transform::title_label(self.kind);
-            let title_x = if matches!(
-                self.kind,
-                MenuKind::Dispenser | MenuKind::Furnace(_) | MenuKind::Brewing | MenuKind::Crafter
-            ) {
-                (width - draw.font.width(&self.titles.title)) / 2
-            } else {
-                label_x
-            };
-            draw.frame.text(
-                draw.atlas,
-                draw.font,
-                &self.titles.title,
-                left + title_x,
-                top + label_y,
-                0xFF40_4040,
-            );
+            self.draw_title(draw, (left, top), width);
             draw.frame.text(
                 draw.atlas,
                 draw.font,
