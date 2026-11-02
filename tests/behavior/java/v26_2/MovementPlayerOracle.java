@@ -228,6 +228,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 if (described.has("scared") && entity instanceof net.minecraft.world.entity.animal.armadillo.Armadillo armadillo) {
                     armadillo.switchToState(net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState.SCARED);
                 }
+                if (described.has("on_back") && entity instanceof net.minecraft.world.entity.animal.panda.Panda panda) {
+                    panda.setOnBack(true);
+                }
                 if (described.has("screaming") && entity instanceof net.minecraft.world.entity.animal.goat.Goat goat) {
                     goat.setScreamingGoat(true);
                 }

@@ -192,6 +192,9 @@ fn placed_table() -> Vec<Placed> {
         },
         Placed { flags: &["scared"], ..placed("use-scared-armadillo-with-brush", "armadillo", "minecraft:brush") },
         Placed { flags: &["scared"], ..placed("use-scared-armadillo-with-apple", "armadillo", "minecraft:apple") },
+        // A panda on its back is righted by the click, whatever it is given.
+        Placed { flags: &["on_back"], ..placed("use-panda-on-back-with-bamboo", "panda", "minecraft:bamboo") },
+        Placed { flags: &["on_back"], ..placed("use-panda-on-back-with-stone", "panda", "minecraft:stone") },
         // A trusting ocelot is not fed: the click falls through to the animal's own feeding.
         Placed {
             at: [0.5, 65.5, 3.0],

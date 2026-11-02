@@ -61,7 +61,8 @@ fn with_lid(
 }
 
 /// The species' own synced data a row sets: an ocelot that trusts players, a goat that screams,
-/// an armadillo that is scared (`ARMADILLO_STATE`, serializer 36, scared is two).
+/// an armadillo that is scared (`ARMADILLO_STATE`, serializer 36, scared is two) and a panda
+/// lying on its back (the byte flags, sixteen).
 pub(super) fn apply_species_data(
     world: &mut photon_world::ClientWorld,
     id: EntityId,
@@ -80,6 +81,7 @@ pub(super) fn apply_species_data(
             "scared",
             [photon_world::mobs::armadillo::STATE_DATA_ID, 36, 2, 255],
         ),
+        ("on_back", [photon_world::PANDA_FLAGS_DATA_ID, 0, 16, 255]),
     ] {
         if described.get(flag).is_some() {
             world.apply_entity_metadata(id, &data);

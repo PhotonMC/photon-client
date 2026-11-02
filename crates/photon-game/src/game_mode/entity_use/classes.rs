@@ -1,7 +1,7 @@
 //! The `mobInteract` of the classes that answer one fixed way on the client: ocelot, dolphin, iron
 //! golem, allay, bogged, piglin, panda, happy ghast and armadillo.
 //!
-//! Not covered: a panda that is scared or on its back, an allay
+//! Not covered: the data a panda's righting clears on the client, an allay
 //! that is dancing (or whose hand shows a tick early), a sheared bogged, a piglin
 //! whose brain refuses to admire, the iron golem's health after a repair and its attribute-based
 //! maximum, and the sounds.
@@ -178,6 +178,15 @@ impl Context<'_> {
     /// `Panda.mobInteract` on the client: bamboo feeds a baby that can still age (a success the
     /// server owns); an adult's bamboo and any other item pass.
     fn interact_panda(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        if let Some(panda) = self.world.entities().at(id).map(|entity| entity.panda()) {
+            if panda.is_scared(self.world.is_thundering()) {
+                return EntityUse::Pass;
+            }
+            // Lying on its back, it is righted first (the flag is set on the client too).
+            if panda.is_on_back() {
+                return EntityUse::Success { swing: true };
+            }
+        }
         let ages = self
             .world
             .entities()
