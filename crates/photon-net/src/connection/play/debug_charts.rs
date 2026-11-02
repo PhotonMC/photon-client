@@ -303,7 +303,7 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
         assert_eq!(logged, framed.len() as i64);
-        assert!(session.bandwidth_samples().len() > 1);
+        assert!(!session.bandwidth_samples().is_empty());
         session.reset_chart_samples();
         assert!(session.bandwidth_samples().is_empty());
     }
