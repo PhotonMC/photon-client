@@ -2,7 +2,7 @@
 //! golem, allay, bogged, piglin, panda, happy ghast and armadillo.
 //!
 //! Not covered: a panda that is scared or on its back, an allay
-//! that is dancing (or whose hand shows a tick early), a sheared bogged, a scared armadillo, a piglin
+//! that is dancing (or whose hand shows a tick early), a sheared bogged, a piglin
 //! whose brain refuses to admire, the iron golem's health after a repair and its attribute-based
 //! maximum, and the sounds.
 
@@ -314,8 +314,16 @@ impl Context<'_> {
             .entities()
             .at(id)
             .is_some_and(|entity| !entity.is_baby());
+        let scared = self.world.entities().at(id).is_some_and(|entity| {
+            entity.armadillo().is_some_and(|armadillo| {
+                armadillo.mode() != photon_world::mobs::armadillo::ArmadilloMode::Idle
+            })
+        });
         if adult && self.holds_item(hand, "minecraft:brush") {
             EntityUse::Success { swing: true }
+        } else if scared {
+            // `InteractionResult.FAIL`.
+            EntityUse::Pass
         } else {
             self.feed_animal(id, hand, "minecraft:armadillo_food")
         }

@@ -60,18 +60,29 @@ fn with_lid(
     Ok(tick)
 }
 
-/// The species' boolean data a row sets: an ocelot that trusts players, a goat that screams.
-pub(super) fn apply_boolean_flags(
+/// The species' own synced data a row sets: an ocelot that trusts players, a goat that screams,
+/// an armadillo that is scared (`ARMADILLO_STATE`, serializer 36, scared is two).
+pub(super) fn apply_species_data(
     world: &mut photon_world::ClientWorld,
     id: EntityId,
     described: &Value,
 ) {
-    for (flag, data_id) in [
-        ("trusting", photon_world::OCELOT_TRUSTING_DATA_ID),
-        ("screaming", photon_world::GOAT_SCREAMING_DATA_ID),
+    for (flag, data) in [
+        (
+            "trusting",
+            [photon_world::OCELOT_TRUSTING_DATA_ID, 8, 1, 255],
+        ),
+        (
+            "screaming",
+            [photon_world::GOAT_SCREAMING_DATA_ID, 8, 1, 255],
+        ),
+        (
+            "scared",
+            [photon_world::mobs::armadillo::STATE_DATA_ID, 36, 2, 255],
+        ),
     ] {
         if described.get(flag).is_some() {
-            world.apply_entity_metadata(id, &[data_id, 8, 1, 255]);
+            world.apply_entity_metadata(id, &data);
         }
     }
 }

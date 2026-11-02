@@ -185,6 +185,13 @@ fn placed_table() -> Vec<Placed> {
         // Within reach of the eyes, but more than three blocks from the feet.
         Placed { at: [0.5, 65.5, 3.7], aim: 0.0, ..placed("use-far-ocelot-with-cod", "ocelot", "minecraft:cod") },
         Placed { at: [0.5, 65.5, 3.0], aim: 0.0, ..placed("use-near-ocelot-with-cod", "ocelot", "minecraft:cod") },
+        // A scared armadillo fails the click, brush or not; the held food does not feed it.
+        Placed {
+            flags: &["scared"],
+            ..placed("use-scared-armadillo-with-spider-eye", "armadillo", "minecraft:spider_eye")
+        },
+        Placed { flags: &["scared"], ..placed("use-scared-armadillo-with-brush", "armadillo", "minecraft:brush") },
+        Placed { flags: &["scared"], ..placed("use-scared-armadillo-with-apple", "armadillo", "minecraft:apple") },
         // A trusting ocelot is not fed: the click falls through to the animal's own feeding.
         Placed {
             at: [0.5, 65.5, 3.0],

@@ -225,6 +225,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
                     Reflect.method(net.minecraft.world.entity.animal.feline.Ocelot.class, "setTrusting", boolean.class)
                         .invoke(ocelot, true);
                 }
+                if (described.has("scared") && entity instanceof net.minecraft.world.entity.animal.armadillo.Armadillo armadillo) {
+                    armadillo.switchToState(net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState.SCARED);
+                }
                 if (described.has("screaming") && entity instanceof net.minecraft.world.entity.animal.goat.Goat goat) {
                     goat.setScreamingGoat(true);
                 }
