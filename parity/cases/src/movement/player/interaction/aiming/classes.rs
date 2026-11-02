@@ -14,6 +14,11 @@ fn once() -> Vec<Value> {
     [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat()
 }
 
+/// Two use clicks with ticks between them, long enough for the first swing to end.
+fn twice() -> Vec<Value> {
+    [once(), aims(1).use_clicks(1).inventory().go(), aims(8).inventory().go()].concat()
+}
+
 /// A row that clicks the entity with `item` (nothing when it is empty) from the aim `x_rot`.
 fn clicked(label: &str, entity: Value, aim: (&'static str, f64), clicks: Vec<Value>) -> Value {
     clicked_in(label, entity, aim, (clicks, false))
@@ -184,10 +189,11 @@ struct Placed {
     item: &'static str,
     aim: f64,
     sneaking: bool,
+    clicks_twice: bool,
 }
 
 const fn placed(label: &'static str, kind: &'static str, item: &'static str) -> Placed {
-    Placed { label, kind, flags: &[], at: [0.5, 64.0, 2.5], item, aim: 30.0, sneaking: false }
+    Placed { label, kind, flags: &[], at: [0.5, 64.0, 2.5], item, aim: 30.0, sneaking: false, clicks_twice: false }
 }
 
 fn placed_table() -> Vec<Placed> {
@@ -213,6 +219,12 @@ fn placed_table() -> Vec<Placed> {
         // A panda on its back is righted by the click, whatever it is given.
         Placed { flags: &["on_back"], ..placed("use-panda-on-back-with-bamboo", "panda", "minecraft:bamboo") },
         Placed { flags: &["on_back"], ..placed("use-panda-on-back-with-stone", "panda", "minecraft:stone") },
+        // The click rights the panda on the client too: a second click no longer succeeds.
+        Placed {
+            flags: &["on_back"],
+            clicks_twice: true,
+            ..placed("use-panda-on-back-twice-with-stone", "panda", "minecraft:stone")
+        },
         // A trusting ocelot is not fed: the click falls through to the animal's own feeding.
         Placed {
             at: [0.5, 65.5, 3.0],
@@ -261,7 +273,11 @@ fn placed_rows() -> Vec<Value> {
             for flag in row.flags.iter().filter(|flag| **flag != "stormy") {
                 entity[*flag] = json!(true);
             }
-            let clicks = if row.sneaking { sneaking_click() } else { once() };
+            let clicks = match (row.sneaking, row.clicks_twice) {
+                (true, _) => sneaking_click(),
+                (_, true) => twice(),
+                _ => once(),
+            };
             let storm = row.flags.contains(&"stormy");
             clicked_in(row.label, entity, (row.item, row.aim), (clicks, storm))
         })

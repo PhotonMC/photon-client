@@ -1,7 +1,7 @@
 //! The `mobInteract` of the classes that answer one fixed way on the client: ocelot, dolphin, iron
 //! golem, allay, bogged, piglin, panda, happy ghast and armadillo.
 //!
-//! Not covered: the data a panda's righting clears on the client, an allay
+//! Not covered: an allay
 //! whose duplication is cooling down (or whose hand shows a tick early), a sheared bogged, a piglin
 //! whose brain refuses to admire, the iron golem's health after a repair and its attribute-based
 //! maximum, and the sounds.
@@ -198,6 +198,10 @@ impl Context<'_> {
             }
             // Lying on its back, it is righted first (the flag is set on the client too).
             if panda.is_on_back() {
+                // `setOnBack(false)` runs on the client too, until the server's data says.
+                let flags = panda.flags() & !photon_world::mobs::panda::ON_BACK;
+                let data = [photon_world::PANDA_FLAGS_DATA_ID, 0, flags, 255];
+                self.world.apply_entity_metadata(id, &data);
                 return EntityUse::Success { swing: true };
             }
         }

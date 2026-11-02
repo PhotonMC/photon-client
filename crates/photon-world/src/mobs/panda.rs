@@ -10,7 +10,7 @@ use photon_core::math::mth_lerp_f32 as lerp_f32;
 const SNEEZE: u8 = 2;
 const ROLL: u8 = 4;
 const SIT: u8 = 8;
-const ON_BACK: u8 = 16;
+pub const ON_BACK: u8 = 16;
 
 /// How many ticks a roll lasts (`TOTAL_ROLL_STEPS`).
 const TOTAL_ROLL_STEPS: i32 = 32;
@@ -157,6 +157,11 @@ impl PandaState {
 
     pub fn is_sitting(&self) -> bool {
         self.flags & SIT != 0
+    }
+
+    /// The synched flag byte (`DATA_ID_FLAGS`).
+    pub fn flags(&self) -> u8 {
+        self.flags
     }
 
     pub fn is_on_back(&self) -> bool {
