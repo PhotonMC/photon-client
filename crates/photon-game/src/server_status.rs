@@ -216,6 +216,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn an_older_servers_answer_lists_as_incompatible_with_its_text() {
+        let status = ServerStatus::parse(
+            r#"{"version":{"name":"1.8.8","protocol":47},"players":{"max":20,"online":1,
+            "sample":[]},"description":"Old server"}"#,
+        )
+        .expect("an object");
+        let pinged = Pinged::answered(&status, 12);
+        assert_eq!(pinged.state, PingState::Incompatible);
+        assert_eq!(pinged.ping, 12);
+        assert_eq!(pinged.version, Component::literal("1.8.8"));
+        assert_eq!(pinged.motd, Component::literal("Old server"));
+    }
+
+    #[test]
     fn a_status_answer_reads_with_its_optional_fields() {
         let status = ServerStatus::parse(
             r#"{"description":{"text":"A Minecraft Server"},"players":{"max":20,"online":2,
