@@ -176,10 +176,16 @@ pub(super) fn shoulder_parrots(
     textures: &photon_render::entity::textures::EntityTextures,
     (state, placement): (&PlayerRenderState, &Placement),
 ) -> Vec<Vertex> {
+    // The layer draws without the overlay (`OverlayTexture.NO_OVERLAY`): a hurt player's parrots
+    // do not flash red.
+    let calm = Placement {
+        red_overlay: false,
+        ..*placement
+    };
     armor.shoulder_parrots(parrots, state, textures, &|model, offset, rect| {
         photon_render::entity::player_renderer::layer_vertices_at(
             model,
-            (placement, offset),
+            (&calm, offset),
             rect,
             None,
         )
