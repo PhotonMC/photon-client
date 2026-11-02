@@ -95,8 +95,8 @@ pub use region_copy::RegionCopy;
 pub use shadow::{ShadowInput, ShadowPiece};
 pub use world::{
     BeaconView, CommandBlockMode, CommandBlockView, CommandMinecartView, ConduitView,
-    EnchantTableView, Entities, GatewayBeamView, JigsawBlockView, LevelEvent, RocketHand,
-    TestBlockView, block_sound_of,
+    DrivenVehicle, EnchantTableView, Entities, GatewayBeamView, JigsawBlockView, LevelEvent,
+    RocketHand, TestBlockView, block_sound_of,
 };
 
 /// The client-side copy of the currently loaded world.

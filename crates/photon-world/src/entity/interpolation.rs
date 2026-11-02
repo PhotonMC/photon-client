@@ -103,6 +103,30 @@ impl EntityViewMut<'_> {
         });
     }
 
+    /// `Entity.absSnapTo(x, y, z, yRot, xRot)`: the place held inside the world's limits and the
+    /// turn within a full circle, both with no movement from the last tick.
+    pub(crate) fn abs_snap_to(&mut self, position: (f64, f64, f64), y_rot: f32, x_rot: f32) {
+        let (x, y, z) = (
+            position.0.clamp(-3.0e7, 3.0e7),
+            position.1,
+            position.2.clamp(-3.0e7, 3.0e7),
+        );
+        let (y_rot, x_rot) = (y_rot % 360.0, x_rot.clamp(-90.0, 90.0) % 360.0);
+        self.pos.position = DVec3::new(x, y, z);
+        self.pos.old_position = DVec3::new(x, y, z);
+        self.rotation.y_rot = JavaF32::new(y_rot);
+        self.rotation.x_rot = JavaF32::new(x_rot);
+        self.rotation.old_y_rot = JavaF32::new(y_rot);
+        self.rotation.old_x_rot = JavaF32::new(x_rot);
+    }
+
+    /// `InterpolationHandler.cancel`: no more steps towards the last target.
+    pub(crate) fn cancel_interpolation(&mut self) {
+        if let Some(interpolation) = self.lerp.interpolation.as_mut() {
+            interpolation.steps = 0;
+        }
+    }
+
     pub(crate) fn snap_to(&mut self, position: (f64, f64, f64), y_rot: f32, x_rot: f32) {
         self.pos.position.x = JavaF64::new(position.0);
         self.pos.position.y = JavaF64::new(position.1);

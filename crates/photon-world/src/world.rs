@@ -30,7 +30,7 @@ mod heightmaps;
 pub use enchanting::EnchantTableView;
 pub(crate) use enchanting::Tables;
 mod entities;
-pub use entities::{Entities, RocketHand};
+pub use entities::{DrivenVehicle, Entities, RocketHand};
 mod lighting;
 mod local_player;
 mod minecarts;

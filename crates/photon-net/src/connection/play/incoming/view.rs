@@ -11,6 +11,10 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
         PLAY_CLIENTBOUND_PLAYER_LOOK_AT_PACKET_ID,
         typed::<PlayerLookAtPacket>,
     ),
+    (
+        PLAY_CLIENTBOUND_MOVE_VEHICLE_PACKET_ID,
+        typed::<MoveVehiclePacket>,
+    ),
 ];
 
 /// `handleRotatePlayer`: the server turns the player, who tells it the view it now has.
@@ -54,6 +58,26 @@ impl ClientboundPacket for PlayerLookAtPacket {
             player.look_at(eyes(self.from), target);
         }
         Ok(())
+    }
+}
+
+/// `handleMoveVehicle`: the server puts the vehicle the player drives somewhere, and the player
+/// tells it where the vehicle is now.
+impl ClientboundPacket for MoveVehiclePacket {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        let Some(vehicle) =
+            session
+                .world
+                .move_driven_vehicle(self.position, self.y_rot, self.x_rot)
+        else {
+            return Ok(());
+        };
+        session.send_movement(ServerboundMovement::MoveVehicle {
+            position: Vec3::new(vehicle.position.0, vehicle.position.1, vehicle.position.2),
+            y_rot: vehicle.y_rot,
+            x_rot: vehicle.x_rot,
+            on_ground: vehicle.on_ground,
+        })
     }
 }
 
@@ -132,5 +156,70 @@ mod tests {
         // (The reference's `Mth.atan2` is a table, so the angle is near, not exactly, zero.)
         let (y_rot, x_rot) = session.local.player.as_ref().unwrap().rotation();
         assert!(y_rot.abs() < 1e-3 && x_rot.abs() < 1e-3);
+    }
+
+    fn boat(session: &mut PlaySession, rider: bool) {
+        use photon_world::EntityInput;
+        session.world.set_local_player_id(EntityId(1));
+        assert!(session.world.apply_entity(EntityInput {
+            entity_id: EntityId(5),
+            uuid: photon_core::binary::Uuid::new(0, 5),
+            type_id: photon_data::entity_type::id("minecraft:oak_boat").expect("boat"),
+            x: 0.5,
+            y: 64.0,
+            z: 0.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (90.0, 0.0, 90.0),
+            data: 0,
+        }));
+        if rider {
+            assert!(
+                session
+                    .world
+                    .apply_entity_passengers(EntityId(5), &[EntityId(1)])
+            );
+        }
+    }
+
+    #[test]
+    fn a_driven_vehicle_is_moved_and_its_place_told_back() {
+        let (mut session, server) = session();
+        standing(&mut session, 0.0, 0.0);
+        boat(&mut session, true);
+        Box::new(MoveVehiclePacket {
+            position: (4.0, 65.0, -2.0),
+            y_rot: 45.0,
+            x_rot: 0.0,
+        })
+        .handle(&mut session)
+        .expect("handled");
+        let boat = session.world.entities().at(EntityId(5)).expect("boat");
+        assert_eq!(boat.position(), (4.0, 65.0, -2.0));
+        let (id, body) = sent(&server);
+        assert_eq!(id, PLAY_SERVERBOUND_MOVE_VEHICLE_PACKET_ID);
+        let mut expected = Vec::new();
+        for value in [4.0_f64, 65.0, -2.0] {
+            expected.extend_from_slice(&value.to_be_bytes());
+        }
+        expected.extend_from_slice(&45.0_f32.to_be_bytes());
+        expected.extend_from_slice(&0.0_f32.to_be_bytes());
+        expected.push(u8::from(boat.on_ground()));
+        assert_eq!(body, expected);
+    }
+
+    #[test]
+    fn a_vehicle_the_player_does_not_drive_is_left_alone() {
+        let (mut session, _server) = session();
+        standing(&mut session, 0.0, 0.0);
+        boat(&mut session, false);
+        Box::new(MoveVehiclePacket {
+            position: (4.0, 65.0, -2.0),
+            y_rot: 45.0,
+            x_rot: 0.0,
+        })
+        .handle(&mut session)
+        .expect("handled");
+        let boat = session.world.entities().at(EntityId(5)).expect("boat");
+        assert_eq!(boat.position(), (0.5, 64.0, 0.5));
     }
 }

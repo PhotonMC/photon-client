@@ -269,7 +269,7 @@ impl ClientWorld {
     }
 
     /// `Entity.isLocalInstanceAuthoritative` of a vehicle: the local player steers it.
-    fn is_locally_authoritative(&self, entity_id: EntityId) -> bool {
+    pub(crate) fn is_locally_authoritative(&self, entity_id: EntityId) -> bool {
         self.entities.at(entity_id).is_some_and(|entity| {
             self.boat_is_local_instance_authoritative(entity)
                 && vanilla_boat_max_passengers(entity.type_id).is_some()
