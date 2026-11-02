@@ -80,6 +80,7 @@ impl Default for GameMode {
 mod after_use;
 mod base_use;
 mod bone_meal;
+mod brush;
 mod equipping;
 mod spawn_egg;
 pub use after_use::finish_use;

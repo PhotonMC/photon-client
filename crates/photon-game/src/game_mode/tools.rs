@@ -241,6 +241,7 @@ pub(super) fn use_on(
         C::ShearsItem => shears_use_on(ctx, aim),
         C::BoneMealItem => return super::bone_meal::use_on(ctx, aim),
         C::PotionItem => super::bottles::potion_use_on(ctx, hand, aim),
+        C::BrushItem => super::brush::use_on(ctx, hand),
         C::EnderEyeItem => super::utility::ender_eye_use_on(ctx, aim),
         // `SpawnEggItem.useOn` on the client: the spawn is the server's.
         C::SpawnEggItem => super::spawn_egg::use_on(ctx, hand),

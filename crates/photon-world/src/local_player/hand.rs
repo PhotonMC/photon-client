@@ -305,6 +305,11 @@ impl LocalPlayer {
         }
     }
 
+    /// `getTicksUsingItem`: the ticks the current use has run.
+    pub fn used_ticks(&self) -> i32 {
+        self.use_edge.ticks
+    }
+
     /// How many ticks the stack in a hand has been used, if the player uses that hand's stack
     /// (`getUseItem() == stack`).
     pub fn use_ticks_of(&self, main_hand: bool) -> Option<i32> {

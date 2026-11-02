@@ -103,6 +103,8 @@ impl Controls {
             swap_clicks: self.swap_key.take_clicks(),
             drop_clicks: self.drop_key.take_clicks(),
             control_down: self.mods.ctrl,
+            // The session knows the option; it fills this in.
+            main_arm_left: false,
         }
     }
 

@@ -180,6 +180,11 @@ impl LocalPlayer {
         self.use_edge.particles.extend(thrown);
     }
 
+    /// Particles the player's use of an item threw (`Level.addParticle`).
+    pub fn push_particles(&mut self, particles: Vec<crate::particles::LevelParticles>) {
+        self.use_edge.particles.extend(particles);
+    }
+
     /// The particles the player's own tick threw since the last call.
     pub fn take_particles(&mut self) -> Vec<crate::particles::LevelParticles> {
         std::mem::take(&mut self.use_edge.particles)

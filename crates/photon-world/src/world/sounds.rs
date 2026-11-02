@@ -29,6 +29,11 @@ impl ClientWorld {
         self.level_random.source().next_float()
     }
 
+    /// `Level.random`.
+    pub fn level_random(&mut self) -> &mut photon_core::random::RandomSource {
+        self.level_random.source()
+    }
+
     /// Fixes `Level.random`, so a comparison can be made.
     pub fn fix_level_seed(&mut self, seed: i64) {
         self.level_random.fix_seed(seed);

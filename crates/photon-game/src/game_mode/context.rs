@@ -45,6 +45,8 @@ pub struct Keys {
     /// `Minecraft.hasControlDown`: either control key, which asks for the
     /// picked block's or entity's data as well.
     pub control_down: bool,
+    /// `Options.mainHand` is the left arm.
+    pub main_arm_left: bool,
 }
 
 pub const MAIN_HAND: u8 = 0;
@@ -186,6 +188,17 @@ impl Context<'_> {
             .and_then(|state| state.inventory_slot(self.hand_slot(hand)))
             .map(|stack| (stack.item_registry_id(), stack.item_count()))
             .filter(|(_, count)| *count > 0)
+    }
+
+    /// The stack in the hand that uses an item is a brush.
+    pub(super) fn held_is_brush(&self) -> bool {
+        let hand = if self.player.used_item_is_off_hand() {
+            OFF_HAND
+        } else {
+            MAIN_HAND
+        };
+        self.held(hand)
+            .is_some_and(|(item, _)| item == photon_data::item::ids::BRUSH)
     }
 
     /// `ItemCooldowns.isOnCooldown` of the stack in a hand.

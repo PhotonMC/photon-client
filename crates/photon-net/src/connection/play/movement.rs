@@ -23,6 +23,7 @@ impl PlaySession {
         };
         self.ensure_has_sent_carried_item()?;
         let hands = self.hand_state();
+        let main_arm_left = self.main_arm_is_left();
         let Some(player) = self.local.player.as_mut() else {
             return Ok(());
         };
@@ -44,6 +45,10 @@ impl PlaySession {
             difficulty: self.local.difficulty,
             game_master: self.local.permission_level >= 2,
             profile_id: self.state.profile_id,
+        };
+        let keys = photon_game::game_mode::Keys {
+            main_arm_left,
+            ..keys
         };
         let sent = self.local.game_mode_state.keys_tick(&mut ctx, keys, aim);
         for packet in sent {
