@@ -4,9 +4,10 @@
 use photon_core::ids::EntityId;
 use photon_core::math::Vec3;
 use photon_protocol::play::{
-    ChunksBiomes, CustomChatCompletions, Decode, EntityAnchor, MoveVehiclePacket, PlayerCombatEnd,
-    PlayerCombatEnter, PlayerLookAtPacket, PlayerRotationPacket, ProjectilePowerPacket,
-    ServerDataPacket, TagQueryPacket, resolve_player_rotation,
+    ChunksBiomes, CustomChatCompletions, Decode, EntityAnchor, LowDiskSpaceWarning,
+    MoveVehiclePacket, PlayerCombatEnd, PlayerCombatEnter, PlayerLookAtPacket,
+    PlayerRotationPacket, ProjectilePowerPacket, ServerDataPacket, TagQueryPacket,
+    resolve_player_rotation,
 };
 use photon_world::ClientPlayerGameMode;
 use photon_world::local_player::LocalPlayer;
@@ -108,15 +109,26 @@ fn notice_fields(packet: &str, bytes: &[u8]) -> Result<Option<Value>, String> {
             }
             fields
         }),
+        "custom_chat_completions" => CustomChatCompletions::decode(bytes, &registries).ok().map(|p| {
+            json!({"action": p.action as i32, "entries": p.entries})
+        }),
+        other => return combat_fields(other, bytes),
+    })
+}
+
+/// The fields of the packets that carry no more than a notice of a fight or of the disk.
+fn combat_fields(packet: &str, bytes: &[u8]) -> Result<Option<Value>, String> {
+    let registries = crate::case_ids::registries();
+    Ok(match packet {
+        "low_disk_space" => LowDiskSpaceWarning::decode(bytes, &registries)
+            .ok()
+            .map(|_| json!({})),
         "combat_enter" => PlayerCombatEnter::decode(bytes, &registries)
             .ok()
             .map(|_| json!({})),
         "combat_end" => PlayerCombatEnd::decode(bytes, &registries)
             .ok()
             .map(|p| json!({"duration": p.duration})),
-        "custom_chat_completions" => CustomChatCompletions::decode(bytes, &registries).ok().map(|p| {
-            json!({"action": p.action as i32, "entries": p.entries})
-        }),
         other => return Err(format!("unknown play packet {other}")),
     })
 }

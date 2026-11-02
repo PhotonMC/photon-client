@@ -96,6 +96,7 @@ fn notices() -> Vec<Value> {
         cases.extend(framed("server_data", label, hex));
     }
     cases.extend(framed("combat_enter", "empty", String::new()));
+    cases.extend(framed("low_disk_space", "empty", String::new()));
     for (label, hex) in [
         ("add", completions(0, &["Alex", "\u{fc}"])),
         ("remove", completions(1, &[])),

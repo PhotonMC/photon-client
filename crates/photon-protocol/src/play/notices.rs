@@ -18,6 +18,22 @@ impl Decode for PlayerCombatEnter {
     }
 }
 
+/// `ClientboundLowDiskSpaceWarningPacket`: no payload; the client shows a toast.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LowDiskSpaceWarning;
+
+impl Decode for LowDiskSpaceWarning {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
+        if !payload.is_empty() {
+            return Err(ConnectionError::Codec("low disk space trailing payload"));
+        }
+        Ok(Self)
+    }
+}
+
 /// `ClientboundPlayerCombatEndPacket`: how long the fight lasted, in ticks; the client does
 /// nothing with it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

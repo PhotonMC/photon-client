@@ -58,6 +58,11 @@ impl PlaySession {
         std::mem::take(&mut self.effects.unsecure_warning)
     }
 
+    /// Whether the low-disk-space toast is due, once (`handleLowDiskSpaceWarning`).
+    pub fn take_low_disk_warning(&mut self) -> bool {
+        std::mem::take(&mut self.effects.low_disk_warning)
+    }
+
     /// The stack a totem's animation is to show, if one was asked for since the last call.
     pub fn take_item_activation(&mut self) -> Option<photon_world::ClientItemStackState> {
         self.effects.item_activation.take()

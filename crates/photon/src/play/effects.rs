@@ -67,6 +67,9 @@ impl Play {
         if self.session.take_unsecure_server_warning() {
             self.gui.add_unsecure_server_toast();
         }
+        if self.session.take_low_disk_warning() {
+            self.gui.add_low_disk_space_toast();
+        }
         if let Some(stack) = self.session.take_item_activation() {
             // `GameRenderer.random`: unseeded.
             let nanos = std::time::SystemTime::now()

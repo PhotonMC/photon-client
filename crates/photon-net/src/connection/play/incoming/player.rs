@@ -11,6 +11,10 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
         typed::<PlayerCombatEnter>,
     ),
     (
+        PLAY_CLIENTBOUND_LOW_DISK_SPACE_WARNING_PACKET_ID,
+        typed::<LowDiskSpaceWarning>,
+    ),
+    (
         PLAY_CLIENTBOUND_PLAYER_COMBAT_END_PACKET_ID,
         typed::<PlayerCombatEnd>,
     ),
@@ -86,6 +90,14 @@ impl ClientboundPacket for SetHealth {
 /// `handlePlayerCombatEnter`: the reference's handler is empty.
 impl ClientboundPacket for PlayerCombatEnter {
     fn handle(self: Box<Self>, _session: &mut PlaySession) -> Result<(), ConnectionError> {
+        Ok(())
+    }
+}
+
+/// `handleLowDiskSpaceWarning`: `Minecraft.sendLowDiskSpaceWarning` shows the toast.
+impl ClientboundPacket for LowDiskSpaceWarning {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.effects.low_disk_warning = true;
         Ok(())
     }
 }
@@ -560,6 +572,17 @@ mod tests {
     use super::*;
     use crate::connection::play::profile_tests::session;
     use photon_core::math::Vec3;
+
+    #[test]
+    fn a_low_disk_space_warning_asks_for_one_toast() {
+        let (mut session, _server) = session();
+        assert!(!session.take_low_disk_warning());
+        Box::new(LowDiskSpaceWarning)
+            .handle(&mut session)
+            .expect("handled");
+        assert!(session.take_low_disk_warning());
+        assert!(!session.take_low_disk_warning());
+    }
 
     fn arrives(
         session: &mut PlaySession,

@@ -323,6 +323,26 @@ impl Gui {
         self.layers.toasts.add_system(toast);
     }
 
+    /// `SystemToast.onLowDiskSpace`: the toast is updated if one is already up.
+    pub fn add_low_disk_space_toast(&mut self) {
+        use photon_game::text::Component;
+        use photon_gui::toasts::{SystemToastId, ToastEnv};
+        let env = ToastEnv {
+            font: &self.font,
+            lang: &self.lang,
+            display_time: 1.0,
+            current_song: None,
+            note_colour: 0xFFFF_FFFF,
+        };
+        let title = Component::translatable("chunk.toast.lowDiskSpace");
+        let message = Component::translatable("chunk.toast.lowDiskSpace.description");
+        self.layers.toasts.add_or_update_system(
+            SystemToastId::LowDiskSpace,
+            &env,
+            (&title, Some(&message)),
+        );
+    }
+
     /// `SystemToast.addOrUpdate` of the friend notification: the title alone.
     pub fn add_friend_toast(&mut self, title: &photon_game::text::Component) {
         use photon_gui::toasts::{SystemToast, SystemToastId, ToastEnv};

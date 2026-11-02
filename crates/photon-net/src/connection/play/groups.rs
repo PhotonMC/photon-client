@@ -200,6 +200,8 @@ pub(super) struct Effects {
     /// The unsecure-server toast is due (`seenInsecureChatWarning` says whether it was shown).
     pub(super) unsecure_warning: bool,
     pub(super) seen_unsecure_warning: bool,
+    /// The low-disk-space toast is due (`Minecraft.sendLowDiskSpaceWarning`).
+    pub(super) low_disk_warning: bool,
     /// The entities taken since the last [`Self::take_item_pickups`], flying to their takers.
     pub(super) item_pickups: Vec<photon_world::particles::ItemPickup>,
     pub(super) dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
@@ -339,6 +341,7 @@ impl Default for Effects {
             item_activation: None,
             unsecure_warning: false,
             seen_unsecure_warning: false,
+            low_disk_warning: false,
             item_pickups: Vec::new(),
             dirty_sections: std::collections::BTreeSet::new(),
             player_dirty_sections: std::collections::BTreeSet::new(),
