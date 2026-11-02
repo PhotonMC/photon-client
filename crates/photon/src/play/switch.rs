@@ -56,6 +56,7 @@ impl Play {
         if self.session.take_level_reset() {
             self.backend.clear_sections()?;
             self.sections.clear();
+            self.sections.set_dimension(&self.session);
             self.sky.reset(&self.session);
             self.particles.clear();
         }

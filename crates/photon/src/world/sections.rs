@@ -215,6 +215,14 @@ impl SectionMeshes {
         Ok(())
     }
 
+    /// The sections of the level the session is in now (a respawn can bring a dimension of
+    /// another height, such as the overworld after a lobby in the end).
+    pub fn set_dimension(&mut self, session: &PlaySession) {
+        let dimension = session.world().dimension();
+        let low = dimension.min_y.div_euclid(16);
+        self.sections = low..low + dimension.height / 16;
+    }
+
     /// A respawn or a change of dimension: nothing of the old level stays.
     pub fn clear(&mut self) {
         self.pending.clear();
