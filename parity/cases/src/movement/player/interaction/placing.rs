@@ -65,6 +65,8 @@ impl Uses {
 
 fn using_rows_1() -> Vec<Value> {
     let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
+    let at_feet = aim_at((0, 63, 0), "up", (0.5, 64.0, 0.5));
+    let feet = [(0, 64, 0), (0, 65, 0)];
     let around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3)];
     let click = |aim: &Value, watch: &[(i64, i64, i64)]| uses(1, Some(aim), watch).clicks(1).go();
     let rest = |aim: &Value| uses(3, Some(aim), &around).go();
@@ -74,6 +76,19 @@ fn using_rows_1() -> Vec<Value> {
             .main_hand("minecraft:stone")
             .count(4)
             .row(),
+        // A block goes where the player stands only if it has no collision for a placement.
+        using("stone-where-standing", vec![], [click(&at_feet, &feet), uses(3, Some(&at_feet), &feet).go()].concat())
+            .main_hand("minecraft:stone")
+            .count(4)
+            .row(),
+        using(
+            "scaffolding-where-standing",
+            vec![],
+            [click(&at_feet, &feet), uses(3, Some(&at_feet), &feet).go()].concat(),
+        )
+        .main_hand("minecraft:scaffolding")
+        .count(4)
+        .row(),
         using("empty-hand-on-stone", vec![], [start(&top_of), rest(&top_of)].concat()).row(),
         using(
             "use-in-air",

@@ -223,7 +223,11 @@ fn is_obstructed(
 ) -> bool {
     let block_pos = photon_core::binary::BlockPos::new(pos.0, pos.1, pos.2);
     let registry = ctx.world.block_state_registry();
-    if registry.collision_shape(state).is_empty() {
+    // `ScaffoldingBlock.getCollisionShape` answers a placement with nothing, so it goes where
+    // anyone stands.
+    if registry.collision_shape(state).is_empty()
+        || photon_world::block::registry::is_scaffolding(state)
+    {
         return false;
     }
     if !ctx.player.spectating() && ctx.player.is_colliding(ctx.world, block_pos, state) {
