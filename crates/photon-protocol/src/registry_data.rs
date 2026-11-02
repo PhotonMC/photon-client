@@ -41,26 +41,8 @@ impl PackedRegistryEntry {
         let FieldValue::Compound(fields) = data else {
             return Err(ReadError::DecoderError);
         };
-        let min_y = fields
-            .iter()
-            .find_map(|field| match field.key.as_str() {
-                "min_y" => match &field.value {
-                    FieldValue::Int(value) => Some(*value),
-                    _ => None,
-                },
-                _ => None,
-            })
-            .ok_or(ReadError::DecoderError)?;
-        let height = fields
-            .iter()
-            .find_map(|field| match field.key.as_str() {
-                "height" => match &field.value {
-                    FieldValue::Int(value) => Some(*value),
-                    _ => None,
-                },
-                _ => None,
-            })
-            .ok_or(ReadError::DecoderError)?;
+        let min_y = required_int(fields, "min_y")?;
+        let height = required_int(fields, "height")?;
         DimensionBounds::from_dimension_type(min_y, height)
             .map(Some)
             .ok_or(ReadError::DecoderError)
@@ -84,17 +66,13 @@ impl PackedRegistryEntry {
         let has_skylight = required_bool(fields, "has_skylight")?;
         let has_ceiling = required_bool(fields, "has_ceiling")?;
         let has_ender_dragon_fight = required_bool(fields, "has_ender_dragon_fight")?;
-        let coordinate_scale = match find_field(fields, "coordinate_scale") {
-            Some(FieldValue::Double(value)) => *value,
-            _ => return Err(ReadError::DecoderError),
-        };
-        let Some(FieldValue::Int(logical_height)) = find_field(fields, "logical_height") else {
-            return Err(ReadError::DecoderError);
-        };
-        let ambient_light = match find_field(fields, "ambient_light") {
-            Some(FieldValue::Float(value)) => *value,
-            _ => return Err(ReadError::DecoderError),
-        };
+        let coordinate_scale = find_field(fields, "coordinate_scale")
+            .and_then(decode_number)
+            .ok_or(ReadError::DecoderError)?;
+        let logical_height = required_int(fields, "logical_height")?;
+        let ambient_light = find_field(fields, "ambient_light")
+            .and_then(decode_number)
+            .ok_or(ReadError::DecoderError)? as f32;
         let skybox = optional_wire_name(
             fields,
             "skybox",
@@ -117,7 +95,7 @@ impl PackedRegistryEntry {
                 has_ceiling,
                 has_ender_dragon_fight,
                 coordinate_scale,
-                logical_height: *logical_height,
+                logical_height,
                 ambient_light,
                 skybox,
                 cardinal_light_type,
@@ -215,12 +193,42 @@ fn find_field<'a>(fields: &'a [photon_core::nbt::Field], key: &str) -> Option<&'
         .map(|field| &field.value)
 }
 
-fn decode_bool(value: &FieldValue) -> Option<bool> {
+/// Any numeric tag as a number: the reference's codecs read `INT`, `FLOAT` and `DOUBLE` from
+/// whatever number the tag holds, whatever width the sender wrote it in.
+fn decode_number(value: &FieldValue) -> Option<f64> {
     match value {
-        FieldValue::Byte(0) => Some(false),
-        FieldValue::Byte(1) => Some(true),
+        FieldValue::Byte(value) => Some(f64::from(*value)),
+        FieldValue::Short(value) => Some(f64::from(*value)),
+        FieldValue::Int(value) => Some(f64::from(*value)),
+        FieldValue::Long(value) => Some(*value as f64),
+        FieldValue::Float(value) => Some(f64::from(*value)),
+        FieldValue::Double(value) => Some(*value),
         _ => None,
     }
+}
+
+/// An int field of any numeric width.
+fn required_int(fields: &[photon_core::nbt::Field], key: &str) -> Result<i32, ReadError> {
+    match find_field(fields, key) {
+        Some(FieldValue::Long(value)) => Some(*value as i32),
+        Some(value) => decode_number(value).map(|number| number as i32),
+        None => None,
+    }
+    .ok_or(ReadError::DecoderError)
+}
+
+/// `Codec.BOOL` on a tag: any number, true unless its low byte is zero (`NbtOps.getBooleanValue`).
+fn decode_bool(value: &FieldValue) -> Option<bool> {
+    let byte = match value {
+        FieldValue::Byte(value) => i32::from(*value),
+        FieldValue::Short(value) => i32::from(*value),
+        FieldValue::Int(value) => *value,
+        FieldValue::Long(value) => *value as i32,
+        FieldValue::Float(value) => *value as i32,
+        FieldValue::Double(value) => *value as i32,
+        _ => return None,
+    };
+    Some(byte as i8 != 0)
 }
 
 /// Clientbound configuration registry-data packet.
@@ -547,6 +555,39 @@ mod tests {
         assert_eq!(
             with_attributes(modifier("blend", 0)),
             Err(ReadError::DecoderError)
+        );
+    }
+
+    /// The reference's codecs read a number from any numeric tag, so a sender that writes the
+    /// fields in other widths (an int scale, a double light, a long height, an int flag) is read.
+    #[test]
+    fn dimension_type_entry_reads_numbers_of_any_width() {
+        let FieldValue::Compound(mut fields) = dimension_type_environment_data() else {
+            unreachable!()
+        };
+        let set = |fields: &mut Vec<Field>, key: &str, value: FieldValue| {
+            fields
+                .iter_mut()
+                .find(|field| field.key == key)
+                .expect("the field")
+                .value = value;
+        };
+        set(&mut fields, "ambient_light", FieldValue::Double(0.35));
+        set(&mut fields, "coordinate_scale", FieldValue::Int(8));
+        set(&mut fields, "height", FieldValue::Long(192));
+        set(&mut fields, "logical_height", FieldValue::Short(128));
+        set(&mut fields, "min_y", FieldValue::Byte(-32));
+        set(&mut fields, "has_skylight", FieldValue::Int(1));
+        let entry = PackedRegistryEntry::new(
+            Identifier::parse("p08:test").expect("identifier"),
+            Some(FieldValue::Compound(fields)),
+        );
+        assert!(entry.dimension_type_bounds().expect("bounds").is_some());
+        assert!(
+            entry
+                .dimension_type_environment()
+                .expect("environment")
+                .is_some()
         );
     }
 
