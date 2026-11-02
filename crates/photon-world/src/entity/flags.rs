@@ -183,6 +183,8 @@ pub(crate) struct EntityState {
     pub(crate) bat_resting: bool,
     pub(crate) vex_charging: bool,
     pub(crate) allay_dancing: bool,
+    /// Whether an allay's duplication is cooling down (`!Allay.canDuplicate`).
+    pub(crate) allay_cooling: bool,
     /// `Ghast.isCharging` and `Phantom.getPhantomSize`.
     pub(crate) ghast_charging: bool,
     pub(crate) phantom_size: i32,

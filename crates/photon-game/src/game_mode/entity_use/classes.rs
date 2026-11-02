@@ -2,7 +2,7 @@
 //! golem, allay, bogged, piglin, panda, happy ghast and armadillo.
 //!
 //! Not covered: an allay
-//! whose duplication is cooling down (or whose hand shows a tick early), a sheared bogged, a piglin
+//! whose hand shows a tick early, a piglin
 //! whose brain refuses to admire, the iron golem's health after a repair and its attribute-based
 //! maximum, and the sounds.
 
@@ -124,8 +124,12 @@ impl Context<'_> {
             .entities()
             .at(id)
             .is_some_and(|entity| entity.is_allay_dancing());
-        // The synced `can duplicate` flag is true until the data says not.
-        if dancing && self.holds_tagged(hand, "minecraft:duplicates_allays") {
+        let cooling = self
+            .world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| entity.is_allay_cooling());
+        if dancing && !cooling && self.holds_tagged(hand, "minecraft:duplicates_allays") {
             self.use_up(hand);
             self.allay_sound(id, "minecraft:block.amethyst_block.chime");
             EntityUse::Success { swing: true }

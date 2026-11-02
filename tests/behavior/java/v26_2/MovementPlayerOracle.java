@@ -249,6 +249,12 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         net.minecraft.world.entity.monster.cubemob.SulfurCube.class, "MAX_FUSE").get(null);
                     cube.getEntityData().set(accessor, 50);
                 }
+                if (described.has("cooling") && entity instanceof net.minecraft.world.entity.animal.allay.Allay cooling) {
+                    @SuppressWarnings("unchecked")
+                    var accessor = (net.minecraft.network.syncher.EntityDataAccessor<Boolean>) Reflect.field(
+                        net.minecraft.world.entity.animal.allay.Allay.class, "DATA_CAN_DUPLICATE").get(null);
+                    cooling.getEntityData().set(accessor, false);
+                }
                 if (described.has("worried") && entity instanceof net.minecraft.world.entity.animal.panda.Panda worried) {
                     worried.setMainGene(net.minecraft.world.entity.animal.panda.Panda.Gene.WORRIED);
                 }

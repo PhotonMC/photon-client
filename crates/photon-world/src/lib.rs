@@ -402,6 +402,9 @@ fn apply_species_data(entity: &mut EntityViewMut<'_>, metadata: &[u8]) {
     if let Some(dancing) = allay_dancing {
         entity.living.allay_dancing = dancing;
     }
+    if let Some(can) = allay_can_duplicate_from_metadata(entity.type_id, metadata) {
+        entity.living.allay_cooling = !can;
+    }
     if let Some(charging) = ghast_charging_from_metadata(entity.type_id, metadata) {
         entity.living.ghast_charging = charging;
     }

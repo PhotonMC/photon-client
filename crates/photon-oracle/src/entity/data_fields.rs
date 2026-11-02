@@ -70,11 +70,21 @@ pub(super) fn mannequin_fields() -> [(&'static str, i64, i64); 4] {
     ]
 }
 
+/// Whether an allay can duplicate: a boolean after its dancing flag.
+fn allay_field() -> (&'static str, i64, i64) {
+    (
+        "allay-can-duplicate",
+        i64::from(photon_world::ALLAY_CAN_DUPLICATE_DATA_ID),
+        8,
+    )
+}
+
 /// Every field a variant-fields row checks beyond the tables, in the order of the reference's list.
 pub(super) fn extra_fields() -> Vec<(&'static str, i64, i64)> {
     [bogged_field(), stared_at_field()]
         .into_iter()
         .chain(interaction_fields())
         .chain(mannequin_fields())
+        .chain([allay_field()])
         .collect()
 }

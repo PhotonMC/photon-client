@@ -394,6 +394,7 @@ class EntityDataOracle extends EntityBossOracle {
             {net.minecraft.world.entity.decoration.Mannequin.class, "DATA_PROFILE", "mannequin-profile"},
             {net.minecraft.world.entity.decoration.Mannequin.class, "DATA_IMMOVABLE", "mannequin-immovable"},
             {net.minecraft.world.entity.decoration.Mannequin.class, "DATA_DESCRIPTION", "mannequin-description"},
+            {net.minecraft.world.entity.animal.allay.Allay.class, "DATA_CAN_DUPLICATE", "allay-can-duplicate"},
         };
         for (var described : fields) {
             var field = Reflect.field(((Class<?>) described[0]), (String) described[1]);

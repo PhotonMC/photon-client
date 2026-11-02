@@ -57,6 +57,7 @@ const ACCESSORS: &[(&str, &str)] = &[
     ("net.minecraft.world.entity.TamableAnimal", "DATA_OWNERUUID_ID"),
     ("net.minecraft.world.entity.ambient.Bat", "DATA_ID_FLAGS"),
     ("net.minecraft.world.entity.animal.allay.Allay", "DATA_DANCING"),
+    ("net.minecraft.world.entity.animal.allay.Allay", "DATA_CAN_DUPLICATE"),
     ("net.minecraft.world.entity.animal.armadillo.Armadillo", "ARMADILLO_STATE"),
     ("net.minecraft.world.entity.animal.axolotl.Axolotl", "DATA_PLAYING_DEAD"),
     ("net.minecraft.world.entity.animal.axolotl.Axolotl", "DATA_VARIANT"),

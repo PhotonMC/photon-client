@@ -12,6 +12,7 @@ macro_rules! entity_types {
 }
 
 entity_types! {
+    ALLAY = allay,
     ARMADILLO = armadillo,
     ARMOR_STAND = armor_stand,
     AXOLOTL = axolotl,

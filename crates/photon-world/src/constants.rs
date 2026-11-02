@@ -337,6 +337,8 @@ pub const BOAT_PADDLE_RIGHT_DATA_ID: u8 = 12;
 pub const BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
 pub const VEX_FLAGS_DATA_ID: u8 = 16;
 pub const ALLAY_DANCING_DATA_ID: u8 = 16;
+/// Where it keeps whether it can duplicate (`DATA_CAN_DUPLICATE`, a boolean, true until the data says).
+pub const ALLAY_CAN_DUPLICATE_DATA_ID: u8 = 17;
 pub const PHANTOM_SIZE_DATA_ID: u8 = 16;
 pub const GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
 /// Where a salmon's size, a tropical fish's packed variant and a pufferfish's

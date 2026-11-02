@@ -293,9 +293,18 @@ fn placed_table() -> Vec<Placed> {
     ]
 }
 
+/// Rows of an entity whose synced state the click depends on.
+fn state_table() -> Vec<Placed> {
+    vec![Placed {
+        flags: &["dancing", "cooling"],
+        ..placed("use-cooling-dancing-allay-with-amethyst-shard", "allay", "minecraft:amethyst_shard")
+    }]
+}
+
 fn placed_rows() -> Vec<Value> {
     placed_table()
         .into_iter()
+        .chain(state_table())
         .map(|row| {
             let [x, y, z] = row.at;
             let mut entity = super::mob(31, row.kind, x, y, z);

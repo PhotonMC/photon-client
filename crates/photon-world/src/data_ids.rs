@@ -70,6 +70,7 @@ pub const DATA_IDS: &[(&str, &str, u8)] = &[
     ("net.minecraft.world.entity.vehicle.boat.AbstractBoat", "DATA_ID_BUBBLE_TIME", BOAT_BUBBLE_TIME_DATA_ID),
     ("net.minecraft.world.entity.monster.Vex", "DATA_FLAGS_ID", VEX_FLAGS_DATA_ID),
     ("net.minecraft.world.entity.animal.allay.Allay", "DATA_DANCING", ALLAY_DANCING_DATA_ID),
+    ("net.minecraft.world.entity.animal.allay.Allay", "DATA_CAN_DUPLICATE", ALLAY_CAN_DUPLICATE_DATA_ID),
     ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_ATTACK_TARGET", GUARDIAN_ATTACK_TARGET_DATA_ID),
     ("net.minecraft.world.entity.animal.fish.Salmon", "DATA_TYPE", SALMON_TYPE_DATA_ID),
     ("net.minecraft.world.entity.animal.fish.TropicalFish", "DATA_ID_TYPE_VARIANT", TROPICAL_FISH_VARIANT_DATA_ID),

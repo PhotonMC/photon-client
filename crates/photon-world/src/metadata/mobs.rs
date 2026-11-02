@@ -77,6 +77,16 @@ pub(crate) fn flier_data_from_metadata(
     }
 }
 
+/// Whether an allay can duplicate (`Allay.DATA_CAN_DUPLICATE`), when the data holds it.
+pub(crate) fn allay_can_duplicate_from_metadata(
+    type_id: EntityTypeId,
+    metadata: &[u8],
+) -> Option<bool> {
+    (type_id == photon_data::entity_type::ids::ALLAY)
+        .then(|| metadata_boolean_value(metadata, ALLAY_CAN_DUPLICATE_DATA_ID))
+        .flatten()
+}
+
 /// A parrot's variant id (`Parrot.DATA_VARIANT_ID`), when the data holds it.
 pub(crate) fn parrot_variant_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
     if type_id != photon_data::entity_type::ids::PARROT {

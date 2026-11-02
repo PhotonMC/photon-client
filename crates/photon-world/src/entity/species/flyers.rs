@@ -123,6 +123,11 @@ impl EntityView<'_> {
         self.living.vex_charging
     }
 
+    /// `!Allay.canDuplicate`: the duplication is cooling down.
+    pub fn is_allay_cooling(&self) -> bool {
+        self.living.allay_cooling
+    }
+
     /// `Allay.isDancing`.
     pub fn is_allay_dancing(&self) -> bool {
         self.living.allay_dancing
