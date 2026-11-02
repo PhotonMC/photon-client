@@ -14,6 +14,7 @@ mod local_events;
 mod player;
 mod recipes;
 mod session;
+mod view;
 mod world;
 
 /// A clientbound play packet, parsed (the reference's `Packet`): what it does to the client is
@@ -49,6 +50,7 @@ fn decoders() -> &'static HashMap<i32, Decoder> {
             entity::DECODERS,
             effects::DECODERS,
             session::DECODERS,
+            view::DECODERS,
             &[(PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID, |_, _, _| {
                 Ok(Box::new(BundleDelimiter))
             })],

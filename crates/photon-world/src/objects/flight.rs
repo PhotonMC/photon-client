@@ -41,7 +41,22 @@ pub(crate) enum Flight {
 /// The flight of an entity, if it is one of these.
 pub(crate) fn flight_of(entity: crate::entity::EntityView<'_>) -> Option<Flight> {
     let name = photon_data::entity_type::name(entity.type_id)?;
-    flight_named(name, entity.living.wither_skull_dangerous)
+    let flight = flight_named(name, entity.living.wither_skull_dangerous)?;
+    Some(match (flight, entity.living.projectile_power) {
+        (
+            Flight::Hurting {
+                inertia,
+                liquid_inertia,
+                ..
+            },
+            Some(acceleration),
+        ) => Flight::Hurting {
+            acceleration: acceleration.get(),
+            inertia,
+            liquid_inertia,
+        },
+        (flight, _) => flight,
+    })
 }
 
 /// The flight of an entity type by name; a wither skull flies slower unless it is dangerous.
@@ -129,6 +144,19 @@ fn vec3(position: (f64, f64, f64)) -> Vec3 {
 }
 
 impl ClientWorld {
+    /// `handleProjectilePowerPacket`: a hurting projectile's acceleration; anything else the
+    /// level holds is left alone.
+    pub fn set_projectile_power(&mut self, entity_id: EntityId, power: f64) {
+        let Some(entity) = self.entities.at(entity_id) else {
+            return;
+        };
+        if matches!(flight_of(entity), Some(Flight::Hurting { .. }))
+            && let Some(entity) = self.entities.at_mut(entity_id)
+        {
+            entity.living.projectile_power = Some(photon_core::java_float::JavaF64::new(power));
+        }
+    }
+
     /// One tick of a flying projectile, after its old position and turn were kept and its tick
     /// counted.
     pub(crate) fn tick_flying_projectile(&mut self, entity_id: EntityId, flight: Flight) {

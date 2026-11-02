@@ -102,6 +102,7 @@ mod hex;
 mod music;
 mod registry;
 mod wire_crypto;
+mod wire_play;
 use hex::*;
 mod information;
 use information::*;

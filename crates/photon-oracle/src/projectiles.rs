@@ -89,6 +89,7 @@ fn apply_events(
                         z: bits64(event, "motion_z")?,
                     });
             }
+            "projectile_power" => world.set_projectile_power(entity_id, bits64(event, "power")?),
             other => return Err(format!("unknown event {other}")),
         }
     }

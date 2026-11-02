@@ -180,6 +180,19 @@ impl ClientWorld {
             .count()
     }
 
+    /// `EntityAnchorArgument.Anchor.apply`: a remote entity's feet, or its eyes, if the level
+    /// holds it.
+    pub fn entity_anchor(&self, entity_id: EntityId, eyes: bool) -> Option<Vec3> {
+        let entity = self.entities.at(entity_id)?;
+        let (x, y, z) = entity.position();
+        let eye_height = if eyes {
+            f64::from(entity.scaled_dimensions().eye_height())
+        } else {
+            0.0
+        };
+        Some(Vec3::new(x, y + eye_height, z))
+    }
+
     pub(crate) fn entity_position(&self, entity_id: EntityId) -> Option<Vec3> {
         if let Some(entity) = self.entities.at(entity_id) {
             let (x, y, z) = entity.position();

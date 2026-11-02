@@ -23,6 +23,10 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
         typed::<SetEntityLink>,
     ),
     (PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, typed::<RotateHead>),
+    (
+        PLAY_CLIENTBOUND_PROJECTILE_POWER_PACKET_ID,
+        typed::<ProjectilePowerPacket>,
+    ),
     (PLAY_CLIENTBOUND_SET_CAMERA_PACKET_ID, typed::<SetCamera>),
     (
         PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
@@ -515,6 +519,16 @@ impl PlaySession {
         packet: EntityEquipmentObservation,
     ) -> Result<(), ConnectionError> {
         entities::equipment(&mut self.world, &packet);
+        Ok(())
+    }
+}
+
+/// `handleProjectilePowerPacket`.
+impl ClientboundPacket for ProjectilePowerPacket {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session
+            .world
+            .set_projectile_power(self.entity, self.acceleration_power);
         Ok(())
     }
 }

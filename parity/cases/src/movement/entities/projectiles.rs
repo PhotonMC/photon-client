@@ -207,7 +207,38 @@ fn projectile_6() -> Vec<Value> {
     ]
 }
 
+/// The server sets the power of a projectile in flight; one that does not accelerate is left alone.
+fn power() -> Vec<Value> {
+    vec![
+        proj("fireball-stronger", "minecraft:fireball", floor(), (0.5, 66.0, 0.5), (0.25, 0.0625, -0.125), 20)
+            .events(vec![projectile_power(3, 0.5)])
+            .row(),
+        proj("fireball-no-power", "minecraft:fireball", floor(), (0.5, 66.0, 0.5), (0.25, 0.0625, -0.125), 20)
+            .events(vec![projectile_power(2, 0.0), projectile_power(6, 0.2)])
+            .row(),
+        proj("wind-charge-pushed", "minecraft:wind_charge", floor(), (0.5, 66.0, 0.5), (0.25, 0.0625, -0.125), 20)
+            .events(vec![projectile_power(1, 0.05)])
+            .row(),
+        proj("skull-weaker", "minecraft:wither_skull", floor(), (0.5, 66.0, 0.5), (0.25, 0.0625, -0.125), 20)
+            .events(vec![projectile_power(4, -0.1)])
+            .dangerous(true)
+            .row(),
+        proj("llama-spit-untouched", "minecraft:llama_spit", floor(), (0.5, 66.0, 0.5), (0.25, 0.0625, -0.125), 20)
+            .events(vec![projectile_power(2, 0.9)])
+            .row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
-    [open_air(), projectile_1(), projectile_2(), projectile_3(), projectile_4(), projectile_5(), projectile_6()]
-        .concat()
+    [
+        open_air(),
+        projectile_1(),
+        projectile_2(),
+        projectile_3(),
+        projectile_4(),
+        projectile_5(),
+        projectile_6(),
+        power(),
+    ]
+    .concat()
 }

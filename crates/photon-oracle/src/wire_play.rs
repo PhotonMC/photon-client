@@ -1,0 +1,129 @@
+//! The play packet operations of the wire oracle: what a packet reads, and the view the
+//! rotation and look-at packets leave the player.
+
+use photon_core::ids::EntityId;
+use photon_core::math::Vec3;
+use photon_protocol::play::{
+    Decode, EntityAnchor, MoveVehiclePacket, PlayerLookAtPacket, PlayerRotationPacket,
+    ProjectilePowerPacket, resolve_player_rotation,
+};
+use photon_world::ClientPlayerGameMode;
+use photon_world::local_player::LocalPlayer;
+use serde_json::{Value, json};
+
+use crate::enum_ops::f64_field;
+use crate::error::f32_field;
+use crate::hex::{decode_hex, string};
+
+fn bits32(value: f32) -> String {
+    format!("{:08x}", value.to_bits())
+}
+
+fn bits64(value: f64) -> String {
+    format!("{:016x}", value.to_bits())
+}
+
+fn flag(request: &Value, name: &str) -> Result<bool, String> {
+    request[name]
+        .as_bool()
+        .ok_or_else(|| format!("{name} must be a boolean"))
+}
+
+fn anchor_index(anchor: EntityAnchor) -> i32 {
+    match anchor {
+        EntityAnchor::Feet => 0,
+        EntityAnchor::Eyes => 1,
+    }
+}
+
+fn fields_of(packet: &str, bytes: &[u8]) -> Result<Option<Value>, String> {
+    let registries = crate::case_ids::registries();
+    Ok(match packet {
+        "player_rotation" => PlayerRotationPacket::decode(bytes, &registries)
+            .ok()
+            .map(|p| {
+                json!({
+                    "y_rot": bits32(p.y_rot), "relative_y": p.relative_y,
+                    "x_rot": bits32(p.x_rot), "relative_x": p.relative_x,
+                })
+            }),
+        "player_look_at" => PlayerLookAtPacket::decode(bytes, &registries)
+            .ok()
+            .map(|p| {
+                let mut fields = json!({
+                    "from": anchor_index(p.from),
+                    "x": bits64(p.at.0), "y": bits64(p.at.1), "z": bits64(p.at.2),
+                    "at_entity": p.entity.is_some(),
+                });
+                if let Some((id, anchor)) = p.entity {
+                    fields["entity"] = json!(id.0);
+                    fields["to"] = json!(anchor_index(anchor));
+                }
+                fields
+            }),
+        "move_vehicle" => MoveVehiclePacket::decode(bytes, &registries).ok().map(|p| {
+            json!({
+                "x": bits64(p.position.0), "y": bits64(p.position.1), "z": bits64(p.position.2),
+                "y_rot": bits32(p.y_rot), "x_rot": bits32(p.x_rot),
+            })
+        }),
+        "projectile_power" => ProjectilePowerPacket::decode(bytes, &registries)
+            .ok()
+            .map(|p| json!({"entity": p.entity.0, "power": bits64(p.acceleration_power)})),
+        other => return Err(format!("unknown play packet {other}")),
+    })
+}
+
+/// `play_packet`: the fields a packet reads from bytes.
+pub(crate) fn play_packet_result(request: &Value) -> Result<Value, String> {
+    let bytes = decode_hex(string(request, "hex")?)?;
+    Ok(match fields_of(string(request, "packet")?, &bytes)? {
+        Some(fields) => json!({"outcome": "value", "fields": fields}),
+        None => json!({"outcome": "error"}),
+    })
+}
+
+fn player_at(position: Vec3, y_rot: f32, x_rot: f32) -> LocalPlayer {
+    LocalPlayer::new(
+        EntityId(1),
+        position,
+        y_rot,
+        x_rot,
+        ClientPlayerGameMode::Survival,
+        false,
+    )
+}
+
+/// `rotate_player`: the view the server's rotation packet leaves.
+pub(crate) fn rotate_player_result(request: &Value) -> Result<Value, String> {
+    let mut player = player_at(
+        Vec3::ZERO,
+        f32_field(request, "current_y")?,
+        f32_field(request, "current_x")?,
+    );
+    // The row's start goes through the same setters the reference's does.
+    let (y, x) = player.rotation();
+    player.set_view(y, x);
+    let packet = PlayerRotationPacket {
+        y_rot: f32_field(request, "y_rot")?,
+        relative_y: flag(request, "relative_y")?,
+        x_rot: f32_field(request, "x_rot")?,
+        relative_x: flag(request, "relative_x")?,
+    };
+    let (y_rot, x_rot) = resolve_player_rotation(packet, player.rotation());
+    player.set_view(y_rot, x_rot);
+    let (y_rot, x_rot) = player.rotation();
+    Ok(json!({"y_rot": bits32(y_rot), "x_rot": bits32(x_rot)}))
+}
+
+/// `look_at`: the view `Entity.lookAt` leaves.
+pub(crate) fn look_at_result(request: &Value) -> Result<Value, String> {
+    let at = |name: &str| f64_field(request, name);
+    let mut player = player_at(Vec3::new(at("x")?, at("y")?, at("z")?), 0.0, 0.0);
+    player.look_at(
+        flag(request, "eyes")?,
+        Vec3::new(at("at_x")?, at("at_y")?, at("at_z")?),
+    );
+    let (y_rot, x_rot) = player.rotation();
+    Ok(json!({"y_rot": bits32(y_rot), "x_rot": bits32(x_rot)}))
+}

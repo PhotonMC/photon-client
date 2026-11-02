@@ -184,6 +184,9 @@ pub(crate) struct EntityState {
     pub(crate) phantom_size: i32,
     /// `WitherSkull.isDangerous`: the blue skull, which flies slower.
     pub(crate) wither_skull_dangerous: bool,
+    /// `AbstractHurtingProjectile.accelerationPower` as a projectile power packet set it; none
+    /// leaves the type's own.
+    pub(crate) projectile_power: Option<photon_core::java_float::JavaF64>,
     /// `Guardian.isMoving` and the id of `getActiveAttackTarget` (zero for none).
     pub(crate) guardian_moving: bool,
     pub(crate) guardian_target: i32,

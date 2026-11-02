@@ -8,6 +8,7 @@ mod crypto;
 mod finished;
 mod framing;
 mod login;
+mod play;
 mod registry;
 mod stats;
 mod status;
@@ -22,6 +23,7 @@ pub fn cases() -> Vec<Value> {
     cases.extend(crypto::cases());
     cases.extend(advancements::cases());
     cases.extend(stats::cases());
+    cases.extend(play::cases());
     cases.extend(status::cases());
     cases
 }

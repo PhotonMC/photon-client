@@ -99,6 +99,9 @@ class MovementEntityOracle extends MovementSupport {
                     new net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket(entityId,
                         new net.minecraft.world.phys.Vec3(Oracle.f64(event, "motion_x"),
                             Oracle.f64(event, "motion_y"), Oracle.f64(event, "motion_z"))));
+                case "projectile_power" -> listener.handleProjectilePowerPacket(
+                    new net.minecraft.network.protocol.game.ClientboundProjectilePowerPacket(entityId,
+                        Oracle.f64(event, "power")));
                 default -> throw new IllegalArgumentException("Unknown event " + event);
             }
         }

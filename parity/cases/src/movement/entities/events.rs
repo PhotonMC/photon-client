@@ -134,3 +134,8 @@ pub fn cart_step(position: (f64, f64, f64), motion: (f64, f64, f64), turn: (i64,
 pub fn hops() -> Vec<Value> {
     vec![on_ground(2, true), on_ground(9, false), on_ground(21, true), on_ground(30, false), on_ground(33, true)]
 }
+
+/// A projectile power packet: the acceleration of a hurting projectile.
+pub fn projectile_power(tick: i64, power: f64) -> Value {
+    json!({"tick": tick, "type": "projectile_power", "power": f64_bits(power)})
+}

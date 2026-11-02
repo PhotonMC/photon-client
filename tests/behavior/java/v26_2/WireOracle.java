@@ -69,6 +69,15 @@ public final class WireOracle extends WireRegistryOracle {
         if (operation.equals("award_stats")) {
             return awardStatsResult(request);
         }
+        if (operation.equals("play_packet")) {
+            return WirePlayOracle.packetResult(request);
+        }
+        if (operation.equals("rotate_player")) {
+            return WirePlayOracle.rotatePlayerResult(request);
+        }
+        if (operation.equals("look_at")) {
+            return WirePlayOracle.lookAtResult(request);
+        }
         if (operation.equals("update_tags")) {
             return updateTagsResult(request);
         }

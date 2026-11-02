@@ -221,6 +221,18 @@ pub fn wrap_degrees_i32(angle: i32) -> i32 {
     normalized_angle
 }
 
+/// Return Java `Mth.wrapDegrees(float)`.
+pub fn mth_wrap_degrees_f32(angle: f32) -> f32 {
+    let mut normalized_angle = angle % 360.0;
+    if normalized_angle >= 180.0 {
+        normalized_angle -= 360.0;
+    }
+    if normalized_angle < -180.0 {
+        normalized_angle += 360.0;
+    }
+    normalized_angle
+}
+
 /// Return Java `Mth.wrapDegrees(long)`, including the final f32 narrowing.
 pub fn wrap_degrees_i64(angle: i64) -> f32 {
     let mut normalized_angle = (angle % 360) as f32;

@@ -98,6 +98,43 @@ impl LocalPlayer {
         self.x_rot = x_rot.clamp(-90.0, 90.0);
     }
 
+    /// `Entity.setYRot` and `setXRot` then `setOldRot`, as the server's rotation packet leaves
+    /// the view: a value that is not finite is discarded, the pitch is held within a quarter
+    /// turn, and the last tick's view is the new one.
+    pub fn set_view(&mut self, y_rot: f32, x_rot: f32) {
+        if y_rot.is_finite() {
+            self.y_rot = y_rot;
+        }
+        if x_rot.is_finite() {
+            self.x_rot = (x_rot % 360.0).clamp(-90.0, 90.0);
+        }
+        self.view.y_rot_old = self.y_rot;
+    }
+
+    /// `Entity.lookAt`: turn from the feet or the eyes towards a point; the head follows and
+    /// the last tick's view is the new one.
+    pub fn look_at(&mut self, from_eyes: bool, target: Vec3) {
+        use photon_core::math::{mth_atan2, mth_wrap_degrees_f32};
+        let eye = if from_eyes {
+            f64::from(self.eye_height())
+        } else {
+            0.0
+        };
+        let (dx, dy, dz) = (
+            target.x - self.position.x,
+            target.y - (self.position.y + eye),
+            target.z - self.position.z,
+        );
+        let horizontal = (dx * dx + dz * dz).sqrt();
+        // The reference's `180.0F / (float) Math.PI`, folded to a float by the compiler.
+        let degrees_per_radian = f64::from(180.0_f32 / std::f32::consts::PI);
+        let x_rot =
+            mth_wrap_degrees_f32((-(mth_atan2(dy, horizontal) * degrees_per_radian)) as f32);
+        let y_rot = mth_wrap_degrees_f32((mth_atan2(dz, dx) * degrees_per_radian) as f32 - 90.0);
+        self.set_view(y_rot, x_rot);
+        self.y_head_rot = self.y_rot;
+    }
+
     /// Move the player where the server put it, as a teleport does.
     pub fn snap_to(&mut self, position: Vec3, y_rot: f32, x_rot: f32) {
         self.set_pos(position);
