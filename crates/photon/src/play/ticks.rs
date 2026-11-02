@@ -206,7 +206,14 @@ impl Play {
             if is_input(&event) {
                 self.limiter.input_received(frame_start);
             }
-            if self.switch_event(&event) || self.loading_event(&event) {
+            // `KeyboardHandler` and `MouseHandler` clear a mapping on a release whatever screen is
+            // up, so a key let go during a switch or a loading screen does not stay held.
+            let release = matches!(
+                event,
+                glfw::WindowEvent::Key(_, _, glfw::Action::Release, _)
+                    | glfw::WindowEvent::MouseButton(_, glfw::Action::Release, _)
+            );
+            if !release && (self.switch_event(&event) || self.loading_event(&event)) {
                 continue;
             }
             self.controls.handle(
