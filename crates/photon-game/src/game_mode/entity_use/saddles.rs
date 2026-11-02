@@ -39,6 +39,12 @@ impl Context<'_> {
     /// interact goes on a living mob that may wear it and has nothing in that slot (the server
     /// does the equipping).
     pub(super) fn equips_on_interact(&self, id: EntityId, hand: u8) -> bool {
+        self.equippable_by_click(id, hand, true)
+    }
+
+    /// Whether the held item fits an empty slot of the mob it is used on: one that equips itself
+    /// on the click (a saddle) with `on_interact`, otherwise body armor (horse armor).
+    pub(super) fn equippable_by_click(&self, id: EntityId, hand: u8, on_interact: bool) -> bool {
         let Some((item, _)) = self.held(hand) else {
             return false;
         };
@@ -55,8 +61,11 @@ impl Context<'_> {
         let Some(slot) = slot_named(equip.slot) else {
             return false;
         };
-        equip.equip_on_interact
-            && equip.allowed.contains(&name)
+        (if on_interact {
+            equip.equip_on_interact
+        } else {
+            slot == photon_world::EquipmentSlot::Body
+        }) && equip.allowed.contains(&name)
             && can_use_slot(name, slot, entity.is_baby(), entity.is_tame())
             && entity.equipment(slot).is_none()
     }

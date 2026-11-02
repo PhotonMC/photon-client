@@ -15,6 +15,7 @@ pub(super) fn rows() -> Vec<Value> {
         horse_rows(),
         other_horse_rows(),
         hurt_horse_rows(),
+        horse_armor_rows(),
         sneaking_horse_rows(),
         age_lock_rows(),
     ]
@@ -239,6 +240,29 @@ fn hurt_horse_rows() -> Vec<Value> {
         // A healthy animal is told apart by the label; its health is past any maximum.
         entity["hurt"] = json!(if label.contains("healthy") { 500.0 } else { 1.0 });
         facing(label, vec![entity], horse_clicks()).x_rot(30.0).main_hand(item).count(2).row()
+    })
+    .collect()
+}
+
+/// Horse armor offered to a horse: a tamed bare one wears it (one item used up), the others do
+/// not; the label's words choose the animal.
+fn horse_armor_rows() -> Vec<Value> {
+    let armor = "minecraft:iron_horse_armor";
+    [
+        ("use-tamed-horse-with-armor", "horse", &["tamed"][..], false),
+        ("use-untamed-horse-with-armor", "horse", &[][..], false),
+        ("use-tamed-armored-horse-with-armor", "horse", &["tamed"][..], true),
+        ("use-tamed-baby-horse-with-armor", "horse", &["tamed", "baby"][..], false),
+        ("use-tamed-donkey-with-armor", "donkey", &["tamed"][..], false),
+        ("use-tamed-zombie-horse-with-armor", "zombie_horse", &["tamed"][..], false),
+    ]
+    .iter()
+    .map(|&(label, kind, flags, worn)| {
+        let mut entity = flagged_animal(kind, flags);
+        if worn {
+            entity["armored"] = json!(armor);
+        }
+        facing(label, vec![entity], horse_clicks()).x_rot(30.0).main_hand(armor).count(2).row()
     })
     .collect()
 }

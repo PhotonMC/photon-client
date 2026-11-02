@@ -1,7 +1,7 @@
 //! The horse family's part of a click on the client: `Horse`, `Donkey`, `Mule`, `Llama`,
 //! `ZombieHorse` and `SkeletonHorse` over `AbstractHorse.mobInteract`. Camels have their own.
 //!
-//! Not covered: body armor and saddles equipped by the click, the riding state the click clears (eating, rearing) and a horse that has a rider.
+//! Not covered: the riding state the click clears (eating, rearing) and a horse that has a rider.
 
 use super::*;
 use photon_core::ids::ItemId;
@@ -79,6 +79,10 @@ impl Context<'_> {
         if animal_rules {
             self.feed_animal(id, hand, food_tag(name))
         } else {
+            // `equipBodyArmor`: one horse armor goes on a tamed horse that wears none.
+            if self.equippable_by_click(id, hand, false) {
+                self.use_up(hand);
+            }
             EntityUse::Success { swing: true }
         }
     }
