@@ -74,6 +74,7 @@ public final class GuiOracle extends GuiGameRulesOracle {
                 case "inventory_effects" -> inventoryEffects(request);
                 case "hud_debug_overlay" -> hudDebugOverlay(request);
                 case "hud_debug_lines" -> hudDebugLines(request);
+                case "hud_debug_chart" -> hudDebugChart(request);
                 case "debug_entries" -> debugEntries(request);
                 case "stat_format" -> statFormat(request);
                 case "client_advancements" -> clientAdvancements(request);

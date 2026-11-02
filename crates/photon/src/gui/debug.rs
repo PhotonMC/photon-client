@@ -4,6 +4,7 @@ use super::*;
 use photon_gui::hud::debug::{
     self, CameraEntity, Clouds, Filtering, FooterKeys, Impactors, Input, ServerInfo, TargetedBlock,
 };
+use photon_gui::hud::debug_chart as chart;
 
 /// The two columns of the overlay's lines, or none when nothing is shown: no entry is on, or the
 /// interface is hidden with no screen over it.
@@ -59,6 +60,40 @@ impl Gui {
             )
         });
         Some(debug::lines(list, reduced, &input, footer))
+    }
+
+    /// The overlay's lines and the charts under them.
+    pub(super) fn draw_debug_overlay(
+        frame: &mut photon_render::gui::GuiFrame,
+        (atlas, font): (&GuiAtlas, &Font),
+        ((left, right), session, controls): (&DebugColumns, &PlaySession, &Controls),
+        size: (i32, i32),
+    ) {
+        debug::draw(frame, atlas, font, size.0, (left, right));
+        Self::draw_debug_charts(frame, (atlas, font), (session, controls), size);
+    }
+
+    /// The charts under the overlay's lines (`DebugScreenOverlay.extractRenderState`): the ping
+    /// chart in the bottom right corner while the network charts are on.
+    pub(super) fn draw_debug_charts(
+        frame: &mut photon_render::gui::GuiFrame,
+        (atlas, font): (&GuiAtlas, &Font),
+        (session, controls): (&PlaySession, &Controls),
+        (gui_width, gui_height): (i32, i32),
+    ) {
+        if !(controls.debug.charts.network && controls.debug.entries.is_overlay_visible()) {
+            return;
+        }
+        let log = session.ping_samples();
+        let samples: Vec<i64> = (0..log.len()).filter_map(|i| log.get(i, 0)).collect();
+        let width = chart::width(gui_width / 2);
+        chart::draw(
+            frame,
+            (atlas, font),
+            chart::Kind::Ping,
+            &samples,
+            (gui_width - width, width, gui_height),
+        );
     }
 
     /// `Timeline.getPeriodCount` of the overworld day timeline (a 24000-tick period on the

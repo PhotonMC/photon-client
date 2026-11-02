@@ -1022,6 +1022,32 @@ class GuiHudOracle extends GuiCommandOracle {
     }
 
     /**
+     * The game's own ping chart (`PingDebugChart.extractRenderState`) over the samples given, in a window of a
+     * size, at a place and as wide as the window lets it be.
+     */
+    static JsonObject hudDebugChart(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var scene = hudScene(row.get("width").getAsInt(), row.get("height").getAsInt(), false, false);
+            var logger = new net.minecraft.util.debugchart.LocalSampleLogger(1);
+            for (var sample : row.getAsJsonArray("samples")) {
+                logger.logSample(sample.getAsLong());
+            }
+            var chart = new net.minecraft.client.gui.components.debugchart.PingDebugChart(scene.minecraft().font, logger);
+            var graphics = scene.screen().graphics();
+            chart.extractRenderState(graphics, row.get("left").getAsInt(), chart.getWidth(row.get("width").getAsInt()));
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(scene.screen().state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * The game's own debug overlay (`DebugScreenOverlay.extractRenderState`) over a real local player: the
      * default profile's entry list as the game rebuilds it (the overlay up or not, reduced debug info or
      * not), the camera entity at a position and a rotation, and the interface hidden or shown.

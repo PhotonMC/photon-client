@@ -266,7 +266,9 @@ pub(super) fn hud_ops(ctx: &mut GuiContext, row: &Value, operation: &str) -> Res
         "hud_status" => hud_status_case(ctx, row),
         "hud_sleep" => super::hud_overlays::hud_sleep_case(ctx, row),
         "hud_effects" | "inventory_effects" => super::effects::effects_case(ctx, row, operation),
-        "debug_entries" | "debug_options_screen" => debug_screen_case(ctx, row, operation),
+        "debug_entries" | "debug_options_screen" | "hud_debug_chart" => {
+            debug_screen_case(ctx, row, operation)
+        }
         "hud_debug_lines" => super::hud_overlays::hud_debug_lines_case(ctx, row),
         "hud_debug_overlay" => super::hud_overlays::hud_debug_overlay_case(ctx, row),
         "subtitles" => super::hud_overlays::subtitles_case(ctx, row),
@@ -277,7 +279,9 @@ pub(super) fn hud_ops(ctx: &mut GuiContext, row: &Value, operation: &str) -> Res
 
 /// The debug screen's model and its options screen.
 fn debug_screen_case(ctx: &mut GuiContext, row: &Value, operation: &str) -> Result<Value, String> {
-    if operation == "debug_entries" {
+    if operation == "hud_debug_chart" {
+        super::hud_chart::hud_debug_chart_case(ctx, row)
+    } else if operation == "debug_entries" {
         super::debug_entries::debug_entries_case(row)
     } else {
         super::debug_options::debug_options_screen_case(ctx, row)

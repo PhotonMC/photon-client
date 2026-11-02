@@ -564,13 +564,12 @@ impl Gui {
         layers.draw_toasts(frame, resources, view, item);
         // `Gui.extractRenderState`: the debug overlay comes after the toasts, before the
         // subtitles that waited.
-        if let Some((left, right)) = debug.as_ref() {
-            photon_gui::hud::debug::draw(
+        if let Some(columns) = debug.as_ref() {
+            Self::draw_debug_overlay(
                 frame,
-                resources.0,
-                resources.1,
-                view.1.gui_scaled_width(),
-                (left, right),
+                (resources.0, resources.1),
+                (columns, session, controls),
+                (view.1.gui_scaled_width(), view.1.gui_scaled_height()),
             );
         }
         layers.draw_subtitles(frame, resources, view, SubtitlePass::AfterToasts);

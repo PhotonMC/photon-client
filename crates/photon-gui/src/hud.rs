@@ -11,7 +11,7 @@ pub mod selected_name;
 pub mod spectator;
 pub mod subtitles;
 mod vitals;
-pub use overlays::{CameraOverlays, debug, sleep, vignette_colour};
+pub use overlays::{CameraOverlays, debug, debug_chart, sleep, vignette_colour};
 pub mod sidebar;
 pub mod tab_list;
 use vitals::Bar;

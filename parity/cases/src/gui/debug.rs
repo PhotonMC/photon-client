@@ -240,6 +240,23 @@ pub fn hud_debug_lines() -> Value {
     gui("hud-debug-lines", "hud_debug_lines", rows)
 }
 
+/// The ping chart: no samples, one, a full log with spikes and values past the top, a log that
+/// wrapped, and a window too narrow for all the samples.
+pub fn hud_debug_chart() -> Value {
+    let spikes: Vec<i64> = (0..240).map(|i| if i % 37 == 0 { 700 } else { 20 + (i * 7) % 230 }).collect();
+    let wrapped: Vec<i64> = (0..300).map(|i| (i * 13) % 480).collect();
+    let rows = vec![
+        json!({"label": "empty", "width": 427, "height": 240, "left": 0, "samples": []}),
+        json!({"label": "one", "width": 427, "height": 240, "left": 0, "samples": [42]}),
+        json!({"label": "spikes", "width": 427, "height": 240, "left": 0, "samples": spikes}),
+        json!({"label": "wrapped", "width": 427, "height": 240, "left": 185, "samples": wrapped}),
+        json!({"label": "narrow", "width": 120, "height": 90, "left": 0, "samples": spikes}),
+        json!({"label": "narrow-short", "width": 120, "height": 90, "left": 4, "samples": [10, 250, 500]}),
+        json!({"label": "rounding", "width": 427, "height": 240, "left": 0, "samples": [1, 2, 4, 5]}),
+    ];
+    gui("hud-debug-chart", "hud_debug_chart", rows)
+}
+
 /// The debug screen's model: what is registered with its group and its reduced-info rule, the
 /// profiles, and an entry list put through toggles, profile loads and files (what it saves, and
 /// what it makes of what it reads).

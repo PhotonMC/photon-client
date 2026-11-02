@@ -162,6 +162,7 @@ pub const INFERRED: &[(&str, &str, &str)] = &[
     ("gui", "game_mode_switcher", "resources/Identifier, world/item/crafting/RecipePropertySet"),
     ("gui", "game_rules_screen", "client/InputType, client/multiplayer/ClientPacketListener"),
     ("gui", "hud_debug_lines", "locale/Language, client/gui/components/DebugScreenOverlay"),
+    ("gui", "hud_debug_chart", "client/gui/components/debugchart/PingDebugChart, util/debugchart/LocalSampleLogger"),
     ("gui", "hud_debug_overlay", "locale/Language, resources/Identifier"),
     ("gui", "hud_effects", "client/DeltaTracker, world/level/GameType"),
     ("gui", "hud_hotbar", "client/DeltaTracker, resources/Identifier"),

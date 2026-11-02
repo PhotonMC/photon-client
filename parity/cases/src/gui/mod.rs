@@ -114,6 +114,7 @@ const ORDER: &[Generator] = &[
     || vec![status::hud_sleep()],
     || vec![debug::hud_debug_overlay()],
     || vec![debug::hud_debug_lines()],
+    || vec![debug::hud_debug_chart()],
     || vec![debug::debug_entries()],
     || vec![debug::debug_options_screen()],
     || vec![game_rules::game_rules_screen()],
