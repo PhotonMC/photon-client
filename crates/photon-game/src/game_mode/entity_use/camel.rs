@@ -1,8 +1,17 @@
 //! `Camel.mobInteract` on the client: its own order, not `AbstractHorse`'s.
 //!
-//! Not covered: the heal-by-food item a hurt camel takes, and what riding clears locally.
+//! Not covered: what riding clears locally.
 
 use super::*;
+
+/// The item tag of what the camel family eats.
+fn camel_food(name: &str) -> &'static str {
+    if name == "minecraft:camel_husk" {
+        "minecraft:camel_husk_food"
+    } else {
+        "minecraft:camel_food"
+    }
+}
 
 impl Context<'_> {
     /// A sneaking owner opens the inventory (a swing); food is answered by the server (no
@@ -19,13 +28,11 @@ impl Context<'_> {
         if self.equips_on_interact(id, hand) {
             return EntityUse::Success { swing: true };
         }
-        let tag = if name == "minecraft:camel_husk" {
-            "minecraft:camel_husk_food"
-        } else {
-            "minecraft:camel_food"
-        };
-        if self.holds_tagged(hand, tag) {
-            self.use_up_for_growth(hand, baby && !locked);
+        if self.holds_tagged(hand, camel_food(name)) {
+            // `Camel.handleEating`: the food heals a hurt camel by two, and is used up when it
+            // heals or ages a baby.
+            let healed = self.heal_local(id, 2.0);
+            self.use_up_for_growth(hand, healed || baby && !locked);
             return EntityUse::Success { swing: false };
         }
         if baby && self.holds_golden_dandelion() {

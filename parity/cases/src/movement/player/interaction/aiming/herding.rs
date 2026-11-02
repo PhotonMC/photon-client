@@ -14,6 +14,7 @@ pub(super) fn rows() -> Vec<Value> {
         sheep_rows(),
         horse_rows(),
         other_horse_rows(),
+        hurt_horse_rows(),
         sneaking_horse_rows(),
         age_lock_rows(),
     ]
@@ -176,8 +177,12 @@ fn sheep_rows() -> Vec<Value> {
 
 /// A horse-family animal clicked once with the use key, the inventory reported.
 fn horse_at(label: &str, kind: &str, flags: &[&str]) -> Interaction {
-    let once = [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat();
-    facing(label, vec![flagged_animal(kind, flags)], once).x_rot(30.0)
+    facing(label, vec![flagged_animal(kind, flags)], horse_clicks()).x_rot(30.0)
+}
+
+/// One use click and the ticks after it, the inventory reported.
+fn horse_clicks() -> Vec<Value> {
+    [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat()
 }
 
 /// Two ticks of sneaking, then the click: sneaking takes a tick to lower the eye.
@@ -207,6 +212,35 @@ fn horse_rows() -> Vec<Value> {
             .count(2)
             .row(),
     ]
+}
+
+/// A hurt horse-family animal (health one) fed the item once: the client heals it and eats the
+/// item when the item heals, and answers the same with a full-health twin when it does not.
+fn hurt_horse_rows() -> Vec<Value> {
+    [
+        ("use-hurt-horse-with-wheat", "horse", "minecraft:wheat"),
+        ("use-hurt-horse-with-sugar", "horse", "minecraft:sugar"),
+        ("use-hurt-horse-with-hay-block", "horse", "minecraft:hay_block"),
+        ("use-hurt-horse-with-golden-carrot", "horse", "minecraft:golden_carrot"),
+        ("use-hurt-horse-with-stone", "horse", "minecraft:stone"),
+        ("use-hurt-horse-with-carrot", "horse", "minecraft:carrot"),
+        ("use-hurt-horse-with-golden-apple", "horse", "minecraft:golden_apple"),
+        ("use-hurt-camel-with-cactus", "camel", "minecraft:cactus"),
+        ("use-healthy-horse-with-wheat", "horse", "minecraft:wheat"),
+        ("use-hurt-donkey-with-apple", "donkey", "minecraft:apple"),
+        ("use-hurt-llama-with-wheat", "llama", "minecraft:wheat"),
+        ("use-hurt-llama-with-hay-block", "llama", "minecraft:hay_block"),
+        ("use-hurt-llama-with-apple", "llama", "minecraft:apple"),
+        ("use-hurt-zombie-horse-with-rotten-flesh", "zombie_horse", "minecraft:rotten_flesh"),
+    ]
+    .iter()
+    .map(|&(label, kind, item)| {
+        let mut entity = flagged_animal(kind, &[]);
+        // A healthy animal is told apart by the label; its health is past any maximum.
+        entity["hurt"] = json!(if label.contains("healthy") { 500.0 } else { 1.0 });
+        facing(label, vec![entity], horse_clicks()).x_rot(30.0).main_hand(item).count(2).row()
+    })
+    .collect()
 }
 
 /// Undead horses, chested horses and llamas, and the sneaking owner.

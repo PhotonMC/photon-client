@@ -1,11 +1,11 @@
 //! The horse family's part of a click on the client: `Horse`, `Donkey`, `Mule`, `Llama`,
 //! `ZombieHorse` and `SkeletonHorse` over `AbstractHorse.mobInteract`. Camels have their own.
 //!
-//! Not covered: body armor and saddles equipped by the click, the heal-by-food item a hurt horse
-//! takes, the riding state the click clears (eating, rearing) and a horse that has a rider.
+//! Not covered: body armor and saddles equipped by the click, the riding state the click clears (eating, rearing) and a horse that has a rider.
 
 use super::*;
 use photon_core::ids::ItemId;
+use photon_data::item::ids as items;
 
 /// The classes whose `mobInteract` sends a baby holding a golden dandelion straight to the
 /// animal rules; `ZombieHorse` has no such bypass and `SkeletonHorse` no class layer at all.
@@ -22,11 +22,13 @@ pub(super) fn is_equine(name: &str) -> bool {
         )
 }
 
+const LLAMA_FOOD: &str = "minecraft:llama_food";
+
 /// `isFood`'s tag for the class.
 fn food_tag(name: &str) -> &'static str {
     match name {
         "minecraft:zombie_horse" => "minecraft:zombie_horse_food",
-        "minecraft:llama" | "minecraft:trader_llama" => "minecraft:llama_food",
+        "minecraft:llama" | "minecraft:trader_llama" => LLAMA_FOOD,
         _ => "minecraft:horse_food",
     }
 }
@@ -104,6 +106,7 @@ impl Context<'_> {
             .item_tags()
             .contains(item.0, food_tag(name));
         if food {
+            self.eat_to_heal(name, id, hand);
             return Some(EntityUse::Success { swing: false });
         }
         if !tamed {
@@ -111,6 +114,36 @@ impl Context<'_> {
         }
         self.equip_chest(name, id, hand, item)
             .then_some(EntityUse::Success { swing: true })
+    }
+
+    /// `AbstractHorse.handleEating`, which runs on the client too: a hurt animal is healed by the
+    /// item and one is used up. Temper, age and love are the server's.
+    fn eat_to_heal(&mut self, name: &str, id: EntityId, hand: u8) {
+        let Some((item, _)) = self.held(hand) else {
+            return;
+        };
+        if self.heal_local(id, food_heal(name, item)) {
+            self.use_up(hand);
+        }
+    }
+
+    /// `LivingEntity.heal` on the client's copy of an animal that is hurt; false when it is not,
+    /// or the amount heals nothing.
+    pub(super) fn heal_local(&mut self, id: EntityId, heal: f32) -> bool {
+        let Some(entity) = self.world.entities().at(id) else {
+            return false;
+        };
+        let (Some(health), Some(max)) = (entity.health(), entity.max_health()) else {
+            return false;
+        };
+        if heal <= 0.0 || health >= max {
+            return false;
+        }
+        let mut data = vec![photon_world::ENTITY_HEALTH_DATA_ID, 3];
+        data.extend_from_slice(&(health + heal).min(max).to_be_bytes());
+        data.push(255);
+        self.world.apply_entity_metadata(id, &data);
+        true
     }
 
     /// `AbstractChestedHorse.equipChest`, which runs on the client too: the chest appears and
@@ -139,5 +172,25 @@ impl Context<'_> {
             self.held(hand)
                 .is_some_and(|(item, _)| golden == Some(item))
         })
+    }
+}
+
+/// The health a food item heals: the llama's own table, or `AbstractHorse`'s for the rest.
+fn food_heal(name: &str, item: ItemId) -> f32 {
+    if food_tag(name) == LLAMA_FOOD {
+        return match item {
+            items::WHEAT => 3.0,
+            items::HAY_BLOCK => 6.0,
+            _ => 0.0,
+        };
+    }
+    match item {
+        items::WHEAT => 2.0,
+        items::SUGAR => 1.0,
+        items::HAY_BLOCK => 20.0,
+        items::APPLE | items::CARROT => 3.0,
+        items::GOLDEN_CARROT => 4.0,
+        items::GOLDEN_APPLE | items::ENCHANTED_GOLDEN_APPLE => 10.0,
+        _ => 0.0,
     }
 }

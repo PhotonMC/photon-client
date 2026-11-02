@@ -12,13 +12,21 @@ macro_rules! items {
 }
 
 items! {
+    APPLE = apple,
     BRUSH = brush,
     BUCKET = bucket,
+    CARROT = carrot,
     DRAGON_HEAD = dragon_head,
+    ENCHANTED_GOLDEN_APPLE = enchanted_golden_apple,
+    GOLDEN_APPLE = golden_apple,
+    GOLDEN_CARROT = golden_carrot,
+    HAY_BLOCK = hay_block,
     IRON_INGOT = iron_ingot,
     LAVA_BUCKET = lava_bucket,
     MILK_BUCKET = milk_bucket,
     SHEARS = shears,
+    SUGAR = sugar,
     SULFUR_CUBE_BUCKET = sulfur_cube_bucket,
     TRIDENT = trident,
+    WHEAT = wheat,
 }
