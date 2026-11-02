@@ -86,6 +86,8 @@ pub struct ChartRequests {
 pub(super) struct DebugCharts {
     /// `ClientDebugSubscriber.remoteSubscriptions` holds the tick time subscription.
     subscribed_to_tick_time: bool,
+    /// What the charts want, as the app last said.
+    requests: ChartRequests,
     ping: SampleLog,
     tick_time: SampleLog,
     highlights: HashMap<(i32, i32, i32), GameTestHighlight>,
@@ -95,6 +97,7 @@ impl Default for DebugCharts {
     fn default() -> Self {
         Self {
             subscribed_to_tick_time: false,
+            requests: ChartRequests::default(),
             ping: SampleLog::new(1),
             tick_time: SampleLog::new(TICK_TIME_DIMENSIONS),
             highlights: HashMap::new(),
@@ -124,9 +127,16 @@ fn short_string(pos: (i32, i32, i32)) -> String {
 }
 
 impl PlaySession {
+    /// What the charts want of the next ticks: the ping while the network charts show, the tick
+    /// time subscription while the FPS charts do.
+    pub fn set_chart_requests(&mut self, wants: ChartRequests) {
+        self.social.charts.requests = wants;
+    }
+
     /// `ClientPacketListener.tick`'s share for the charts: the ping request while the network
     /// charts are up, then the subscription request when the set of wanted subscriptions changed.
-    pub fn tick_debug_charts(&mut self, wants: ChartRequests) -> Result<(), ConnectionError> {
+    pub(super) fn tick_debug_charts(&mut self) -> Result<(), ConnectionError> {
+        let wants = self.social.charts.requests;
         self.tick_debug_charts_at(wants, monotonic_ms())
     }
 

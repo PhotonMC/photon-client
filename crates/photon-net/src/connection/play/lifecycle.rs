@@ -86,7 +86,7 @@ impl PlaySession {
     fn tick_game_mode(&mut self) -> Result<(), ConnectionError> {
         self.ensure_has_sent_carried_item()?;
         self.link.traffic.tick(|| self.link.writer.take_sent());
-        Ok(())
+        self.tick_debug_charts()
     }
 
     /// One client tick: the local player, its packets, then the tick end.

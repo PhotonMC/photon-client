@@ -7,13 +7,13 @@ impl Play {
     /// The tick's first part: the sound engine, and the open screen with what it asked for.
     pub(super) fn tick_interface(&mut self) -> Result<()> {
         self.tick_sound();
-        // `ClientPacketListener.tick`: the ping and the subscriptions the charts want.
+        // What the charts want of the connection's next tick.
         let wants = self
             .controls
             .debug
             .charts
             .requests(&self.controls.debug.entries);
-        self.session.tick_debug_charts(wants)?;
+        self.session.set_chart_requests(wants);
         if let Some(screen) = self.controls.screen.as_mut() {
             screen.tick(self.session.active_menu());
         }
