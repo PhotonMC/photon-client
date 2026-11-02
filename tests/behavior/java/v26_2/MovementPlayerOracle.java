@@ -387,6 +387,11 @@ class MovementPlayerOracle extends MovementWorldOracle {
             }
             setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
             level.setTimeFromServer(1000L);
+            if (row.has("frozen")) {
+                level.tickRateManager().setFrozen(true);
+                // `ClientLevel.tick` runs the manager's own tick first, which decides if the game elements run.
+                level.tickRateManager().tick();
+            }
         }
         int tickIndex = 0;
         var startAttack = Reflect.method(net.minecraft.client.Minecraft.class, "startAttack");
@@ -468,6 +473,12 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 rocketPositions.add(at);
             }
             described.add("rockets", rocketPositions);
+            if (row.has("lid")) {
+                var lid = row.getAsJsonObject("lid");
+                var lidEntity = (net.minecraft.world.level.block.entity.LidBlockEntity) level.getBlockEntity(
+                    new BlockPos(lid.get("x").getAsInt(), lid.get("y").getAsInt(), lid.get("z").getAsInt()));
+                described.addProperty("lid", Oracle.bits(lidEntity.getOpenNess(0.0F)));
+            }
             if (vehicle != null) {
                 described.add("vehicle", describeVehicle(vehicle));
             }

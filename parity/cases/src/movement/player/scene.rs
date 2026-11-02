@@ -56,6 +56,8 @@ pub struct Scene {
     block_entities: Vec<Value>,
     /// The rain level, with the sky lit so that the rain can reach the player.
     rain: Option<f64>,
+    frozen: bool,
+    lid: Option<(i64, i64, i64)>,
 }
 
 impl Scene {
@@ -75,6 +77,8 @@ impl Scene {
             flying_speed: None,
             rain: None,
             block_entities: Vec::new(),
+            frozen: false,
+            lid: None,
         }
     }
 
@@ -117,6 +121,16 @@ impl Scene {
         Self { block_events, ..self }
     }
 
+    /// The level is frozen (`/tick freeze`): its block entities do not tick.
+    pub fn frozen(self) -> Self {
+        Self { frozen: true, ..self }
+    }
+
+    /// Report how far the lid of the chest at `at` is open after each tick.
+    pub fn watch_lid(self, at: (i64, i64, i64)) -> Self {
+        Self { lid: Some(at), ..self }
+    }
+
     /// A block entity of a block (the reference makes one for every block that has the type; the
     /// client holds the ones the server sent).
     pub fn block_entity(mut self, at: (i64, i64, i64), kind: &str) -> Self {
@@ -144,6 +158,12 @@ impl Scene {
         });
         if !self.block_events.is_empty() {
             row["block_events"] = Value::Array(self.block_events);
+        }
+        if self.frozen {
+            row["frozen"] = json!(true);
+        }
+        if let Some(at) = self.lid {
+            row["lid"] = json!({"x": at.0, "y": at.1, "z": at.2});
         }
         if !self.block_entities.is_empty() {
             row["block_entities"] = Value::Array(self.block_entities);

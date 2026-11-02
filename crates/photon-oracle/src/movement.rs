@@ -413,7 +413,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 }
             };
             after_tick(&mut world, &mut player, breaking);
-            failure = failure.or(tick_block_entities(&mut world, &mut player, block_events).err());
+            failure = failure.or(tick_block_entities(&mut world, &mut player, row).err());
             let position = player.position();
             let motion = player.delta_movement();
             let (y_rot, x_rot) = player.rotation();
@@ -507,7 +507,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 described["breaking"] =
                     breaking_report(&world, &player, (&game_mode, &cooldowns), attack)?;
             }
-            ticks.push(finished_tick(described, &world, (breaking, tick))?);
+            ticks.push(finished_tick(described, &world, (row, breaking, tick))?);
         }
         match failure {
             None => out.push(json!({"label": label, "outcome": "ticked", "ticks": ticks})),

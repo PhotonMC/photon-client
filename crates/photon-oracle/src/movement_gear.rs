@@ -138,13 +138,14 @@ pub(super) fn apply_block_events(
 pub(super) fn tick_block_entities(
     world: &mut photon_world::ClientWorld,
     player: &mut photon_world::local_player::LocalPlayer,
-    events: Option<&Vec<Value>>,
+    row: &Value,
 ) -> Result<(), String> {
+    let events = row.get("block_events").and_then(Value::as_array);
     if events.is_none() {
         world.apply_player_steps(player);
         return Ok(());
     }
-    let pushed = world.tick_after_entities(Some(player), true);
+    let pushed = world.tick_after_entities(Some(player), row["frozen"].is_null());
     world.set_game_time(world.game_time() + 1);
     pushed.map_err(|unsupported| unsupported.to_string())
 }
