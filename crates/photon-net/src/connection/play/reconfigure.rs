@@ -286,9 +286,9 @@ fn transfer_to(
     information: photon_protocol::configuration::ClientInformation,
     carried: ConnectionState,
 ) -> Result<PlaySession, ConnectionError> {
-    let address = lifecycle::resolve_host(&host, port)?;
+    let (address, announced) = lifecycle::resolve_host(&host, port)?;
     PlaySession::connect_through(
-        (address, Some(host)),
+        (address, Some(announced)),
         (username, auto_jump),
         RECONFIGURATION_TIMEOUT,
         information,

@@ -21,18 +21,34 @@ pub fn resolve_server(host: &str, port: u16) -> Option<SocketAddr> {
 }
 
 /// The same, with the host name the address was looked up by: what a login handshake announces
-/// (`InetSocketAddress.getHostName`), which a proxy routes by. An SRV redirect names its target.
+/// (`InetSocketAddress.getHostName`), which a proxy routes by. An SRV redirect names its target
+/// as the record gives it, fully qualified with the trailing dot.
+///
+/// Not covered: the reference reverse-looks-up the name of an address typed as a literal.
 pub fn resolve_named(host: &str, port: u16) -> Option<(SocketAddr, String)> {
     if let Some((srv_host, srv_port)) = redirect(host, port) {
-        return lookup(&srv_host, srv_port).map(|address| (address, srv_host));
+        return lookup(&srv_host, srv_port).map(|address| (address, qualified(srv_host)));
     }
     lookup(host, port).map(|address| (address, host.to_owned()))
+}
+
+/// An SRV target the way the reference keeps it (the record's own text, which ends in a dot).
+fn qualified(host: String) -> String {
+    if host.ends_with('.') {
+        host
+    } else {
+        host + "."
+    }
 }
 
 fn lookup(host: &str, port: u16) -> Option<SocketAddr> {
     // The reference's address order puts IPv4 first (`java.net.preferIPv6Addresses` is off), so a
     // name that has both reaches a server listening on IPv4 only.
     let all: Vec<SocketAddr> = (host, port).to_socket_addrs().ok()?.collect();
+    first_ipv4(&all)
+}
+
+fn first_ipv4(all: &[SocketAddr]) -> Option<SocketAddr> {
     all.iter()
         .find(|address| address.is_ipv4())
         .or(all.first())
@@ -200,10 +216,24 @@ mod tests {
     }
 
     #[test]
-    fn a_name_with_both_families_resolves_to_ipv4() {
-        // `localhost` has `::1` first on most systems, and many servers listen on IPv4 only.
-        let address = lookup("localhost", 25565).expect("localhost resolves");
-        assert!(address.is_ipv4() || !"localhost".to_socket_addrs().unwrap().any(|a| a.is_ipv4()));
+    fn ipv4_comes_first_among_both_families() {
+        let v6 = SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 25565));
+        let v4 = SocketAddr::from(([127, 0, 0, 1], 25565));
+        assert_eq!(first_ipv4(&[v6, v4]), Some(v4));
+        assert_eq!(first_ipv4(&[v6]), Some(v6));
+        assert_eq!(first_ipv4(&[]), None);
+    }
+
+    #[test]
+    fn an_srv_target_is_announced_fully_qualified() {
+        assert_eq!(
+            qualified("play.example.com".to_owned()),
+            "play.example.com."
+        );
+        assert_eq!(
+            qualified("play.example.com.".to_owned()),
+            "play.example.com."
+        );
     }
 
     #[test]

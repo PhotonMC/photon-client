@@ -4,11 +4,12 @@ use photon_data::item::registry::AIR_ITEM;
 /// How many times in a row the server may send the client on before it is given up on.
 const MAX_TRANSFERS: usize = 5;
 
-/// A host name and port as an address (`ServerAddress` resolved).
-pub(super) fn resolve_host(host: &str, port: i32) -> Result<SocketAddr, ConnectionError> {
+/// A host name and port as an address (`ServerAddress` resolved) and the host name the
+/// handshake to it announces.
+pub(super) fn resolve_host(host: &str, port: i32) -> Result<(SocketAddr, String), ConnectionError> {
     let port =
         u16::try_from(port).map_err(|_| ConnectionError::InvalidArgument("transfer port"))?;
-    crate::resolver::resolve_server(host, port)
+    crate::resolver::resolve_named(host, port)
         .ok_or(ConnectionError::InvalidArgument("transfer host"))
 }
 
@@ -362,8 +363,9 @@ impl PlaySession {
                     host: next_host,
                     port,
                 }) => {
-                    address = resolve_host(&next_host, port)?;
-                    host = Some(next_host);
+                    let (next_address, announced) = resolve_host(&next_host, port)?;
+                    address = next_address;
+                    host = Some(announced);
                     carried = transfer_state(state);
                 }
                 opened => {
