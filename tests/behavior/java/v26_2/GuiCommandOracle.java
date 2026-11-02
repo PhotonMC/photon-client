@@ -63,6 +63,42 @@ class GuiCommandOracle extends GuiChatOracle {
     }
 
     /**
+     * What chat that is no command suggests for its text up to the cursor: the word the game
+     * starts at (`getLastWordIndex`) and the words that continue it (`SharedSuggestionProvider
+     * .suggest`).
+     */
+    static JsonObject messageSuggest(JsonObject request) throws Exception {
+        var lastWordIndex = Reflect.method(net.minecraft.client.gui.components.CommandSuggestions.class,
+            "getLastWordIndex", String.class);
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            String text = row.get("text").getAsString();
+            int cursor = row.has("cursor") ? row.get("cursor").getAsInt() : text.length();
+            var words = new java.util.ArrayList<String>();
+            for (var word : row.getAsJsonArray("words")) {
+                words.add(word.getAsString());
+            }
+            String partial = text.substring(0, cursor);
+            int start = (Integer) lastWordIndex.invoke(null, partial);
+            var suggestions = net.minecraft.commands.SharedSuggestionProvider.suggest(words,
+                new com.mojang.brigadier.suggestion.SuggestionsBuilder(partial, start)).get();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var matches = new JsonArray();
+            for (var suggestion : suggestions.getList()) {
+                matches.add(suggestion.getText());
+            }
+            out.add("matches", matches);
+            out.addProperty("start", start);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * A command tree the way the client reads one off the wire, and what the
      * chat box makes of texts typed against it: where each node read, what
      * could not be read, the colours of the text and the lines under it.

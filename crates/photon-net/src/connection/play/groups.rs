@@ -164,6 +164,9 @@ pub(super) struct Social {
     pub(super) waypoints: photon_game::waypoint::WaypointManager,
     pub(super) commands: Option<std::sync::Arc<photon_game::commands::CommandTree>>,
     pub(super) suggestions: Option<CommandSuggestions>,
+    /// `ClientSuggestionProvider.customCompletionSuggestions`: the words the server added to chat
+    /// completion.
+    pub(super) custom_completions: std::collections::BTreeSet<String>,
     pub(super) player_infos: std::collections::BTreeMap<(u64, u64), PlayerInfo>,
     /// `ClientPacketListener.seenPlayers`: the players whose entity was added, by id and name,
     /// kept when they leave the tab list.

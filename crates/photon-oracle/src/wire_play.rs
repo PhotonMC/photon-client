@@ -4,8 +4,9 @@
 use photon_core::ids::EntityId;
 use photon_core::math::Vec3;
 use photon_protocol::play::{
-    ChunksBiomes, Decode, EntityAnchor, MoveVehiclePacket, PlayerLookAtPacket,
-    PlayerRotationPacket, ProjectilePowerPacket, resolve_player_rotation,
+    ChunksBiomes, CustomChatCompletions, Decode, EntityAnchor, MoveVehiclePacket, PlayerCombatEnd,
+    PlayerCombatEnter, PlayerLookAtPacket, PlayerRotationPacket, ProjectilePowerPacket,
+    resolve_player_rotation,
 };
 use photon_world::ClientPlayerGameMode;
 use photon_world::local_player::LocalPlayer;
@@ -76,6 +77,15 @@ fn fields_of(packet: &str, bytes: &[u8]) -> Result<Option<Value>, String> {
                     .map(|c| json!({"x": c.x, "z": c.z, "buffer": c.buffer.iter().map(|b| format!("{b:02x}")).collect::<String>()}))
                     .collect();
             json!({"chunks": chunks})
+        }),
+        "combat_enter" => PlayerCombatEnter::decode(bytes, &registries)
+            .ok()
+            .map(|_| json!({})),
+        "combat_end" => PlayerCombatEnd::decode(bytes, &registries)
+            .ok()
+            .map(|p| json!({"duration": p.duration})),
+        "custom_chat_completions" => CustomChatCompletions::decode(bytes, &registries).ok().map(|p| {
+            json!({"action": p.action as i32, "entries": p.entries})
         }),
         other => return Err(format!("unknown play packet {other}")),
     })

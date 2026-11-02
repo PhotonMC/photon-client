@@ -190,6 +190,11 @@ impl PlaySession {
             .collect()
     }
 
+    /// `getCustomTabSuggestions` less the player names: the words the server added.
+    pub fn custom_completions(&self) -> Vec<String> {
+        self.social.custom_completions.iter().cloned().collect()
+    }
+
     /// `getOnlinePlayers`: the names of every player the server told of.
     pub fn online_player_names(&self) -> Vec<String> {
         self.social

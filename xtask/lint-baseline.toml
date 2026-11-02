@@ -863,7 +863,7 @@
 "crates/photon-world/src/world/entities/state.rs::ClientWorld::apply_entity_metadata" = 270
 "crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 84
 "crates/photon/examples/bench.rs::world" = 71
-"crates/photon/src/controls/chat.rs::Controls::chat_event" = 69
+"crates/photon/src/controls/chat.rs::Controls::chat_event" = 65
 "crates/photon/src/controls/scripted.rs::Controls::script_step" = 66
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 81
 "crates/photon/src/controls/social.rs::Controls::social_event" = 80

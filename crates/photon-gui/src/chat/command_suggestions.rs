@@ -95,6 +95,9 @@ pub struct CommandSuggestions {
     commands_allowed: bool,
     /// `Options.autoSuggestions`: the list opens as the text is typed, else on Tab.
     auto: bool,
+    /// `ClientSuggestionProvider.customCompletionSuggestions`: the words the server added for
+    /// chat that is no command.
+    custom_completions: Vec<String>,
 }
 
 /// The command a text holds: whether it is one, and where it starts after its slash.
@@ -123,6 +126,7 @@ impl CommandSuggestions {
             messages_allowed: true,
             commands_allowed: true,
             auto: true,
+            custom_completions: Vec::new(),
         }
     }
 
@@ -141,6 +145,10 @@ impl CommandSuggestions {
     pub fn set_names(&mut self, players: Vec<String>, teams: Vec<String>) {
         self.players = players;
         self.teams = teams;
+    }
+
+    pub fn set_custom_completions(&mut self, words: Vec<String>) {
+        self.custom_completions = words;
     }
 
     pub fn set_selected_entities(&mut self, selected: Vec<String>) {
@@ -188,6 +196,10 @@ impl CommandSuggestions {
         } else {
             1
         };
+        if !reading.is_command && !text.trim().is_empty() {
+            self.refresh_message(edit, &text, cursor, forced);
+            return;
+        }
         let asks = reading.is_command && cursor >= parse_start;
         // The reference knows the commands and answers within the same frame;
         // here the server answers a moment later, so the list stays up until
@@ -225,6 +237,22 @@ impl CommandSuggestions {
             let matches = std::mem::take(&mut self.local);
             self.show(edit, start, cursor - start, matches);
         }
+    }
+
+    /// `updateCommandInfo` for chat that is no command: the player names and the words the
+    /// server added are matched against the word at the cursor, at once.
+    fn refresh_message(&mut self, edit: &mut EditBox, text: &str, cursor: usize, forced: bool) {
+        self.list = None;
+        self.local.clear();
+        self.request = None;
+        let typed: String = text.chars().take(cursor).collect();
+        let mut words = self.players.clone();
+        words.extend(self.custom_completions.iter().cloned());
+        let (start, matches) = photon_game::commands::suggest_message_words(&words, &typed);
+        if !(self.auto || forced) || matches.is_empty() {
+            return;
+        }
+        self.show(edit, start, cursor - start, matches);
     }
 
     /// The server's answer, when it is to the last request:

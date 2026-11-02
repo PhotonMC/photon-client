@@ -82,6 +82,28 @@ fn suggest_values<S: AsRef<str>>(values: &[S], remaining: &str) -> Vec<String> {
         .collect()
 }
 
+/// `CommandSuggestions.getLastWordIndex`: where the word at the end of the text starts, a
+/// character count (zero for an empty text).
+pub fn last_word_index(text: &str) -> usize {
+    let is_space = |c: char| matches!(c, ' ' | '\t' | '\n' | '\u{b}' | '\u{c}' | '\r');
+    text.chars()
+        .enumerate()
+        .filter(|&(_, c)| is_space(c))
+        .last()
+        .map_or(0, |(at, _)| at + 1)
+}
+
+/// What a chat message that is no command suggests for its text up to the cursor
+/// (`SharedSuggestionProvider.suggest(getCustomTabSuggestions(), ...)`): where the suggested
+/// word starts, and the names that continue it.
+pub fn suggest_message_words(values: &[String], typed: &str) -> (usize, Vec<String>) {
+    let start = last_word_index(typed);
+    let remaining: String = typed.chars().skip(start).collect();
+    let mut matches = suggest_values(values, &remaining);
+    sort_suggestions(&mut matches);
+    (start, matches)
+}
+
 /// `String.split(" ")`: trailing empty fields are dropped.
 fn split_fields(text: &str) -> Vec<&str> {
     let mut fields: Vec<&str> = text.split(' ').collect();
@@ -370,5 +392,20 @@ mod tests {
             found.matches,
             ["adventure", "creative", "spectator", "survival"]
         );
+    }
+}
+
+#[cfg(test)]
+mod message_tests {
+    use super::*;
+
+    #[test]
+    fn the_last_word_starts_after_the_last_whitespace() {
+        assert_eq!(last_word_index(""), 0);
+        assert_eq!(last_word_index("hello"), 0);
+        assert_eq!(last_word_index("hello wor"), 6);
+        assert_eq!(last_word_index("a\tb  c"), 5);
+        assert_eq!(last_word_index("trailing "), 9);
+        assert_eq!(last_word_index("\u{e9} \u{fc}"), 2);
     }
 }

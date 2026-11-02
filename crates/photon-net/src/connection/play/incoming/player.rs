@@ -7,6 +7,14 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
     (PLAY_CLIENTBOUND_RESPAWN_PACKET_ID, typed::<Respawn>),
     (PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID, typed::<SetHealth>),
     (
+        PLAY_CLIENTBOUND_PLAYER_COMBAT_ENTER_PACKET_ID,
+        typed::<PlayerCombatEnter>,
+    ),
+    (
+        PLAY_CLIENTBOUND_PLAYER_COMBAT_END_PACKET_ID,
+        typed::<PlayerCombatEnd>,
+    ),
+    (
         PLAY_CLIENTBOUND_PLAYER_COMBAT_KILL_PACKET_ID,
         typed::<PlayerCombatKill>,
     ),
@@ -72,6 +80,20 @@ impl ClientboundPacket for Respawn {
 impl ClientboundPacket for SetHealth {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.on_set_health(self.0)
+    }
+}
+
+/// `handlePlayerCombatEnter`: the reference's handler is empty.
+impl ClientboundPacket for PlayerCombatEnter {
+    fn handle(self: Box<Self>, _session: &mut PlaySession) -> Result<(), ConnectionError> {
+        Ok(())
+    }
+}
+
+/// `handlePlayerCombatEnd`: the reference's handler is empty.
+impl ClientboundPacket for PlayerCombatEnd {
+    fn handle(self: Box<Self>, _session: &mut PlaySession) -> Result<(), ConnectionError> {
+        Ok(())
     }
 }
 

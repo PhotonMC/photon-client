@@ -467,3 +467,24 @@ pub(super) fn menu_named(
     }
     Ok(menu)
 }
+
+/// What chat that is no command suggests for its text up to the cursor.
+pub(super) fn message_suggest_result(request: &Value) -> Result<Value, String> {
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let text = row["text"].as_str().ok_or("text")?;
+        let cursor = row["cursor"]
+            .as_u64()
+            .map_or_else(|| text.chars().count(), |cursor| cursor as usize);
+        let words: Vec<String> = row["words"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|word| word.as_str().map(str::to_owned))
+            .collect();
+        let typed: String = text.chars().take(cursor).collect();
+        let (start, matches) = photon_game::commands::suggest_message_words(&words, &typed);
+        rows.push(json!({"label": row["label"], "matches": matches, "start": start}));
+    }
+    Ok(json!({"rows": rows}))
+}

@@ -192,11 +192,7 @@ impl Controls {
             chat.set_commands(session.commands().cloned());
             chat.set_selectors(session.can_use_selectors());
             chat.set_auto_suggestions(self.options.play.auto_suggestions);
-            chat.set_names(
-                session.online_player_names(),
-                session.scoreboard().team_names(),
-            );
-            chat.set_selected_entities(session.selected_entities());
+            feed_names(chat, session);
         }
         if let (Some(chat), Some(answer)) = (self.chat.as_mut(), session.take_suggestions()) {
             chat.suggested(answer.id, answer.start, answer.length, answer.matches);
@@ -314,11 +310,7 @@ impl Controls {
         };
         chat.set_commands(session.commands().cloned());
         chat.set_selectors(session.can_use_selectors());
-        chat.set_names(
-            session.online_player_names(),
-            session.scoreboard().team_names(),
-        );
-        chat.set_selected_entities(session.selected_entities());
+        feed_names(chat, session);
         let size = surface.scale();
         chat.resize((size.gui_scaled_width(), size.gui_scaled_height()));
         if let glfw::WindowEvent::Key(glfw::Key::LeftShift | glfw::Key::RightShift, _, action, _) =
@@ -500,4 +492,15 @@ impl Controls {
         let (_, target) = self.link_confirm.take()?;
         Some((action, target))
     }
+}
+
+/// What the session knows that chat suggestions draw on: the players and teams, the entity in
+/// the crosshair and the words the server added.
+fn feed_names(chat: &mut ChatScreen, session: &PlaySession) {
+    chat.set_names(
+        session.online_player_names(),
+        session.scoreboard().team_names(),
+    );
+    chat.set_selected_entities(session.selected_entities());
+    chat.set_custom_completions(session.custom_completions());
 }

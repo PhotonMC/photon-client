@@ -73,7 +73,7 @@ const ORDER: &[Generator] = &[
     || vec![hud::boss_bar()],
     || vec![hud::sidebar()],
     || vec![commands::command_parse()],
-    || vec![suggest::command_suggest()],
+    || vec![suggest::command_suggest(), suggest::message_suggest()],
     || vec![commands::command_verify()],
     || {
         vec![

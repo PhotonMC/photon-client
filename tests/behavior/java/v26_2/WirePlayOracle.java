@@ -6,6 +6,9 @@ import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.network.FriendlyByteBuf;
 import com.google.gson.JsonArray;
 import net.minecraft.network.protocol.game.ClientboundChunksBiomesPacket;
+import net.minecraft.network.protocol.game.ClientboundCustomChatCompletionsPacket;
+import net.minecraft.network.protocol.game.ClientboundPlayerCombatEndPacket;
+import net.minecraft.network.protocol.game.ClientboundPlayerCombatEnterPacket;
 import net.minecraft.network.protocol.game.ClientboundMoveVehiclePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerLookAtPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket;
@@ -31,6 +34,9 @@ final class WirePlayOracle {
                 case "move_vehicle" -> vehicle(ClientboundMoveVehiclePacket.STREAM_CODEC.decode(input));
                 case "projectile_power" -> power(ClientboundProjectilePowerPacket.STREAM_CODEC.decode(input));
                 case "chunks_biomes" -> chunksBiomes(ClientboundChunksBiomesPacket.STREAM_CODEC.decode(input));
+                case "combat_enter" -> combatEnter(ClientboundPlayerCombatEnterPacket.STREAM_CODEC.decode(input));
+                case "combat_end" -> combatEnd(ClientboundPlayerCombatEndPacket.STREAM_CODEC.decode(input));
+                case "custom_chat_completions" -> completions(ClientboundCustomChatCompletionsPacket.STREAM_CODEC.decode(input));
                 default -> throw new IllegalArgumentException("Unknown play packet");
             };
             if (buffer.isReadable()) {
@@ -97,6 +103,29 @@ final class WirePlayOracle {
         }
         var fields = new JsonObject();
         fields.add("chunks", chunks);
+        return fields;
+    }
+
+    private static JsonObject combatEnter(ClientboundPlayerCombatEnterPacket packet) {
+        return new JsonObject();
+    }
+
+    private static JsonObject combatEnd(ClientboundPlayerCombatEndPacket packet) {
+        var fields = new JsonObject();
+        try {
+            fields.addProperty("duration", (Integer) Reflect.get(packet, "duration"));
+        } catch (Exception error) {
+            throw new IllegalStateException(error);
+        }
+        return fields;
+    }
+
+    private static JsonObject completions(ClientboundCustomChatCompletionsPacket packet) {
+        var fields = new JsonObject();
+        fields.addProperty("action", packet.action().ordinal());
+        var entries = new JsonArray();
+        packet.entries().forEach(entries::add);
+        fields.add("entries", entries);
         return fields;
     }
 

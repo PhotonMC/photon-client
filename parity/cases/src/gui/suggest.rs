@@ -158,3 +158,35 @@ pub fn command_suggest() -> Value {
     case["tree"] = json!(suggest_tree().payload());
     case
 }
+
+pub fn message_suggest() -> Value {
+    let words = ["Alex", "Miner", "miner2", "_under", "dot.ted", "slash/ed", "Alex", "ALPHA"];
+    let texts: [(&str, Option<usize>); 14] = [
+        ("hello Mi", None),
+        ("mi", None),
+        ("a", None),
+        ("hello ", None),
+        ("hello al", None),
+        ("hello al", Some(7)),
+        ("under", None),
+        ("ted", None),
+        ("ed", None),
+        ("x\tal", None),
+        ("two  al", None),
+        ("Alex", None),
+        ("alex", None),
+        ("\u{e9}", None),
+    ];
+    let rows = texts
+        .iter()
+        .enumerate()
+        .map(|(index, (text, cursor))| {
+            let mut row = json!({"label": format!("{index}"), "text": text, "words": words});
+            if let Some(cursor) = cursor {
+                row["cursor"] = json!(cursor);
+            }
+            row
+        })
+        .collect();
+    gui("message-suggest", "message_suggest", rows)
+}

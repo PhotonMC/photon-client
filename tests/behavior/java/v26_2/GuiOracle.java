@@ -43,6 +43,7 @@ public final class GuiOracle extends GuiGameRulesOracle {
                 case "sidebar" -> sidebar(request);
                 case "command_parse" -> commandParse(request);
                 case "command_suggest" -> commandSuggest(request);
+                case "message_suggest" -> messageSuggest(request);
                 case "command_verify" -> commandVerify(request);
                 case "item_condition" -> itemCondition(request);
                 case "item_number" -> itemNumber(request);

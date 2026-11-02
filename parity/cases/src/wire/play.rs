@@ -44,6 +44,15 @@ fn biomes(chunks: &[(i32, i32, &[u8])]) -> String {
     out
 }
 
+fn completions(action: i64, entries: &[&str]) -> String {
+    let mut out = varint_hex(action) + &varint_hex(entries.len() as i64);
+    for entry in entries {
+        out += &varint_hex(entry.len() as i64);
+        out += &hex(entry.as_bytes());
+    }
+    out
+}
+
 fn power(entity: i64, value: f64) -> String {
     format!("{}{}", varint_hex(entity), f64_hex(value))
 }
@@ -52,7 +61,7 @@ fn power(entity: i64, value: f64) -> String {
 fn framed(packet: &str, label: &str, hex: String) -> Vec<Value> {
     let rows = [
         (label.to_owned(), hex.clone()),
-        (format!("{label}-short"), hex[..hex.len() - 2].to_owned()),
+        (format!("{label}-short"), hex[..hex.len().saturating_sub(2)].to_owned()),
         (format!("{label}-long"), format!("{hex}00")),
     ];
     rows.into_iter()
@@ -99,6 +108,19 @@ fn packets() -> Vec<Value> {
         ("negative", biomes(&[(-1, -1, &[]), (i32::MIN, i32::MAX, &[9; 5])])),
     ] {
         cases.extend(framed("chunks_biomes", label, hex));
+    }
+    for (label, hex) in [("short", varint_hex(3)), ("long", varint_hex(300)), ("zero", varint_hex(0))] {
+        cases.extend(framed("combat_end", label, hex));
+    }
+    cases.extend(framed("combat_enter", "empty", String::new()));
+    for (label, hex) in [
+        ("add", completions(0, &["Alex", "\u{fc}"])),
+        ("remove", completions(1, &[])),
+        ("set", completions(2, &["a", "", "b"])),
+        ("bad-action", completions(3, &["a"])),
+        ("negative-action", completions(-1, &[])),
+    ] {
+        cases.extend(framed("custom_chat_completions", label, hex));
     }
     cases
 }

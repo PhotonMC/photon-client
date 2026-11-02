@@ -58,6 +58,11 @@ impl ChatScreen {
         self.suggest.set_names(players, teams);
     }
 
+    /// The words the server added for chat that is no command.
+    pub fn set_custom_completions(&mut self, words: Vec<String>) {
+        self.suggest.set_custom_completions(words);
+    }
+
     /// The string UUID of the entity in the crosshair, which entity
     /// arguments offer as a name.
     pub fn set_selected_entities(&mut self, selected: Vec<String>) {
