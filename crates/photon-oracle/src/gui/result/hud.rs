@@ -505,6 +505,7 @@ pub(super) fn tab_list_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, 
             .iter()
             .zip(&displays)
             .map(|(player, display)| TabPlayer {
+                id: photon_core::binary::Uuid { most: 0, least: 0 },
                 name: player["name"].as_str().unwrap_or_default(),
                 display_name: display.as_ref(),
                 game_mode: player["mode"].as_i64().unwrap_or(0) as i32,
@@ -521,12 +522,7 @@ pub(super) fn tab_list_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, 
         int("width"),
         &entries,
         (&runs("header"), &runs("footer")),
-        TabScores {
-            objective,
-            health: &mut health,
-            gui_ticks: 0,
-            lang: &lang,
-        },
+        TabScores::plain(objective, &mut health, &lang),
     );
 
     Ok(json!({

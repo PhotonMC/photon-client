@@ -165,6 +165,8 @@ pub struct Controls {
     friends_wanted: bool,
     /// The skins of the overlay's faces.
     faces: faces::Faces,
+    /// The players of the tab list whose faces are still to be asked for.
+    pub(crate) tab_wanted: Vec<photon_core::binary::Uuid>,
     /// The overlay was opened from the pause menu, which comes back when it closes.
     friends_from_pause: bool,
     /// The pause menu the overlay was opened from, drawn under it until it closes.

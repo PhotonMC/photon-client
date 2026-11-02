@@ -124,7 +124,7 @@ pub struct FriendsOverlay {
     size: (i32, i32),
     /// `backgroundScreen`: a screen drawn under the overlay, which then has no background tile.
     over_screen: bool,
-    faces: faces::Faces,
+    faces: super::faces::Faces,
     tab: Tab,
     edit: EditBox,
     focus: Focus,
@@ -219,7 +219,7 @@ impl FriendsOverlay {
             scroll: 0,
             dragging: false,
             over_screen: false,
-            faces: faces::Faces::default(),
+            faces: super::faces::Faces::default(),
             pressed: None,
             size,
             tab: Tab::Friends,

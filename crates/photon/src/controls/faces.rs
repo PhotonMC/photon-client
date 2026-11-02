@@ -39,6 +39,14 @@ impl Default for Faces {
 }
 
 impl Faces {
+    /// The players of `ids` that no lookup was asked of yet.
+    fn wanted(&self, ids: &[Uuid]) -> Vec<Uuid> {
+        ids.iter()
+            .filter(|id| !self.requested.contains(id))
+            .copied()
+            .collect()
+    }
+
     /// One lookup asked for, once; the thread starts with the first.
     fn ask(&mut self, id: Uuid) {
         if !self.requested.insert(id) {
@@ -99,20 +107,45 @@ impl Faces {
 }
 
 impl Controls {
-    /// The overlay's faces: the players it shows are looked up, and the skins that came are put
-    /// into the atlas and handed to it. Whether the atlas is to be sent to the GPU again.
+    /// The faces of the open overlay or social screen: the players it shows are looked up, and
+    /// the skins that came are put into the atlas and handed to it. Whether the atlas is to be
+    /// sent to the GPU again.
     pub(crate) fn sync_faces(&mut self, atlas: (&mut GuiAtlas, &mut DecodedImage)) -> bool {
-        let Some(overlay) = self.friends.as_mut() else {
+        let mut wanted = Vec::new();
+        if let Some(overlay) = self.friends.as_mut() {
+            wanted.extend(overlay.faces_wanted());
+        }
+        if let Some(social) = self.social.as_mut() {
+            wanted.extend(social.faces_wanted());
+        }
+        wanted.append(&mut self.tab_wanted);
+        let tab_open = self.tab_held;
+        if self.friends.is_none() && self.social.is_none() && !tab_open {
             self.faces.free(atlas);
             return false;
-        };
-        for id in overlay.faces_wanted() {
+        }
+        for id in wanted {
             self.faces.ask(id);
         }
         let changed = self.faces.place(atlas);
         for (id, name) in &self.faces.placed {
-            overlay.set_face(*id, name.clone());
+            if let Some(overlay) = self.friends.as_mut() {
+                overlay.set_face(*id, name.clone());
+            }
+            if let Some(social) = self.social.as_mut() {
+                social.set_face(*id, name.clone());
+            }
         }
         changed
+    }
+}
+
+impl Controls {
+    /// The faces the tab list draws: the players are looked up (once each) and the textures of
+    /// the skins that came are returned; the rest keep the default skin of their id.
+    pub(crate) fn tab_heads(&mut self, ids: Vec<Uuid>) -> HashMap<Uuid, String> {
+        let wanted = self.faces.wanted(&ids);
+        self.tab_wanted.extend(wanted);
+        self.faces.placed.clone()
     }
 }

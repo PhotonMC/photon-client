@@ -269,6 +269,7 @@ impl PlaySession {
         self.reset_chat_session(login.online_mode || self.state.authenticated.get());
         self.social.senders.enforces_secure_chat = login.enforces_secure_chat;
         self.local.hardcore = login.hardcore;
+        self.local.online_mode = login.online_mode;
         (self.local.difficulty, self.local.difficulty_locked) = (2, false);
         self.local.reduced_debug_info = login.reduced_debug_info;
         // The advancements are the connection's: a login starts with none.

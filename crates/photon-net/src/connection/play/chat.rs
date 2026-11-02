@@ -286,6 +286,16 @@ impl PlaySession {
         SocialPlayers { online, gone }
     }
 
+    /// The ids of `listed_players`, in the same order.
+    pub fn listed_ids(&self) -> Vec<(u64, u64)> {
+        self.social
+            .player_infos
+            .iter()
+            .filter(|(_, info)| info.listed)
+            .map(|(id, _)| *id)
+            .collect()
+    }
+
     /// The players the tab list names (`getOnlinePlayers`, listed ones).
     pub fn listed_players(&self) -> Vec<&PlayerInfo> {
         self.social

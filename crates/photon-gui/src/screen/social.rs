@@ -85,6 +85,21 @@ enum Focus {
     List,
 }
 
+/// The row statuses by `status_index`: none, offline, hidden, hidden and offline.
+fn statuses(status: &dyn Fn(&str) -> Vec<Run>) -> [Vec<Run>; 4] {
+    [
+        None,
+        Some("offline"),
+        Some("hidden"),
+        Some("hidden_offline"),
+    ]
+    .map(|name| {
+        name.map_or_else(Vec::new, |name| {
+            status(&format!("gui.socialInteractions.status_{name}"))
+        })
+    })
+}
+
 /// A player the screen can list.
 #[derive(Debug, Clone)]
 pub struct SocialPlayer {
@@ -234,6 +249,7 @@ pub struct SocialInteractionsScreen {
     /// The status of a row, by whether the player is hidden and whether they have left.
     statuses: [Vec<Run>; 4],
     size: (i32, i32),
+    faces: super::faces::Faces,
 }
 
 impl SocialInteractionsScreen {
@@ -289,13 +305,9 @@ impl SocialInteractionsScreen {
                 grey("gui.socialInteractions.empty_hidden"),
                 grey("gui.socialInteractions.empty_blocked"),
             ],
-            statuses: [
-                Vec::new(),
-                status("gui.socialInteractions.status_offline"),
-                status("gui.socialInteractions.status_hidden"),
-                status("gui.socialInteractions.status_hidden_offline"),
-            ],
+            statuses: statuses(&status),
             size,
+            faces: super::faces::Faces::default(),
         };
         screen.server_label = screen.label(lang);
         screen.show_page(page);
@@ -334,8 +346,21 @@ impl SocialInteractionsScreen {
         let mut screen = Self::new(font, lang, size, self.roster.clone(), self.page);
         screen.search.set_value(&self.search.value(), font);
         screen.last_search.clone_from(&self.last_search);
+        screen.faces.clone_from(&self.faces);
         screen.show_page(self.page);
         screen
+    }
+
+    /// The players of the roster whose skins are not asked for yet; each is named once.
+    pub fn faces_wanted(&mut self) -> Vec<Uuid> {
+        let listed = self.roster.online.iter().chain(&self.roster.gone);
+        self.faces
+            .wanted(listed.map(|player| player.id).collect::<Vec<_>>())
+    }
+
+    /// The texture a player's skin is drawn from.
+    pub fn set_face(&mut self, id: Uuid, texture: String) {
+        self.faces.set(id, texture);
     }
 
     fn window_height(&self) -> i32 {

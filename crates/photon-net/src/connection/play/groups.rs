@@ -44,6 +44,8 @@ pub(super) struct LocalState {
     pub(super) permission_level: i32,
     /// Whether the level is hardcore, as the login said.
     pub(super) hardcore: bool,
+    /// Whether the server runs in online mode, as the login said (`onlineMode`).
+    pub(super) online_mode: bool,
     /// The difficulty (0 peaceful to 3 hard) and its lock, as `ClientboundChangeDifficultyPacket`
     /// last said; a login starts at normal and unlocked (`new ClientLevelData`).
     pub(super) difficulty: u8,
@@ -297,6 +299,7 @@ impl Default for LocalState {
             status: PlayerStatus::default(),
             permission_level: 0,
             hardcore: false,
+            online_mode: false,
             difficulty: 2,
             difficulty_locked: false,
             reduced_debug_info: false,

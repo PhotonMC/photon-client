@@ -123,6 +123,28 @@ impl Gui {
         }
     }
 
+    /// The tab list while its key is held: its players and, on an online-mode server, the
+    /// textures of their faces (their lookups are asked for here).
+    pub(super) fn tab_list(
+        &mut self,
+        session: &PlaySession,
+        controls: &mut Controls,
+    ) -> Option<TabView> {
+        if !controls.tab_held {
+            self.tab_health.clear();
+            return None;
+        }
+        let (entries, objective) = self.tab_entries(session);
+        let heads = session
+            .online_mode()
+            .then(|| controls.tab_heads(entries.iter().map(|entry| entry.id).collect()));
+        Some(TabView {
+            entries,
+            objective,
+            heads,
+        })
+    }
+
     /// The players of the tab list, in the order it lists them, and the
     /// objective whose scores it shows.
     pub(super) fn tab_entries(
@@ -130,15 +152,31 @@ impl Gui {
         session: &PlaySession,
     ) -> (Vec<TabEntry>, Option<TabObjective>) {
         tab_list::entries(
-            session.listed_players().into_iter().map(|info| TabPlayer {
-                name: &info.name,
-                display_name: info.display_name.as_ref(),
-                game_mode: info.game_mode,
-                latency: info.latency,
-                list_order: info.list_order,
-            }),
+            session
+                .listed_ids()
+                .into_iter()
+                .zip(session.listed_players())
+                .map(|(id, info)| TabPlayer {
+                    id: photon_core::binary::Uuid {
+                        most: id.0,
+                        least: id.1,
+                    },
+                    name: &info.name,
+                    display_name: info.display_name.as_ref(),
+                    game_mode: info.game_mode,
+                    latency: info.latency,
+                    list_order: info.list_order,
+                }),
             session.scoreboard(),
             &self.lang,
         )
     }
+}
+
+/// What the tab list is drawn from: its players, the objective whose scores it shows and the
+/// textures of the faces.
+pub(super) struct TabView {
+    pub(super) entries: Vec<TabEntry>,
+    pub(super) objective: Option<TabObjective>,
+    pub(super) heads: Option<std::collections::HashMap<photon_core::binary::Uuid, String>>,
 }

@@ -1,11 +1,12 @@
 //! The tab list (`PlayerTabOverlay`): the players in columns of up to twenty
 //! between a header and a footer, each with its ping.
 //!
-//! Not drawn: heads (an online-mode server's, which need skins).
+//! Not drawn: the hat layer's absence (`showHat`) and the flip of an upside-down player's head.
 
 use crate::{FontRuns, FrameRuns};
 use std::collections::HashMap;
 
+use photon_core::binary::Uuid;
 use photon_game::text::{Lang, Run};
 
 use crate::chat::split;
@@ -19,6 +20,7 @@ const MAX_ROWS: usize = 20;
 /// One player of the list.
 #[derive(Debug, Clone)]
 pub struct TabEntry {
+    pub id: Uuid,
     pub name: Vec<Run>,
     pub spectator: bool,
     pub latency: i32,
@@ -38,6 +40,7 @@ impl TabEntry {
     /// the profile name), and what orders it. A spectator's name is italic
     /// where its own style says nothing of it (`decorateName`).
     pub fn new(
+        id: Uuid,
         profile_name: &str,
         display: Option<Vec<Run>>,
         game_mode: i32,
@@ -52,6 +55,7 @@ impl TabEntry {
             }
         }
         Self {
+            id,
             name,
             spectator,
             latency,
@@ -74,6 +78,7 @@ impl TabEntry {
 
 /// A listed player as the server describes it.
 pub struct TabPlayer<'a> {
+    pub id: Uuid,
     pub name: &'a str,
     pub display_name: Option<&'a photon_game::text::Component>,
     pub game_mode: i32,
@@ -125,6 +130,7 @@ pub fn entries<'a>(
             };
             let team = board.team_of(player.name).map_or("", |(name, _)| name);
             TabEntry::new(
+                player.id,
                 player.name,
                 name,
                 player.game_mode,
@@ -241,6 +247,26 @@ pub struct TabScores<'a> {
     pub health: &'a mut HealthStates,
     pub gui_ticks: i64,
     pub lang: &'a Lang,
+    /// The faces of an online-mode server's list: the texture of each player's skin that came
+    /// (the default skin of the id until then); none where the list shows no heads.
+    pub heads: Option<&'a HashMap<Uuid, String>>,
+}
+
+impl<'a> TabScores<'a> {
+    /// The scores of a list with no heads, at the HUD's first tick.
+    pub fn plain(
+        objective: Option<TabObjective>,
+        health: &'a mut HealthStates,
+        lang: &'a Lang,
+    ) -> Self {
+        Self {
+            objective,
+            health,
+            gui_ticks: 0,
+            lang,
+            heads: None,
+        }
+    }
 }
 
 /// `PlayerTabOverlay.extractTablistHearts`.
@@ -363,6 +389,62 @@ fn draw_score(
     }
 }
 
+/// `PlayerFaceExtractor.extractRenderState` at size 8: the face and the hat layer over it.
+fn draw_head(
+    frame: &mut GuiFrame,
+    atlas: &GuiAtlas,
+    id: Uuid,
+    heads: &HashMap<Uuid, String>,
+    (x, y): (i32, i32),
+) {
+    let texture = heads.get(&id).cloned().unwrap_or_else(|| {
+        format!(
+            "textures/{}",
+            photon_render::entity::player_renderer::default_skin(id).texture
+        )
+    });
+    for u in [8, 40] {
+        frame.blit_texture_stretched(atlas, &texture, (64, 64), (u, 8, 8, 8), (x, y, 8, 8));
+    }
+}
+
+/// The widths of a slot's parts: the slot, the head before the name, the names' column and the
+/// scores' column.
+struct Slot {
+    width: i32,
+    head: i32,
+    name: i32,
+    score: i32,
+}
+
+/// One player's slot: its background, head, name, score and ping.
+fn draw_row(
+    frame: &mut GuiFrame,
+    (atlas, font): (&GuiAtlas, &Font),
+    entry: &TabEntry,
+    ((x, y), slot): ((i32, i32), &Slot),
+    scores: &mut TabScores,
+) {
+    frame.fill(atlas, (x, y, x + slot.width, y + 8), 0x20FF_FFFF);
+    let colour = if entry.spectator {
+        0x90FF_FFFF
+    } else {
+        0xFFFF_FFFF
+    };
+    if let Some(heads) = scores.heads {
+        draw_head(frame, atlas, entry.id, heads, (x, y));
+    }
+    let name_x = x + slot.head;
+    frame.styled_text(atlas, font, &entry.name, (name_x, y), colour, true);
+    if !entry.spectator {
+        let left = name_x + slot.name + 1;
+        let place = (left, left + slot.score, y);
+        draw_score(frame, atlas, font, scores, entry, place);
+    }
+    let ping = ping_sprite(entry.latency);
+    frame.sprite(atlas, ping, x + slot.width - 11, y, 10, 8);
+}
+
 /// `PlayerTabOverlay.extractRenderState`.
 pub fn draw(
     frame: &mut GuiFrame,
@@ -397,8 +479,10 @@ pub fn draw(
         .health
         .0
         .retain(|key, _| entries.iter().any(|entry| entry.profile_name == *key));
-    let slot_width =
-        (cols as i32 * (max_name + score_width + 13)).min(screen_width - 50) / cols as i32;
+    let head_width = if scores.heads.is_some() { 9 } else { 0 };
+    let slot_width = (cols as i32 * (head_width + max_name + score_width + 13))
+        .min(screen_width - 50)
+        / cols as i32;
     let body_width = slot_width * cols as i32 + (cols as i32 - 1) * 5;
     let xxo = screen_width / 2 - body_width / 2;
     let split = |runs: &[Run]| {
@@ -441,31 +525,18 @@ pub fn draw(
         let (col, row) = (index / rows, index % rows);
         let x = xxo + col as i32 * slot_width + col as i32 * 5;
         let row_y = y + row as i32 * 9;
-        frame.fill(atlas, (x, row_y, x + slot_width, row_y + 8), 0x20FF_FFFF);
-        let colour = if entry.spectator {
-            0x90FF_FFFF
-        } else {
-            0xFFFF_FFFF
+        let slot = Slot {
+            width: slot_width,
+            head: head_width,
+            name: max_name,
+            score: score_width,
         };
-        frame.styled_text(atlas, font, &entry.name, (x, row_y), colour, true);
-        if !entry.spectator {
-            let left = x + max_name + 1;
-            draw_score(
-                frame,
-                atlas,
-                font,
-                &mut scores,
-                entry,
-                (left, left + score_width, row_y),
-            );
-        }
-        frame.sprite(
-            atlas,
-            ping_sprite(entry.latency),
-            x + slot_width - 11,
-            row_y,
-            10,
-            8,
+        draw_row(
+            frame,
+            (atlas, font),
+            entry,
+            ((x, row_y), &slot),
+            &mut scores,
         );
     }
     if !footer_lines.is_empty() {
@@ -480,6 +551,7 @@ mod tests {
 
     fn entry(name: &str, spectator: bool, order: i32) -> TabEntry {
         TabEntry {
+            id: Uuid { most: 0, least: 0 },
             name: Vec::new(),
             spectator,
             latency: 0,

@@ -493,11 +493,10 @@ impl Gui {
 
     /// The tab list (while Tab is held and the interface shown), then the subtitles over it
     /// (`Hud.extractRenderState`: the tab list comes before the subtitle overlay).
-    #[expect(clippy::type_complexity, reason = "the fields the layers draw from")]
     pub(super) fn draw_tab_and_subtitles(
         frame: &mut photon_render::gui::GuiFrame,
         (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
-        (tab_entries, width): (Option<(Vec<TabEntry>, Option<TabObjective>)>, i32),
+        (tab, width): (Option<super::hud::TabView>, i32),
         ((health, header, footer), gui_ticks): (
             (
                 &mut HealthStates,
@@ -511,18 +510,19 @@ impl Gui {
             (&Controls, &photon_render::window::scale::WindowScale),
         ),
     ) {
-        if let Some((entries, objective)) = tab_entries {
+        if let Some(view) = tab {
             tab_list::draw(
                 frame,
                 (atlas, font),
                 width,
-                &entries,
+                &view.entries,
                 (header, footer),
                 TabScores {
-                    objective,
+                    objective: view.objective,
                     health,
                     gui_ticks,
                     lang,
+                    heads: view.heads.as_ref(),
                 },
             );
         }

@@ -148,6 +148,19 @@ impl SocialInteractionsScreen {
         );
     }
 
+    /// The player's face and the hat layer over it: their own skin once it came, else the
+    /// default skin of their id.
+    fn draw_face(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, id: Uuid, (x, y): (i32, i32)) {
+        let texture = self.faces.texture(id).map_or_else(
+            || format!("textures/{}", default_skin(id).texture),
+            str::to_owned,
+        );
+        for u in [8, 40] {
+            let place = (x, y, SKIN_SIZE, SKIN_SIZE);
+            frame.blit_texture_stretched(atlas, &texture, (64, 64), (u, 8, 8, 8), place);
+        }
+    }
+
     /// `PlayerEntry.extractContent`: the row, the face, the name and status, and the buttons.
     fn draw_entry(
         &self,
@@ -181,16 +194,7 @@ impl SocialInteractionsScreen {
             );
             text_y
         };
-        let texture = format!("textures/{}", default_skin(entry.player.id).texture);
-        for u in [8, 40] {
-            frame.blit_texture_stretched(
-                atlas,
-                &texture,
-                (64, 64),
-                (u, 8, 8, 8),
-                (skin_x, skin_y, SKIN_SIZE, SKIN_SIZE),
-            );
-        }
+        self.draw_face(frame, atlas, entry.player.id, (skin_x, skin_y));
         let name = [Run {
             text: entry.player.name.clone(),
             style: Style::default(),

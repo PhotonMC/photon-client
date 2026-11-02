@@ -271,6 +271,11 @@ impl PlaySession {
         self.local.permission_level
     }
 
+    /// Whether the server is in online mode, where the tab list shows heads.
+    pub fn online_mode(&self) -> bool {
+        self.local.online_mode
+    }
+
     /// Whether the level is hardcore.
     pub fn hardcore(&self) -> bool {
         self.local.hardcore

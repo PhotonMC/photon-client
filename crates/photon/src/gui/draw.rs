@@ -199,10 +199,7 @@ impl Gui {
             .then(|| session.active_menu().clone());
         let session = &*session;
         let hud_player = session.player();
-        let tab_entries = controls.tab_held.then(|| self.tab_entries(session));
-        if !controls.tab_held {
-            self.tab_health.clear();
-        }
+        let tab = self.tab_list(session, controls);
         let sidebar = self.sidebar_lines(session);
         let mut draw_item = self.items.drawer((renderer, tints));
         // F1 hides the interface (`Hud.isHidden`); the screens over it are not the hud.
@@ -280,7 +277,7 @@ impl Gui {
         Self::draw_tab_and_subtitles(
             &mut frame,
             (&self.atlas, &self.font, &self.lang),
-            (tab_entries.filter(|_| !hidden), gui_size.0),
+            (tab.filter(|_| !hidden), gui_size.0),
             (
                 (&mut self.tab_health, &self.tab_header, &self.tab_footer),
                 self.gui_ticks,
