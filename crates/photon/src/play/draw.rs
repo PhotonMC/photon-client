@@ -76,6 +76,7 @@ impl Play {
         self.begin_skins();
         let view = self.frame_view(frame);
         self.place_listener(frame);
+        self.set_cracks(frame, view)?;
         let first_person = self.controls.camera_type == CameraType::FirstPerson;
         self.set_hands(view, first_person)?;
         self.set_debug_gizmo(frame, first_person)?;
@@ -86,12 +87,6 @@ impl Play {
         let (lines, backing) =
             self.world_lines((player, view, frame.relative), (line_width, hook_lines));
         self.backend.set_outline(&lines, backing)?;
-        self.backend.set_breaking(&cracks(
-            &self.session,
-            &self.block_renderer,
-            frame.camera,
-            view,
-        ))?;
         let spectating = player.spectating();
         // `LevelExtractor` draws the local player only while it is the camera entity.
         let local = (!first_person

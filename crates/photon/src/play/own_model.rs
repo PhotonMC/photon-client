@@ -1,6 +1,21 @@
 use super::*;
 
 impl Play {
+    /// The crack over each block being broken.
+    pub(super) fn set_cracks(&mut self, frame: &FrameCamera, view: FrameView) -> Result<()> {
+        self.backend.set_breaking(&cracks(
+            &self.session,
+            (
+                &self.block_renderer,
+                &mut self.mob_models,
+                &self.entity_textures,
+            ),
+            frame.camera,
+            view,
+        ))?;
+        Ok(())
+    }
+
     /// A frame begins for the skins, the local player's among them.
     pub(super) fn begin_skins(&mut self) {
         self.skins.begin_frame();

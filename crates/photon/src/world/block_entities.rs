@@ -93,12 +93,52 @@ pub fn block_entities(
     view: FrameView,
     vertices: &mut Vec<Vertex>,
 ) {
+    for at in crate::objects::block_entity_items::in_view(session.world(), view) {
+        block_entity_at(session, (models, textures), view, at, vertices);
+    }
+}
+
+/// The destroy animation over a block entity (`BlockEntityRenderer.submit` with a crumbling
+/// overlay): the vertices it draws again, textured with the stage's crack as the sheeted decal
+/// puts it on each face, by the corner's place in the block and the face's normal.
+pub fn crumbling(
+    session: &PlaySession,
+    (models, textures): (&mut MobModels, &EntityTextures),
+    view: FrameView,
+    (at, stage): ((i32, i32, i32), i32),
+) -> Vec<Vertex> {
+    let mut drawn = Vec::new();
+    block_entity_at(session, (models, textures), view, at, &mut drawn);
+    let corner = view.relative([at.0, at.1, at.2]);
+    for vertex in &mut drawn {
+        let facing =
+            Direction::approximate_nearest_f32(vertex.tint[0], vertex.tint[1], vertex.tint[2]);
+        let local = std::array::from_fn(|axis| vertex.position[axis] - corner[axis]);
+        *vertex = Vertex {
+            position: vertex.position,
+            uv: photon_render::block::breaking::decal_uv(local, facing),
+            shade: stage as f32,
+            tint: [1.0; 4],
+            light: [240.0, 240.0],
+        };
+    }
+    drawn
+}
+
+/// One block entity: a chest, or one of the others.
+fn block_entity_at(
+    session: &PlaySession,
+    (models, textures): (&mut MobModels, &EntityTextures),
+    view: FrameView,
+    (x, y, z): (i32, i32, i32),
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
-    for (x, y, z) in crate::objects::block_entity_items::in_view(world, view) {
+    {
         let Some(chest) = world.chest_view(x, y, z) else {
             other_block_entity(session, models, textures, view, (x, y, z), vertices);
-            continue;
+            return;
         };
         let kind = match chest.kind {
             1 => ChestKind::Left,
@@ -116,7 +156,7 @@ pub fn block_entities(
             textures.rect(&material.texture(kind)),
             models.model(kind.layer()),
         ) else {
-            continue;
+            return;
         };
         let mut light = block_light(world, (x, y, z));
         if let Some(other) = chest.partner {

@@ -71,7 +71,7 @@ impl FrameView {
     }
 
     /// A block's corner relative to the mesh origin.
-    fn relative(&self, [x, y, z]: [i32; 3]) -> [f32; 3] {
+    pub(crate) fn relative(&self, [x, y, z]: [i32; 3]) -> [f32; 3] {
         [
             (x - self.origin[0]) as f32,
             (y - self.origin[1]) as f32,
@@ -144,6 +144,7 @@ pub const SHARED_TEXTURES: [&str; 3] = [
 ];
 
 mod cape;
+mod cracks;
 mod frame_tag;
 mod hand_use;
 mod light;
@@ -151,6 +152,7 @@ mod local_state;
 mod remote_placement;
 mod shadow_radius;
 mod shadows;
+pub use cracks::cracks;
 pub use light::*;
 mod avatars;
 mod wear;

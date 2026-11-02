@@ -252,44 +252,6 @@ pub fn outline(
     (lines, backing_len)
 }
 
-/// `extractBlockDestroyAnimation`: each cracked block near the camera, at
-/// the furthest stage anyone has it.
-pub fn cracks(
-    session: &PlaySession,
-    renderer: &BlockRenderer,
-    camera: Vec3,
-    view: FrameView,
-) -> Vec<Vertex> {
-    let mut cracked: std::collections::BTreeMap<(i32, i32, i32), i32> =
-        std::collections::BTreeMap::new();
-    for progress in session.world().destroying_blocks().values() {
-        let centre = [progress.x, progress.y, progress.z].map(|v| f64::from(v) + 0.5);
-        let distance = (centre[0] - camera.x).powi(2)
-            + (centre[1] - camera.y).powi(2)
-            + (centre[2] - camera.z).powi(2);
-        if distance <= 1024.0 {
-            let stage = cracked
-                .entry((progress.x, progress.y, progress.z))
-                .or_insert(-1);
-            *stage = (*stage).max(progress.stage);
-        }
-    }
-    let mut breaking = Vec::new();
-    for (&(x, y, z), &stage) in &cracked {
-        let Some(state) = session.world().block_state_at(x, y, z) else {
-            continue;
-        };
-        let (quads, offset) = renderer.block_quads(state, [x, y, z]);
-        breaking.extend(photon_render::block::breaking::breaking_vertices(
-            &quads,
-            offset,
-            view.relative([x, y, z]),
-            stage,
-        ));
-    }
-    breaking
-}
-
 /// The poses of the local player's arms and the arm that swings: the main arm is the right, and
 /// the off hand's is the one that swings when it acted.
 pub(super) fn local_arms(
