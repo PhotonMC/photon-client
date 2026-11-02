@@ -41,6 +41,11 @@ impl EntityView<'_> {
     }
 
     /// `Goat.isScreamingGoat`.
+    /// `Ocelot.isTrusting`.
+    pub fn is_trusting_ocelot(&self) -> bool {
+        self.living.trusting_ocelot
+    }
+
     pub fn is_screaming_goat(&self) -> bool {
         self.living.screaming_goat
     }

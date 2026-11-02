@@ -413,9 +413,7 @@ fn apply_species_flags(
         world.apply_entity_metadata(id, &data);
     }
     apply_pet_flags(world, id, described)?;
-    if described.get("screaming").is_some() {
-        world.apply_entity_metadata(id, &[photon_world::GOAT_SCREAMING_DATA_ID, 8, 1, 255]);
-    }
+    crate::movement_watch::apply_boolean_flags(world, id, described);
     if described.get("tamed").is_some() {
         world.apply_entity_metadata(id, &[photon_world::HORSE_FLAGS_DATA_ID, 0, 2, 255]);
         if !world

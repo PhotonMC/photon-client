@@ -118,6 +118,8 @@ pub(crate) struct EntityState {
     pub(crate) lost_right_horn: bool,
     /// Whether a goat screams.
     pub(crate) screaming_goat: bool,
+    /// Whether an ocelot trusts players (`Ocelot.isTrusting`).
+    pub(crate) trusting_ocelot: bool,
     /// A mooshroom's variant, zero for red.
     pub(crate) mooshroom_type: i32,
     /// Whether a mooshroom holds the stew effects of a flower fed to it on this client.

@@ -59,3 +59,19 @@ fn with_lid(
     }
     Ok(tick)
 }
+
+/// The species' boolean data a row sets: an ocelot that trusts players, a goat that screams.
+pub(super) fn apply_boolean_flags(
+    world: &mut photon_world::ClientWorld,
+    id: EntityId,
+    described: &Value,
+) {
+    for (flag, data_id) in [
+        ("trusting", photon_world::OCELOT_TRUSTING_DATA_ID),
+        ("screaming", photon_world::GOAT_SCREAMING_DATA_ID),
+    ] {
+        if described.get(flag).is_some() {
+            world.apply_entity_metadata(id, &[data_id, 8, 1, 255]);
+        }
+    }
+}

@@ -93,6 +93,7 @@ pub(crate) fn apply_age_lock_and_goat_data(
 ) {
     apply_age_lock_data(entity, metadata);
     super::goat::apply_goat_data(entity, metadata);
+    super::goat::apply_ocelot_data(entity, metadata);
 }
 
 pub(crate) fn ticks_frozen_from_metadata(metadata: &[u8]) -> Option<i32> {

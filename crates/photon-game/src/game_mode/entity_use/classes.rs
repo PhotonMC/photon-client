@@ -1,7 +1,7 @@
 //! The `mobInteract` of the classes that answer one fixed way on the client: ocelot, dolphin, iron
 //! golem, allay, bogged, piglin, panda, happy ghast and armadillo.
 //!
-//! Not covered: a panda that is scared or on its back, a trusting ocelot, an allay
+//! Not covered: a panda that is scared or on its back, an allay
 //! that is dancing (or whose hand shows a tick early), a sheared bogged, a scared armadillo, a piglin
 //! whose brain refuses to admire, the iron golem's health after a repair and its attribute-based
 //! maximum, and the sounds.
@@ -68,7 +68,13 @@ impl Context<'_> {
             let (dx, dy, dz) = (own.x - at.0, own.y - at.1, own.z - at.2);
             dx * dx + dy * dy + dz * dz < 9.0
         });
-        if near && self.holds_tagged(hand, "minecraft:ocelot_food") {
+        let trusting = self
+            .world
+            .entities()
+            .at(id)
+            .and_then(|entity| entity.is_trusting_ocelot().then_some(()))
+            .is_some();
+        if near && !trusting && self.holds_tagged(hand, "minecraft:ocelot_food") {
             self.use_up(hand);
             return EntityUse::Success { swing: true };
         }
