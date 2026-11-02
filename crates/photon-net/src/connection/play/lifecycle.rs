@@ -208,11 +208,10 @@ impl PlaySession {
             only_off_hand: rocket == Some(self.off_hand_item())
                 && rocket != Some(self.main_hand_item()),
         };
-        // An attached rocket is no player and carries none, so a frozen level does not tick it.
-        if self.level_info.tick_rate.runs_normally()
-            && let Some(player) = self.local.player.as_mut()
-        {
-            self.world.boost_from_rockets(player, hand);
+        let runs_normally = self.level_info.tick_rate.runs_normally();
+        if let Some(player) = self.local.player.as_mut() {
+            self.world
+                .tick_attached_rockets(player, hand, runs_normally);
         }
     }
 

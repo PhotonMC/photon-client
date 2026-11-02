@@ -51,6 +51,7 @@ pub struct Interaction {
     chest_patch: Option<String>,
     chest: Option<&'static str>,
     rockets: Option<i64>,
+    frozen: bool,
     effects: Option<Vec<Value>>,
     /// The attributes the server sent, each with its base and modifiers.
     attributes: Vec<Value>,
@@ -71,6 +72,7 @@ fn interaction(label: &str, blocks: Vec<Value>, ticks: Vec<Value>, count: Option
         chest_patch: None,
         chest: None,
         rockets: None,
+        frozen: false,
         effects: None,
         attributes: Vec::new(),
         entities: None,
@@ -136,6 +138,11 @@ impl Interaction {
 
     pub fn off_hand(self, item: &'static str) -> Self {
         Self { off_hand: Some(item), ..self }
+    }
+
+    /// The level is frozen (`/tick freeze`): the fireworks do not tick.
+    pub fn frozen(self) -> Self {
+        Self { frozen: true, ..self }
     }
 
     /// Fireworks that fly with the player.
@@ -234,6 +241,9 @@ impl Interaction {
         }
         if let Some(count) = self.rockets {
             held["rockets"] = json!(count);
+            if self.frozen {
+                held["frozen"] = json!(true);
+            }
         }
         Self::add_worn(self.chest, &self.chest_patch, &mut held);
         if let Some(effects) = self.effects {

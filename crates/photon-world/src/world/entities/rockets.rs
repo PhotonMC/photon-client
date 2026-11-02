@@ -20,6 +20,19 @@ impl ClientWorld {
         rockets
     }
 
+    /// [`Self::boost_from_rockets`] on a level that runs normally: a frozen level ticks no rocket
+    /// (`TickRateManager.isEntityFrozen`: a rocket is no player and carries none).
+    pub fn tick_attached_rockets(
+        &mut self,
+        player: &mut crate::local_player::LocalPlayer,
+        hand: RocketHand,
+        runs_normally: bool,
+    ) {
+        if runs_normally {
+            self.boost_from_rockets(player, hand);
+        }
+    }
+
     /// The fireworks attached to entities act after the level ticked them (`FireworkRocketEntity.tick`).
     /// One on `player` pushes a glide along and takes its place, the hand's offset added while it
     /// glides; one on another entity takes that entity's place and motion (their push is not ported).

@@ -37,6 +37,14 @@ pub fn rows() -> Vec<Value> {
         glide("glide-rocket", press_then(20)).chest("minecraft:elytra").rockets(1).x_rot(20.0).row(),
         glide("glide-two-rockets", press_then(20)).chest("minecraft:elytra").rockets(2).y_rot(60.0).x_rot(-10.0).row(),
         // Without a glide the rocket only follows.
+        glide("glide-rocket-frozen", press_then(20)).chest("minecraft:elytra").rockets(1).frozen().x_rot(20.0).row(),
+        glide("glide-two-rockets-frozen", press_then(20))
+            .chest("minecraft:elytra")
+            .rockets(2)
+            .frozen()
+            .y_rot(60.0)
+            .x_rot(-10.0)
+            .row(),
         glide("no-glider-rocket", press_then(10)).rockets(1).x_rot(0.0).row(),
         // Holding the key does not start a second glide: the press is an edge.
         glide("glide-held-jump", keys(30, &["jump"])).chest("minecraft:elytra").x_rot(20.0).row(),

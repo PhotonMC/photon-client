@@ -45,9 +45,10 @@ pub(super) fn after_tick(
     breaking: Option<&Value>,
 ) {
     if breaking.is_some_and(|breaking| breaking["rockets"].is_number()) {
-        world.tick_entities(false);
+        let runs_normally = breaking.is_none_or(|breaking| breaking["frozen"].is_null());
+        world.tick_entities(!runs_normally);
         // The player is right-handed, and the rocket is in neither hand.
-        world.boost_from_rockets(player, photon_world::RocketHand::default());
+        world.tick_attached_rockets(player, photon_world::RocketHand::default(), runs_normally);
     }
 }
 

@@ -144,6 +144,11 @@ class MovementPlayerOracle extends MovementWorldOracle {
                     level.addEntity(rocket);
                     rockets.add(rocket);
                 }
+                if (breaking_.has("frozen")) {
+                    level.tickRateManager().setFrozen(true);
+                    // `ClientLevel.tick` runs the manager's own tick first, which decides if the game elements run.
+                    level.tickRateManager().tick();
+                }
             }
             setField(getField(minecraft, "gameRenderer"), "itemInHandRenderer",
                 unsafe.allocateInstance(net.minecraft.client.renderer.ItemInHandRenderer.class));
@@ -441,7 +446,10 @@ class MovementPlayerOracle extends MovementWorldOracle {
             level.tickNonPassenger(vehicle != null ? vehicle : player);
             // The rockets were added after the player, so the level ticks them after it.
             for (var rocket : rockets) {
-                level.tickNonPassenger(rocket);
+                // `ClientLevel.tickEntities`' gate: a frozen level ticks no rocket, only players and their passengers.
+                if (!level.tickRateManager().isEntityFrozen(rocket)) {
+                    level.tickNonPassenger(rocket);
+                }
             }
             if (pistons) {
                 // `Minecraft.tick`: the block entities tick after the entities, and the level's
