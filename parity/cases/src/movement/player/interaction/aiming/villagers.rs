@@ -33,6 +33,10 @@ fn villager_rows() -> Vec<Value> {
             .count(2)
             .row(),
         at("use-zombie-villager-with-stone", "zombie_villager", &[]).main_hand(stone).count(2).row(),
+        at("use-weak-zombie-villager-with-golden-apple", "zombie_villager", &["weakness"])
+            .main_hand("minecraft:golden_apple")
+            .count(2)
+            .row(),
     ]
 }
 

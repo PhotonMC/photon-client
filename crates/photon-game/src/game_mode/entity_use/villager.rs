@@ -1,9 +1,8 @@
 //! The villagers' part of a click on the client: `Villager.mobInteract`,
 //! `WanderingTrader.mobInteract` and `ZombieVillager.mobInteract`.
 //!
-//! The trade itself is the server's; the client only answers with a swing. Not covered: the
-//! zombie villager taking the golden apple when it has weakness (the effects of other entities
-//! are not tracked), and a villager that is already trading (the client does not know).
+//! The trade itself is the server's; the client only answers with a swing. Not covered: a villager
+//! that is already trading (the client does not know).
 
 use super::*;
 
@@ -18,7 +17,7 @@ impl Context<'_> {
         match name {
             "minecraft:villager" => self.interact_villager(id, hand),
             "minecraft:wandering_trader" => self.interact_wandering_trader(id, hand),
-            _ => self.interact_zombie_villager(hand),
+            _ => self.interact_zombie_villager(id, hand),
         }
     }
 
@@ -53,15 +52,22 @@ impl Context<'_> {
     }
 
     /// `ZombieVillager.mobInteract`: a golden apple is answered by the server (no swing, no
-    /// `use_item`); anything else is `Zombie`'s, which passes.
-    pub(super) fn interact_zombie_villager(&mut self, hand: u8) -> EntityUse {
-        let apple = self
-            .held(hand)
-            .is_some_and(|(item, _)| crate::item::id_of("minecraft:golden_apple") == Some(item));
-        if apple {
-            EntityUse::Success { swing: false }
-        } else {
-            EntityUse::Pass
+    /// `use_item`), and used up when the zombie has weakness; anything else is `Zombie`'s, which
+    /// passes.
+    pub(super) fn interact_zombie_villager(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        if !self.holds_id(hand, photon_data::item::ids::GOLDEN_APPLE) {
+            return EntityUse::Pass;
         }
+        let weak =
+            photon_data::item::effect::effect_id("minecraft:weakness").is_some_and(|weakness| {
+                self.world
+                    .entities()
+                    .at(id)
+                    .is_some_and(|entity| entity.has_effect(weakness))
+            });
+        if weak {
+            self.use_up(hand);
+        }
+        EntityUse::Success { swing: false }
     }
 }

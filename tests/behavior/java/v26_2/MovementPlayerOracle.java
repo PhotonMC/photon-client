@@ -235,6 +235,10 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         net.minecraft.world.entity.animal.allay.Allay.class, "DATA_DANCING").get(null);
                     allay.getEntityData().set(accessor, true);
                 }
+                if (described.has("weakness") && entity instanceof net.minecraft.world.entity.LivingEntity weakMob) {
+                    weakMob.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                        net.minecraft.world.effect.MobEffects.WEAKNESS, 1000));
+                }
                 if (described.has("responds") && entity instanceof net.minecraft.world.entity.Interaction interaction) {
                     // `setResponse` is private: the server's data is set directly.
                     @SuppressWarnings("unchecked")

@@ -54,7 +54,7 @@ impl Context<'_> {
         }
     }
 
-    fn holds_id(&self, hand: u8, wanted: photon_core::ids::ItemId) -> bool {
+    pub(super) fn holds_id(&self, hand: u8, wanted: photon_core::ids::ItemId) -> bool {
         self.held(hand).is_some_and(|(item, _)| item == wanted)
     }
 

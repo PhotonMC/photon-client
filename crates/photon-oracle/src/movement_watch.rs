@@ -80,6 +80,12 @@ pub(super) fn apply_species_data(
     id: EntityId,
     described: &Value,
 ) {
+    if let (Some(_), Some(weakness)) = (
+        described.get("weakness"),
+        photon_data::item::effect::effect_id("minecraft:weakness"),
+    ) {
+        world.entities_mut().apply_mob_effect(id, weakness);
+    }
     for (flag, data) in [
         (
             "trusting",

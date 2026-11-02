@@ -59,13 +59,18 @@ impl PlaySession {
         &mut self,
         packet: MobEffectUpdateObservation,
     ) -> Result<(), ConnectionError> {
-        self.world.apply_local_player_mob_effect(
+        let local = self.world.apply_local_player_mob_effect(
             packet.entity_id,
             packet.effect_registry_id,
             packet.amplifier,
             packet.duration_ticks,
             packet.flags,
         );
+        if !local {
+            self.world
+                .entities_mut()
+                .apply_mob_effect(packet.entity_id, packet.effect_registry_id);
+        }
         Ok(())
     }
 
@@ -73,8 +78,14 @@ impl PlaySession {
         &mut self,
         packet: MobEffectRemoveObservation,
     ) -> Result<(), ConnectionError> {
-        self.world
-            .remove_local_player_mob_effect(packet.entity_id, packet.effect_registry_id);
+        if !self
+            .world
+            .remove_local_player_mob_effect(packet.entity_id, packet.effect_registry_id)
+        {
+            self.world
+                .entities_mut()
+                .remove_mob_effect(packet.entity_id, packet.effect_registry_id);
+        }
         Ok(())
     }
 }

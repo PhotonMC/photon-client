@@ -81,6 +81,26 @@ impl Entities {
         true
     }
 
+    /// `handleUpdateMobEffect` for an entity that is not the local player: it has the effect.
+    pub fn apply_mob_effect(&mut self, entity_id: EntityId, effect_id: i32) -> bool {
+        let Some(entity) = self.at_mut(entity_id) else {
+            return false;
+        };
+        if !entity.vitals.effects.contains(&effect_id) {
+            entity.vitals.effects.push(effect_id);
+        }
+        true
+    }
+
+    /// `handleRemoveMobEffect` for an entity that is not the local player.
+    pub fn remove_mob_effect(&mut self, entity_id: EntityId, effect_id: i32) -> bool {
+        let Some(entity) = self.at_mut(entity_id) else {
+            return false;
+        };
+        entity.vitals.effects.retain(|&held| held != effect_id);
+        true
+    }
+
     /// `ItemEntity.setItem` from the entity data: what a dropped item holds.
     pub fn apply_item_stack(
         &mut self,
