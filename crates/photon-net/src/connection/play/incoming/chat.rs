@@ -16,10 +16,23 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
     (PLAY_CLIENTBOUND_WAYPOINT_PACKET_ID, typed::<Waypoint>),
     (PLAY_CLIENTBOUND_COMMANDS_PACKET_ID, typed::<Commands>),
     (
+        PLAY_CLIENTBOUND_SERVER_DATA_PACKET_ID,
+        typed::<ServerDataPacket>,
+    ),
+    (
         PLAY_CLIENTBOUND_CUSTOM_CHAT_COMPLETIONS_PACKET_ID,
         typed::<CustomChatCompletions>,
     ),
 ];
+
+/// `handleServerData`: what it changes is the saved server entry the player joined from, which
+/// the app holds.
+impl ClientboundPacket for ServerDataPacket {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.social.server_updates.push(*self);
+        Ok(())
+    }
+}
 
 /// `handleCustomChatCompletions`: `modifyCustomCompletions`.
 impl ClientboundPacket for CustomChatCompletions {
@@ -111,6 +124,20 @@ mod tests {
             action,
             entries: entries.iter().map(|entry| (*entry).to_owned()).collect(),
         })
+    }
+
+    #[test]
+    fn server_data_waits_for_the_app_to_apply_it() {
+        let (mut session, _server) = session();
+        let packet = ServerDataPacket {
+            motd: photon_core::text::Component::literal("hi"),
+            icon: Some(vec![1, 2]),
+        };
+        Box::new(packet.clone())
+            .handle(&mut session)
+            .expect("handled");
+        assert_eq!(session.take_server_updates(), vec![packet]);
+        assert!(session.take_server_updates().is_empty());
     }
 
     #[test]

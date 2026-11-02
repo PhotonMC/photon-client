@@ -48,6 +48,7 @@ impl Play {
         self.session.tick(held.input())?;
         self.tutorial_tick();
         self.tick_player_sounds();
+        self.tick_server_entry();
         Ok(())
     }
 

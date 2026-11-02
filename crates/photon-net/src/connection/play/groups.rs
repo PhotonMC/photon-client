@@ -166,6 +166,8 @@ pub(super) struct Social {
     pub(super) suggestions: Option<CommandSuggestions>,
     /// `ClientSuggestionProvider.customCompletionSuggestions`: the words the server added to chat
     /// completion.
+    /// `handleServerData`s the app is yet to apply to the saved server.
+    pub(super) server_updates: Vec<ServerDataPacket>,
     pub(super) custom_completions: std::collections::BTreeSet<String>,
     pub(super) player_infos: std::collections::BTreeMap<(u64, u64), PlayerInfo>,
     /// `ClientPacketListener.seenPlayers`: the players whose entity was added, by id and name,

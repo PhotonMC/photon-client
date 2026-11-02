@@ -363,6 +363,12 @@ impl PlaySession {
             })
     }
 
+    /// The server data packets that came since the last call: the message of the day and icon
+    /// of the server the player joined, for the saved server entry.
+    pub fn take_server_updates(&mut self) -> Vec<ServerDataPacket> {
+        std::mem::take(&mut self.social.server_updates)
+    }
+
     /// The dialogs the server showed or cleared since the last call.
     pub fn take_dialog_events(&mut self) -> Vec<DialogEvent> {
         std::mem::take(&mut self.social.dialog_events)

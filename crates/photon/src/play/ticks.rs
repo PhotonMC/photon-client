@@ -435,6 +435,13 @@ impl Play {
         );
     }
 
+    /// `handleServerData`: the icon the server sent goes to the saved server entry.
+    pub(super) fn tick_server_entry(&mut self) {
+        for update in self.session.take_server_updates() {
+            crate::packs::apply_server_data(update.icon.as_deref());
+        }
+    }
+
     /// What the player's own tick sounded.
     pub(super) fn tick_player_sounds(&mut self) {
         let session = &mut self.session;

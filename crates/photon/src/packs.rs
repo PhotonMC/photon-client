@@ -44,9 +44,46 @@ fn setting_from_environment() -> Option<PackStatus> {
     }
 }
 
+/// The address of the list entry the connection was started from (`ClientPacketListener.serverData`).
+fn joined() -> &'static std::sync::Mutex<Option<String>> {
+    static JOINED: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+    &JOINED
+}
+
+/// `handleServerData`: the icon the server sends replaces the one the entry the player joined
+/// from keeps, if it is a PNG of no more than 1024 by 1024, and the list is saved
+/// (`ServerList.saveSingleServer`). The message of the day is not kept in the file.
+pub(crate) fn apply_server_data(icon: Option<&[u8]>) {
+    let Some(icon) = icon.and_then(photon_game::servers::validate_icon) else {
+        return;
+    };
+    let guard = joined()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let Some(ip) = guard.as_deref() else {
+        return;
+    };
+    let directory = crate::controls::game_directory();
+    let mut list = ServerList::load(&directory);
+    let server = list
+        .servers
+        .iter_mut()
+        .chain(&mut list.hidden)
+        .find(|server| server.ip == ip);
+    if let Some(server) = server {
+        server.set_icon_bytes(Some(icon));
+        if let Err(error) = list.save(&directory) {
+            log::warn!("the server list was not saved: {error}");
+        }
+    }
+}
+
 /// The next connection goes to the server `ip` of the list (none for one that is not in it):
 /// its setting decides what is done with a pack, and the player's answer is kept in the list.
 pub(crate) fn prepare(source: &PackSource, ip: Option<&str>) {
+    *joined()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = ip.map(str::to_owned);
     let directory = crate::controls::game_directory();
     let listed = ip.and_then(|ip| ServerList::load(&directory).find(ip).map(|s| s.pack_status));
     source.set_setting(

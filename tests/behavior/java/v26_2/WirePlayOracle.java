@@ -8,6 +8,7 @@ import com.google.gson.JsonArray;
 import net.minecraft.network.protocol.game.ClientboundChunksBiomesPacket;
 import net.minecraft.network.protocol.game.ClientboundCustomChatCompletionsPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerCombatEndPacket;
+import net.minecraft.network.protocol.game.ClientboundServerDataPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerCombatEnterPacket;
 import net.minecraft.network.protocol.game.ClientboundMoveVehiclePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerLookAtPacket;
@@ -34,6 +35,7 @@ final class WirePlayOracle {
                 case "move_vehicle" -> vehicle(ClientboundMoveVehiclePacket.STREAM_CODEC.decode(input));
                 case "projectile_power" -> power(ClientboundProjectilePowerPacket.STREAM_CODEC.decode(input));
                 case "chunks_biomes" -> chunksBiomes(ClientboundChunksBiomesPacket.STREAM_CODEC.decode(input));
+                case "server_data" -> serverData(ClientboundServerDataPacket.STREAM_CODEC.decode(buffer));
                 case "combat_enter" -> combatEnter(ClientboundPlayerCombatEnterPacket.STREAM_CODEC.decode(input));
                 case "combat_end" -> combatEnd(ClientboundPlayerCombatEndPacket.STREAM_CODEC.decode(input));
                 case "custom_chat_completions" -> completions(ClientboundCustomChatCompletionsPacket.STREAM_CODEC.decode(input));
@@ -126,6 +128,13 @@ final class WirePlayOracle {
         var entries = new JsonArray();
         packet.entries().forEach(entries::add);
         fields.add("entries", entries);
+        return fields;
+    }
+
+    private static JsonObject serverData(ClientboundServerDataPacket packet) {
+        var fields = new JsonObject();
+        fields.addProperty("motd", packet.motd().getString());
+        packet.iconBytes().ifPresent(icon -> fields.addProperty("icon", HexFormat.of().formatHex(icon)));
         return fields;
     }
 

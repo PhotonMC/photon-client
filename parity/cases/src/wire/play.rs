@@ -53,6 +53,20 @@ fn completions(action: i64, entries: &[&str]) -> String {
     out
 }
 
+/// A message of the day that is a plain string, and an icon if there is one; `flag` is the
+/// byte that says whether there is one.
+fn server_data(motd: &str, flag_byte: u8, icon: &[u8]) -> String {
+    let mut out = String::from("08");
+    out += &hex(&(motd.len() as u16).to_be_bytes());
+    out += &hex(motd.as_bytes());
+    out += &hex(&[flag_byte]);
+    if flag_byte != 0 {
+        out += &varint_hex(icon.len() as i64);
+        out += &hex(icon);
+    }
+    out
+}
+
 fn power(entity: i64, value: f64) -> String {
     format!("{}{}", varint_hex(entity), f64_hex(value))
 }
@@ -69,6 +83,29 @@ fn framed(packet: &str, label: &str, hex: String) -> Vec<Value> {
             case(format!("game/{packet}/{label}"), "wire", "play_packet", json!({"packet": packet, "hex": hex}))
         })
         .collect()
+}
+
+fn notices() -> Vec<Value> {
+    let mut cases = Vec::new();
+    for (label, hex) in [
+        ("plain", server_data("hello", 0, &[])),
+        ("icon", server_data("hello", 1, &[1, 2, 3])),
+        ("empty-icon", server_data("", 1, &[])),
+        ("flag-two", server_data("x", 2, &[9])),
+    ] {
+        cases.extend(framed("server_data", label, hex));
+    }
+    cases.extend(framed("combat_enter", "empty", String::new()));
+    for (label, hex) in [
+        ("add", completions(0, &["Alex", "\u{fc}"])),
+        ("remove", completions(1, &[])),
+        ("set", completions(2, &["a", "", "b"])),
+        ("bad-action", completions(3, &["a"])),
+        ("negative-action", completions(-1, &[])),
+    ] {
+        cases.extend(framed("custom_chat_completions", label, hex));
+    }
+    cases
 }
 
 fn packets() -> Vec<Value> {
@@ -112,16 +149,7 @@ fn packets() -> Vec<Value> {
     for (label, hex) in [("short", varint_hex(3)), ("long", varint_hex(300)), ("zero", varint_hex(0))] {
         cases.extend(framed("combat_end", label, hex));
     }
-    cases.extend(framed("combat_enter", "empty", String::new()));
-    for (label, hex) in [
-        ("add", completions(0, &["Alex", "\u{fc}"])),
-        ("remove", completions(1, &[])),
-        ("set", completions(2, &["a", "", "b"])),
-        ("bad-action", completions(3, &["a"])),
-        ("negative-action", completions(-1, &[])),
-    ] {
-        cases.extend(framed("custom_chat_completions", label, hex));
-    }
+    cases.extend(notices());
     cases
 }
 

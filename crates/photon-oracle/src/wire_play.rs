@@ -6,7 +6,7 @@ use photon_core::math::Vec3;
 use photon_protocol::play::{
     ChunksBiomes, CustomChatCompletions, Decode, EntityAnchor, MoveVehiclePacket, PlayerCombatEnd,
     PlayerCombatEnter, PlayerLookAtPacket, PlayerRotationPacket, ProjectilePowerPacket,
-    resolve_player_rotation,
+    ServerDataPacket, resolve_player_rotation,
 };
 use photon_world::ClientPlayerGameMode;
 use photon_world::local_player::LocalPlayer;
@@ -71,12 +71,31 @@ fn fields_of(packet: &str, bytes: &[u8]) -> Result<Option<Value>, String> {
         "projectile_power" => ProjectilePowerPacket::decode(bytes, &registries)
             .ok()
             .map(|p| json!({"entity": p.entity.0, "power": bits64(p.acceleration_power)})),
+        other => return notice_fields(other, bytes),
+    })
+}
+
+/// The fields of the packets that tell the client something rather than move the player.
+fn notice_fields(packet: &str, bytes: &[u8]) -> Result<Option<Value>, String> {
+    let registries = crate::case_ids::registries();
+    Ok(match packet {
         "chunks_biomes" => ChunksBiomes::decode(bytes, &registries).ok().map(|p| {
             let chunks: Vec<Value> =
                 p.0.iter()
                     .map(|c| json!({"x": c.x, "z": c.z, "buffer": c.buffer.iter().map(|b| format!("{b:02x}")).collect::<String>()}))
                     .collect();
             json!({"chunks": chunks})
+        }),
+        "server_data" => ServerDataPacket::decode(bytes, &registries).ok().map(|p| {
+            let motd = match &p.motd.content {
+                photon_core::text::Content::Literal(text) => text.clone(),
+                photon_core::text::Content::Translatable { key, .. } => key.clone(),
+            };
+            let mut fields = json!({"motd": motd});
+            if let Some(icon) = &p.icon {
+                fields["icon"] = json!(icon.iter().map(|b| format!("{b:02x}")).collect::<String>());
+            }
+            fields
         }),
         "combat_enter" => PlayerCombatEnter::decode(bytes, &registries)
             .ok()

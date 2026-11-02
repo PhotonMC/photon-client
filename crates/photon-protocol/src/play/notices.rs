@@ -76,3 +76,31 @@ impl Decode for CustomChatCompletions {
         Ok(Self { action, entries })
     }
 }
+
+/// `ClientboundServerDataPacket`: the server's message of the day and, if it sends one, its icon
+/// (PNG bytes, not yet checked).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ServerDataPacket {
+    pub motd: photon_core::text::Component,
+    pub icon: Option<Vec<u8>>,
+}
+
+impl Decode for ServerDataPacket {
+    fn decode(
+        mut payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
+        let input = &mut payload;
+        let motd = read_chat_component(input, "server data motd")?;
+        let icon = if read_bool(input, "server data has icon")? {
+            let limit = input.len();
+            Some(read_length_prefixed_bytes(input, limit, "server data icon")?.to_vec())
+        } else {
+            None
+        };
+        if !input.is_empty() {
+            return Err(ConnectionError::Codec("server data trailing payload"));
+        }
+        Ok(Self { motd, icon })
+    }
+}
