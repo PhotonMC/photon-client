@@ -130,6 +130,8 @@ impl Gui {
         session: &PlaySession,
         controls: &mut Controls,
     ) -> Option<TabView> {
+        // The social screen's faces are asked for with the tab list's: both need the session.
+        controls.queue_social_faces(session);
         if !controls.tab_held {
             self.tab_health.clear();
             return None;
@@ -137,7 +139,7 @@ impl Gui {
         let (entries, objective) = self.tab_entries(session);
         let heads = session
             .online_mode()
-            .then(|| controls.tab_heads(entries.iter().map(|entry| entry.id).collect()));
+            .then(|| controls.tab_heads(session, entries.iter().map(|entry| entry.id).collect()));
         Some(TabView {
             entries,
             objective,

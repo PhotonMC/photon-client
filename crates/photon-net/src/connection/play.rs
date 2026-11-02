@@ -63,6 +63,7 @@ mod recipes;
 mod reconfigure;
 #[cfg(test)]
 mod version_tests;
+pub use chat::ProfileSkin;
 pub use command_blocks::{CommandBlockSettings, CommandBlockState};
 pub use groups::GlobalBlock;
 pub use reconfigure::SwitchKind;

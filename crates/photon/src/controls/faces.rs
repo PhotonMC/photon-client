@@ -1,19 +1,40 @@
-//! The skins of the faces of the friends overlay: looked up on a thread of their own and put
-//! into the GUI atlas, where the overlay draws them from.
+//! The skins of the faces of the friends overlay, the social screen and the tab list: loaded on
+//! a thread of their own and put into the GUI atlas, where the screens draw them from.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
 use photon_core::binary::Uuid;
+use photon_net::connection::{PlaySession, ProfileSkin};
+use photon_net::skins::ProfileProperty;
 use photon_render::gui::GuiAtlas;
 use photon_render::texture::png::DecodedImage;
 
 use super::Controls;
 
+/// Where a skin comes from: the session server by the player's id, or the textures property
+/// of the profile the tab list holds (the local player's needs no signature).
+enum Source {
+    Lookup,
+    Textures {
+        property: ProfileProperty,
+        local: bool,
+    },
+}
+
+impl Source {
+    fn load(&self, id: Uuid) -> Option<Arc<Vec<u8>>> {
+        match self {
+            Self::Lookup => crate::skins::face::skin_of(id),
+            Self::Textures { property, local } => crate::skins::face::skin_from(property, *local),
+        }
+    }
+}
+
 /// The lookups asked for and what they answered.
 pub(crate) struct Faces {
-    asks: Option<Sender<Uuid>>,
+    asks: Option<Sender<(Uuid, Source)>>,
     answers: Receiver<(Uuid, Arc<Vec<u8>>)>,
     sender: Sender<(Uuid, Arc<Vec<u8>>)>,
     /// The players asked for once, so that a reopened overlay or a failure asks nothing again.
@@ -39,27 +60,19 @@ impl Default for Faces {
 }
 
 impl Faces {
-    /// The players of `ids` that no lookup was asked of yet.
-    fn wanted(&self, ids: &[Uuid]) -> Vec<Uuid> {
-        ids.iter()
-            .filter(|id| !self.requested.contains(id))
-            .copied()
-            .collect()
-    }
-
     /// One lookup asked for, once; the thread starts with the first.
-    fn ask(&mut self, id: Uuid) {
+    fn ask(&mut self, id: Uuid, source: Source) {
         if !self.requested.insert(id) {
             return;
         }
         if self.asks.is_none() {
-            let (asks, wanted) = channel::<Uuid>();
+            let (asks, wanted) = channel::<(Uuid, Source)>();
             let answers = self.sender.clone();
             let spawned = std::thread::Builder::new()
                 .name("Face Lookup".to_owned())
                 .spawn(move || {
-                    for id in wanted {
-                        if let Some(skin) = crate::skins::face::skin_of(id) {
+                    for (id, source) in wanted {
+                        if let Some(skin) = source.load(id) {
                             let _ = answers.send((id, skin));
                         }
                     }
@@ -70,7 +83,7 @@ impl Faces {
             self.asks = Some(asks);
         }
         if let Some(asks) = &self.asks {
-            let _ = asks.send(id);
+            let _ = asks.send((id, source));
         }
     }
 
@@ -107,25 +120,18 @@ impl Faces {
 }
 
 impl Controls {
-    /// The faces of the open overlay or social screen: the players it shows are looked up, and
-    /// the skins that came are put into the atlas and handed to it. Whether the atlas is to be
-    /// sent to the GPU again.
+    /// The faces of the open overlay or social screen: the friends are looked up by id, and the
+    /// skins that came are put into the atlas and handed to the screens. Whether the atlas is to
+    /// be sent to the GPU again.
     pub(crate) fn sync_faces(&mut self, atlas: (&mut GuiAtlas, &mut DecodedImage)) -> bool {
-        let mut wanted = Vec::new();
-        if let Some(overlay) = self.friends.as_mut() {
-            wanted.extend(overlay.faces_wanted());
-        }
-        if let Some(social) = self.social.as_mut() {
-            wanted.extend(social.faces_wanted());
-        }
-        wanted.append(&mut self.tab_wanted);
-        let tab_open = self.tab_held;
-        if self.friends.is_none() && self.social.is_none() && !tab_open {
+        if self.friends.is_none() && self.social.is_none() && !self.tab_held {
             self.faces.free(atlas);
             return false;
         }
-        for id in wanted {
-            self.faces.ask(id);
+        if let Some(overlay) = self.friends.as_mut() {
+            for id in overlay.faces_wanted() {
+                self.faces.ask(id, Source::Lookup);
+            }
         }
         let changed = self.faces.place(atlas);
         for (id, name) in &self.faces.placed {
@@ -138,14 +144,44 @@ impl Controls {
         }
         changed
     }
-}
 
-impl Controls {
-    /// The faces the tab list draws: the players are looked up (once each) and the textures of
-    /// the skins that came are returned; the rest keep the default skin of their id.
-    pub(crate) fn tab_heads(&mut self, ids: Vec<Uuid>) -> HashMap<Uuid, String> {
-        let wanted = self.faces.wanted(&ids);
-        self.tab_wanted.extend(wanted);
+    /// The faces the social screen shows, as `PlayerInfo.getSkin` has them: the textures of the
+    /// profile the server sent, the default skin for a profile without any; a player who has
+    /// left is looked up by id.
+    pub(crate) fn queue_social_faces(&mut self, session: &PlaySession) {
+        let Some(social) = self.social.as_mut() else {
+            return;
+        };
+        for id in social.faces_wanted() {
+            self.ask_player(session, id, true);
+        }
+    }
+
+    /// The faces the tab list draws: the textures of each player's profile are loaded (once
+    /// each) and the textures of the skins that came are returned; the rest keep the default
+    /// skin of their id.
+    pub(crate) fn tab_heads(
+        &mut self,
+        session: &PlaySession,
+        ids: Vec<Uuid>,
+    ) -> HashMap<Uuid, String> {
+        for id in ids {
+            self.ask_player(session, id, false);
+        }
         self.faces.placed.clone()
+    }
+
+    fn ask_player(&mut self, session: &PlaySession, id: Uuid, lookup_unknown: bool) {
+        if self.faces.requested.contains(&id) {
+            return;
+        }
+        match session.profile_skin((id.most, id.least)) {
+            ProfileSkin::Textures(property) => {
+                let local = session.profile_id() == Some(id);
+                self.faces.ask(id, Source::Textures { property, local });
+            }
+            ProfileSkin::Unknown if lookup_unknown => self.faces.ask(id, Source::Lookup),
+            ProfileSkin::Unknown | ProfileSkin::Default => {}
+        }
     }
 }

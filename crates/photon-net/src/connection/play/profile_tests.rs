@@ -114,3 +114,27 @@ fn only_the_players_own_change_marks_a_section_as_the_players() {
     assert_eq!(flag((2, 0, 0)), Some(true));
     assert!(session.take_dirty_sections().is_empty());
 }
+
+#[test]
+fn the_tab_list_names_the_skin_source_of_a_player() {
+    let (mut session, _server) = session();
+    let textures = ProfileProperty {
+        name: "textures".to_owned(),
+        value: "value".to_owned(),
+        signature: None,
+    };
+    session.apply_player_info((1, 1), add("Skinned", &textures));
+    session.apply_player_info(
+        (1, 2),
+        vec![InfoAction::Add {
+            name: "Plain".to_owned(),
+            properties: Vec::new(),
+        }],
+    );
+    assert_eq!(
+        session.profile_skin((1, 1)),
+        ProfileSkin::Textures(textures)
+    );
+    assert_eq!(session.profile_skin((1, 2)), ProfileSkin::Default);
+    assert_eq!(session.profile_skin((1, 3)), ProfileSkin::Unknown);
+}

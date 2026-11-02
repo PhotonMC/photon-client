@@ -1,6 +1,16 @@
 use super::chat_validation::Verdict;
 use super::*;
 
+/// Where a player's skin comes from, by what the tab list knows of them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProfileSkin {
+    /// The list holds no such player.
+    Unknown,
+    /// The profile has no textures property: the default skin of the id.
+    Default,
+    Textures(ProfileProperty),
+}
+
 impl PlaySession {
     /// `ClientPacketListener.applyPlayerInfoUpdate`: an `Add` makes the
     /// player; the rest change one that is known and are dropped for one
@@ -284,6 +294,22 @@ impl PlaySession {
             .map(|(key, name)| (id(*key), name.clone()))
             .collect();
         SocialPlayers { online, gone }
+    }
+
+    /// The skin source of a player of the tab list (`PlayerInfo.getSkin`): the textures property
+    /// of the profile the server sent, none for a profile without one, unknown for a player the
+    /// list does not hold.
+    pub fn profile_skin(&self, id: (u64, u64)) -> ProfileSkin {
+        match self.social.player_infos.get(&id) {
+            None => ProfileSkin::Unknown,
+            Some(info) => info
+                .properties
+                .iter()
+                .find(|property| property.name == "textures")
+                .map_or(ProfileSkin::Default, |property| {
+                    ProfileSkin::Textures(property.clone())
+                }),
+        }
     }
 
     /// The ids of `listed_players`, in the same order.
