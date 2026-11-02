@@ -1,7 +1,5 @@
 //! The tab list (`PlayerTabOverlay`): the players in columns of up to twenty
 //! between a header and a footer, each with its ping.
-//!
-//! Not drawn: the hat layer's absence (`showHat`) and the flip of an upside-down player's head.
 
 use crate::{FontRuns, FrameRuns};
 use std::collections::HashMap;
@@ -21,6 +19,9 @@ const MAX_ROWS: usize = 20;
 #[derive(Debug, Clone)]
 pub struct TabEntry {
     pub id: Uuid,
+    /// Whether the head shows its hat layer, and whether it is drawn upside down.
+    pub hat: bool,
+    pub flip: bool,
     pub name: Vec<Run>,
     pub spectator: bool,
     pub latency: i32,
@@ -56,6 +57,8 @@ impl TabEntry {
         }
         Self {
             id,
+            hat: true,
+            flip: false,
             name,
             spectator,
             latency,
@@ -65,6 +68,12 @@ impl TabEntry {
             score: 0,
             score_text: None,
         }
+    }
+
+    /// How the head is drawn: the hat layer shown, the head upside down.
+    pub fn with_head(mut self, hat: bool, flip: bool) -> Self {
+        (self.hat, self.flip) = (hat, flip);
+        self
     }
 
     /// The player's team (by name) and score on the list's objective.
@@ -79,6 +88,8 @@ impl TabEntry {
 /// A listed player as the server describes it.
 pub struct TabPlayer<'a> {
     pub id: Uuid,
+    pub hat: bool,
+    pub flip: bool,
     pub name: &'a str,
     pub display_name: Option<&'a photon_game::text::Component>,
     pub game_mode: i32,
@@ -137,6 +148,7 @@ pub fn entries<'a>(
                 player.latency,
                 player.list_order,
             )
+            .with_head(player.hat, player.flip)
             .with_scoreboard(team, score, text)
         })
         .collect();
@@ -389,22 +401,26 @@ fn draw_score(
     }
 }
 
-/// `PlayerFaceExtractor.extractRenderState` at size 8: the face and the hat layer over it.
+/// `PlayerFaceExtractor.extractRenderState` at size 8: the face and, where shown, the hat layer
+/// over it; a flipped head reads the skin upside down.
 fn draw_head(
     frame: &mut GuiFrame,
     atlas: &GuiAtlas,
-    id: Uuid,
+    entry: &TabEntry,
     heads: &HashMap<Uuid, String>,
     (x, y): (i32, i32),
 ) {
-    let texture = heads.get(&id).cloned().unwrap_or_else(|| {
+    let texture = heads.get(&entry.id).cloned().unwrap_or_else(|| {
         format!(
             "textures/{}",
-            photon_render::entity::player_renderer::default_skin(id).texture
+            photon_render::entity::player_renderer::default_skin(entry.id).texture
         )
     });
-    for u in [8, 40] {
-        frame.blit_texture_stretched(atlas, &texture, (64, 64), (u, 8, 8, 8), (x, y, 8, 8));
+    let (v, height) = if entry.flip { (16, -8) } else { (8, 8) };
+    let layers: &[i32] = if entry.hat { &[8, 40] } else { &[8] };
+    for u in layers {
+        let region = (*u, v, 8, height);
+        frame.blit_texture_stretched(atlas, &texture, (64, 64), region, (x, y, 8, 8));
     }
 }
 
@@ -432,7 +448,7 @@ fn draw_row(
         0xFFFF_FFFF
     };
     if let Some(heads) = scores.heads {
-        draw_head(frame, atlas, entry.id, heads, (x, y));
+        draw_head(frame, atlas, entry, heads, (x, y));
     }
     let name_x = x + slot.head;
     frame.styled_text(atlas, font, &entry.name, (name_x, y), colour, true);
@@ -552,6 +568,8 @@ mod tests {
     fn entry(name: &str, spectator: bool, order: i32) -> TabEntry {
         TabEntry {
             id: Uuid { most: 0, least: 0 },
+            hat: true,
+            flip: false,
             name: Vec::new(),
             spectator,
             latency: 0,

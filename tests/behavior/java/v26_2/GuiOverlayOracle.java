@@ -456,18 +456,34 @@ class GuiOverlayOracle extends GuiHudOracle {
             set(listener, "scoreboard", scoreboard);
             var listed = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<net.minecraft.client.multiplayer.PlayerInfo>();
             set(listener, "listedPlayers", listed);
-            set(listener, "onlineMode", false);
+            set(listener, "onlineMode", row.has("online_mode") && row.get("online_mode").getAsBoolean());
             var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
             set(player, "connection", listener);
             set(minecraft, "player", player);
             var level = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class);
             set(level, "connection", listener);
             set(minecraft, "level", level);
+            var inLevel = new java.util.ArrayList<net.minecraft.client.player.AbstractClientPlayer>();
+            set(level, "players", inLevel);
             for (var playerElement : row.getAsJsonArray("players")) {
                 var described = playerElement.getAsJsonObject();
                 String name = described.get("name").getAsString();
-                var info = new net.minecraft.client.multiplayer.PlayerInfo(new com.mojang.authlib.GameProfile(
-                    java.util.UUID.nameUUIDFromBytes(name.getBytes()), name), false);
+                var uuid = described.has("id") ? java.util.UUID.fromString(described.get("id").getAsString())
+                    : java.util.UUID.nameUUIDFromBytes(name.getBytes());
+                var profile = new com.mojang.authlib.GameProfile(uuid, name);
+                var info = new net.minecraft.client.multiplayer.PlayerInfo(profile, false);
+                var skin = net.minecraft.client.resources.DefaultPlayerSkin.get(profile);
+                set(info, "skinLookup", (java.util.function.Supplier<net.minecraft.world.entity.player.PlayerSkin>) () -> skin);
+                if (described.has("hat")) {
+                    info.setShowHat(described.get("hat").getAsBoolean());
+                }
+                if (described.has("in_level") && described.get("in_level").getAsBoolean()) {
+                    var inLevelPlayer = (net.minecraft.client.player.AbstractClientPlayer) unsafe.allocateInstance(
+                        net.minecraft.client.player.RemotePlayer.class);
+                    set(inLevelPlayer, "uuid", uuid);
+                    set(inLevelPlayer, "gameProfile", profile);
+                    inLevel.add(inLevelPlayer);
+                }
                 set(info, "gameMode", net.minecraft.world.level.GameType.byId(described.get("mode").getAsInt()));
                 set(info, "latency", described.get("latency").getAsInt());
                 set(info, "tabListOrder", described.get("order").getAsInt());

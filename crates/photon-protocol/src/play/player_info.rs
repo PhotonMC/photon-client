@@ -37,9 +37,7 @@ pub fn parse_player_info_update(input: &[u8]) -> Result<Vec<PlayerActions>, Conn
                     &mut input,
                     "list order",
                 )?)),
-                _ => {
-                    read_bool(&mut input, "hat")?;
-                }
+                _ => list.push(InfoAction::Hat(read_bool(&mut input, "hat")?)),
             }
         }
         entries.push(((uuid.most, uuid.least), list));
@@ -119,6 +117,8 @@ pub struct PlayerInfo {
     pub listed: bool,
     pub display_name: Option<photon_core::text::Component>,
     pub list_order: i32,
+    /// Whether the hat layer shows in the tab list (`PlayerInfo.showHat`, shown until told).
+    pub show_hat: bool,
     /// The profile's properties (`GameProfile.properties`), among them the packed textures.
     pub properties: Vec<ProfileProperty>,
 }
@@ -144,6 +144,8 @@ pub enum InfoAction {
     Latency(i32),
     DisplayName(Option<photon_core::text::Component>),
     ListOrder(i32),
+    /// `UPDATE_HAT`: whether the player shows the hat layer of the skin.
+    Hat(bool),
     /// The player's chat session, or none where the player has no profile key.
     ChatSession(Option<RemoteChatSession>),
 }

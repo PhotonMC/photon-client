@@ -11,6 +11,21 @@ pub enum ProfileSkin {
     Textures(ProfileProperty),
 }
 
+/// One update of a known player's entry; a chat session (which may be none) is handed back for the senders.
+fn update_info(info: &mut PlayerInfo, action: InfoAction) -> Option<Option<RemoteChatSession>> {
+    match action {
+        InfoAction::GameMode(mode) => info.game_mode = mode,
+        InfoAction::Listed(listed) => info.listed = listed,
+        InfoAction::Latency(latency) => info.latency = latency,
+        InfoAction::DisplayName(name) => info.display_name = name,
+        InfoAction::ListOrder(order) => info.list_order = order,
+        InfoAction::Hat(show) => info.show_hat = show,
+        InfoAction::ChatSession(session) => return Some(session),
+        InfoAction::Add { .. } => {}
+    }
+    None
+}
+
 impl PlaySession {
     /// `ClientPacketListener.applyPlayerInfoUpdate`: an `Add` makes the
     /// player; the rest change one that is known and are dropped for one
@@ -18,30 +33,33 @@ impl PlaySession {
     pub(super) fn apply_player_info(&mut self, id: (u64, u64), actions: Vec<InfoAction>) {
         for action in actions {
             if let InfoAction::Add { name, properties } = action {
-                self.social
-                    .player_infos
-                    .entry(id)
-                    .or_insert_with(|| PlayerInfo {
-                        name,
-                        properties,
-                        ..PlayerInfo::default()
-                    });
-                self.remember_entity_profile_if_new(id);
+                self.add_listed_player(id, name, properties);
                 continue;
             }
-            let Some(info) = self.social.player_infos.get_mut(&id) else {
-                continue;
-            };
-            match action {
-                InfoAction::GameMode(mode) => info.game_mode = mode,
-                InfoAction::Listed(listed) => info.listed = listed,
-                InfoAction::Latency(latency) => info.latency = latency,
-                InfoAction::DisplayName(name) => info.display_name = name,
-                InfoAction::ListOrder(order) => info.list_order = order,
-                InfoAction::ChatSession(session) => self.social.senders.set_session(id, session),
-                InfoAction::Add { .. } => {}
+            if let Some(info) = self.social.player_infos.get_mut(&id)
+                && let Some(session) = update_info(info, action)
+            {
+                self.social.senders.set_session(id, session);
             }
         }
+    }
+
+    fn add_listed_player(
+        &mut self,
+        id: (u64, u64),
+        name: String,
+        properties: Vec<ProfileProperty>,
+    ) {
+        self.social
+            .player_infos
+            .entry(id)
+            .or_insert_with(|| PlayerInfo {
+                name,
+                properties,
+                show_hat: true,
+                ..PlayerInfo::default()
+            });
+        self.remember_entity_profile_if_new(id);
     }
 
     /// A player entity was added: it takes the tab entry of its uuid.
@@ -310,6 +328,24 @@ impl PlaySession {
                     ProfileSkin::Textures(property.clone())
                 }),
         }
+    }
+
+    /// How the tab list draws a player's head: whether the hat layer shows, and whether the head
+    /// is upside down (`isPlayerUpsideDown` of a player the level holds, named Dinnerbone or
+    /// Grumm).
+    pub fn tab_head(&self, id: (u64, u64)) -> (bool, bool) {
+        let Some(info) = self.social.player_infos.get(&id) else {
+            return (true, false);
+        };
+        let uuid = photon_core::binary::Uuid::new(id.0, id.1);
+        let in_level = self.profile_id() == Some(uuid)
+            || self
+                .world
+                .entities()
+                .players()
+                .any(|player| player.uuid == uuid);
+        let named = matches!(info.name.as_str(), "Dinnerbone" | "Grumm");
+        (info.show_hat, named && in_level)
     }
 
     /// The ids of `listed_players`, in the same order.

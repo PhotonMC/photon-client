@@ -116,6 +116,23 @@ fn only_the_players_own_change_marks_a_section_as_the_players() {
 }
 
 #[test]
+fn the_tab_list_shows_the_hat_until_told_otherwise() {
+    let (mut session, _server) = session();
+    session.apply_player_info(
+        (1, 1),
+        vec![InfoAction::Add {
+            name: "Dinnerbone".to_owned(),
+            properties: Vec::new(),
+        }],
+    );
+    // Named upside down, but the level holds no such player yet.
+    assert_eq!(session.tab_head((1, 1)), (true, false));
+    session.apply_player_info((1, 1), vec![InfoAction::Hat(false)]);
+    assert_eq!(session.tab_head((1, 1)), (false, false));
+    assert_eq!(session.tab_head((9, 9)), (true, false));
+}
+
+#[test]
 fn the_tab_list_names_the_skin_source_of_a_player() {
     let (mut session, _server) = session();
     let textures = ProfileProperty {

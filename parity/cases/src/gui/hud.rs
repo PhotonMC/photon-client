@@ -227,6 +227,32 @@ fn named(name: &str) -> Value {
     player(name, 0, 0, 0)
 }
 
+fn heads(label: &str, online: bool, mut players: Vec<Value>) -> Value {
+    // The default skin follows the id, so each player has one that both sides read the same way.
+    for (n, player) in players.iter_mut().enumerate() {
+        if player.get("id").is_none() {
+            player["id"] = json!(format!("1000000{n}-0000-4000-8000-000000000{n}0{n}"));
+        }
+    }
+    let mut row = tab(label, players, 427);
+    row["online_mode"] = json!(online);
+    row
+}
+
+fn hat(mut player: Value, shown: bool) -> Value {
+    player["hat"] = json!(shown);
+    player
+}
+
+/// A player who is also an entity of the level (so that the flip applies).
+fn placed(mut player: Value, in_level: bool) -> Value {
+    let id = format!("00000000-0000-4000-8000-{:012x}", player["name"].as_str().map_or(0, str::len));
+    player["id"] = json!(id);
+    player["flip"] = json!(in_level);
+    player["in_level"] = json!(in_level);
+    player
+}
+
 fn tab(label: &str, players: Vec<Value>, width: i64) -> Value {
     json!({"label": label, "width": width, "height": 240, "players": players})
 }
@@ -263,6 +289,12 @@ fn tab_rows() -> Vec<Value> {
         tab("twenty", twenty, 427),
         tab("columns", many.clone(), 427),
         tab("narrow", many, 320),
+        heads("heads-offline", false, vec![named("Miner")]),
+        heads("heads-online", true, vec![named("Miner"), player("Alex", 0, 80, 0)]),
+        heads("heads-hat-off", true, vec![hat(named("Miner"), false), named("Alex")]),
+        heads("heads-flipped", true, vec![placed(named("Dinnerbone"), true), named("Alex")]),
+        heads("heads-upside-name-not-in-level", true, vec![named("Grumm"), named("Alex")]),
+        heads("heads-grumm-flipped", true, vec![placed(named("Grumm"), true)]),
         tab("eighty-cap", (0..95).map(|n| named(&format!("p{n:03}"))).collect(), 427),
     ]
 }

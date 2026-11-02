@@ -230,6 +230,17 @@ fn player_info_update_reads_its_actions_in_order() {
 }
 
 #[test]
+fn player_info_update_reads_the_hat_flag_of_a_player() {
+    // One player, the hat action alone (bit 7), hidden.
+    let mut payload = vec![0x80, 1];
+    payload.extend(0_u64.to_be_bytes());
+    payload.extend(9_u64.to_be_bytes());
+    payload.push(0);
+    let entries = super::super::parse_player_info_update(&payload).unwrap();
+    assert_eq!(entries[0].1, vec![super::super::InfoAction::Hat(false)]);
+}
+
+#[test]
 fn player_info_update_reads_the_chat_session_of_a_player() {
     let mut payload = vec![2, 2];
     // First player: a session; second: the flag unset.

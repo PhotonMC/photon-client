@@ -158,16 +158,21 @@ impl Gui {
                 .listed_ids()
                 .into_iter()
                 .zip(session.listed_players())
-                .map(|(id, info)| TabPlayer {
-                    id: photon_core::binary::Uuid {
-                        most: id.0,
-                        least: id.1,
-                    },
-                    name: &info.name,
-                    display_name: info.display_name.as_ref(),
-                    game_mode: info.game_mode,
-                    latency: info.latency,
-                    list_order: info.list_order,
+                .map(|(id, info)| {
+                    let (hat, flip) = session.tab_head(id);
+                    TabPlayer {
+                        hat,
+                        flip,
+                        id: photon_core::binary::Uuid {
+                            most: id.0,
+                            least: id.1,
+                        },
+                        name: &info.name,
+                        display_name: info.display_name.as_ref(),
+                        game_mode: info.game_mode,
+                        latency: info.latency,
+                        list_order: info.list_order,
+                    }
                 }),
             session.scoreboard(),
             &self.lang,
