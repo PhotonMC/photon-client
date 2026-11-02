@@ -57,7 +57,8 @@ pub struct Scene {
     /// The rain level, with the sky lit so that the rain can reach the player.
     rain: Option<f64>,
     frozen: bool,
-    lid: Option<(i64, i64, i64)>,
+    /// Block animations to report after each tick: the report's key and the block's place.
+    watched: Vec<(&'static str, (i64, i64, i64))>,
 }
 
 impl Scene {
@@ -78,7 +79,7 @@ impl Scene {
             rain: None,
             block_entities: Vec::new(),
             frozen: false,
-            lid: None,
+            watched: Vec::new(),
         }
     }
 
@@ -128,7 +129,22 @@ impl Scene {
 
     /// Report how far the lid of the chest at `at` is open after each tick.
     pub fn watch_lid(self, at: (i64, i64, i64)) -> Self {
-        Self { lid: Some(at), ..self }
+        self.watch("lid", at)
+    }
+
+    /// Report the ticks of the bell at `at` and whether it shakes.
+    pub fn watch_bell(self, at: (i64, i64, i64)) -> Self {
+        self.watch("bell", at)
+    }
+
+    /// Report the animation of the head at `at`.
+    pub fn watch_skull(self, at: (i64, i64, i64)) -> Self {
+        self.watch("skull", at)
+    }
+
+    fn watch(mut self, key: &'static str, at: (i64, i64, i64)) -> Self {
+        self.watched.push((key, at));
+        self
     }
 
     /// A block entity of a block (the reference makes one for every block that has the type; the
@@ -162,8 +178,8 @@ impl Scene {
         if self.frozen {
             row["frozen"] = json!(true);
         }
-        if let Some(at) = self.lid {
-            row["lid"] = json!({"x": at.0, "y": at.1, "z": at.2});
+        for (key, at) in &self.watched {
+            row[*key] = json!({"x": at.0, "y": at.1, "z": at.2});
         }
         if !self.block_entities.is_empty() {
             row["block_entities"] = Value::Array(self.block_entities);

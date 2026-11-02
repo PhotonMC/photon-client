@@ -12,7 +12,7 @@ pub(super) fn finished_tick(
     (row, breaking, tick): (&Value, Option<&Value>, &Value),
 ) -> Result<Value, String> {
     let watched = with_watched(described, world, tick)?;
-    with_lid(with_rockets(watched, world, breaking), world, row)
+    with_animations(with_rockets(watched, world, breaking), world, row)
 }
 
 /// The tick's report with the block state ids at the places the tick watches, if it names any.
@@ -40,22 +40,34 @@ fn with_watched(
     Ok(described)
 }
 
-/// The tick's report with how far the watched chest's lid is open, if the row watches one.
-fn with_lid(
+/// The tick's report with the block animations the row watches: how far a chest's lid is open, a
+/// bell's ticks and whether it shakes, and a head's animation value.
+fn with_animations(
     mut tick: Value,
     world: &photon_world::ClientWorld,
     row: &Value,
 ) -> Result<Value, String> {
-    if let Some(lid) = row.get("lid") {
-        let at = (
-            i32_field(lid, "x")?,
-            i32_field(lid, "y")?,
-            i32_field(lid, "z")?,
-        );
-        tick["lid"] = json!(format!(
-            "{:08x}",
-            world.chest_openness(at, None, 0.0).to_bits()
-        ));
+    let bits = |value: f32| format!("{:08x}", value.to_bits());
+    let place = |key: &str| -> Result<Option<(i32, i32, i32)>, String> {
+        let Some(at) = row.get(key) else {
+            return Ok(None);
+        };
+        Ok(Some((
+            i32_field(at, "x")?,
+            i32_field(at, "y")?,
+            i32_field(at, "z")?,
+        )))
+    };
+    if let Some(at) = place("lid")? {
+        tick["lid"] = json!(bits(world.chest_openness(at, None, 0.0)));
+    }
+    if let Some(at) = place("bell")? {
+        let (ticks, direction) = world.bell_shake(at, 0.0).ok_or("no bell to watch")?;
+        tick["bell"] = json!({"ticks": bits(ticks), "shaking": direction.is_some()});
+    }
+    if let Some(at) = place("skull")? {
+        let view = world.skull_block_view(at, 0.0).ok_or("no head to watch")?;
+        tick["skull"] = json!(bits(view.animation));
     }
     Ok(tick)
 }

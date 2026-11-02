@@ -300,7 +300,7 @@ pub fn cases() -> Vec<Value> {
         local("movement/gliding", gliding::rows()),
         local("movement/pistons", pistons::rows()),
         local("movement/geysers", geysers::rows()),
-        local("movement/lids", lids::rows()),
+        local("movement/lids", [lids::rows(), lids::animation_rows()].concat()),
         local("movement/stepping", stepping::rows()),
         local("movement/effects", effects::rows()),
     ]

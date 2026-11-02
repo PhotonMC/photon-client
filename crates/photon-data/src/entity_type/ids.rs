@@ -33,6 +33,7 @@ entity_types! {
     INTERACTION = interaction,
     ILLUSIONER = illusioner,
     MOOSHROOM = mooshroom,
+    OCELOT = ocelot,
     PANDA = panda,
     PARROT = parrot,
     PHANTOM = phantom,

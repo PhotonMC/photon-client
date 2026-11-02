@@ -490,12 +490,7 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 rocketPositions.add(at);
             }
             described.add("rockets", rocketPositions);
-            if (row.has("lid")) {
-                var lid = row.getAsJsonObject("lid");
-                var lidEntity = (net.minecraft.world.level.block.entity.LidBlockEntity) level.getBlockEntity(
-                    new BlockPos(lid.get("x").getAsInt(), lid.get("y").getAsInt(), lid.get("z").getAsInt()));
-                described.addProperty("lid", Oracle.bits(lidEntity.getOpenNess(0.0F)));
-            }
+            describeAnimations(level, row, described);
             if (vehicle != null) {
                 described.add("vehicle", describeVehicle(vehicle));
             }
@@ -519,6 +514,31 @@ class MovementPlayerOracle extends MovementWorldOracle {
         entry.addProperty("outcome", "ticked");
         entry.add("ticks", ticks);
         return entry;
+    }
+
+    /** The block animations a row watches: a chest's lid, a bell's ticks and a head's animation. */
+    static void describeAnimations(
+        net.minecraft.client.multiplayer.ClientLevel level, JsonObject row, JsonObject described) {
+        if (row.has("lid")) {
+            var lid = (net.minecraft.world.level.block.entity.LidBlockEntity) level.getBlockEntity(watched(row, "lid"));
+            described.addProperty("lid", Oracle.bits(lid.getOpenNess(0.0F)));
+        }
+        if (row.has("bell")) {
+            var bell = (net.minecraft.world.level.block.entity.BellBlockEntity) level.getBlockEntity(watched(row, "bell"));
+            var report = new JsonObject();
+            report.addProperty("ticks", Oracle.bits((float) bell.ticks));
+            report.addProperty("shaking", bell.shaking);
+            described.add("bell", report);
+        }
+        if (row.has("skull")) {
+            var skull = (net.minecraft.world.level.block.entity.SkullBlockEntity) level.getBlockEntity(watched(row, "skull"));
+            described.addProperty("skull", Oracle.bits(skull.getAnimation(0.0F)));
+        }
+    }
+
+    private static BlockPos watched(JsonObject row, String key) {
+        var at = row.getAsJsonObject(key);
+        return new BlockPos(at.get("x").getAsInt(), at.get("y").getAsInt(), at.get("z").getAsInt());
     }
 
     /**

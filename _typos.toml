@@ -13,6 +13,7 @@ extend-exclude = [
 # Names the reference spells this way.
 Visiblity = "Visiblity"
 Chage = "Chage"
+shoudl = "shoudl"
 texure0 = "texure0"
 texure = "texure"
 togglable = "togglable"

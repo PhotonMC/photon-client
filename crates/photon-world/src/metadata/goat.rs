@@ -38,8 +38,11 @@ pub(crate) fn apply_goat_data(entity: &mut crate::entity::EntityViewMut<'_>, met
 }
 
 /// An ocelot's trusting flag (`Ocelot.DATA_TRUSTING`), applied to the entity when the data holds
-/// it. The flag is read only for ocelots, so another species' boolean at the same place is inert.
+/// it.
 pub(crate) fn apply_ocelot_data(entity: &mut crate::entity::EntityViewMut<'_>, metadata: &[u8]) {
+    if entity.type_id != photon_data::entity_type::ids::OCELOT {
+        return;
+    }
     if let Some(trusting) = metadata_boolean_value(metadata, OCELOT_TRUSTING_DATA_ID) {
         entity.living.trusting_ocelot = trusting;
     }
