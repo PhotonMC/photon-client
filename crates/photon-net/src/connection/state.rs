@@ -43,6 +43,8 @@ pub struct ConnectionState {
     /// `None`.
     pub dialog_registry: Vec<Option<photon_game::dialog::Dialog>>,
     pub dimension_type_registry_bounds: Vec<Option<DimensionBounds>>,
+    /// The names of the dimension type registry's entries, in network order.
+    pub dimension_type_names: Vec<String>,
     pub dimension_type_registry_environments: Vec<Option<DimensionEnvironment>>,
     /// The server packs the client keeps; the same source goes through every connection.
     pub packs: crate::server_packs::PackSource,
@@ -111,6 +113,25 @@ impl ConnectionState {
 }
 
 impl ConnectionState {
+    /// What the dimension type registry's entries tell: their names, vertical extents and light.
+    pub(super) fn note_dimension_types(
+        &mut self,
+        entries: Vec<photon_protocol::registry_data::PackedRegistryEntry>,
+    ) -> Result<(), super::ConnectionError> {
+        for entry in entries {
+            self.dimension_type_names.push(entry.id.as_string());
+            let bounds = entry
+                .dimension_type_bounds()
+                .map_err(|_| super::ConnectionError::Codec("dimension type registry"))?;
+            let environment = entry
+                .dimension_type_environment()
+                .map_err(|_| super::ConnectionError::Codec("dimension type environment"))?;
+            self.dimension_type_registry_bounds.push(bounds);
+            self.dimension_type_registry_environments.push(environment);
+        }
+        Ok(())
+    }
+
     /// The vertical extent of the dimension a spawn info names: the registry's entry for its
     /// dimension type, or the built-in dimension's.
     pub fn dimension_bounds(&self, spawn_info: &SpawnInfoObservation) -> DimensionBounds {
@@ -118,7 +139,20 @@ impl ConnectionState {
             .ok()
             .and_then(|id| self.dimension_type_registry_bounds.get(id))
             .and_then(|bounds| *bounds)
-            .unwrap_or_else(|| DimensionBounds::for_builtin_dimension(&spawn_info.dimension))
+            .unwrap_or_else(|| {
+                DimensionBounds::for_builtin_dimension(&self.dimension_type_name(spawn_info))
+            })
+    }
+
+    /// The name of the dimension type a spawn info names, as the registry lists it (a server that
+    /// leaves the entry's data to the known packs sends only the name), or the dimension's own
+    /// key where the registry does not list it.
+    fn dimension_type_name(&self, spawn_info: &SpawnInfoObservation) -> String {
+        usize::try_from(spawn_info.dimension_type_id)
+            .ok()
+            .and_then(|id| self.dimension_type_names.get(id))
+            .cloned()
+            .unwrap_or_else(|| spawn_info.dimension.clone())
     }
 
     /// What the dimension a spawn info names is like (its light, sky and fog).
@@ -127,6 +161,41 @@ impl ConnectionState {
             .ok()
             .and_then(|id| self.dimension_type_registry_environments.get(id))
             .and_then(|environment| environment.clone())
-            .unwrap_or_else(|| DimensionEnvironment::for_builtin_dimension(&spawn_info.dimension))
+            .unwrap_or_else(|| {
+                DimensionEnvironment::for_builtin_dimension(&self.dimension_type_name(spawn_info))
+            })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn spawn(dimension: &str) -> SpawnInfoObservation {
+        SpawnInfoObservation {
+            dimension_type_id: 0,
+            dimension: dimension.to_owned(),
+            seed: 0,
+            game_type: 0,
+            previous_game_type: None,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        }
+    }
+
+    #[test]
+    fn a_dimension_type_left_to_the_known_packs_keeps_its_own_bounds() {
+        // A server whose world has its own name (and whose registry sends only the type's name)
+        // has the extent of the type, not of a type guessed from the world's name.
+        let mut state = ConnectionState::default();
+        state
+            .dimension_type_names
+            .push("minecraft:the_nether".to_owned());
+        state.dimension_type_registry_bounds.push(None);
+        let bounds = state.dimension_bounds(&spawn("oyna:lobby"));
+        assert_eq!((bounds.min_y, bounds.height), (0, 256));
     }
 }

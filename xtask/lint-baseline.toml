@@ -264,7 +264,7 @@
 "crates/photon-gui/src/widgets/text_area.rs::MultiLineEditBox::draw_contents" = 18
 "crates/photon-gui/src/widgets/text_field.rs::TextField::key_pressed" = 23
 "crates/photon-gui/src/widgets/text_field.rs::word_position" = 11
-"crates/photon-net/src/connection/open.rs::configure_connection" = 24
+"crates/photon-net/src/connection/open.rs::configure_connection" = 23
 "crates/photon-net/src/connection/play/incoming/player.rs::PlaySession::on_game_event" = 11
 "crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 14
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 14
@@ -625,7 +625,7 @@
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::key_pressed" = 64
 "crates/photon-gui/src/widgets/multiline.rs::MultilineTextField::key_pressed" = 86
 "crates/photon-gui/src/widgets/text_field.rs::TextField::key_pressed" = 70
-"crates/photon-net/src/connection/open.rs::configure_connection" = 197
+"crates/photon-net/src/connection/open.rs::configure_connection" = 188
 "crates/photon-net/src/connection/open.rs::log_in" = 83
 "crates/photon-net/src/connection/play/menu_sync.rs::PlaySession::open_container_menu" = 69
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 133
@@ -911,7 +911,6 @@
 "crates/photon-gui/src/options/keybinds/list.rs::KeyBindsList::refresh" = 5
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::clicked" = 5
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::released" = 5
-"crates/photon-net/src/connection/open.rs::configure_connection" = 5
 "crates/photon-oracle/src/block.rs::block_result" = 6
 "crates/photon-oracle/src/blockstate.rs::model_blockstate_result" = 5
 "crates/photon-oracle/src/declarations.rs::face_occlusion" = 6

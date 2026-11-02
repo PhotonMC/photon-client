@@ -274,16 +274,7 @@ pub fn configure_connection(
                         }));
                 }
                 if packet.registry.as_string() == "minecraft:dimension_type" {
-                    for entry in packet.entries {
-                        let bounds = entry
-                            .dimension_type_bounds()
-                            .map_err(|_| ConnectionError::Codec("dimension type registry"))?;
-                        let environment = entry
-                            .dimension_type_environment()
-                            .map_err(|_| ConnectionError::Codec("dimension type environment"))?;
-                        state.dimension_type_registry_bounds.push(bounds);
-                        state.dimension_type_registry_environments.push(environment);
-                    }
+                    state.note_dimension_types(packet.entries)?;
                 }
             }
             CONFIG_UPDATE_TAGS_PACKET_ID => {
