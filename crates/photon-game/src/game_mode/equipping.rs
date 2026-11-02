@@ -72,7 +72,7 @@ pub(super) fn swap(ctx: &mut Context<'_>, hand: u8, slot: &str) -> Option<UseRes
     }
     ctx.world.put_local_player_slot(worn_slot, to_equipment);
     if let Some(worn) = worn {
-        let _ = super::buckets::add_to_inventory(ctx, worn);
+        super::buckets::add_or_drop(ctx, worn);
     }
     Some(UseResult::Success { swing: true })
 }
