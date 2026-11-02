@@ -4,6 +4,7 @@
 mod encrypt;
 pub mod entities;
 mod join;
+mod legacy_status;
 mod open;
 mod pack_sink;
 mod play;
@@ -15,6 +16,7 @@ mod transport;
 mod version;
 mod writer;
 
+pub use legacy_status::{LegacyStatus, query_legacy_status};
 pub use open::{configure_connection, open_play_connection};
 pub use photon_protocol::play::*;
 pub use play::{

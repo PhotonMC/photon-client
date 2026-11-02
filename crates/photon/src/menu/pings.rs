@@ -27,17 +27,38 @@ fn ping(ip: &str) -> Pinged {
     let Some(address) = resolve(ip) else {
         return Pinged::unreachable(true);
     };
-    photon_net::connection::query_status_and_ping(address, Duration::from_secs(30))
-        .ok()
-        .and_then(|trace| {
-            let status = ServerStatus::parse(&trace.status_response)?;
-            if let Some((_, protocol)) = &status.version {
-                crate::updates::note_server_protocol(*protocol);
-                photon_net::connection::remember_protocol(address, *protocol);
-            }
-            Some(Pinged::answered(&status, trace.round_trip_ms))
-        })
+    modern_ping(address)
+        .or_else(|| legacy_ping(ip, address))
         .unwrap_or_else(|| Pinged::unreachable(false))
+}
+
+/// The status protocol's ping: its answer and the pong's time.
+fn modern_ping(address: std::net::SocketAddr) -> Option<Pinged> {
+    let trace =
+        photon_net::connection::query_status_and_ping(address, Duration::from_secs(30)).ok()?;
+    let status = ServerStatus::parse(&trace.status_response)?;
+    if let Some((_, protocol)) = &status.version {
+        crate::updates::note_server_protocol(*protocol);
+        photon_net::connection::remember_protocol(address, *protocol);
+    }
+    Some(Pinged::answered(&status, trace.round_trip_ms))
+}
+
+/// `ServerStatusPinger.pingLegacyServer`, which the list tries when the modern ping failed.
+fn legacy_ping(ip: &str, address: std::net::SocketAddr) -> Option<Pinged> {
+    let with_port = address_with_port(ip);
+    let (host, port) = with_port.rsplit_once(':')?;
+    let host = host.trim_start_matches('[').trim_end_matches(']');
+    let answer = photon_net::connection::query_legacy_status(
+        address,
+        (host, port.parse().ok()?),
+        Duration::from_secs(30),
+    )?;
+    Some(Pinged::legacy(
+        &answer.version,
+        &answer.motd,
+        (answer.players, answer.max_players),
+    ))
 }
 
 /// The address a server's `ip` names (`ServerAddress.parseString`, then

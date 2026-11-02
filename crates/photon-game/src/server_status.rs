@@ -188,6 +188,20 @@ impl Pinged {
         }
     }
 
+    /// `pingLegacyServer`: a server that answered the old ping is listed as incompatible, with
+    /// its version, text and player count.
+    pub fn legacy(version: &str, motd: &str, (online, max): (i32, i32)) -> Self {
+        Self {
+            state: PingState::Incompatible,
+            motd: Component::literal(motd),
+            status: player_count(online, max),
+            version: Component::literal(version),
+            ping: 0,
+            player_list: Vec::new(),
+            favicon: None,
+        }
+    }
+
     /// `onPingFailed` and the list's catch: the red reason, no status. `unknown_host` for a name
     /// the resolver could not find.
     pub fn unreachable(unknown_host: bool) -> Self {
@@ -214,6 +228,14 @@ impl Pinged {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_legacy_answer_lists_as_incompatible_with_its_counts() {
+        let pinged = Pinged::legacy("1.5.2", "Ancient", (3, 20));
+        assert_eq!(pinged.state, PingState::Incompatible);
+        assert_eq!(pinged.version, Component::literal("1.5.2"));
+        assert_eq!(pinged.status, player_count(3, 20));
+    }
 
     #[test]
     fn an_older_servers_answer_lists_as_incompatible_with_its_text() {
