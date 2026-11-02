@@ -386,7 +386,8 @@ pub(super) fn remote_wild_animals(
     block_entities::block_entities(session, models, textures, view, vertices);
     crate::world::end_portals::end_portals(session, models, view);
     crate::objects::displays::special_displays(session, (models, textures), view, vertices);
-    crate::world::beacon_beams::beacon_beams(session, textures, view, vertices);
+    let opaque = crate::world::beacon_beams::BeamLayers::Opaque;
+    crate::world::beacon_beams::beacon_beams(session, textures, view, (opaque, vertices));
 }
 
 /// The arrows, wind charges, paintings and minecarts the server added.

@@ -162,5 +162,5 @@ pub use avatars::{
     forget_gone_mannequins, local_by_arm, local_hidden_layers, local_main_arm, local_main_arm_left,
     set_local_layers, set_local_main_arm,
 };
-pub use shadows::entity_shadows;
+pub use shadows::blended_flats;
 pub use wear::*;

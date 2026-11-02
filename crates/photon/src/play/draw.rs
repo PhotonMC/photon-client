@@ -308,18 +308,11 @@ impl Play {
         leashes::leashes(&self.session, view, &mut normal);
         self.backend
             .set_name_tags(&see_through, (&normal, &offset))?;
-        let mut shadows = Vec::new();
-        // `EntityRenderer.extractShadow`: no pieces while the option is off.
-        if self.controls.options.quality.entity_shadows {
-            overlays::entity_shadows(
-                &self.session,
-                &self.entity_textures,
-                &camera,
-                local,
-                view,
-                &mut shadows,
-            );
-        }
+        let shadows = overlays::blended_flats(
+            (&self.session, &self.entity_textures),
+            (&camera, local, view),
+            self.controls.options.quality.entity_shadows,
+        );
         self.backend
             .set_draw(photon_render::vulkan::DrawKind::Shadows, &shadows)?;
         let particle_camera = photon_render::particles::ParticleCamera {

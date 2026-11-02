@@ -14,22 +14,31 @@ use crate::overlays::FrameView;
 /// fog has hidden it by then.
 const BEYOND_FOG: f64 = 64.0;
 
+/// Which layers of the beams are drawn: the opaque inner ones with the entities, and the
+/// translucent outer ones (`BEACON_BEAM_TRANSLUCENT`: blended, tested but not written to the
+/// depth) with the shapes that are drawn that way.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BeamLayers {
+    Opaque,
+    Translucent,
+}
+
 /// The beams the level's beacons shine.
 pub fn beacon_beams(
     session: &PlaySession,
     textures: &EntityTextures,
     view: FrameView,
-    vertices: &mut Vec<Vertex>,
+    (layers, vertices): (BeamLayers, &mut Vec<Vertex>),
 ) {
     let camera = [0, 1, 2].map(|axis| f64::from(view.origin[axis]) + f64::from(view.camera[axis]));
-    gateway_beams(session, textures, (view, camera), vertices);
+    gateway_beams(session, textures, (view, camera), (layers, vertices));
     let Some(rect) = textures.rect(beacon::TEXTURE) else {
         return;
     };
     let scoping = session.player().is_some_and(|player| player.is_scoping());
     for beacon in session.world().beacon_views(view.partial as f32) {
         if !beacon.sections.is_empty() {
-            one_beam(&beacon, (rect, camera), (view, scoping), vertices);
+            one_beam(&beacon, (rect, camera), (view, scoping), (layers, vertices));
         }
     }
 }
@@ -39,7 +48,7 @@ fn one_beam(
     beacon: &BeaconView,
     (rect, camera): (TextureRect, [f64; 3]),
     (view, scoping): (FrameView, bool),
-    vertices: &mut Vec<Vertex>,
+    (layers, vertices): (BeamLayers, &mut Vec<Vertex>),
 ) {
     let reach = f64::from(view.render_distance) * 16.0;
     let (x, y, z) = beacon.position;
@@ -74,17 +83,20 @@ fn one_beam(
         (x - view.origin[0]) as f32 + 0.5,
         (z - view.origin[2]) as f32 + 0.5,
     );
-    let layers = beacon::beam_layers(&base, &sections, (beacon.animation_time, scale), end);
-    push_layers(&layers, (rect, axis, view.camera), vertices);
+    let quads = beacon::beam_layers(&base, &sections, (beacon.animation_time, scale), end);
+    push_layers(&quads, (rect, axis, view.camera), (layers, vertices));
 }
 
 /// The quads of a beam's layers that face the camera, cut where their texture repeats.
 fn push_layers(
     layers: &[beacon::BeamLayer],
     (rect, axis, camera): (TextureRect, (f32, f32), [f32; 3]),
-    vertices: &mut Vec<Vertex>,
+    (drawn, vertices): (BeamLayers, &mut Vec<Vertex>),
 ) {
     for layer in layers {
+        if layer.translucent != (drawn == BeamLayers::Translucent) {
+            continue;
+        }
         let light = if layer.translucent {
             [-1.0, 32.0 / 255.0]
         } else {
@@ -97,7 +109,7 @@ fn push_layers(
         {
             for piece in repeats(quad) {
                 for index in [0, 1, 2, 0, 2, 3] {
-                    vertices.push(beam_vertex(&piece[index], rect, light));
+                    vertices.push(beam_vertex(&piece[index], rect, (light, layer.translucent)));
                 }
             }
         }
@@ -112,7 +124,7 @@ fn gateway_beams(
     session: &PlaySession,
     textures: &EntityTextures,
     (view, camera): (FrameView, [f64; 3]),
-    vertices: &mut Vec<Vertex>,
+    (layers, vertices): (BeamLayers, &mut Vec<Vertex>),
 ) {
     let Some(rect) = textures.rect(beacon::GATEWAY_TEXTURE) else {
         return;
@@ -128,14 +140,14 @@ fn gateway_beams(
         if offset.iter().map(|d| d * d).sum::<f64>() >= GATEWAY_VIEW_DISTANCE.powi(2) {
             continue;
         }
-        one_gateway_beam(&gateway, (rect, view), vertices);
+        one_gateway_beam(&gateway, (rect, view), (layers, vertices));
     }
 }
 
 fn one_gateway_beam(
     gateway: &GatewayBeamView,
     (rect, view): (TextureRect, FrameView),
-    vertices: &mut Vec<Vertex>,
+    (layers, vertices): (BeamLayers, &mut Vec<Vertex>),
 ) {
     let (x, y, z) = gateway.position;
     let mut base = Pose::default();
@@ -148,23 +160,36 @@ fn one_gateway_beam(
         (x - view.origin[0]) as f32 + 0.5,
         (z - view.origin[2]) as f32 + 0.5,
     );
-    let layers = beacon::gateway_beam_layers(
+    let quads = beacon::gateway_beam_layers(
         &base,
         (gateway.scale, gateway.animation_time),
         gateway.height,
         gateway.color,
     );
-    push_layers(&layers, (rect, axis, view.camera), vertices);
+    push_layers(&quads, (rect, axis, view.camera), (layers, vertices));
 }
 
-/// One corner of a beam's quad as the entity shader takes it: lit by nothing, its colour the beam's
-/// and its alpha the layer's.
-fn beam_vertex(vertex: &BeamVertex, rect: TextureRect, light: [f32; 2]) -> Vertex {
+/// One corner of a beam's quad as the shaders take it: lit by nothing, its colour the beam's. An
+/// opaque layer goes to the entity shader, which takes the colour packed and the alpha in the
+/// light; a translucent one to the shadow shader, whose tint is the colour and alpha as they
+/// are.
+fn beam_vertex(
+    vertex: &BeamVertex,
+    rect: TextureRect,
+    (light, translucent): ([f32; 2], bool),
+) -> Vertex {
+    let rgb = vertex.color & 0x00FF_FFFF;
+    let tint = if translucent {
+        let channel = |shift: u32| ((rgb >> shift) & 0xFF) as f32 / 255.0;
+        [channel(16), channel(8), channel(0), light[1]]
+    } else {
+        [0.0, 0.0, 0.0, entity_colour(rgb)]
+    };
     Vertex {
         position: vertex.position,
         uv: uv(rect, vertex.uv),
         shade: 0.0,
-        tint: [0.0, 0.0, 0.0, entity_colour(vertex.color & 0x00FF_FFFF)],
+        tint,
         light,
     }
 }

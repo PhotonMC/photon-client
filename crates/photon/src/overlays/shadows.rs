@@ -138,3 +138,22 @@ pub fn entity_shadows(
         ));
     }
 }
+
+/// The flat shapes drawn blended and without writing the depth: the entities' shadows (none while
+/// the option is off, `EntityRenderer.extractShadow`) and the translucent layers of the beams.
+pub fn blended_flats(
+    (session, textures): (
+        &PlaySession,
+        &photon_render::entity::textures::EntityTextures,
+    ),
+    (camera, local, view): (&TagCamera, Option<Vec3>, FrameView),
+    shadows: bool,
+) -> Vec<Vertex> {
+    let mut vertices = Vec::new();
+    if shadows {
+        entity_shadows(session, textures, camera, local, view, &mut vertices);
+    }
+    let translucent = crate::world::beacon_beams::BeamLayers::Translucent;
+    crate::world::beacon_beams::beacon_beams(session, textures, view, (translucent, &mut vertices));
+    vertices
+}
