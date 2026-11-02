@@ -440,6 +440,7 @@ impl GameMode {
             self.start_use_item(ctx, aim, &mut out);
         }
         super::brush::use_tick(ctx, (aim, keys.main_arm_left));
+        super::bundle_use::use_tick(ctx);
         self.continue_attack(ctx, keys.attack_held && !instant_attack, aim, &mut out);
         if self.miss_time > 0 {
             self.miss_time -= 1;

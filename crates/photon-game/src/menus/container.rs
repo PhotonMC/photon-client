@@ -175,10 +175,13 @@ mod anvil;
 mod bar;
 pub use bar::item_bar;
 mod bundle;
+#[cfg(test)]
+pub use bundle::fill_bundle_for_test;
 pub use bundle::{
     BUNDLE_INSERT, BUNDLE_INSERT_FAIL, BUNDLE_REMOVE_ONE, BundleView, bundle_fullness,
-    bundle_items_to_show, bundle_view, selected_item as bundle_selected_item,
-    selected_stack as bundle_selected_stack, toggle_bundle_selected,
+    bundle_items_to_show, bundle_view, remove_one_from_bundle,
+    selected_item as bundle_selected_item, selected_stack as bundle_selected_stack,
+    toggle_bundle_selected,
 };
 mod clicks;
 mod crafter;

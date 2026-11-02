@@ -125,6 +125,22 @@ pub fn bundle_fullness(stack: &Stack) -> f32 {
     weight.numerator as f32 / weight.denominator as f32
 }
 
+/// A bundle holding `stack`, for tests of its users.
+#[cfg(test)]
+pub fn fill_bundle_for_test(bundle: &mut Stack, mut stack: Stack) {
+    let mut contents = Contents::of(bundle).expect("a bundle");
+    contents.try_insert(&mut stack);
+    set_contents(bundle, &contents);
+}
+
+/// `BundleItem.removeOneItemFromBundle`: the bundle's selected stack, else its first, leaves it.
+pub fn remove_one_from_bundle(bundle: &mut Stack) -> Option<Stack> {
+    let mut contents = Contents::of(bundle)?;
+    let removed = contents.remove_one()?;
+    set_contents(bundle, &contents);
+    Some(removed)
+}
+
 /// `BundleContents.canItemBeInBundle`.
 fn can_be_in_bundle(stack: &Stack) -> bool {
     stack.item_count() > 0 && can_fit_inside_container_items(stack)
@@ -413,4 +429,32 @@ pub fn bundle_view(stack: &Stack) -> Option<BundleView> {
         to_show: bundle_items_to_show(stack),
         items,
     })
+}
+
+#[cfg(test)]
+mod use_tests {
+    use super::*;
+
+    fn stack(name: &str, count: i32) -> Stack {
+        let id = crate::item::id_of(name).expect("an item");
+        Stack::new(count, id)
+    }
+
+    /// Using a bundle takes its first stack out, and an empty one gives nothing.
+    #[test]
+    fn a_used_bundle_gives_up_its_stacks_one_by_one() {
+        let mut bundle = stack("minecraft:bundle", 1);
+        let mut contents = Contents::of(&bundle).expect("a bundle");
+        contents.try_insert(&mut stack("minecraft:cobblestone", 3));
+        contents.try_insert(&mut stack("minecraft:dirt", 2));
+        set_contents(&mut bundle, &contents);
+        let first = remove_one_from_bundle(&mut bundle).expect("a stack");
+        assert_eq!(
+            (first.item_count(), first.item_registry_id()),
+            (2, stack("minecraft:dirt", 1).item_registry_id())
+        );
+        let second = remove_one_from_bundle(&mut bundle).expect("a stack");
+        assert_eq!(second.item_count(), 3);
+        assert!(remove_one_from_bundle(&mut bundle).is_none());
+    }
 }
