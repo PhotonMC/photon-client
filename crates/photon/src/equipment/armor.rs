@@ -106,6 +106,7 @@ pub struct Armor {
 pub type Place<'a> = &'a dyn Fn(&MobModel, TextureRect, Option<u32>) -> Vec<Vertex>;
 
 mod gates;
+mod parrots;
 mod skull;
 
 /// The layer types armor is drawn in, by `HumanoidArmorLayer`.

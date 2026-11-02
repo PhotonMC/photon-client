@@ -80,13 +80,13 @@ pub fn remote_players(
         vertices.extend(shown_body(session, entity, (model, &placement), ghost));
         let wearing = wear(armor, worn, model.slim, textures, (&state, &placement));
         vertices.extend(glowing(session, entity, wearing));
-        let (own, drawn) = ((look.cape, look.elytra), (&*model, &placement));
-        vertices.extend(cape::remote_back(
-            armor,
-            (entity, own.0, own.1),
-            drawn,
+        let back = remote_back(
+            (session, entity, armor),
+            (look.cape, look.elytra),
+            (&*model, &placement, &state),
             (textures, partial),
-        ));
+        );
+        vertices.extend(back);
     }
 }
 
@@ -166,6 +166,75 @@ pub(super) fn wear(
             photon_render::entity::player_renderer::layer_vertices(model, placement, rect, colour)
         },
     )
+}
+
+/// `ParrotOnShoulderLayer`: the parrots on a player's shoulders (left, right), posed as the
+/// player's layers are.
+pub(super) fn shoulder_parrots(
+    armor: &mut Armor,
+    parrots: [Option<i32>; 2],
+    textures: &photon_render::entity::textures::EntityTextures,
+    (state, placement): (&PlayerRenderState, &Placement),
+) -> Vec<Vertex> {
+    armor.shoulder_parrots(parrots, state, textures, &|model, offset, rect| {
+        photon_render::entity::player_renderer::layer_vertices_at(
+            model,
+            (placement, offset),
+            rect,
+            None,
+        )
+    })
+}
+
+/// What a player has on its back and shoulders: its cape and wings, and the parrots it carries
+/// (which join the outline when it glows).
+fn remote_back(
+    (session, entity, armor): (&PlaySession, EntityView<'_>, &mut Armor),
+    (cape, elytra): (
+        Option<photon_render::entity::textures::TextureRect>,
+        Option<photon_render::entity::textures::TextureRect>,
+    ),
+    (model, placement, state): (&PlayerModel, &Placement, &PlayerRenderState),
+    (textures, partial): (&photon_render::entity::textures::EntityTextures, f32),
+) -> Vec<Vertex> {
+    let mut vertices = cape::remote_back(
+        armor,
+        (entity, cape, elytra),
+        (model, placement),
+        (textures, partial),
+    );
+    let parrots = [true, false].map(|left| entity.shoulder_parrot(left));
+    let carried = shoulder_parrots(armor, parrots, textures, (state, placement));
+    vertices.extend(glowing(session, entity, carried));
+    vertices
+}
+
+/// The cape, wings and shoulder parrots of the local player.
+pub(super) fn local_back(
+    (session, armor): (&PlaySession, &mut Armor),
+    (chest, hang, spread): (Option<&ClientItemStackState>, &cape::Hang, [f32; 3]),
+    (model, placement, state): (&PlayerModel, &Placement, &PlayerRenderState),
+    (textures, partial): (&photon_render::entity::textures::EntityTextures, f32),
+) -> Vec<Vertex> {
+    let mut vertices = cape::back(
+        armor,
+        (chest, hang, spread),
+        (model, placement),
+        (textures, partial),
+    );
+    let parrots = [true, false].map(|left| {
+        session
+            .world()
+            .local_player()
+            .and_then(|player| player.shoulder_parrot(left))
+    });
+    vertices.extend(shoulder_parrots(
+        armor,
+        parrots,
+        textures,
+        (state, placement),
+    ));
+    vertices
 }
 
 /// What the local player wears (armor and wings) in a screen's box rather than the world: the

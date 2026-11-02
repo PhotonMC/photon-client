@@ -273,12 +273,7 @@ impl ClientWorld {
             if let Some(absorption) = player_absorption_from_metadata(metadata) {
                 player.absorption = JavaF32::new(absorption);
             }
-            if let Some(customisation) = player_model_customisation_from_metadata(metadata) {
-                player.model_customisation = customisation;
-            }
-            if let Some(score) = player_score_from_metadata(metadata) {
-                player.score = score;
-            }
+            player.data.apply(metadata);
             return true;
         }
         let Some(mut entity) = self.entities.at_mut(entity_id) else {

@@ -324,7 +324,7 @@ pub(crate) fn metadata_optional_unsigned_int_value(
     if value_input.is_empty() {
         return None;
     }
-    Some(value.checked_sub(1))
+    Some((value > 0).then(|| value - 1))
 }
 
 pub(crate) fn metadata_float_value(metadata: &[u8], target_data_id: u8) -> Option<f32> {

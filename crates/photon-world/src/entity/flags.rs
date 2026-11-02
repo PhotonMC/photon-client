@@ -29,6 +29,14 @@ impl ClientEntity {
             .unwrap_or(0)
     }
 
+    /// The variant of the parrot on an avatar's left or right shoulder
+    /// (`Player.getShoulderParrotLeft`/`Right`), when there is one.
+    pub fn shoulder_parrot(&self, left: bool) -> Option<i32> {
+        let parrots =
+            crate::metadata::player_shoulder_parrots_from_metadata(self.metadata.as_deref()?);
+        parrots[usize::from(!left)].flatten()
+    }
+
     /// `Avatar.isModelPartShown(CAPE)`: the cape bit of the skin layers.
     pub fn shows_cape(&self) -> bool {
         self.model_parts() & 1 != 0

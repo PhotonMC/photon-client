@@ -66,11 +66,16 @@ impl ClientPlayerState {
     }
 
     pub fn score(&self) -> i32 {
-        self.score
+        self.data.score
+    }
+
+    /// `Player.getShoulderParrotLeft` or `Right`.
+    pub fn shoulder_parrot(&self, left: bool) -> Option<i32> {
+        self.data.shoulder_parrots[usize::from(!left)]
     }
 
     pub fn model_customisation(&self) -> u8 {
-        self.model_customisation
+        self.data.model_customisation
     }
 
     pub fn percent_frozen(&self) -> f32 {

@@ -26,6 +26,20 @@ pub(crate) fn player_score_from_metadata(metadata: &[u8]) -> Option<i32> {
     metadata_int_value(metadata, PLAYER_SCORE_DATA_ID)
 }
 
+/// The variant of the parrot on a player's left and right shoulder
+/// (`Player.DATA_SHOULDER_PARROT_LEFT` and `_RIGHT`), each when the data holds it: none for an
+/// empty shoulder.
+pub(crate) fn player_shoulder_parrots_from_metadata(metadata: &[u8]) -> [Option<Option<i32>>; 2] {
+    [
+        metadata_optional_unsigned_int_value(metadata, PLAYER_SHOULDER_PARROT_LEFT_DATA_ID),
+        metadata_optional_unsigned_int_value(metadata, PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID),
+    ]
+}
+
+/// `Player.DATA_SHOULDER_PARROT_LEFT` and `_RIGHT`.
+pub(crate) const PLAYER_SHOULDER_PARROT_LEFT_DATA_ID: u8 = 19;
+pub(crate) const PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 = 20;
+
 /// `Avatar.DATA_PLAYER_MODE_CUSTOMISATION`: which skin layers show.
 pub(crate) const PLAYER_MODE_CUSTOMISATION_DATA_ID: u8 = 16;
 
@@ -34,3 +48,19 @@ pub(crate) const PLAYER_ABSORPTION_DATA_ID: u8 = 17;
 
 /// `Player.DATA_SCORE_ID`: what the death screen shows.
 pub(crate) const PLAYER_SCORE_DATA_ID: u8 = 18;
+
+#[cfg(test)]
+mod shoulder_tests {
+    use super::*;
+
+    #[test]
+    fn a_shoulder_holds_the_variant_of_its_parrot() {
+        // Left: variant 2 (the wire holds one more); right: empty.
+        let data = [19, 19, 3, 20, 19, 0, 0xFF];
+        assert_eq!(
+            player_shoulder_parrots_from_metadata(&data),
+            [Some(Some(2)), Some(None)]
+        );
+        assert_eq!(player_shoulder_parrots_from_metadata(&[0xFF]), [None, None]);
+    }
+}

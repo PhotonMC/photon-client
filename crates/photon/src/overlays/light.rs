@@ -449,10 +449,10 @@ pub fn player_model(
     vertices.extend(glowing_local(session, dressed));
     let hang = cape::own_hang(session, player, (view, invisible));
     let spread = player.elytra_rotations(partial);
-    let back = cape::back(
-        armor,
+    let back = wear::local_back(
+        (session, armor),
         (worn.chest, &hang, spread),
-        (model, &placement),
+        (model, &placement, &state),
         (textures, partial),
     );
     vertices.extend(glowing_local(session, back));

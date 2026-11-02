@@ -25,6 +25,39 @@ use crate::input::{
 };
 use photon_core::math::{Vec2, Vec3, clamp_f32, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32};
 
+/// What the data of a player holds besides the shared fields.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct PlayerData {
+    /// Which skin layers show, one bit each.
+    pub(crate) model_customisation: u8,
+    /// `Player.getScore`.
+    pub(crate) score: i32,
+    /// The variant of the parrot on the left and right shoulder.
+    pub(crate) shoulder_parrots: [Option<i32>; 2],
+}
+
+impl PlayerData {
+    /// What the data a packet sent says: a field it leaves out keeps its value.
+    pub(crate) fn apply(&mut self, metadata: &[u8]) {
+        use crate::metadata::*;
+        if let Some(customisation) = player_model_customisation_from_metadata(metadata) {
+            self.model_customisation = customisation;
+        }
+        if let Some(score) = player_score_from_metadata(metadata) {
+            self.score = score;
+        }
+        for (shoulder, said) in self
+            .shoulder_parrots
+            .iter_mut()
+            .zip(player_shoulder_parrots_from_metadata(metadata))
+        {
+            if let Some(variant) = said {
+                *shoulder = variant;
+            }
+        }
+    }
+}
+
 /// What the local player's sleep is: where its bed is (the sleeping position of its entity data)
 /// and `Player.sleepCounter`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -86,10 +119,8 @@ pub struct ClientPlayerState {
     pub(crate) ticks_frozen: i32,
     /// `Player.getAbsorptionAmount`, from the entity data.
     pub(crate) absorption: JavaF32,
-    /// Which skin layers show, one bit each, from the entity data.
-    pub(crate) model_customisation: u8,
-    /// `Player.getScore`.
-    pub(crate) score: i32,
+    /// What the entity data says of the player besides the shared fields.
+    pub(crate) data: PlayerData,
     pub(crate) attributes: Vec<ClientAttributeState>,
     pub(crate) effects: Vec<ClientMobEffectState>,
     pub(crate) health: JavaF32,

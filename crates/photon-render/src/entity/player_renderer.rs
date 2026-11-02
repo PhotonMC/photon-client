@@ -239,7 +239,19 @@ pub fn layer_vertices(
     texture: crate::entity::textures::TextureRect,
     colour: Option<u32>,
 ) -> Vec<Vertex> {
-    let pose = placement_pose(placement);
+    layer_vertices_at(model, (placement, [0.0; 3]), texture, colour)
+}
+
+/// [`layer_vertices`] for a model a layer moves by an offset in the pose it shares
+/// (`PoseStack.translate`).
+pub fn layer_vertices_at(
+    model: &crate::entity::mob_model::MobModel,
+    (placement, offset): (&Placement, [f32; 3]),
+    texture: crate::entity::textures::TextureRect,
+    colour: Option<u32>,
+) -> Vec<Vertex> {
+    let mut pose = placement_pose(placement);
+    pose.translate(offset[0], offset[1], offset[2]);
     let light = crate::block::light::light_uv(placement.light);
     let colour = colour.map_or(0.0, crate::scene::entity_colour);
     let mut vertices = Vec::new();
