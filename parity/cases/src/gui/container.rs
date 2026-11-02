@@ -12,6 +12,7 @@ use crate::bits::{hex, varint};
 pub struct Screen {
     menu: &'static str,
     title_key: &'static str,
+    title_json: Option<&'static str>,
     slots: Vec<(i64, &'static str, i64)>,
     data: Option<Value>,
     xp: Option<i64>,
@@ -36,6 +37,7 @@ pub fn screen(menu: &'static str, title_key: &'static str) -> Screen {
     Screen {
         menu,
         title_key,
+        title_json: None,
         slots: vec![],
         data: None,
         xp: None,
@@ -99,6 +101,9 @@ impl Screen {
                 cooldowns.iter().map(|(group, duration)| json!({"group": group, "duration": duration})).collect();
             row["cooldowns"] = json!(list);
             row["cooldown_ticks"] = json!(ticks);
+        }
+        if let Some(title) = self.title_json {
+            row["title_json"] = json!(title);
         }
         if !self.tooltips {
             row["tooltips"] = json!(false);
@@ -193,6 +198,16 @@ fn small_menus() -> Vec<Value> {
         cartography().row("cartography-empty"),
         Screen { slots: vec![(1, "paper", 1)], sync_slot: Some(1), ..cartography() }.row("cartography-paper"),
         Screen { slots: vec![(1, "glass_pane", 1)], sync_slot: Some(1), ..cartography() }.row("cartography-glass"),
+    ]
+}
+
+/// Titles the server styled: the colour and bold of a corner title and of a centred one.
+fn styled_titles() -> Vec<Value> {
+    let gold = r#"{"text":"Gold ","color":"gold","bold":true,"extra":[{"text":"plain"}]}"#;
+    vec![
+        Screen { title_json: Some(gold), ..screen("grindstone", "container.grindstone_title") }
+            .row("title-styled-corner"),
+        Screen { title_json: Some(gold), ..screen("brewing_stand", "container.brewing") }.row("title-styled-centred"),
     ]
 }
 
@@ -496,6 +511,7 @@ pub fn container_screen() -> Value {
     let rows = [
         small_menus(),
         brewing_and_beacons(),
+        styled_titles(),
         crafters_and_lecterns(),
         merchants(),
         smithing_and_enchanting(),

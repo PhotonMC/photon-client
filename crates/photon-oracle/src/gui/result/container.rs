@@ -62,7 +62,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     let shared_font = std::sync::Arc::new(crate::fonts::load_font(root).ok_or("font")?);
     let titles = Titles {
         title: lang.text(row["title_key"].as_str().ok_or("title_key")?),
-        title_runs: None,
+        title_runs: styled_title(row, &lang),
         inventory: lang.text("container.inventory"),
         font: shared_font.clone(),
         repair_cost: lang.text("container.repair.cost"),
@@ -351,4 +351,14 @@ fn row_cooldowns(row: &Value) -> Result<photon_game::item::cooldowns::ItemCooldo
         cooldowns.tick();
     }
     Ok(cooldowns)
+}
+
+/// The runs of a title the server styled, when the row gives one.
+fn styled_title(
+    row: &Value,
+    lang: &photon_game::text::Lang,
+) -> Option<Vec<photon_game::text::Run>> {
+    let json = photon_core::json::parse(row["title_json"].as_str()?).ok()?;
+    let component = photon_game::text::Component::from_json(&json)?;
+    Some(lang.runs(&component, &photon_game::text::Style::default()))
 }

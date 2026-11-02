@@ -571,7 +571,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                         Component.translatable("container.loom"));
                     case "minecraft:grindstone" -> new net.minecraft.client.gui.screens.inventory.GrindstoneScreen(
                         (net.minecraft.world.inventory.GrindstoneMenu) menu, inventory,
-                        Component.translatable("container.grindstone_title"));
+                        title(row, "container.grindstone_title"));
                     case "minecraft:merchant" -> new net.minecraft.client.gui.screens.inventory.MerchantScreen(
                         (net.minecraft.world.inventory.MerchantMenu) menu, inventory,
                         Component.translatable("entity.minecraft.villager"));
@@ -586,7 +586,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                         Component.translatable("container.beacon"));
                     case "minecraft:brewing_stand" -> new net.minecraft.client.gui.screens.inventory.BrewingStandScreen(
                         (net.minecraft.world.inventory.BrewingStandMenu) menu, inventory,
-                        Component.translatable("container.brewing"));
+                        title(row, "container.brewing"));
                     case "minecraft:cartography_table" -> new net.minecraft.client.gui.screens.inventory.CartographyTableScreen(
                         (net.minecraft.world.inventory.CartographyTableMenu) menu, inventory,
                         Component.translatable("container.cartography_table"));
@@ -856,6 +856,16 @@ class GuiSettingsOracle extends GuiScreenOracle {
             out.addProperty("x_rot", rounded(living.xRot));
         }
         return out;
+    }
+
+    /** The title of a container row: the component the server styled, or the translated key. */
+    static Component title(JsonObject row, String key) {
+        if (!row.has("title_json")) {
+            return Component.translatable(key);
+        }
+        var json = com.google.gson.JsonParser.parseString(row.get("title_json").getAsString());
+        return net.minecraft.network.chat.ComponentSerialization.CODEC
+            .parse(com.mojang.serialization.JsonOps.INSTANCE, json).getOrThrow();
     }
 
     /** The screen `ClientPacketListener.handleMountScreenOpen` opens for a mount menu. */
