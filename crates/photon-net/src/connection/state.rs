@@ -135,13 +135,22 @@ impl ConnectionState {
     /// The vertical extent of the dimension a spawn info names: the registry's entry for its
     /// dimension type, or the built-in dimension's.
     pub fn dimension_bounds(&self, spawn_info: &SpawnInfoObservation) -> DimensionBounds {
-        usize::try_from(spawn_info.dimension_type_id)
+        let bounds = usize::try_from(spawn_info.dimension_type_id)
             .ok()
             .and_then(|id| self.dimension_type_registry_bounds.get(id))
             .and_then(|bounds| *bounds)
             .unwrap_or_else(|| {
                 DimensionBounds::for_builtin_dimension(&self.dimension_type_name(spawn_info))
-            })
+            });
+        log::info!(
+            "dimension {} (type #{} {}): min_y {}, height {}",
+            spawn_info.dimension,
+            spawn_info.dimension_type_id,
+            self.dimension_type_name(spawn_info),
+            bounds.min_y,
+            bounds.height
+        );
+        bounds
     }
 
     /// The name of the dimension type a spawn info names, as the registry lists it (a server that
