@@ -537,6 +537,7 @@ pub struct DebugKeys {
     pub entries: photon_gui::hud::debug::EntryList,
     /// The charts F3+1 to F3+4 switch.
     pub charts: ChartFlags,
+    pub frame_log: debug_charts::FrameLog,
     /// What the frame loop last said of itself: the frames a second, the limit and the present mode.
     pub frame: photon_gui::hud::debug::FrameStats,
     /// The machine the system entry names, taken from the backend.

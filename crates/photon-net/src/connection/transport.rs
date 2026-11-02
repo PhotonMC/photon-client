@@ -6,6 +6,7 @@
 
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
@@ -17,6 +18,8 @@ pub struct Transport {
     tcp: TcpStream,
     decrypt: Slot,
     encrypt: Slot,
+    /// `BandwidthDebugMonitor.bytesReceived`: the bytes of the frames read since it was taken.
+    received: Arc<AtomicUsize>,
 }
 
 fn locked(slot: &Slot) -> MutexGuard<'_, Option<StreamCipher>> {
@@ -29,7 +32,18 @@ impl Transport {
             tcp: self.tcp.try_clone()?,
             decrypt: Arc::clone(&self.decrypt),
             encrypt: Arc::clone(&self.encrypt),
+            received: Arc::clone(&self.received),
         })
+    }
+
+    /// `BandwidthDebugMonitor.onReceive`.
+    pub(super) fn count_received(&self, bytes: usize) {
+        self.received.fetch_add(bytes, Ordering::Relaxed);
+    }
+
+    /// `BandwidthDebugMonitor.tick`'s `getAndSet(0)`.
+    pub(super) fn take_received(&self) -> usize {
+        self.received.swap(0, Ordering::Relaxed)
     }
 
     /// `Connection.setEncryptionKey`: every byte after this one is encrypted going out and
@@ -63,6 +77,7 @@ impl From<TcpStream> for Transport {
             tcp,
             decrypt: Slot::default(),
             encrypt: Slot::default(),
+            received: Arc::default(),
         }
     }
 }

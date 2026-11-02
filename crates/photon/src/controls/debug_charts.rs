@@ -12,6 +12,32 @@ pub struct ChartFlags {
     pub lightmap: bool,
 }
 
+/// `DebugScreenOverlay.frameTimeLogger`: the nanoseconds between the last 240 frames.
+#[derive(Debug, Default)]
+pub struct FrameLog {
+    last: Option<std::time::Instant>,
+    samples: std::collections::VecDeque<i64>,
+}
+
+impl FrameLog {
+    /// `logFrameDuration`, called where `Minecraft.runTick` counts the frame. The first frame has no
+    /// frame before it to measure from, so it is not logged.
+    pub fn frame(&mut self, now: std::time::Instant) {
+        if let Some(last) = self.last.replace(now) {
+            if self.samples.len() == photon_gui::hud::debug_chart::CAPACITY as usize {
+                self.samples.pop_front();
+            }
+            self.samples
+                .push_back(now.saturating_duration_since(last).as_nanos() as i64);
+        }
+    }
+
+    /// The samples, oldest first.
+    pub fn samples(&self) -> impl Iterator<Item = i64> + '_ {
+        self.samples.iter().copied()
+    }
+}
+
 /// `renderX = !overlayVisible || !renderX`, and a chart switched on shows the overlay.
 fn flip(flag: &mut bool, overlay: &mut EntryList) -> bool {
     *flag = !overlay.is_overlay_visible() || !*flag;
@@ -69,6 +95,17 @@ impl ChartFlags {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_frame_log_keeps_the_last_240_gaps_and_skips_the_first_frame() {
+        let start = std::time::Instant::now();
+        let mut log = FrameLog::default();
+        for index in 0..250_u64 {
+            log.frame(start + std::time::Duration::from_millis(index * 10));
+        }
+        assert_eq!(log.samples().count(), 240);
+        assert!(log.samples().all(|gap| gap == 10_000_000));
+    }
 
     #[test]
     fn a_chart_switched_on_shows_the_overlay_and_sends_the_others_away() {

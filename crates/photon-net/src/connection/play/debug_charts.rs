@@ -89,6 +89,8 @@ pub(super) struct DebugCharts {
     /// What the charts want, as the app last said.
     requests: ChartRequests,
     ping: SampleLog,
+    /// `bandwidthLogger`: the bytes received in each tick.
+    bandwidth: SampleLog,
     tick_time: SampleLog,
     highlights: HashMap<(i32, i32, i32), GameTestHighlight>,
 }
@@ -99,6 +101,7 @@ impl Default for DebugCharts {
             subscribed_to_tick_time: false,
             requests: ChartRequests::default(),
             ping: SampleLog::new(1),
+            bandwidth: SampleLog::new(1),
             tick_time: SampleLog::new(TICK_TIME_DIMENSIONS),
             highlights: HashMap::new(),
         }
@@ -136,6 +139,9 @@ impl PlaySession {
     /// `ClientPacketListener.tick`'s share for the charts: the ping request while the network
     /// charts are up, then the subscription request when the set of wanted subscriptions changed.
     pub(super) fn tick_debug_charts(&mut self) -> Result<(), ConnectionError> {
+        // `Connection.tick` ends with `BandwidthDebugMonitor.tick`, shown or not.
+        let received = self.link.writer.take_received();
+        self.social.charts.bandwidth.log(received as i64);
         let wants = self.social.charts.requests;
         self.tick_debug_charts_at(wants, monotonic_ms())
     }
@@ -209,6 +215,11 @@ impl PlaySession {
         &self.social.charts.ping
     }
 
+    /// The bytes received in each tick.
+    pub fn bandwidth_samples(&self) -> &SampleLog {
+        &self.social.charts.bandwidth
+    }
+
     /// The server's tick time samples, a dimension of `TpsDebugDimensions` each.
     pub fn tick_time_samples(&self) -> &SampleLog {
         &self.social.charts.tick_time
@@ -217,6 +228,7 @@ impl PlaySession {
     /// `DebugScreenOverlay.reset`.
     pub fn reset_chart_samples(&mut self) {
         self.social.charts.ping.reset();
+        self.social.charts.bandwidth.reset();
         self.social.charts.tick_time.reset();
     }
 
@@ -257,6 +269,38 @@ mod tests {
                 (id, body.to_vec())
             })
             .collect()
+    }
+
+    #[test]
+    fn each_tick_logs_the_bytes_of_the_frames_read_since_the_last() {
+        use std::io::Write;
+        let (mut session, listener) = session();
+        let (mut server, _) = listener.accept().expect("accept");
+        // An id nothing handles: the frame still counts, with its length prefix.
+        let framed = frame_packet(
+            0x7f,
+            |out| {
+                out.extend_from_slice(&[1; 40]);
+                Ok(())
+            },
+            None,
+        )
+        .expect("frame");
+        server.write_all(&framed).expect("write");
+        let mut logged = 0;
+        for _ in 0..200 {
+            session.tick_debug_charts().expect("tick");
+            let log = session.bandwidth_samples();
+            logged = (0..log.len()).filter_map(|i| log.get(i, 0)).sum::<i64>();
+            if logged > 0 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert_eq!(logged, framed.len() as i64);
+        assert!(session.bandwidth_samples().len() > 1);
+        session.reset_chart_samples();
+        assert!(session.bandwidth_samples().is_empty());
     }
 
     #[test]

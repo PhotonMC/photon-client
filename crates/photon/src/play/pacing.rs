@@ -31,6 +31,7 @@ impl Play {
         self.limiter.wait(limit);
         // `Minecraft.runTick`: after the limiter, the frame is counted.
         self.limiter.count_frame(Instant::now());
+        self.controls.debug.frame_log.frame(Instant::now());
         self.controls.debug.frame = photon_gui::hud::debug::FrameStats {
             fps: self.limiter.fps(),
             limit,

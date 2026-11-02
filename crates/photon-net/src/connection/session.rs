@@ -174,6 +174,8 @@ fn read_frame(stream: &mut Transport) -> Result<Vec<u8>, ConnectionError> {
             }
             let mut body = vec![0_u8; length];
             stream.read_exact(&mut body)?;
+            // `Varint21FrameDecoder`: the frame and its length prefix.
+            stream.count_received(header.len() + body.len());
             return Ok(body);
         }
     }

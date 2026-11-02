@@ -1022,19 +1022,42 @@ class GuiHudOracle extends GuiCommandOracle {
     }
 
     /**
-     * The game's own ping chart (`PingDebugChart.extractRenderState`) over the samples given, in a window of a
-     * size, at a place and as wide as the window lets it be.
+     * The game's own debug charts (`extractRenderState` of the ping, frame time, tick time and bandwidth charts)
+     * over the samples given, in a window of a size, at a place and as wide as the window lets them be.
      */
     static JsonObject hudDebugChart(JsonObject request) throws Exception {
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();
             var scene = hudScene(row.get("width").getAsInt(), row.get("height").getAsInt(), false, false);
-            var logger = new net.minecraft.util.debugchart.LocalSampleLogger(1);
+            var minecraft = scene.minecraft();
+            Reflect.field(net.minecraft.client.Minecraft.class, "instance").set(null, minecraft);
+            var kind = row.get("kind").getAsString();
+            var logger = new net.minecraft.util.debugchart.LocalSampleLogger(kind.equals("tps") ? 4 : 1);
             for (var sample : row.getAsJsonArray("samples")) {
-                logger.logSample(sample.getAsLong());
+                if (sample.isJsonArray()) {
+                    var values = new long[4];
+                    for (int i = 0; i < 4; i++) {
+                        values[i] = sample.getAsJsonArray().get(i).getAsLong();
+                    }
+                    logger.logFullSample(values);
+                } else {
+                    logger.logSample(sample.getAsLong());
+                }
             }
-            var chart = new net.minecraft.client.gui.components.debugchart.PingDebugChart(scene.minecraft().font, logger);
+            net.minecraft.client.gui.components.debugchart.AbstractDebugChart chart = switch (kind) {
+                case "ping" -> new net.minecraft.client.gui.components.debugchart.PingDebugChart(minecraft.font, logger);
+                case "fps" -> {
+                    Access26_2.optionValue(minecraft.options.framerateLimit(), row.get("limit").getAsInt());
+                    yield new net.minecraft.client.gui.components.debugchart.FpsDebugChart(minecraft.font, logger);
+                }
+                case "tps" -> {
+                    float mspt = row.get("mspt").getAsFloat();
+                    yield new net.minecraft.client.gui.components.debugchart.TpsDebugChart(
+                        minecraft.font, logger, () -> mspt);
+                }
+                default -> new net.minecraft.client.gui.components.debugchart.BandwidthDebugChart(minecraft.font, logger);
+            };
             var graphics = scene.screen().graphics();
             chart.extractRenderState(graphics, row.get("left").getAsInt(), chart.getWidth(row.get("width").getAsInt()));
             var out = new JsonObject();

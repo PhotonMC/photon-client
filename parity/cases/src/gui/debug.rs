@@ -240,21 +240,77 @@ pub fn hud_debug_lines() -> Value {
     gui("hud-debug-lines", "hud_debug_lines", rows)
 }
 
-/// The ping chart: no samples, one, a full log with spikes and values past the top, a log that
-/// wrapped, and a window too narrow for all the samples.
+/// The charts: no samples, one, a full log with spikes and values past the top, a log that
+/// wrapped, a window too narrow for all the samples, and each kind's own scales and lines.
 pub fn hud_debug_chart() -> Value {
     let spikes: Vec<i64> = (0..240).map(|i| if i % 37 == 0 { 700 } else { 20 + (i * 7) % 230 }).collect();
     let wrapped: Vec<i64> = (0..300).map(|i| (i * 13) % 480).collect();
-    let rows = vec![
-        json!({"label": "empty", "width": 427, "height": 240, "left": 0, "samples": []}),
-        json!({"label": "one", "width": 427, "height": 240, "left": 0, "samples": [42]}),
-        json!({"label": "spikes", "width": 427, "height": 240, "left": 0, "samples": spikes}),
-        json!({"label": "wrapped", "width": 427, "height": 240, "left": 185, "samples": wrapped}),
-        json!({"label": "narrow", "width": 120, "height": 90, "left": 0, "samples": spikes}),
-        json!({"label": "narrow-short", "width": 120, "height": 90, "left": 4, "samples": [10, 250, 500]}),
-        json!({"label": "rounding", "width": 427, "height": 240, "left": 0, "samples": [1, 2, 4, 5]}),
+    let chart = |label: &str, kind: &str, (width, height, left): (i32, i32, i32), samples: Value| {
+        json!({"label": format!("{kind}-{label}"), "kind": kind, "width": width, "height": height,
+            "left": left, "samples": samples, "limit": 60, "mspt": 50.0})
+    };
+    let mut rows = vec![
+        chart("empty", "ping", (427, 240, 0), json!([])),
+        chart("one", "ping", (427, 240, 0), json!([42])),
+        chart("spikes", "ping", (427, 240, 0), json!(spikes)),
+        chart("wrapped", "ping", (427, 240, 185), json!(wrapped)),
+        chart("narrow", "ping", (120, 90, 0), json!(spikes)),
+        chart("narrow-short", "ping", (120, 90, 4), json!([10, 250, 500])),
+        chart("rounding", "ping", (427, 240, 0), json!([1, 2, 4, 5])),
     ];
+    rows.extend(frame_rows(&chart));
+    rows.extend(tick_rows(&chart));
+    rows.extend(bandwidth_rows(&chart));
     gui("hud-debug-chart", "hud_debug_chart", rows)
+}
+
+type ChartRow<'a> = &'a dyn Fn(&str, &str, (i32, i32, i32), Value) -> Value;
+
+fn frame_rows(chart: ChartRow) -> Vec<Value> {
+    let frames: Vec<i64> = (0..240).map(|i| 3_000_000 + (i * 411_111) % 60_000_000).collect();
+    let mut limited = chart("limit-250", "fps", (427, 240, 0), json!(frames));
+    limited["limit"] = json!(250);
+    let mut unlimited = chart("limit-260", "fps", (427, 240, 0), json!(frames));
+    unlimited["limit"] = json!(260);
+    vec![
+        chart("empty", "fps", (427, 240, 0), json!([])),
+        chart("frames", "fps", (427, 240, 0), json!(frames)),
+        limited,
+        unlimited,
+        chart("narrow", "fps", (100, 90, 0), json!(frames)),
+        chart("few", "fps", (427, 240, 0), json!([16_666_666, 8_333_333, 33_000_000])),
+    ]
+}
+
+fn tick_rows(chart: ChartRow) -> Vec<Value> {
+    let ticks: Vec<Value> = (0..240_i64)
+        .map(|i| {
+            let method = 2_000_000 + (i * 90_001) % 20_000_000;
+            let tasks = (i * 31_337) % 9_000_000;
+            json!([method + tasks + 5_000_000, method, tasks, 40_000_000 - (i % 17) * 1_000_000])
+        })
+        .collect();
+    let mut fast = chart("fast", "tps", (427, 240, 100), json!(ticks));
+    fast["mspt"] = json!(25.0);
+    let mut odd = chart("odd", "tps", (427, 240, 100), json!(ticks));
+    odd["mspt"] = json!(33.3);
+    vec![
+        chart("one", "tps", (427, 240, 100), json!([[30_000_000, 10_000_000, 5_000_000, 12_000_000]])),
+        chart("ticks", "tps", (427, 240, 100), json!(ticks)),
+        fast,
+        odd,
+        chart("narrow", "tps", (90, 90, 40), json!(ticks)),
+    ]
+}
+
+fn bandwidth_rows(chart: ChartRow) -> Vec<Value> {
+    let bytes: Vec<i64> = (0..240_i64).map(|i| if i % 50 == 0 { 900_000 } else { (i * i * 7) % 40_000 }).collect();
+    vec![
+        chart("empty", "bandwidth", (427, 240, 0), json!([])),
+        chart("traffic", "bandwidth", (427, 240, 0), json!(bytes)),
+        chart("small", "bandwidth", (427, 240, 0), json!([0, 1, 3, 51, 52, 800, 53_000])),
+        chart("narrow", "bandwidth", (110, 90, 0), json!(bytes)),
+    ]
 }
 
 /// The debug screen's model: what is registered with its group and its reduced-info rule, the

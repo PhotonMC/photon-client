@@ -2,33 +2,49 @@
 
 use super::*;
 
-/// `hud_debug_chart`: the ping chart over the samples given, as the game's `extractRenderState` draws it.
+/// `hud_debug_chart`: a chart over the samples given, as the game's `extractRenderState` draws it.
 pub(super) fn hud_debug_chart_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
+    use photon_gui::hud::debug_chart::{CAPACITY, DIMENSIONS, Kind, draw, width};
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    let samples: Vec<i64> = row["samples"]
+    let samples: Vec<[i64; DIMENSIONS]> = row["samples"]
         .as_array()
         .into_iter()
         .flatten()
-        .filter_map(Value::as_i64)
+        .map(|sample| {
+            let mut out = [0; DIMENSIONS];
+            match sample.as_array() {
+                Some(values) => values
+                    .iter()
+                    .zip(&mut out)
+                    .for_each(|(value, slot)| *slot = value.as_i64().unwrap_or(0)),
+                None => out[0] = sample.as_i64().unwrap_or(0),
+            }
+            out
+        })
         .collect();
     // The log keeps the newest samples the chart has room for.
-    let kept = samples
-        .len()
-        .saturating_sub(photon_gui::hud::debug_chart::CAPACITY as usize);
+    let kept = samples.len().saturating_sub(CAPACITY as usize);
+    let kind = match row["kind"].as_str() {
+        Some("fps") => Kind::Fps {
+            limit: int("limit"),
+        },
+        Some("tps") => Kind::Tps {
+            mspt: row["mspt"].as_f64().unwrap_or(50.0) as f32,
+        },
+        Some("bandwidth") => Kind::Bandwidth,
+        _ => Kind::Ping,
+    };
     let mut frame = GuiFrame {
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    photon_gui::hud::debug_chart::draw(
+    let place = (int("left"), width(int("width")), int("height"));
+    draw(
         &mut frame,
         (&ctx.atlas, &ctx.font),
-        photon_gui::hud::debug_chart::Kind::Ping,
+        kind,
         &samples[kept..],
-        (
-            int("left"),
-            photon_gui::hud::debug_chart::width(int("width")),
-            int("height"),
-        ),
+        place,
     );
     Ok(json!({
         "label": row["label"],

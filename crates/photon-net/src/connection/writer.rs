@@ -47,6 +47,11 @@ impl PacketWriter {
         })
     }
 
+    /// The bytes of the frames read since this was last asked.
+    pub(super) fn take_received(&self) -> usize {
+        self.stream.take_received()
+    }
+
     /// Queue a framed packet. A write that failed before is reported here.
     pub(super) fn send(&self, framed: Vec<u8>) -> Result<(), ConnectionError> {
         self.check()?;

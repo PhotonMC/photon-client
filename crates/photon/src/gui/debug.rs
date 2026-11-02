@@ -73,27 +73,48 @@ impl Gui {
         Self::draw_debug_charts(frame, (atlas, font), (session, controls), size);
     }
 
-    /// The charts under the overlay's lines (`DebugScreenOverlay.extractRenderState`): the ping
-    /// chart in the bottom right corner while the network charts are on.
+    /// The charts under the overlay's lines (`DebugScreenOverlay.extractRenderState`): the frame
+    /// and tick time charts at the bottom corners while the FPS charts are on, the bandwidth and
+    /// ping charts while the network charts are.
     pub(super) fn draw_debug_charts(
         frame: &mut photon_render::gui::GuiFrame,
-        (atlas, font): (&GuiAtlas, &Font),
+        fonts: (&GuiAtlas, &Font),
         (session, controls): (&PlaySession, &Controls),
         (gui_width, gui_height): (i32, i32),
     ) {
-        if !(controls.debug.charts.network && controls.debug.entries.is_overlay_visible()) {
-            return;
+        let flags = controls.debug.charts;
+        // `showFpsCharts` and `showNetworkCharts`: the overlay must be up.
+        let shown = controls.debug.entries.is_overlay_visible();
+        let max_width = gui_width / 2;
+        let one = |value: i64| [value, 0, 0, 0];
+        let mut put = |kind: chart::Kind, samples: &[[i64; chart::DIMENSIONS]], right: bool| {
+            let width = chart::width(max_width);
+            let left = if right { gui_width - width } else { 0 };
+            chart::draw(frame, fonts, kind, samples, (left, width, gui_height));
+        };
+        if shown && flags.fps {
+            let frames: Vec<_> = controls.debug.frame_log.samples().map(one).collect();
+            let limit = controls.options.framerate_limit;
+            put(chart::Kind::Fps { limit }, &frames, false);
+            let log = session.tick_time_samples();
+            if !log.is_empty() {
+                let ticks: Vec<_> = (0..log.len()).map(|i| dimensions(log, i)).collect();
+                let mspt = session.milliseconds_per_tick();
+                put(chart::Kind::Tps { mspt }, &ticks, true);
+            }
         }
-        let log = session.ping_samples();
-        let samples: Vec<i64> = (0..log.len()).filter_map(|i| log.get(i, 0)).collect();
-        let width = chart::width(gui_width / 2);
-        chart::draw(
-            frame,
-            (atlas, font),
-            chart::Kind::Ping,
-            &samples,
-            (gui_width - width, width, gui_height),
-        );
+        if shown && flags.network {
+            let bytes: Vec<_> = column(session.bandwidth_samples())
+                .into_iter()
+                .map(one)
+                .collect();
+            put(chart::Kind::Bandwidth, &bytes, false);
+            let pings: Vec<_> = column(session.ping_samples())
+                .into_iter()
+                .map(one)
+                .collect();
+            put(chart::Kind::Ping, &pings, true);
+        }
     }
 
     /// `Timeline.getPeriodCount` of the overworld day timeline (a 24000-tick period on the
@@ -186,4 +207,14 @@ fn impactors(quality: &photon_game::options::QualityOptions) -> Impactors {
         },
         anisotropy: 1 << quality.max_anisotropy_bit.clamp(1, 3),
     }
+}
+
+/// A sample of every dimension.
+fn dimensions(log: &photon_net::connection::SampleLog, index: usize) -> [i64; chart::DIMENSIONS] {
+    std::array::from_fn(|dimension| log.get(index, dimension).unwrap_or(0))
+}
+
+/// The first dimension of every sample, oldest first.
+fn column(log: &photon_net::connection::SampleLog) -> Vec<i64> {
+    (0..log.len()).filter_map(|i| log.get(i, 0)).collect()
 }

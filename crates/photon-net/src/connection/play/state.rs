@@ -162,6 +162,11 @@ impl PlaySession {
         self.level_info.tick_rate.tick_rate()
     }
 
+    /// `TickRateManager.millisecondsPerTick`.
+    pub fn milliseconds_per_tick(&self) -> f32 {
+        self.level_info.tick_rate.milliseconds_per_tick()
+    }
+
     /// The tick rate manager's frozen state: whether it is stepping forward, and whether frozen.
     pub fn tick_rate_status(&self) -> (bool, bool) {
         let rate = &self.level_info.tick_rate;
