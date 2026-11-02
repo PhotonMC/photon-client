@@ -1,4 +1,5 @@
 use super::*;
+use crate::hud_input::world_partial;
 use photon_core::ids::EntityId;
 use photon_gui::FrameRuns;
 use photon_gui::hud::spectator;
@@ -242,7 +243,7 @@ impl Gui {
             &mut self.titles,
             (&self.atlas, &self.font),
             &mut frame,
-            (hidden, gui_size, partial),
+            (hidden, gui_size, world_partial(session, partial)),
         );
         // The chat, over the hotbar; open, it is the box's and brighter.
         let chat_tooltip = (!hidden)

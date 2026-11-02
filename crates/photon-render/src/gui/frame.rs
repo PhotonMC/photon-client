@@ -518,4 +518,33 @@ mod tests {
         frame.clip_from(mark, (0, 0, 10, 10));
         assert_eq!(frame.item_scissors, [(1, 4, (0, 0, 10, 10))]);
     }
+
+    #[test]
+    fn a_squeezed_item_scales_about_its_pivot_and_leaves_earlier_items() {
+        use crate::gui::items::GuiItemVertex;
+        let at = |x: f32, y: f32| GuiItemVertex {
+            position: [x, y, 0.0],
+            uv: [0.0; 2],
+            colour: [1.0; 4],
+        };
+        let mut frame = GuiFrame::default();
+        frame.items.push(at(0.0, 0.0));
+        let first = frame.item_vertices();
+        frame.items.push(at(0.0, 12.0));
+        frame.items.push(at(16.0, 0.0));
+        // `Hud.extractSlot` with a pop of one half and a partial of zero, about the slot (8, 12):
+        // the squeeze is 1.5, so the width goes to 2/3 and the height to 1.25.
+        let squeeze = 1.0 + 2.5_f32 / 5.0;
+        frame.squeeze_items(first, (8.0, 12.0), (1.0 / squeeze, (squeeze + 1.0) / 2.0));
+        assert_eq!(frame.items[0].position, [0.0, 0.0, 0.0]);
+        let moved = |index: usize| {
+            (
+                frame.items[index].position[0],
+                frame.items[index].position[1],
+            )
+        };
+        assert!((moved(1).0 - (8.0 - 8.0 / 1.5)).abs() < 1e-5 && moved(1).1 == 12.0);
+        assert!((moved(2).0 - (8.0 + 8.0 / 1.5)).abs() < 1e-5);
+        assert!((moved(2).1 - (12.0 - 12.0 * 1.25)).abs() < 1e-5);
+    }
 }

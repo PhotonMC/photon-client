@@ -77,7 +77,19 @@ fn slot_items(
             seed: slot as i32 + 1,
             fake: false,
         };
+        let first = frame.item_vertices();
         frame.item_in_use(draw_item, stack, (x as f32, y as f32), holding);
+        // `Hud.extractSlot`: a stack that just arrived bounces, squeezed in width and stretched
+        // in height about the middle of its lower half.
+        let pop = input.hotbar_pop[slot];
+        if pop > 0.0 {
+            let squeeze = 1.0 + pop / 5.0;
+            frame.squeeze_items(
+                first,
+                (x as f32 + 8.0, y as f32 + 12.0),
+                (1.0 / squeeze, (squeeze + 1.0) / 2.0),
+            );
+        }
         frame.item_bar(atlas, stack, x, y);
         frame.item_cooldown(atlas, stack, x, y);
         if stack.item_count() != 1 {

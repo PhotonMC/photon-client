@@ -75,6 +75,20 @@ impl GuiFrame {
         }
     }
 
+    /// How many item vertices the frame holds, for [`GuiFrame::squeeze_items`].
+    pub fn item_vertices(&self) -> usize {
+        self.items.len()
+    }
+
+    /// The items drawn since the vertex `first` under a pose that scales by `(x, y)` about a
+    /// pivot (`pushMatrix`, `translate`, `scale`, `translate` back).
+    pub fn squeeze_items(&mut self, first: usize, pivot: (f32, f32), (x, y): (f32, f32)) {
+        for vertex in &mut self.items[first..] {
+            vertex.position[0] = pivot.0 + x * (vertex.position[0] - pivot.0);
+            vertex.position[1] = pivot.1 + y * (vertex.position[1] - pivot.1);
+        }
+    }
+
     /// An item drawn under a pose that scales by `scale` and moves by `origin` (a toast's slide
     /// and the recipe toast's smaller station): the item is drawn at `(x, y)` in the scaled
     /// space, and what it added is carried over to the screen, its glint with it.

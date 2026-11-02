@@ -136,6 +136,9 @@ pub struct HudInput {
     /// The hotbar's stacks and the off hand's.
     pub hotbar: [Option<photon_world::ClientItemStackState>; 9],
     pub offhand: Option<photon_world::ClientItemStackState>,
+    /// How far each hotbar stack and the off hand's still bounces (`getPopTime` less the partial
+    /// tick the HUD is drawn at); a slot is squeezed while it is above zero.
+    pub hotbar_pop: [f32; 10],
 }
 
 /// The HUD's own state across frames: its tick count, the health it last

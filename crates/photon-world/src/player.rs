@@ -34,9 +34,39 @@ pub(crate) struct PlayerData {
     pub(crate) score: i32,
     /// The variant of the parrot on the left and right shoulder.
     pub(crate) shoulder_parrots: [Option<i32>; 2],
+    /// `ItemStack.popTime` of the hotbar's stacks and the off hand's.
+    pub(crate) hotbar_pop: [i32; 10],
 }
 
 impl PlayerData {
+    /// The ticks a stack the inventory menu takes into a hotbar or off-hand slot pops for.
+    const POP_TICKS: i32 = 5;
+
+    /// `ClientPacketListener.handleContainerSetSlot` for the inventory menu: a stack that is not
+    /// empty and is bigger than what the slot held pops; any other new stack starts without.
+    pub(crate) fn set_slot_pop(
+        &mut self,
+        slot: i16,
+        (before, after): (Option<&ClientItemStackState>, Option<&ClientItemStackState>),
+    ) {
+        let index = match slot {
+            36..=44 => slot - 36,
+            45 => 9,
+            _ => return,
+        };
+        let count =
+            |stack: Option<&ClientItemStackState>| stack.map_or(0, |stack| stack.item_count());
+        let grew = count(after) > 0 && count(before) < count(after);
+        self.hotbar_pop[index as usize] = if grew { Self::POP_TICKS } else { 0 };
+    }
+
+    /// `ItemStack.inventoryTick`: each stack's pop runs down a tick.
+    pub(crate) fn tick_pop(&mut self) {
+        for pop in &mut self.hotbar_pop {
+            *pop = (*pop - 1).max(0);
+        }
+    }
+
     /// What the data a packet sent says: a field it leaves out keeps its value.
     pub(crate) fn apply(&mut self, metadata: &[u8]) {
         use crate::metadata::*;

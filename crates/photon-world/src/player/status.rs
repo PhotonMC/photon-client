@@ -74,6 +74,15 @@ impl ClientPlayerState {
         self.data.shoulder_parrots[usize::from(!left)]
     }
 
+    /// `ItemStack.getPopTime - partial` of the hotbar slot (the off hand is the tenth): how far the
+    /// stack still bounces, or not above zero when it does not (`Hud.extractSlot`).
+    pub fn hotbar_pop(&self, index: usize, partial: f32) -> f32 {
+        self.data
+            .hotbar_pop
+            .get(index)
+            .map_or(0.0, |pop| *pop as f32 - partial)
+    }
+
     pub fn model_customisation(&self) -> u8 {
         self.data.model_customisation
     }
@@ -137,6 +146,7 @@ impl ClientPlayerState {
     pub(crate) fn tick_effects(&mut self) {
         self.tick_sleep_timer();
         self.tick_count = self.tick_count.wrapping_add(1);
+        self.data.tick_pop();
         for effect in &mut self.effects {
             effect.tick_client();
         }

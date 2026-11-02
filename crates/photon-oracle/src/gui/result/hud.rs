@@ -212,6 +212,7 @@ fn quiet_input() -> HudInput {
         effects: Vec::new(),
         hotbar: Default::default(),
         offhand: None,
+        hotbar_pop: [0.0; 10],
     }
 }
 

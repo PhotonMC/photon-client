@@ -289,9 +289,7 @@ pub fn hud_input(
         eye_in_water: player.is_some_and(|player| player.is_eye_in_water()),
         experience_progress: status.experience_progress,
         experience_level: status.experience_level,
-        // `willPrioritizeExperienceInfo`.
-        experience_prioritised: status.experience_display_start_tick.wrapping_add(100)
-            > player.map_or(0, |player| player.tick_count()),
+        experience_prioritised: prioritised(status.experience_display_start_tick, player),
         locator: locator_input(session, camera, player),
         overlays: Default::default(),
         attack_strength: player.map_or(1.0, |player| {
@@ -303,6 +301,7 @@ pub fn hud_input(
         effects: local.map_or_else(Vec::new, |state| state.effects().to_vec()),
         hotbar: std::array::from_fn(|i| stack(36 + i as i16)),
         offhand: stack(45),
+        hotbar_pop: [0.0; 10],
     }
 }
 
@@ -320,6 +319,8 @@ pub fn frame_input(
     let mut input = photon_gui::HudInput {
         // `getGameTimeDeltaPartialTick(true)`.
         cooldowns: session.item_cooldowns().percents(partial),
+        // `Hud.extractSlot` reads the world's partial tick, which a frozen level holds at one.
+        hotbar_pop: pops(session, world_partial(session, partial)),
         overlays: camera_overlays(session, renderer, (partial, &controls.options)),
         three_dimensional_crosshair: shown.contains(&"3d_crosshair"),
         ..hud_input(
@@ -338,6 +339,29 @@ pub fn frame_input(
         input.effects.clear();
     }
     input
+}
+
+/// How far each hotbar stack and the off hand's still bounces at a partial tick.
+fn pops(session: &PlaySession, partial: f32) -> [f32; 10] {
+    let local = session.world().local_player();
+    std::array::from_fn(|index| local.map_or(0.0, |state| state.hotbar_pop(index, partial)))
+}
+
+/// The world's partial tick (`getGameTimeDeltaPartialTick(false)`), which a frozen level holds at one.
+pub fn world_partial(session: &PlaySession, partial: f32) -> f32 {
+    if session.runs_normally() {
+        partial
+    } else {
+        1.0
+    }
+}
+
+/// `Hud.willPrioritizeExperienceInfo`.
+fn prioritised(
+    display_start_tick: i32,
+    player: Option<&photon_world::local_player::LocalPlayer>,
+) -> bool {
+    display_start_tick.wrapping_add(100) > player.map_or(0, |player| player.tick_count())
 }
 
 #[cfg(test)]

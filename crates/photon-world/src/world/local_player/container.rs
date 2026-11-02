@@ -175,6 +175,8 @@ impl ClientWorld {
         };
         if container_id == 0 {
             player.inventory_state_id = state_id;
+            let before = player.inventory_slots.get(&slot).and_then(Option::as_ref);
+            player.data.set_slot_pop(slot, (before, item));
             player.inventory_slots.insert(slot, item.cloned());
             return true;
         }
