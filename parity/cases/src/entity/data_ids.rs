@@ -132,6 +132,7 @@ const ACCESSORS: &[(&str, &str)] = &[
     ("net.minecraft.world.entity.monster.EnderMan", "DATA_STARED_AT"),
     ("net.minecraft.world.entity.Interaction", "DATA_WIDTH_ID"),
     ("net.minecraft.world.entity.Interaction", "DATA_HEIGHT_ID"),
+    ("net.minecraft.world.entity.Interaction", "DATA_RESPONSE_ID"),
     ("net.minecraft.world.entity.monster.Ghast", "DATA_IS_CHARGING"),
     ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_ATTACK_TARGET"),
     ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_MOVING"),

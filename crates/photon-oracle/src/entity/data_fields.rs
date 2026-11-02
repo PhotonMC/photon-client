@@ -18,8 +18,8 @@ pub(super) fn stared_at_field() -> (&'static str, i64, i64) {
     )
 }
 
-/// An interaction's width and height: floats on ids of their own.
-pub(super) fn interaction_fields() -> [(&'static str, i64, i64); 2] {
+/// An interaction's width and height (floats) and response (a boolean), on ids of their own.
+pub(super) fn interaction_fields() -> [(&'static str, i64, i64); 3] {
     [
         (
             "interaction-width",
@@ -30,6 +30,11 @@ pub(super) fn interaction_fields() -> [(&'static str, i64, i64); 2] {
             "interaction-height",
             i64::from(photon_world::INTERACTION_HEIGHT_DATA_ID),
             3,
+        ),
+        (
+            "interaction-response",
+            i64::from(photon_world::INTERACTION_RESPONSE_DATA_ID),
+            8,
         ),
     ]
 }

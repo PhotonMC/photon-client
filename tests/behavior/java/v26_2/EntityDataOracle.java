@@ -389,6 +389,7 @@ class EntityDataOracle extends EntityBossOracle {
             {net.minecraft.world.entity.monster.EnderMan.class, "DATA_STARED_AT", "enderman-stared-at"},
             {net.minecraft.world.entity.Interaction.class, "DATA_WIDTH_ID", "interaction-width"},
             {net.minecraft.world.entity.Interaction.class, "DATA_HEIGHT_ID", "interaction-height"},
+            {net.minecraft.world.entity.Interaction.class, "DATA_RESPONSE_ID", "interaction-response"},
             {net.minecraft.world.entity.Avatar.class, "DATA_PLAYER_MODE_CUSTOMISATION", "avatar-customisation"},
             {net.minecraft.world.entity.decoration.Mannequin.class, "DATA_PROFILE", "mannequin-profile"},
             {net.minecraft.world.entity.decoration.Mannequin.class, "DATA_IMMOVABLE", "mannequin-immovable"},
