@@ -180,6 +180,24 @@ pub fn outline_shape(state_id: BlockStateId, position: [i32; 3]) -> VoxelShape {
     }
 }
 
+/// `BlockState.getInteractionShape`: the shape a hit's face is taken from when it is met nearer
+/// than the outline (empty for most blocks).
+pub fn interaction_shape(state_id: BlockStateId) -> VoxelShape {
+    match photon_data::block::registry::block_for_state(state_id) {
+        Some((block, offset)) => crate::block::shape_rules::interaction(block, offset),
+        None => Shapes::empty(),
+    }
+}
+
+/// Whether a state is a scaffolding block.
+pub fn is_scaffolding(state_id: BlockStateId) -> bool {
+    photon_data::block::registry::block_for_state(state_id).is_some_and(|(block, _)| {
+        block
+            .class
+            .is(photon_data::block::classes::BlockClass::ScaffoldingBlock)
+    })
+}
+
 /// `BlockState.getCollisionShape` with no entity in the question, moved by
 /// the block's random offset at `position` where it has one.
 pub fn collision_shape_at(state_id: BlockStateId, position: [i32; 3]) -> VoxelShape {

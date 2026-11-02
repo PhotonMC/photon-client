@@ -190,3 +190,26 @@ pub fn collision(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelS
         _ => return None,
     })
 }
+
+/// `getInteractionShape`: the cauldrons' inside, the composter and scaffolding's whole block and
+/// the hopper's inside with its spout; empty for every other block.
+pub fn interaction(block: &Block, offset: u32) -> VoxelShape {
+    use photon_data::block::classes::BlockClass as C;
+    let class = block.class;
+    if class.is(C::AbstractCauldronBlock) {
+        cached!(VoxelShape, column_xz(12.0, 4.0, 16.0)).clone()
+    } else if class.is(C::ComposterBlock) || class.is(C::ScaffoldingBlock) {
+        Shapes::block()
+    } else if class.is(C::HopperBlock) {
+        let inside = column_xz(12.0, 11.0, 16.0);
+        match facing(block, offset, "facing") {
+            Direction::Down => inside,
+            side => {
+                let spout = Shapes::rotate_horizontal(&box_z(4.0, 8.0, 10.0, 0.0, 4.0));
+                Shapes::or(&inside, arm(&spout, side))
+            }
+        }
+    } else {
+        Shapes::empty()
+    }
+}

@@ -217,9 +217,43 @@ impl ClientWorld {
         from: photon_core::math::Vec3,
         to: photon_core::math::Vec3,
     ) -> Option<photon_core::aabb::BlockHitResult> {
+        self.clip_outlines_holding(from, to, false)
+    }
+
+    /// [`Self::clip_outlines`] for an entity that holds scaffolding or not: scaffolding
+    /// answers the whole block to whoever holds it (`ScaffoldingBlock.getShape`).
+    pub fn clip_outlines_holding(
+        &self,
+        from: photon_core::math::Vec3,
+        to: photon_core::math::Vec3,
+        holding_scaffolding: bool,
+    ) -> Option<photon_core::aabb::BlockHitResult> {
         self.clip_with(from, to, |state, at, position| {
-            crate::outline_shape(state, at).clip(from, to, position)
+            Self::clip_outline(state, at, (from, to), (position, holding_scaffolding))
         })
+    }
+
+    /// `BlockGetter.clipWithInteractionOverride` over a block's outline: where the segment meets
+    /// the outline, with the face of the block's interaction shape when that is met nearer.
+    fn clip_outline(
+        state: BlockStateId,
+        at: [i32; 3],
+        (from, to): (photon_core::math::Vec3, photon_core::math::Vec3),
+        (position, holding_scaffolding): (crate::BlockPos, bool),
+    ) -> Option<photon_core::aabb::BlockHitResult> {
+        let outline = if holding_scaffolding && crate::block::registry::is_scaffolding(state) {
+            photon_core::shape::Shapes::block()
+        } else {
+            crate::outline_shape(state, at)
+        };
+        let mut result = outline.clip(from, to, position)?;
+        let over = crate::block::registry::interaction_shape(state).clip(from, to, position);
+        if let Some(over) = over
+            && from.distance_to_sqr(over.location) < from.distance_to_sqr(result.location)
+        {
+            result.direction = over.direction;
+        }
+        Some(result)
     }
 
     /// `BlockGetter.clip` against block outlines and the shapes of fluids
@@ -249,7 +283,7 @@ impl ClientWorld {
         sources_only: bool,
     ) -> Option<photon_core::aabb::BlockHitResult> {
         self.clip_with(from, to, |state, at, position| {
-            let block = crate::outline_shape(state, at).clip(from, to, position);
+            let block = Self::clip_outline(state, at, (from, to), (position, false));
             let source = !sources_only || self.fluid_at(at).is_source();
             let fluid = if source {
                 self.fluid_shape(state, at).clip(from, to, position)

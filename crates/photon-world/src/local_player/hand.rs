@@ -317,6 +317,11 @@ impl LocalPlayer {
         [self.use_ticks_of(true), self.use_ticks_of(false)]
     }
 
+    /// The item in the main hand, by registry id; air when empty.
+    pub fn main_hand_item(&self) -> ItemId {
+        self.main_hand_item
+    }
+
     /// The item now in the main hand, by registry id; air when empty.
     pub fn set_main_hand_item(&mut self, item: ItemId) {
         self.main_hand_item = item;

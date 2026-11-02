@@ -29,6 +29,8 @@ pub struct Viewer {
     /// Yaw and pitch, in degrees.
     pub rotation: (f32, f32),
     pub bounds: Aabb,
+    /// Whether it holds scaffolding, which the block it looks at then answers as a whole cube.
+    pub holding_scaffolding: bool,
 }
 
 impl Viewer {
@@ -37,6 +39,7 @@ impl Viewer {
             entity_id: player.entity_id(),
             rotation: player.rotation(),
             bounds: player.bounding_box(),
+            holding_scaffolding: player.main_hand_item() == photon_data::item::ids::SCAFFOLDING,
         }
     }
 }
@@ -83,7 +86,8 @@ pub fn pick_from(world: &ClientWorld, viewer: &Viewer, eye: Vec3) -> Aim {
         )
     };
     // `Entity.pick`: a miss lies where the segment ends.
-    let block_hit = world.clip_outlines(eye, scaled(max_distance));
+    let block_hit =
+        world.clip_outlines_holding(eye, scaled(max_distance), viewer.holding_scaffolding);
     let block_location = block_hit
         .as_ref()
         .map_or(scaled(max_distance), |hit| hit.location);
@@ -154,6 +158,7 @@ mod tests {
                 .at(EntityId(1))
                 .expect("the pig")
                 .bounding_box(),
+            holding_scaffolding: false,
         };
         let eye = Vec3::new(0.0, 9.5, 0.0);
         assert!(matches!(

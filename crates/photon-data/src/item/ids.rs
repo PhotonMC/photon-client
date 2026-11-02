@@ -24,6 +24,7 @@ items! {
     IRON_INGOT = iron_ingot,
     LAVA_BUCKET = lava_bucket,
     MILK_BUCKET = milk_bucket,
+    SCAFFOLDING = scaffolding,
     SHEARS = shears,
     SUGAR = sugar,
     SULFUR_CUBE_BUCKET = sulfur_cube_bucket,

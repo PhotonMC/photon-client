@@ -11,6 +11,7 @@ use crate::bits::f64_bits;
 use crate::movement::player::scene::keys;
 use crate::movement::world::put;
 
+mod blocks;
 mod classes;
 mod herding;
 mod pets;
@@ -335,6 +336,7 @@ pub fn rows() -> Vec<Value> {
         pickups::rows(),
         classes::rows(),
         pets::rows(),
+        blocks::rows(),
         saddles::rows(),
     ]
     .concat()

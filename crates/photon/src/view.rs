@@ -107,6 +107,7 @@ fn camera_viewer(
         entity_id: id,
         rotation: (y_rot, snapshot.pitch),
         bounds: entity.bounding_box(),
+        holding_scaffolding: false,
     };
     Some((viewer, eye))
 }
