@@ -167,6 +167,31 @@ impl ClientWorld {
         section.biomes.get(index).copied()
     }
 
+    /// How many sections a loaded chunk has, or none if it is not loaded.
+    pub fn chunk_section_count(&self, chunk_x: i32, chunk_z: i32) -> Option<usize> {
+        Some(self.chunk_for_query(chunk_x, chunk_z)?.sections.len())
+    }
+
+    /// `ClientChunkCache.replaceBiomes`: every section of a loaded chunk takes its new biomes.
+    /// A chunk that is not loaded is ignored; the answer says whether it was replaced.
+    pub fn replace_chunk_biomes(
+        &mut self,
+        chunk_x: i32,
+        chunk_z: i32,
+        biomes: &[Vec<i32>],
+    ) -> bool {
+        let min_section = self.level().dimension.min_section_y();
+        let Some(chunk) = self.chunk_for_update(chunk_x, chunk_z) else {
+            return false;
+        };
+        for (index, values) in biomes.iter().enumerate() {
+            if let Some(section) = chunk.sections.get_mut(&(min_section + index as i32)) {
+                section.biomes.clone_from(values);
+            }
+        }
+        true
+    }
+
     /// Replace a loaded chunk with decoded sections in bottom-to-top order.
     pub fn replace_chunk<'a, I>(&mut self, chunk_x: i32, chunk_z: i32, sections: I) -> bool
     where

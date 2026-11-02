@@ -326,3 +326,24 @@ fn section_parser_rejects_a_palette_larger_than_its_capacity() {
         Err(super::super::ConnectionError::Codec("biome palette"))
     ));
 }
+
+#[test]
+fn chunk_biome_data_reads_one_container_per_section_and_ignores_the_rest() {
+    let mut buffer = Vec::new();
+    // Section one: a single value; section two: a single value; then bytes nobody asked for.
+    for id in [5, 9] {
+        buffer.push(0);
+        photon_core::wire::write_varint(id, &mut buffer);
+    }
+    buffer.extend_from_slice(&[0xff; 3]);
+    let data = crate::play::chunk::ChunkBiomeData {
+        x: 1,
+        z: -2,
+        buffer,
+    };
+    let biomes = data
+        .biomes(2, &super::registries())
+        .expect("two containers");
+    assert_eq!(biomes, vec![vec![5; 64], vec![9; 64]]);
+    assert!(data.biomes(3, &super::registries()).is_err());
+}

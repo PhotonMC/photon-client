@@ -475,3 +475,27 @@ fn a_copied_region_holds_the_light_the_getters_answer() {
         }
     }
 }
+
+#[test]
+fn replaced_biomes_keep_the_blocks_and_skip_chunks_that_are_not_loaded() {
+    let (blocks, biomes) = section(7, 8);
+    let mut world = ClientWorld::new(DimensionBounds::new(-64, 384));
+    world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 6,
+            fluid_count: 1,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+
+    assert_eq!(world.chunk_section_count(0, 0), Some(1));
+    assert_eq!(world.chunk_section_count(5, 5), None);
+    assert!(world.replace_chunk_biomes(0, 0, &[vec![99; 64]]));
+    assert!(!world.replace_chunk_biomes(5, 5, &[vec![99; 64]]));
+    assert_eq!(world.biome_at(0, -64, 0), Some(99));
+    assert_eq!(world.biome_at(15, -49, 15), Some(99));
+    assert_eq!(world.block_state_at(0, -64, 0), Some(BlockStateId(11)));
+}

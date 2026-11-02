@@ -4,6 +4,8 @@ import io.netty.buffer.Unpooled;
 import java.util.HexFormat;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.network.FriendlyByteBuf;
+import com.google.gson.JsonArray;
+import net.minecraft.network.protocol.game.ClientboundChunksBiomesPacket;
 import net.minecraft.network.protocol.game.ClientboundMoveVehiclePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerLookAtPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket;
@@ -28,6 +30,7 @@ final class WirePlayOracle {
                 case "player_look_at" -> lookAt(ClientboundPlayerLookAtPacket.STREAM_CODEC.decode(input));
                 case "move_vehicle" -> vehicle(ClientboundMoveVehiclePacket.STREAM_CODEC.decode(input));
                 case "projectile_power" -> power(ClientboundProjectilePowerPacket.STREAM_CODEC.decode(input));
+                case "chunks_biomes" -> chunksBiomes(ClientboundChunksBiomesPacket.STREAM_CODEC.decode(input));
                 default -> throw new IllegalArgumentException("Unknown play packet");
             };
             if (buffer.isReadable()) {
@@ -80,6 +83,20 @@ final class WirePlayOracle {
         fields.addProperty("z", Oracle.bits(packet.position().z));
         fields.addProperty("y_rot", Oracle.bits(packet.yRot()));
         fields.addProperty("x_rot", Oracle.bits(packet.xRot()));
+        return fields;
+    }
+
+    private static JsonObject chunksBiomes(ClientboundChunksBiomesPacket packet) {
+        var chunks = new JsonArray();
+        for (var data : packet.chunkBiomeData()) {
+            var chunk = new JsonObject();
+            chunk.addProperty("x", data.pos().x());
+            chunk.addProperty("z", data.pos().z());
+            chunk.addProperty("buffer", HexFormat.of().formatHex(data.buffer()));
+            chunks.add(chunk);
+        }
+        var fields = new JsonObject();
+        fields.add("chunks", chunks);
         return fields;
     }
 

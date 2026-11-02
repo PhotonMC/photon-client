@@ -401,3 +401,57 @@ impl Decode for ChunkBatchFinished {
         Ok(Self(size))
     }
 }
+
+/// One chunk of a `ClientboundChunksBiomesPacket`: where it is and its biome containers, one
+/// per section, still packed.
+pub struct ChunkBiomeData {
+    pub x: i32,
+    pub z: i32,
+    pub buffer: Vec<u8>,
+}
+
+impl ChunkBiomeData {
+    /// `LevelChunk.replaceBiomes` reads: one biome container for each of the chunk's sections.
+    /// Bytes left over after the last one are ignored, as the Java buffer read ignores them.
+    pub fn biomes(
+        &self,
+        section_count: usize,
+        registries: &VersionRegistries,
+    ) -> Result<Vec<Vec<i32>>, ConnectionError> {
+        let mut input = self.buffer.as_slice();
+        (0..section_count)
+            .map(|_| {
+                parse_palette_container(&mut input, 64, false, registries)
+                    .map(|container| container.values)
+            })
+            .collect()
+    }
+}
+
+/// `ClientboundChunksBiomesPacket`.
+pub struct ChunksBiomes(pub Vec<ChunkBiomeData>);
+
+impl Decode for ChunksBiomes {
+    fn decode(
+        mut payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
+        let input = &mut payload;
+        let count = read_count(input, "chunk biome count")?;
+        let mut chunks = Vec::with_capacity(count.min(1024));
+        for _ in 0..count {
+            // `readChunkPos`: a long with x in the low half and z in the high half.
+            let packed = read_i64(input, "chunk biome position")?;
+            let buffer = read_length_prefixed_bytes(input, 2_097_152, "chunk biome buffer")?;
+            chunks.push(ChunkBiomeData {
+                x: packed as i32,
+                z: (packed >> 32) as i32,
+                buffer: buffer.to_vec(),
+            });
+        }
+        if !payload.is_empty() {
+            return Err(ConnectionError::Codec("chunk biomes trailing payload"));
+        }
+        Ok(Self(chunks))
+    }
+}

@@ -23,6 +23,10 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
         typed::<SetChunkCacheCenter>,
     ),
     (
+        PLAY_CLIENTBOUND_CHUNKS_BIOMES_PACKET_ID,
+        typed::<ChunksBiomes>,
+    ),
+    (
         PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID,
         typed::<ChunkBatchStart>,
     ),
@@ -92,6 +96,24 @@ impl ClientboundPacket for SetChunkCacheCenter {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let (x, z) = self.0;
         session.world.update_chunk_cache_center(x, z);
+        Ok(())
+    }
+}
+
+impl ClientboundPacket for ChunksBiomes {
+    /// `handleChunksBiomes`: the biomes of the chunks that are loaded are replaced, then the
+    /// chunks count as loaded again for the tint caches, then the sections around each redraw.
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        for data in &self.0 {
+            let Some(count) = session.world.chunk_section_count(data.x, data.z) else {
+                continue;
+            };
+            let biomes = data.biomes(count, &session.registries)?;
+            session.world.replace_chunk_biomes(data.x, data.z, &biomes);
+        }
+        for data in &self.0 {
+            session.mark_columns_around(data.x, data.z);
+        }
         Ok(())
     }
 }

@@ -33,6 +33,17 @@ fn vehicle(at: [f64; 3], y: f32, x: f32) -> String {
     format!("{point}{}{}", f32_hex(y), f32_hex(x))
 }
 
+fn biomes(chunks: &[(i32, i32, &[u8])]) -> String {
+    let mut out = varint_hex(chunks.len() as i64);
+    for (x, z, buffer) in chunks {
+        let packed = (i64::from(*z) << 32) | i64::from(*x as u32);
+        out += &hex(&packed.to_be_bytes());
+        out += &varint_hex(buffer.len() as i64);
+        out += &hex(buffer);
+    }
+    out
+}
+
 fn power(entity: i64, value: f64) -> String {
     format!("{}{}", varint_hex(entity), f64_hex(value))
 }
@@ -81,6 +92,13 @@ fn packets() -> Vec<Value> {
     }
     for (label, hex) in [("plain", power(12, 0.1)), ("zero", power(1, 0.0)), ("big-id", power(2_097_151, -2.5))] {
         cases.extend(framed("projectile_power", label, hex));
+    }
+    for (label, hex) in [
+        ("empty", biomes(&[])),
+        ("one", biomes(&[(3, -7, &[0, 1, 2])])),
+        ("negative", biomes(&[(-1, -1, &[]), (i32::MIN, i32::MAX, &[9; 5])])),
+    ] {
+        cases.extend(framed("chunks_biomes", label, hex));
     }
     cases
 }
