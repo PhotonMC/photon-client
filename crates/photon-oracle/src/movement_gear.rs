@@ -258,7 +258,7 @@ fn hand_item(world: &photon_world::ClientWorld, slot: i16) -> String {
 
 /// A component patch as the wire carries it, the same bytes Java decodes; the reader must end
 /// exactly where they do.
-fn wire_patch(hex: &str) -> Result<photon_world::item_components::Patch, String> {
+pub(super) fn wire_patch(hex: &str) -> Result<photon_world::item_components::Patch, String> {
     let bytes = hex_bytes(hex)?;
     let mut rest = bytes.as_slice();
     let patch = photon_world::item_components::read_patch(&mut rest)
@@ -480,33 +480,7 @@ fn apply_pet_flags(
     if described.get("grounded").is_some() {
         world.apply_entity_ground_state(id, true);
     }
-    apply_worn_items(world, id, described)
-}
-
-/// The `armored` (body slot, wolf armor unless it names an item), `saddled` (a saddle unless it
-/// names an item), `offhand` and `mainhand` flags.
-fn apply_worn_items(
-    world: &mut photon_world::ClientWorld,
-    id: EntityId,
-    described: &Value,
-) -> Result<(), String> {
-    use photon_world::EquipmentSlot;
-    let worn = [
-        ("armored", EquipmentSlot::Body, "minecraft:wolf_armor"),
-        ("saddled", EquipmentSlot::Saddle, "minecraft:saddle"),
-        ("offhand", EquipmentSlot::OffHand, ""),
-        ("mainhand", EquipmentSlot::MainHand, ""),
-    ];
-    for (key, slot, default) in worn {
-        let Some(flag) = described.get(key) else {
-            continue;
-        };
-        let name = flag.as_str().unwrap_or(default);
-        let item = photon_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
-        let stack = photon_world::ClientItemStackState::new(1, item);
-        world.entities_mut().apply_equipment(id, slot, Some(stack));
-    }
-    Ok(())
+    super::movement_worn::apply_worn_items(world, id, described)
 }
 
 /// The entities the server told of, added to the level as `handleAddEntity` does; one may be

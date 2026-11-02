@@ -122,6 +122,38 @@ pub(super) fn set_damage(stack: &mut Stack, damage: i32) {
     set(stack, ids::DAMAGE, varint(mth_clamp(damage, 0, max)));
 }
 
+/// `ItemStack.isValidRepairItem`: the `repairable` component's items (or tag, which `in_tag`
+/// answers for) hold the repair item.
+pub fn accepts_repair(stack: &Stack, repair: ItemId, in_tag: impl Fn(&str) -> bool) -> bool {
+    let Some(value) = get(stack, ids::REPAIRABLE) else {
+        return false;
+    };
+    let mut input = value.as_slice();
+    let Ok(count) = photon_core::wire::read_varint(&mut input) else {
+        return false;
+    };
+    if count == 0 {
+        // A tag, named by a string.
+        let Ok(length) = photon_core::wire::read_varint(&mut input) else {
+            return false;
+        };
+        let name = input.get(..length as usize).unwrap_or_default();
+        return std::str::from_utf8(name).is_ok_and(in_tag);
+    }
+    (1..count).any(|_| {
+        photon_core::wire::read_varint(&mut input).is_ok_and(|item| ItemId(item) == repair)
+    })
+}
+
+/// `armor.setDamageValue(Math.max(0, armor.getDamageValue() - unit))` of a wolf armor's repair,
+/// where the unit is an eighth of the maximum damage.
+pub fn repaired_by_eighth(stack: &Stack) -> Stack {
+    let unit = (max_damage(stack) as f32 * 0.125) as i32;
+    let mut repaired = stack.clone();
+    set_damage(&mut repaired, (damage(stack) - unit).max(0));
+    repaired
+}
+
 /// `ItemStack.isDamageableItem`.
 pub fn is_damageable(stack: &Stack) -> bool {
     has(stack, ids::MAX_DAMAGE) && !has(stack, ids::UNBREAKABLE) && has(stack, ids::DAMAGE)

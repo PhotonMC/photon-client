@@ -1,7 +1,7 @@
 //! `Wolf.mobInteract` and `Cat.mobInteract` on the client: feeding a hurt pet, the collar dye,
 //! the wolf's armor, and the sit toggle that an owner's pass-through click ends in.
 //!
-//! Not covered: repairing a wolf armor (it needs the armor's damage) and the sounds.
+//! Not covered: the sounds.
 
 use super::*;
 
@@ -65,9 +65,37 @@ impl Context<'_> {
                 return Some(self.feed_animal(id, hand, "minecraft:wolf_food"));
             }
         } else if !(self.holds_wolf_armor(hand) && !pet.armored && pet.owned && !pet.baby) {
-            return None;
+            return self.repair_wolf_armor(id, hand, pet);
         }
         self.use_up(hand);
+        Some(EntityUse::Success { swing: true })
+    }
+
+    /// A sitting owner's wolf that wears damaged armor takes the material that repairs it: one
+    /// is taken from the stack (not in creative) and an eighth of the armor's durability mends.
+    fn repair_wolf_armor(&mut self, id: EntityId, hand: u8, pet: &Pet) -> Option<EntityUse> {
+        let entity = self.world.entities().at(id)?;
+        let armor = entity.equipment(photon_world::EquipmentSlot::Body)?;
+        let (material, _) = self.held(hand)?;
+        let tags = self.world.block_state_registry().item_tags();
+        let fits = crate::menus::container::accepts_repair(armor, material, |tag| {
+            tags.contains(material.0, tag)
+        });
+        if !(entity.is_sitting()
+            && pet.owned
+            && crate::menus::container::is_damageable(armor)
+            && crate::menus::container::damage(armor) > 0
+            && fits)
+        {
+            return None;
+        }
+        let mended = crate::menus::container::repaired_by_eighth(armor);
+        self.use_up(hand);
+        self.world.entities_mut().apply_equipment(
+            id,
+            photon_world::EquipmentSlot::Body,
+            Some(mended),
+        );
         Some(EntityUse::Success { swing: true })
     }
 

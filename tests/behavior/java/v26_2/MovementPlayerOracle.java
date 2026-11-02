@@ -314,8 +314,16 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         ? net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
                             net.minecraft.resources.Identifier.parse(described.get("armored").getAsString()))
                         : net.minecraft.world.item.Items.WOLF_ARMOR;
-                    armoredMob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.BODY,
-                        new net.minecraft.world.item.ItemStack(worn));
+                    var armor = new net.minecraft.world.item.ItemStack(worn);
+                    if (described.has("armor_patch")) {
+                        // The armor's component patch as the wire carries it.
+                        var spec = new JsonObject();
+                        spec.addProperty("item", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(worn).toString());
+                        spec.addProperty("count", 1);
+                        spec.addProperty("patch", described.get("armor_patch").getAsString());
+                        armor = MovementSupport.stack(spec);
+                    }
+                    armoredMob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.BODY, armor);
                 }
                 if (described.has("mainhand") && entity instanceof net.minecraft.world.entity.Mob handMob) {
                     handMob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND,

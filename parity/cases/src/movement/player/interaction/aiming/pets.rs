@@ -4,9 +4,10 @@ use serde_json::{Value, json};
 
 use super::herding::{flagged_animal, sneaking_click};
 use super::{aims, facing};
+use crate::components::{DAMAGE, patch, vi};
 
 pub(super) fn rows() -> Vec<Value> {
-    [wolf_rows(), cat_rows(), nautilus_rows(), parrot_rows()].concat()
+    [wolf_rows(), wolf_repair_rows(), cat_rows(), nautilus_rows(), parrot_rows()].concat()
 }
 
 /// A pet at the usual spot, with the pet flags given as key and value.
@@ -28,6 +29,36 @@ fn click(label: &str, entity: Value, item: &'static str, clicks: Vec<Value>) -> 
 
 fn once() -> Vec<Value> {
     [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat()
+}
+
+/// Armadillo scutes on a wolf whose armor is damaged by `damage` of its sixty-four: a sitting
+/// owner's wolf mends an eighth and the scute is taken, even in creative.
+fn wolf_repair_rows() -> Vec<Value> {
+    let scute = "minecraft:armadillo_scute";
+    let worn = |damage: i64, sitting: bool| {
+        let mut flags = vec![("tame", json!(true)), ("armored", json!(true))];
+        flags.push(("armor_patch", json!(patch(&[(DAMAGE, vi(damage))]))));
+        if sitting {
+            flags.push(("sitting", json!(true)));
+        }
+        pet("wolf", &[], &flags)
+    };
+    let twice = || [once(), aims(1).use_clicks(1).inventory().go(), aims(8).inventory().go()].concat();
+    let mut creative = facing("repair-wolf-armor-in-creative", vec![worn(20, true)], once())
+        .main_hand(scute)
+        .count(2)
+        .game_mode("creative")
+        .x_rot(30.0)
+        .row();
+    creative["player_uuid"] = json!(true);
+    vec![
+        click("repair-wolf-armor", worn(20, true), scute, once()),
+        click("repair-standing-wolf-armor", worn(20, false), scute, once()),
+        click("repair-whole-wolf-armor", worn(0, true), scute, once()),
+        click("repair-wolf-armor-with-stone", worn(20, true), "minecraft:stone", once()),
+        click("repair-wolf-armor-twice", worn(4, true), scute, twice()),
+        creative,
+    ]
 }
 
 fn wolf_rows() -> Vec<Value> {

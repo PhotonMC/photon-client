@@ -167,6 +167,7 @@ mod movement_gear;
 mod movement_player;
 mod movement_shorn;
 mod movement_watch;
+mod movement_worn;
 use movement_gear::*;
 use movement_watch::finished_tick;
 mod movement_status;
