@@ -69,6 +69,12 @@ fn camel_rows() -> Vec<Value> {
             .row(),
         at("use-camel-husk-with-rabbit-foot", "camel_husk", &[]).main_hand("minecraft:rabbit_foot").count(2).row(),
         at("use-camel-husk-with-cactus", "camel_husk", &[]).main_hand(cactus).count(2).row(),
+        at("use-baby-camel-husk-with-rabbit-foot", "camel_husk", &["baby"])
+            .main_hand("minecraft:rabbit_foot")
+            .count(2)
+            .row(),
+        at("use-baby-camel-husk-with-cactus", "camel_husk", &["baby"]).main_hand(cactus).count(2).row(),
+        at("use-baby-camel-husk-with-golden", "camel_husk", &["baby"]).main_hand(golden).count(2).row(),
         facing("use-camel-sneaking", vec![flagged_animal("camel", &[])], sneaking.clone())
             .x_rot(30.0)
             .main_hand(stone)

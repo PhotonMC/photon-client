@@ -4,9 +4,13 @@
 
 use super::*;
 
+fn is_husk(name: &str) -> bool {
+    name == "minecraft:camel_husk"
+}
+
 /// The item tag of what the camel family eats.
 fn camel_food(name: &str) -> &'static str {
-    if name == "minecraft:camel_husk" {
+    if is_husk(name) {
         "minecraft:camel_husk_food"
     } else {
         "minecraft:camel_food"
@@ -21,7 +25,10 @@ impl Context<'_> {
         let Some(entity) = self.world.entities().at(id) else {
             return EntityUse::Pass;
         };
-        let (baby, locked) = (entity.is_baby(), entity.is_age_locked());
+        // The reference answers a camel husk as a grown one whatever the baby flag says (rows
+        // `use-baby-camel-husk-*`): it never ages.
+        let baby = entity.is_baby() && !is_husk(name);
+        let locked = entity.is_age_locked();
         if self.player.is_shift_key_down() && !baby {
             return EntityUse::Success { swing: true };
         }
@@ -29,16 +36,20 @@ impl Context<'_> {
             return EntityUse::Success { swing: true };
         }
         if self.holds_tagged(hand, camel_food(name)) {
-            // `Camel.handleEating`: the food heals a hurt camel by two, and is used up when it
-            // heals or ages a baby.
-            let healed = self.heal_local(id, 2.0);
-            self.use_up_for_growth(hand, healed || baby && !locked);
+            self.eat_camel_food(id, hand, baby && !locked);
             return EntityUse::Success { swing: false };
         }
         if baby && self.holds_golden_dandelion() {
             return self.golden_dandelion_on_baby(id, hand);
         }
         EntityUse::Success { swing: false }
+    }
+
+    /// `Camel.handleEating`: the food heals a hurt camel by two, and is used up when it heals or
+    /// ages a baby.
+    fn eat_camel_food(&mut self, id: EntityId, hand: u8, ages: bool) {
+        let healed = self.heal_local(id, 2.0);
+        self.use_up_for_growth(hand, healed || ages);
     }
 
     /// `itemStack.consume(1, player)` once the food ages a baby up (not with infinite materials).
