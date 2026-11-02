@@ -139,9 +139,6 @@ impl PlaySession {
     /// `ClientPacketListener.tick`'s share for the charts: the ping request while the network
     /// charts are up, then the subscription request when the set of wanted subscriptions changed.
     pub(super) fn tick_debug_charts(&mut self) -> Result<(), ConnectionError> {
-        // `Connection.tick` ends with `BandwidthDebugMonitor.tick`, shown or not.
-        let received = self.link.writer.take_received();
-        self.social.charts.bandwidth.log(received as i64);
         let wants = self.social.charts.requests;
         self.tick_debug_charts_at(wants, monotonic_ms())
     }
@@ -171,6 +168,13 @@ impl PlaySession {
                 Ok(())
             },
         )
+    }
+
+    /// `BandwidthDebugMonitor.tick`, which ends `Connection.tick`: the bytes received since the
+    /// last one, whether the chart shows or not.
+    pub(super) fn log_bandwidth(&mut self) {
+        let received = self.link.writer.take_received();
+        self.social.charts.bandwidth.log(received as i64);
     }
 
     /// `PingDebugMonitor.onPongReceived`: how long the request took.
@@ -290,6 +294,7 @@ mod tests {
         let mut logged = 0;
         for _ in 0..200 {
             session.tick_debug_charts().expect("tick");
+            session.log_bandwidth();
             let log = session.bandwidth_samples();
             logged = (0..log.len()).filter_map(|i| log.get(i, 0)).sum::<i64>();
             if logged > 0 {

@@ -85,8 +85,12 @@ impl PlaySession {
     /// `MultiPlayerGameMode.tick`: the carried item is sent if it changed, then the connection ticks.
     fn tick_game_mode(&mut self) -> Result<(), ConnectionError> {
         self.ensure_has_sent_carried_item()?;
+        // `Connection.tick`: the listener's tick (the ping request), then the second's averages,
+        // then the bandwidth sample.
+        self.tick_debug_charts()?;
         self.link.traffic.tick(|| self.link.writer.take_sent());
-        self.tick_debug_charts()
+        self.log_bandwidth();
+        Ok(())
     }
 
     /// One client tick: the local player, its packets, then the tick end.

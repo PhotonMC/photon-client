@@ -10,6 +10,9 @@ use photon_gui::hud::debug_chart as chart;
 /// interface is hidden with no screen over it.
 pub(super) type DebugColumns = (Vec<String>, Vec<String>);
 
+/// A chart to draw: its kind, its samples and whether it sits at the right edge.
+pub(super) type ChartDraw = (chart::Kind, Vec<[i64; chart::DIMENSIONS]>, bool);
+
 impl Gui {
     pub(super) fn debug_columns(
         session: &PlaySession,
@@ -66,54 +69,54 @@ impl Gui {
     pub(super) fn draw_debug_overlay(
         frame: &mut photon_render::gui::GuiFrame,
         (atlas, font): (&GuiAtlas, &Font),
-        ((left, right), session, controls): (&DebugColumns, &PlaySession, &Controls),
+        ((left, right), charts): (&DebugColumns, &[ChartDraw]),
         size: (i32, i32),
     ) {
         debug::draw(frame, atlas, font, size.0, (left, right));
-        Self::draw_debug_charts(frame, (atlas, font), (session, controls), size);
+        Self::draw_chart_set(frame, (atlas, font), charts, size);
     }
 
-    /// The charts under the overlay's lines (`DebugScreenOverlay.extractRenderState`): the frame
-    /// and tick time charts at the bottom corners while the FPS charts are on, the bandwidth and
-    /// ping charts while the network charts are.
-    pub(super) fn draw_debug_charts(
-        frame: &mut photon_render::gui::GuiFrame,
-        fonts: (&GuiAtlas, &Font),
-        (session, controls): (&PlaySession, &Controls),
-        (gui_width, gui_height): (i32, i32),
-    ) {
+    /// The charts that show (`DebugScreenOverlay.extractRenderState`): the frame and tick time
+    /// charts at the bottom corners while the FPS charts are on, the bandwidth and ping charts
+    /// while the network charts are.
+    pub(super) fn debug_charts(session: &PlaySession, controls: &Controls) -> Vec<ChartDraw> {
         let flags = controls.debug.charts;
         // `showFpsCharts` and `showNetworkCharts`: the overlay must be up.
-        let shown = controls.debug.entries.is_overlay_visible();
-        let max_width = gui_width / 2;
+        if !controls.debug.entries.is_overlay_visible() {
+            return Vec::new();
+        }
         let one = |value: i64| [value, 0, 0, 0];
-        let mut put = |kind: chart::Kind, samples: &[[i64; chart::DIMENSIONS]], right: bool| {
-            let width = chart::width(max_width);
-            let left = if right { gui_width - width } else { 0 };
-            chart::draw(frame, fonts, kind, samples, (left, width, gui_height));
-        };
-        if shown && flags.fps {
-            let frames: Vec<_> = controls.debug.frame_log.samples().map(one).collect();
+        let mut charts = Vec::new();
+        if flags.fps {
+            let frames = controls.debug.frame_log.samples().map(one).collect();
             let limit = controls.options.framerate_limit;
-            put(chart::Kind::Fps { limit }, &frames, false);
+            charts.push((chart::Kind::Fps { limit }, frames, false));
             let log = session.tick_time_samples();
             if !log.is_empty() {
-                let ticks: Vec<_> = (0..log.len()).map(|i| dimensions(log, i)).collect();
+                let ticks = (0..log.len()).map(|i| dimensions(log, i)).collect();
                 let mspt = session.milliseconds_per_tick();
-                put(chart::Kind::Tps { mspt }, &ticks, true);
+                charts.push((chart::Kind::Tps { mspt }, ticks, true));
             }
         }
-        if shown && flags.network {
-            let bytes: Vec<_> = column(session.bandwidth_samples())
-                .into_iter()
-                .map(one)
-                .collect();
-            put(chart::Kind::Bandwidth, &bytes, false);
-            let pings: Vec<_> = column(session.ping_samples())
-                .into_iter()
-                .map(one)
-                .collect();
-            put(chart::Kind::Ping, &pings, true);
+        if flags.network {
+            let bytes = column(session.bandwidth_samples()).into_iter().map(one);
+            charts.push((chart::Kind::Bandwidth, bytes.collect(), false));
+            let pings = column(session.ping_samples()).into_iter().map(one);
+            charts.push((chart::Kind::Ping, pings.collect(), true));
+        }
+        charts
+    }
+
+    fn draw_chart_set(
+        frame: &mut photon_render::gui::GuiFrame,
+        fonts: (&GuiAtlas, &Font),
+        charts: &[ChartDraw],
+        (gui_width, gui_height): (i32, i32),
+    ) {
+        let width = chart::width(gui_width / 2);
+        for (kind, samples, right) in charts {
+            let left = if *right { gui_width - width } else { 0 };
+            chart::draw(frame, fonts, *kind, samples, (left, width, gui_height));
         }
     }
 

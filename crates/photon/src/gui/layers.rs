@@ -565,10 +565,11 @@ impl Gui {
         // `Gui.extractRenderState`: the debug overlay comes after the toasts, before the
         // subtitles that waited.
         if let Some(columns) = debug.as_ref() {
+            let charts = Self::debug_charts(session, controls);
             Self::draw_debug_overlay(
                 frame,
                 (resources.0, resources.1),
-                (columns, session, controls),
+                (columns, &charts),
                 (view.1.gui_scaled_width(), view.1.gui_scaled_height()),
             );
         }
