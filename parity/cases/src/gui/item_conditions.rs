@@ -43,11 +43,13 @@ fn broken_rows() -> Vec<Value> {
     ]
 }
 
-/// `has_component`: a component the stack's own patch adds, with and without `ignore_default`.
+/// `has_component`: a component the stack's own patch adds or the item declares, with and without
+/// `ignore_default`.
 fn component_rows() -> Vec<Value> {
     let has = |name: &str, ignore: bool| json!({"property": "minecraft:has_component", "component": name, "ignore_default": ignore});
     let dyed = "minecraft:dyed_color";
     let tracker = "minecraft:lodestone_tracker";
+    let (max, damage, sword) = ("minecraft:max_damage", "minecraft:damage", "minecraft:diamond_sword");
     vec![
         row("wolf-armor-plain", has(dyed, false), "minecraft:wolf_armor", json!({})),
         row("wolf-armor-dyed", has(dyed, false), "minecraft:wolf_armor", json!({"components": [dyed]})),
@@ -64,6 +66,15 @@ fn component_rows() -> Vec<Value> {
         row("compass-both", has(tracker, false), "minecraft:compass", json!({"components": [dyed, tracker]})),
         row("leather-dyed", has(dyed, false), "minecraft:leather_helmet", json!({"components": [dyed]})),
         row("leather-plain", has(dyed, false), "minecraft:leather_helmet", json!({})),
+        // Components the item declares itself, and a patch that removes or restates one.
+        row("sword-declares-max-damage", has(max, false), sword, json!({})),
+        row("sword-declares-max-damage-ignore-default", has(max, true), sword, json!({})),
+        row("sword-max-damage-removed", has(max, false), sword, json!({"remove": ["max_damage"]})),
+        row("sword-max-damage-removed-ignore-default", has(max, true), sword, json!({"remove": ["max_damage"]})),
+        row("sword-max-damage-set-ignore-default", has(max, true), sword, json!({"max_damage": 9})),
+        row("sword-damage-set-ignore-default", has(damage, true), sword, json!({"damage": 1})),
+        row("stone-declares-no-max-damage", has(max, false), "minecraft:stone", json!({})),
+        row("stone-max-damage-added", has(max, false), "minecraft:stone", json!({"max_damage": 5})),
     ]
 }
 

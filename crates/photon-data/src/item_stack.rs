@@ -108,6 +108,27 @@ impl ClientItemStackState {
             .map(|(_, value)| Some(value))
     }
 
+    /// The component types the stack has (`ItemStack.has`) and those its patch names, a removal
+    /// too (`ItemStack.hasNonDefault`), each as a set of type ids.
+    pub fn component_sets(&self) -> (u128, u128) {
+        let bit = |id: i32| {
+            u32::try_from(id)
+                .ok()
+                .and_then(|id| 1_u128.checked_shl(id))
+                .unwrap_or(0)
+        };
+        let patch = self.patch();
+        let mut has = usize::try_from(self.item_registry_id.0)
+            .ok()
+            .and_then(|index| crate::item::component_sets::DEFAULT_COMPONENT_SETS.get(index))
+            .copied()
+            .unwrap_or(0);
+        let added = patch.added.iter().fold(0, |set, (id, _)| set | bit(*id));
+        let removed = patch.removed.iter().fold(0, |set, id| set | bit(*id));
+        has = (has | added) & !removed;
+        (has, added | removed)
+    }
+
     /// An empty patch is kept as no bytes, however it was written.
     pub fn with_patch_bytes(mut self, patch_bytes: Vec<u8>) -> Self {
         self.patch_bytes = if patch_bytes == [0, 0] {

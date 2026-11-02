@@ -102,11 +102,9 @@ impl ItemState {
 
     /// `HasComponent`: the stack has the component the condition names.
     fn has_component(&self, component: Option<&(String, bool)>) -> bool {
-        match component.map(|(name, _)| name.as_str()) {
-            Some("minecraft:dyed_color") => self.components.dyed_color,
-            Some("minecraft:lodestone_tracker") => self.components.lodestone_tracker,
-            _ => false,
-        }
+        component.is_some_and(|(name, ignore_default)| {
+            self.components.tests((name.as_str(), *ignore_default))
+        })
     }
 
     /// `CustomModelDataProperty` (condition): the flag at the index is set.
@@ -145,13 +143,33 @@ impl ItemState {
     }
 }
 
-/// Whether a stack has the components the vanilla item definitions test with `has_component`
-/// (`ItemStack.has`; `ignore_default` is for a component the item does not declare, which
-/// these two never are).
+/// The components a stack has, for the `has_component` conditions, as sets of component type ids.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct TestedComponents {
-    pub dyed_color: bool,
-    pub lodestone_tracker: bool,
+    /// The types the stack has (`ItemStack.has`).
+    pub has: u128,
+    /// The types its patch names, a removal too (`ItemStack.hasNonDefault`).
+    pub non_default: u128,
+}
+
+impl TestedComponents {
+    /// The sets of a stack's component types.
+    pub fn of_sets((has, non_default): (u128, u128)) -> Self {
+        Self { has, non_default }
+    }
+
+    /// `HasComponent`: the stack has the component, or with `ignore_default` its patch names it.
+    fn tests(&self, (name, ignore_default): (&str, bool)) -> bool {
+        let id = photon_data::item::component_types::id(name)
+            .and_then(|id| u32::try_from(id).ok())
+            .and_then(|id| 1_u128.checked_shl(id));
+        let set = if ignore_default {
+            self.non_default
+        } else {
+            self.has
+        };
+        id.is_some_and(|bit| set & bit != 0)
+    }
 }
 
 /// What a walk of the model tree reads, and which branches it took (the cache key of the layers).
@@ -562,6 +580,9 @@ pub fn stack_range_value(node: &str, state: &ItemState) -> Option<f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use photon_data::item::component_types::{
+        DYED_COLOR as DYED_COLOR_ID, LODESTONE_TRACKER as LODESTONE_TRACKER_ID,
+    };
 
     const BOW: &str = r#"{"model":{"type":"minecraft:condition","property":"minecraft:using_item",
         "on_false":{"type":"minecraft:model","model":"minecraft:item/bow"},
@@ -815,7 +836,7 @@ mod tests {
     fn dyed_wolf_armor_draws_the_dyed_model() {
         let at = |dyed_color| {
             let components = TestedComponents {
-                dyed_color,
+                has: u128::from(dyed_color) << DYED_COLOR_ID,
                 ..TestedComponents::default()
             };
             drawn_by(
@@ -925,7 +946,7 @@ mod tests {
         let wanted = |lodestone_tracker| {
             let state = ItemState {
                 components: TestedComponents {
-                    lodestone_tracker,
+                    has: u128::from(lodestone_tracker) << LODESTONE_TRACKER_ID,
                     ..TestedComponents::default()
                 },
                 ..ItemState::default()

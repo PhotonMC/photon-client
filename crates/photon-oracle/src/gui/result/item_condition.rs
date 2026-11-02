@@ -101,10 +101,7 @@ fn stack_state(stack: &ClientItemStackState) -> ItemState {
         broken: stack.breaks_on_next_damage(),
         numbers: photon_gui::stack_numbers(stack),
         custom_model_data: photon_gui::stack_custom_model_data(stack),
-        components: TestedComponents {
-            dyed_color: stack.has_added_component(DYED_COLOR),
-            lodestone_tracker: stack.has_added_component(LODESTONE_TRACKER),
-        },
+        components: TestedComponents::of_sets(stack.component_sets()),
         ..ItemState::default()
     }
 }

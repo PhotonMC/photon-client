@@ -1,7 +1,6 @@
 //! Item models turned into layers once and kept.
 
 use photon_core::ids::BlockStateId;
-use photon_data::item::component_types::{DYED_COLOR, LODESTONE_TRACKER};
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::{BlockRenderer, ItemLayer};
 use photon_render::item_model::{ItemState, ItemTints, ItemUse};
@@ -295,10 +294,9 @@ impl ItemLayerCache {
             numbers: photon_gui::stack_numbers(stack),
             custom_model_data: photon_gui::stack_custom_model_data(stack),
             needles: photon_render::item_model::Needles::default(),
-            components: photon_render::item_model::TestedComponents {
-                dyed_color: stack.has_added_component(DYED_COLOR),
-                lodestone_tracker: stack.has_added_component(LODESTONE_TRACKER),
-            },
+            components: photon_render::item_model::TestedComponents::of_sets(
+                stack.component_sets(),
+            ),
         }
     }
 
