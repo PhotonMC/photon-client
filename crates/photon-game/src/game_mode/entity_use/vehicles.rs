@@ -31,7 +31,9 @@ impl Context<'_> {
                     .and_then(|entity| entity.boat().map(|boat| boat.is_out_of_control()))
                     .unwrap_or(false);
                 let sneaking = self.player.is_shift_key_down();
-                if (sneaking && !chest) || (out_of_control && !(sneaking && chest)) {
+                // A chest boat that boarding refuses opens its chest instead; one that has been
+                // under the water has its rider's eyes in it, so that refusal is certain.
+                if !chest && (sneaking || out_of_control) {
                     EntityUse::Pass
                 } else {
                     EntityUse::Success { swing: true }

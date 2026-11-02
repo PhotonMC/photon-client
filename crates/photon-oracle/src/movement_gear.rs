@@ -45,7 +45,8 @@ pub(super) fn after_tick(
     (row, breaking): (&Value, Option<&Value>),
 ) {
     if row["tick_boats"].as_bool() == Some(true) {
-        // The boats nobody rides tick on their own, after the player.
+        // The boats nobody rides tick on their own, after the player. (This ticks every entity,
+        // the reference only the boats: rows with this flag hold nothing else that ticks.)
         world.tick_entities(false);
     }
     if breaking.is_some_and(|breaking| breaking["rockets"].is_number()) {

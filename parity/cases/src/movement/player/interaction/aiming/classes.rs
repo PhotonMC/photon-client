@@ -319,12 +319,20 @@ fn submerged_boat_rows() -> Vec<Value> {
     let pool = || -> Vec<Value> {
         (-1..2).flat_map(|x| (1..5).flat_map(move |z| (64..67).map(move |y| put(x, y, z, "minecraft:water")))).collect()
     };
-    let boat = || super::mob(31, "oak_boat", 0.5, 64.0, 2.5);
-    [("use-submerged-boat-after-a-while", 70), ("use-submerged-boat-soon", 20)]
+    // (label, boat, ticks under water, sneaking at the click)
+    let table = [
+        ("use-submerged-boat-after-a-while", "oak_boat", 70, false),
+        ("use-submerged-boat-soon", "oak_boat", 20, false),
+        ("use-submerged-chest-boat-after-a-while", "oak_chest_boat", 70, false),
+        ("use-submerged-chest-boat-sneaking", "oak_chest_boat", 70, true),
+    ];
+    table
         .into_iter()
-        .map(|(label, wait)| {
-            let clicks = [aims(wait).inventory().go(), once()].concat();
-            let mut row = facing(label, vec![boat()], clicks)
+        .map(|(label, kind, wait, sneaking)| {
+            let click = if sneaking { sneaking_click() } else { once() };
+            let clicks = [aims(wait).inventory().go(), click].concat();
+            let boat = super::mob(31, kind, 0.5, 64.0, 2.5);
+            let mut row = facing(label, vec![boat], clicks)
                 .blocks(pool())
                 .x_rot(30.0)
                 .main_hand("minecraft:stone")
