@@ -25,7 +25,13 @@ pub fn resolve_server(host: &str, port: u16) -> Option<SocketAddr> {
 }
 
 fn lookup(host: &str, port: u16) -> Option<SocketAddr> {
-    (host, port).to_socket_addrs().ok()?.next()
+    // The reference's address order puts IPv4 first (`java.net.preferIPv6Addresses` is off), so a
+    // name that has both reaches a server listening on IPv4 only.
+    let all: Vec<SocketAddr> = (host, port).to_socket_addrs().ok()?.collect();
+    all.iter()
+        .find(|address| address.is_ipv4())
+        .or(all.first())
+        .copied()
 }
 
 /// `ServerRedirectHandler.createDnsSrvRedirectHandler`: only the default port is redirected.
@@ -186,6 +192,13 @@ mod tests {
             parse_srv_answer(&response(7, 0, plain), 7),
             Some(("mc2.example.com".to_owned(), 25565))
         );
+    }
+
+    #[test]
+    fn a_name_with_both_families_resolves_to_ipv4() {
+        // `localhost` has `::1` first on most systems, and many servers listen on IPv4 only.
+        let address = lookup("localhost", 25565).expect("localhost resolves");
+        assert!(address.is_ipv4() || !"localhost".to_socket_addrs().unwrap().any(|a| a.is_ipv4()));
     }
 
     #[test]
