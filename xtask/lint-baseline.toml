@@ -384,7 +384,7 @@
 "crates/photon-render/src/visibility.rs::VisGraph::flood_fill" = 13
 "crates/photon-render/src/visibility.rs::VisGraph::resolve" = 13
 "crates/photon-render/src/visibility/index.rs::initial_nodes" = 11
-"crates/photon-render/src/vulkan/frame/draw_calls.rs::VulkanBackend::run_range" = 16
+"crates/photon-render/src/vulkan/frame/draw_calls.rs::VulkanBackend::run_range" = 15
 "crates/photon-render/src/vulkan/frame/passes.rs::Run::pipeline" = 11
 "crates/photon-render/src/vulkan/frame/scene.rs::VulkanBackend::record_scene" = 20
 "crates/photon-render/src/vulkan/frame/sync.rs::VulkanBackend::render_frame" = 12
@@ -800,7 +800,7 @@
 "crates/photon-render/src/sky/weather.rs::build" = 125
 "crates/photon-render/src/texture/atlas.rs::Region::add" = 75
 "crates/photon-render/src/texture/mipmap.rs::generate_mip_levels_with" = 81
-"crates/photon-render/src/vulkan/device/create.rs::VulkanBackend::create" = 133
+"crates/photon-render/src/vulkan/device/create.rs::VulkanBackend::create" = 132
 "crates/photon-render/src/vulkan/device/instance.rs::create_instance" = 64
 "crates/photon-render/src/vulkan/device/logical.rs::create_logical_device" = 69
 "crates/photon-render/src/vulkan/device/presentation.rs::create_presentation" = 88

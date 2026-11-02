@@ -160,8 +160,13 @@ impl Play {
             hand,
             mut held,
             mut glint,
+            maps,
         }) = hands
         {
+            for map in &maps {
+                self.item_layers
+                    .hand_map(&self.session, &self.entity_textures, (map, view.light));
+            }
             let hand_projection = photon_render::scene::perspective(
                 hud_fov(player, self.controls.options.fov_effect_scale as f32).to_radians(),
                 self.aspect,

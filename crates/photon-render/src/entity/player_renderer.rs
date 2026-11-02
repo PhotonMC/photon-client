@@ -265,6 +265,8 @@ pub struct HandView {
     pub right_arm: bool,
     /// `isModelPartShown(*_SLEEVE)` of that arm: it wears its sleeve (`renderHand`'s `hasSleeve`).
     pub sleeve: bool,
+    /// `isModelPartShown` of the right and the left sleeve.
+    pub sleeves: [bool; 2],
     /// The view bob's walked distance and bob.
     pub bob_walked: f32,
     pub bob: f32,
@@ -286,7 +288,7 @@ pub struct HandView {
 
 /// The pose both hands start from: `GameRenderer.bobView`, then the hands'
 /// lag behind the view.
-fn view_pose(view: &HandView) -> Pose {
+pub(crate) fn view_pose(view: &HandView) -> Pose {
     use photon_core::math::{mth_cos_f64, mth_sin_f64};
     let rad = Quaternion::degrees_to_radians;
     let sin = |value: f32| mth_sin_f64(f64::from(value));
@@ -390,20 +392,38 @@ fn entity_light(normal: [f32; 3]) -> f32 {
 /// hand's lag behind the view, then `ItemInHandRenderer.renderPlayerArm`
 /// for the empty main hand's arm.
 pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
+    let mut pose = view_pose(view);
+    player_arm_pose(
+        &mut pose,
+        view.right_arm,
+        (view.attack, view.inverse_arm_height),
+    );
+    let arm = if view.right_arm {
+        crate::entity::player_model::Arm::Right
+    } else {
+        crate::entity::player_model::Arm::Left
+    };
+    arm_vertices(model, &pose, (arm, view.sleeve), view)
+}
+
+/// `ItemInHandRenderer.renderPlayerArm`'s pose, from the pose the hands start at.
+pub(crate) fn player_arm_pose(
+    pose: &mut Pose,
+    right_arm: bool,
+    (attack, inverse_arm_height): (f32, f32),
+) {
     let rad = Quaternion::degrees_to_radians;
     let sin = |value: f32| photon_core::math::mth_sin_f64(f64::from(value));
     let pi = std::f64::consts::PI as f32;
-    let mut pose = view_pose(view);
     // `renderPlayerArm`: the right arm, or the left mirrored.
-    let invert = if view.right_arm { 1.0_f32 } else { -1.0 };
-    let attack = view.attack;
+    let invert = if right_arm { 1.0_f32 } else { -1.0 };
     let sqrt_attack = f64::from(attack).sqrt() as f32;
     let x_swing = -0.3 * sin(sqrt_attack * pi);
     let y_swing = 0.4 * sin(sqrt_attack * (std::f64::consts::PI * 2.0) as f32);
     let z_swing = -0.4 * sin(attack * pi);
     pose.translate(
         invert * (x_swing + 0.640_000_05),
-        y_swing + -0.6 + view.inverse_arm_height * -0.6,
+        y_swing + -0.6 + inverse_arm_height * -0.6,
         z_swing + -0.719_999_97,
     );
     pose.rotate(&Quaternion::rotation_y(rad(invert * 45.0)));
@@ -420,14 +440,18 @@ pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
     pose.rotate(&Quaternion::rotation_x(rad(200.0)));
     pose.rotate(&Quaternion::rotation_y(rad(invert * -135.0)));
     pose.translate(invert * 5.6, 0.0, 0.0);
+}
+
+/// An arm of the model (`AvatarRenderer.renderHand`) at `pose`, in the skin the view names.
+pub(crate) fn arm_vertices(
+    model: &mut PlayerModel,
+    pose: &Pose,
+    (arm, sleeve): (crate::entity::player_model::Arm, bool),
+    view: &HandView,
+) -> Vec<Vertex> {
     let light = crate::block::light::light_uv(view.light);
     let mut vertices = Vec::new();
-    let arm = if view.right_arm {
-        crate::entity::player_model::Arm::Right
-    } else {
-        crate::entity::player_model::Arm::Left
-    };
-    for corners in model.render_arm(arm, &pose, view.sleeve) {
+    for corners in model.render_arm(arm, pose, sleeve) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {

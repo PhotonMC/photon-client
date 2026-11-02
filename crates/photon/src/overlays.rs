@@ -146,6 +146,7 @@ pub const SHARED_TEXTURES: [&str; 3] = [
 mod cape;
 mod cracks;
 mod frame_tag;
+mod hand_maps;
 mod hand_use;
 mod light;
 mod local_state;
@@ -153,6 +154,7 @@ mod remote_placement;
 mod shadow_radius;
 mod shadows;
 pub use cracks::cracks;
+pub use hand_maps::HeldMap;
 pub use light::*;
 mod avatars;
 mod wear;

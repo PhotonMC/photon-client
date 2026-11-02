@@ -10,6 +10,7 @@ pub mod held_item;
 pub mod instancing;
 pub mod keyframe;
 pub mod layering;
+pub mod map_in_hand;
 pub mod mob_model;
 pub mod name_tag;
 pub mod player_model;

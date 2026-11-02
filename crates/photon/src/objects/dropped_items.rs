@@ -233,6 +233,17 @@ impl WorldItemLayers {
         self.frames.fixed_item(stack, pose, materials)
     }
 
+    /// The map the hand holds, drawn with the hand this frame.
+    pub fn hand_map(
+        &mut self,
+        session: &PlaySession,
+        textures: &EntityTextures,
+        (map, light): (&crate::overlays::HeldMap, i32),
+    ) {
+        let data = session.world().map_data(map.id).map(|data| (map.id, data));
+        self.frames.set_hand_map(data, (&map.pose, light), textures);
+    }
+
     /// Hand the skins found for the player heads to the caches that draw them, and take what
     /// they asked for since.
     pub fn exchange_heads(

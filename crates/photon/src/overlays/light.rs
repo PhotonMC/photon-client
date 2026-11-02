@@ -58,8 +58,8 @@ pub fn hands(
 ) -> HandVertices {
     let partial = view.partial as f32;
     let swap = |item: ItemId| renderer.item_swap(item);
-    let main_height = item_in_hand.inverse_arm_height(MAIN_HAND, partial, &swap);
-    let off_height = item_in_hand.inverse_arm_height(OFF_HAND, partial, &swap);
+    let height = |hand| item_in_hand.inverse_arm_height(hand, partial, &swap);
+    let (main_height, off_height) = (height(MAIN_HAND), height(OFF_HAND));
     let hand_view = hand_view(player, view, main_height);
     let main_item = item_in_hand.item(MAIN_HAND);
     let off_item = item_in_hand.item(OFF_HAND);
@@ -68,12 +68,9 @@ pub fn hands(
     }
     let (show_main, show_off) = super::hand_use::selection(player, (main_item, off_item));
     // `ItemInHandRenderer`: an invisible player's bare arm is not drawn.
-    let mut hand = if main_item.is_none() && show_main && !item_in_hand.invisible() {
-        photon_render::entity::player_renderer::hand_vertices(model, &hand_view)
-    } else {
-        Vec::new()
-    };
-    let mut held = Vec::new();
+    let bare = main_item.is_none() && show_main && !item_in_hand.invisible();
+    let mut hand = super::hand_maps::bare_arm(model, &hand_view, bare);
+    let (mut held, mut maps) = (Vec::new(), Vec::new());
     for (stack, right, attack, height) in [
         (
             main_item.filter(|_| show_main),
@@ -86,29 +83,73 @@ pub fn hands(
         let Some(stack) = stack else {
             continue;
         };
-        // The cache of the hand's context (`FIRST_PERSON_RIGHT_HAND` first): by the side it is on.
-        let side = usize::from(right == crate::overlays::local_main_arm_left());
-        let cache = &mut held_layers[side];
-        let drawn = item_in_hand_vertices(
-            (player, stack),
-            (right, attack, height, cast[usize::from(!right)]),
-            cache,
-            (renderer, tints),
-            (&hand_view, partial),
-        );
-        // A head with a profile is drawn in the skin it names, which the entity pictures hold.
-        if let Some(rect) = head_skin(stack) {
-            let light = photon_render::block::light::light_uv(hand_view.light);
-            hand.extend(wear_skin(drawn, renderer, rect, light));
+        let arm = (right, attack, height);
+        if super::hand_maps::push_map(
+            (model, &hand_view),
+            stack,
+            (arm, right && off_item.is_none(), item_in_hand.invisible()),
+            (&mut hand, &mut maps),
+        ) {
             continue;
         }
-        held_layers[side].extend_with_glint(stack, drawn, &mut held);
+        let arm = (right, attack, height, cast[usize::from(!right)]);
+        let views = (renderer, tints, &hand_view, partial);
+        held_stack(
+            (player, stack),
+            (arm, held_layers, &mut head_skin),
+            views,
+            (&mut hand, &mut held),
+        );
     }
+    finish(held_layers, (hand, held, maps))
+}
+
+/// The hands' vertices with the glints of what the caches drew.
+fn finish(
+    held_layers: &mut [ItemLayerCache; 2],
+    (hand, held, maps): (Vec<Vertex>, Vec<Vertex>, Vec<super::hand_maps::HeldMap>),
+) -> HandVertices {
     let glint = held_layers
         .iter_mut()
         .flat_map(|cache| cache.take_glint())
         .collect();
-    HandVertices { hand, held, glint }
+    HandVertices {
+        hand,
+        held,
+        glint,
+        maps,
+    }
+}
+
+/// One held stack that is no map: drawn into the held items, or into the arm's run when it is a
+/// head in the skin its profile names.
+fn held_stack(
+    (player, stack): (&LocalPlayer, &ClientItemStackState),
+    (arm, held_layers, head_skin): (
+        (bool, f32, f32, bool),
+        &mut [ItemLayerCache; 2],
+        &mut impl FnMut(&ClientItemStackState) -> Option<[f32; 4]>,
+    ),
+    (renderer, tints, hand_view, partial): (&BlockRenderer, &BiomeTints, &HandView, f32),
+    (hand, held): (&mut Vec<Vertex>, &mut Vec<Vertex>),
+) {
+    let (right, ..) = arm;
+    // The cache of the hand's context (`FIRST_PERSON_RIGHT_HAND` first): by the side it is on.
+    let side = usize::from(right == crate::overlays::local_main_arm_left());
+    let drawn = item_in_hand_vertices(
+        (player, stack),
+        arm,
+        &mut held_layers[side],
+        (renderer, tints),
+        (hand_view, partial),
+    );
+    // A head with a profile is drawn in the skin it names, which the entity pictures hold.
+    if let Some(rect) = head_skin(stack) {
+        let light = photon_render::block::light::light_uv(hand_view.light);
+        hand.extend(wear_skin(drawn, renderer, rect, light));
+        return;
+    }
+    held_layers[side].extend_with_glint(stack, drawn, held);
 }
 
 /// One held stack's triangles in the first-person view, in the hand's pose.
@@ -158,6 +199,7 @@ pub struct HandVertices {
     pub hand: Vec<Vertex>,
     pub held: Vec<Vertex>,
     pub glint: Vec<Vertex>,
+    pub maps: Vec<super::hand_maps::HeldMap>,
 }
 
 /// The pose inputs of the first-person view this frame.
@@ -175,6 +217,7 @@ fn hand_view(player: &LocalPlayer, view: FrameView, inverse_arm_height: f32) -> 
     HandView {
         right_arm,
         sleeve: crate::overlays::local_hidden_layers() & (1 << sleeve_bit) == 0,
+        sleeves: [3, 2].map(|bit| crate::overlays::local_hidden_layers() & (1 << bit) == 0),
         bob_walked: walked,
         bob,
         view_x_rot,

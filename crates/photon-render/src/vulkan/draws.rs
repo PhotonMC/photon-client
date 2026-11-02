@@ -119,14 +119,27 @@ impl VulkanBackend {
         &mut self,
         (maps, decorations): (&[Vertex], &[Vertex]),
     ) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.map.buffer);
-        self.fill_vertex_buffer(&mut buffer, maps)?;
-        self.map.buffer = buffer;
-        self.map.count = maps.len() as u32;
-        let mut buffer = std::mem::take(&mut self.map_decoration.buffer);
-        self.fill_vertex_buffer(&mut buffer, decorations)?;
-        self.map_decoration.buffer = buffer;
-        self.map_decoration.count = decorations.len() as u32;
+        self.fill_map_list(Maps::Frame(0), maps)?;
+        self.fill_map_list(Maps::Frame(1), decorations)
+    }
+
+    /// Hand over the map the hand holds: the quad behind it, its colours, and its decorations.
+    pub fn set_hand_map_quads(
+        &mut self,
+        quads: (&[Vertex], &[Vertex], &[Vertex]),
+    ) -> Result<(), VulkanError> {
+        self.fill_map_list(Maps::Hand(0), quads.0)?;
+        self.fill_map_list(Maps::Hand(1), quads.1)?;
+        self.fill_map_list(Maps::Hand(2), quads.2)
+    }
+
+    /// Fill one of the maps' lists.
+    fn fill_map_list(&mut self, which: Maps, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let mut buffer = std::mem::take(&mut self.maps.list(which).buffer);
+        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        let list = self.maps.list(which);
+        list.buffer = buffer;
+        list.count = vertices.len() as u32;
         Ok(())
     }
 

@@ -23,8 +23,7 @@ impl Drop for VulkanBackend {
             self.particle.buffer.clear();
             self.block_particle.buffer.clear();
             self.flat.clear_buffers();
-            self.map.buffer.clear();
-            self.map_decoration.buffer.clear();
+            self.maps.clear_buffers();
             self.dissolve.buffer.clear();
             self.rays.buffer.clear();
             self.portal.buffer.clear();

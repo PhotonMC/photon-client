@@ -116,6 +116,10 @@ pub(super) enum Run {
     HeldTranslucent,
     /// The enchantment glint of what the hand holds, over the depth the items wrote.
     HandGlint,
+    /// The picture behind a map in the hand, the map's colours, and its decorations.
+    HandMapBackground,
+    HandMap,
+    HandMapDecoration,
 }
 
 /// What the entities pass draws, in order. The ground items and the entities come first, then the
@@ -189,6 +193,9 @@ impl Run {
             Self::Rays => &scene.rays_pipeline,
             Self::Orb
             | Self::MapDecoration
+            | Self::HandMapBackground
+            | Self::HandMapDecoration
+            | Self::HandMap
             | Self::Map
             | Self::NameTag
             | Self::NameTagOffset
@@ -211,7 +218,7 @@ impl Run {
             | Self::Held
             | Self::HeldTranslucent
             | Self::BlockParticle => Sampled::Atlas,
-            Self::Map => Sampled::Map,
+            Self::Map | Self::HandMap => Sampled::Map,
             Self::NameTagSeeThrough | Self::NameTag | Self::NameTagOffset => Sampled::Gui,
             Self::Outline | Self::OutlineBacking | Self::Gizmo => Sampled::Unbound,
             Self::Cracks => Sampled::Crack,
@@ -226,8 +233,23 @@ impl Run {
             | Self::Orb
             | Self::Particle
             | Self::MapDecoration
+            | Self::HandMapBackground
+            | Self::HandMapDecoration
             | Self::Hand
             | Self::HandGlint => Sampled::Entity,
+        }
+    }
+}
+
+impl Run {
+    /// The list a map run draws.
+    pub(super) fn map_list(self, maps: &MapDraws) -> &DrawList {
+        match self {
+            Self::Map => &maps.frame[0],
+            Self::MapDecoration => &maps.frame[1],
+            Self::HandMapBackground => &maps.hand[0],
+            Self::HandMap => &maps.hand[1],
+            _ => &maps.hand[2],
         }
     }
 }
@@ -236,7 +258,9 @@ impl SceneResources {
     /// The pipeline of a run drawn with the text shaders.
     fn text_pipeline_of(&self, run: Run) -> &Pipeline {
         match run {
-            Run::Orb | Run::MapDecoration => &self.text_translucent_pipeline,
+            Run::Orb | Run::MapDecoration | Run::HandMapBackground | Run::HandMapDecoration => {
+                &self.text_translucent_pipeline
+            }
             Run::NameTagSeeThrough => &self.text_see_through_pipeline,
             Run::NameTagOffset => &self.text_pipelines[1],
             _ => &self.text_pipelines[0],

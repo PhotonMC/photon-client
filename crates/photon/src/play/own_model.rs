@@ -71,6 +71,7 @@ impl Play {
                 hand: Vec::new(),
                 held: Vec::new(),
                 glint: Vec::new(),
+                maps: Vec::new(),
             },
         }
     }

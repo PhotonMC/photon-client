@@ -347,8 +347,11 @@ impl VulkanBackend {
             Run::Orb => list(&self.orb),
             Run::Particle => list(&self.particle),
             Run::BlockParticle => list(&self.block_particle),
-            Run::Map => list(&self.map),
-            Run::MapDecoration => list(&self.map_decoration),
+            Run::Map
+            | Run::MapDecoration
+            | Run::HandMapBackground
+            | Run::HandMap
+            | Run::HandMapDecoration => list(run.map_list(&self.maps)),
             Run::NameTagSeeThrough => list(&self.name_tag_see),
             Run::NameTag | Run::NameTagOffset => {
                 list(&self.name_tag[usize::from(run == Run::NameTagOffset)])

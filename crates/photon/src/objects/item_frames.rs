@@ -62,7 +62,7 @@ impl MapTextures {
 
     /// The slot a map is in, its colours written first if it has none or has changed
     /// (`MapTextureManager.prepareMapTexture`).
-    fn slot_of(&mut self, id: i32, data: &MapData) -> usize {
+    pub(super) fn slot_of(&mut self, id: i32, data: &MapData) -> usize {
         let found = self
             .slots
             .iter()
@@ -105,9 +105,11 @@ impl MapTextures {
 /// quads of the maps and their decorations of this frame.
 pub struct FrameState {
     pub(crate) layers: ItemLayerCache,
-    maps: MapTextures,
+    pub(super) maps: MapTextures,
     map_vertices: Vec<Vertex>,
     decoration_vertices: Vec<Vertex>,
+    /// The map in the hand: the picture behind it, its colours, its decorations.
+    pub(super) hand_map: [Vec<Vertex>; 3],
 }
 
 impl FrameState {
@@ -117,6 +119,7 @@ impl FrameState {
             maps: MapTextures::new(),
             map_vertices: Vec::new(),
             decoration_vertices: Vec::new(),
+            hand_map: Default::default(),
         }
     }
 
@@ -139,6 +142,48 @@ impl FrameState {
         (drawn, self.layers.take_glint())
     }
 
+    /// A map in the hand (`ItemInHandRenderer.renderMap`): the picture behind it, the checkered
+    /// one once its data has come, then its colours and all of its decorations.
+    pub(super) fn set_hand_map(
+        &mut self,
+        map: Option<(i32, &MapData)>,
+        (pose, light): (&Pose, i32),
+        textures: &EntityTextures,
+    ) {
+        let name = if map.is_some() {
+            HAND_MAP_BACKGROUND_CHECKERBOARD
+        } else {
+            HAND_MAP_BACKGROUND
+        };
+        if let Some(rect) = textures.rect(name) {
+            let uv = |[u, v]: [f32; 2]| {
+                [
+                    rect[0] + (rect[2] - rect[0]) * u,
+                    rect[1] + (rect[3] - rect[1]) * v,
+                ]
+            };
+            let corners = [[-7.0, 135.0], [135.0, 135.0], [135.0, -7.0], [-7.0, -7.0]];
+            let uvs = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
+            let light = photon_render::block::light::light_uv(light);
+            for index in [0, 1, 2, 0, 2, 3] {
+                let [x, y] = corners[index];
+                self.hand_map[0].push(Vertex {
+                    position: pose.pose.transform_position(x, y, 0.0),
+                    uv: uv(uvs[index]),
+                    shade: 1.0,
+                    tint: [1.0; 4],
+                    light,
+                });
+            }
+        }
+        if let Some((id, data)) = map {
+            let slot = self.maps.slot_of(id, data);
+            let (colours, decorations) = map_vertices((pose, data), (slot, light), textures, false);
+            self.hand_map[1].extend(colours);
+            self.hand_map[2].extend(decorations);
+        }
+    }
+
     /// Hand the maps' image (if it changed) and this frame's quads to the renderer.
     pub fn hand_over(
         &mut self,
@@ -147,6 +192,8 @@ impl FrameState {
         if let Some(image) = self.maps.take_image() {
             backend.set_map_texture(&image)?;
         }
+        let [back, map, decorations] = std::mem::take(&mut self.hand_map);
+        backend.set_hand_map_quads((&back, &map, &decorations))?;
         backend.set_map_quads((
             &std::mem::take(&mut self.map_vertices),
             &std::mem::take(&mut self.decoration_vertices),
@@ -162,10 +209,15 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
     photon_data::map::decoration_types()
         .iter()
         .map(|kind| kind.texture)
+        .chain([HAND_MAP_BACKGROUND, HAND_MAP_BACKGROUND_CHECKERBOARD])
 }
 
+/// The picture behind a map in the hand whose data has not come, and behind one whose has.
+pub(super) const HAND_MAP_BACKGROUND: &str = "map/map_background";
+pub(super) const HAND_MAP_BACKGROUND_CHECKERBOARD: &str = "map/map_background_checkerboard";
+
 /// The id of the map a stack holds (`DataComponents.MAP_ID`), if it holds one.
-fn framed_map_id(stack: &photon_world::ClientItemStackState) -> Option<i32> {
+pub(crate) fn framed_map_id(stack: &photon_world::ClientItemStackState) -> Option<i32> {
     let values = Values::new(stack.item_registry_id(), stack.patch_bytes());
     let mut raw = values.raw(photon_data::item::component_types::MAP_ID)?;
     photon_core::wire::read_varint(&mut raw).ok()
@@ -296,6 +348,18 @@ fn frame_map(
     (slot, light): (usize, i32),
     textures: &EntityTextures,
 ) {
+    let (map, decorations) = map_vertices((pose, data), (slot, light), textures, true);
+    state.map_vertices.extend(map);
+    state.decoration_vertices.extend(decorations);
+}
+
+/// The vertices of a map's colours and of its decorations (the frame's, or all of them).
+pub(super) fn map_vertices(
+    (pose, data): (&Pose, &MapData),
+    (slot, light): (usize, i32),
+    textures: &EntityTextures,
+    only_frame: bool,
+) -> (Vec<Vertex>, Vec<Vertex>) {
     let decorations: Vec<DecorationDraw> = data
         .decorations()
         .iter()
@@ -313,7 +377,8 @@ fn frame_map(
         .collect();
     let light = photon_render::block::light::light_uv(light);
     let (column, row) = ((slot % MAP_COLUMNS) as f32, (slot / MAP_COLUMNS) as f32);
-    for quad in map_quads(pose, &decorations, true) {
+    let (mut maps, mut sprites) = (Vec::new(), Vec::new());
+    for quad in map_quads(pose, &decorations, only_frame) {
         for index in [0, 1, 2, 0, 2, 3] {
             let uv = quad.uvs[index];
             let (uv, target) = match quad.sheet {
@@ -323,9 +388,9 @@ fn frame_map(
                         (column + uv[0]) / MAP_COLUMNS as f32,
                         (row + uv[1]) / MAP_ROWS as f32,
                     ],
-                    &mut state.map_vertices,
+                    &mut maps,
                 ),
-                Sheet::Decorations => (uv, &mut state.decoration_vertices),
+                Sheet::Decorations => (uv, &mut sprites),
             };
             target.push(Vertex {
                 position: quad.corners[index],
@@ -336,4 +401,5 @@ fn frame_map(
             });
         }
     }
+    (maps, sprites)
 }

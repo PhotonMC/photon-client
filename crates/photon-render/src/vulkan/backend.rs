@@ -81,10 +81,8 @@ pub struct VulkanBackend {
     pub(super) block_particle: DrawList,
     /// The entities' flat shapes over the entity textures.
     pub(super) flat: FlatDraws,
-    /// The maps' quads, drawn with the text pipeline over the maps' image.
-    pub(super) map: DrawList,
-    /// The decorations' sprites on them, blended over the entity textures.
-    pub(super) map_decoration: DrawList,
+    /// The maps in item frames and in the hand.
+    pub(super) maps: MapDraws,
     /// What the dissolving entities draw (a dying dragon's body), and where
     /// each texel's mask is from it in the packed image (in texture units).
     pub(super) dissolve: DrawList,
@@ -177,4 +175,37 @@ pub(super) struct GuiRuns {
     pub(super) item_scissors: Vec<crate::gui::frame::ItemScissor>,
     /// Whether the frame asked for the hand cursor.
     pub(super) hand: bool,
+}
+
+/// The maps' quads. A map is drawn with the text pipeline over the maps' image, its decorations
+/// blended over the entity textures.
+#[derive(Default)]
+pub(super) struct MapDraws {
+    /// The maps in item frames, then their decorations.
+    pub(super) frame: [DrawList; 2],
+    /// The map the hand holds: the picture behind it over the entity textures, its colours, and
+    /// its decorations, drawn with the hand.
+    pub(super) hand: [DrawList; 3],
+}
+
+/// One of the maps' lists.
+#[derive(Clone, Copy)]
+pub(super) enum Maps {
+    Frame(usize),
+    Hand(usize),
+}
+
+impl MapDraws {
+    pub(super) fn list(&mut self, which: Maps) -> &mut DrawList {
+        match which {
+            Maps::Frame(index) => &mut self.frame[index],
+            Maps::Hand(index) => &mut self.hand[index],
+        }
+    }
+
+    pub(super) fn clear_buffers(&mut self) {
+        for list in self.frame.iter_mut().chain(&mut self.hand) {
+            list.buffer.clear();
+        }
+    }
 }
