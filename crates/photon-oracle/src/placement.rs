@@ -11,8 +11,13 @@ pub(super) fn placement_rules(request: &Value) -> Result<Value, String> {
         BlockTags::from_registries(&packet.registries, &crate::case_ids::registries().blocks)
             .ok_or("no block tags")?;
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
-    let rows: Result<Vec<Value>, String> =
-        rows.iter().map(|row| placement_row(row, &tags)).collect();
+    let rows: Result<Vec<Value>, String> = rows
+        .iter()
+        .map(|row| {
+            placement_row(row, &tags)
+                .map_err(|error| format!("row {}: {error}", row["label"].as_str().unwrap_or("?")))
+        })
+        .collect();
     Ok(json!({"rows": rows?}))
 }
 

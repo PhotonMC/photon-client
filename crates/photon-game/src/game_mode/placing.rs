@@ -207,8 +207,8 @@ fn set_placed_blocks(ctx: &mut Context<'_>, writes: &rules::PlaceWrites) -> bool
     if !set(writes.block) {
         return false;
     }
-    if let Some(after) = writes.after {
-        set(after);
+    for after in &writes.after {
+        set(*after);
     }
     true
 }

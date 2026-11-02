@@ -181,8 +181,6 @@ pub fn hook_rows() -> Vec<Value> {
         }
     }
     // Along the line to the south of a hook that faces south, away from the stone at the north.
-    // A hook that faces back pairs with it, which the rules leave to the server and the oracle
-    // would not compare.
     let line = |at: [i32; 3], facing: &str| block(at, "tripwire_hook", &[("facing", facing)]);
     let stone = block([0, 64, -1], "stone", &[]);
     let at = click([0, 64, -1], "south", [0.5, 64.5, 0.0], 0.0, 0.0);
@@ -193,6 +191,47 @@ pub fn hook_rows() -> Vec<Value> {
         ("blocked-by-first", vec![stone.clone(), line([0, 64, 2], "south"), line([0, 64, 5], "north")]),
     ] {
         rows.push(row(&format!("hook-line-{label}"), &["tripwire_hook"], world, &at));
+    }
+    rows.extend(paired_hook_rows(&stone, &at));
+    rows
+}
+
+/// A hook put down opposite one that faces back: they pair, and the string between them attaches.
+fn paired_hook_rows(stone: &Value, at: &Click) -> Vec<Value> {
+    let facing_back = |z: i32| block([0, 64, z], "tripwire_hook", &[("facing", "north")]);
+    let string = |z: i32, extra: &[(&str, &str)]| block([0, 64, z], "tripwire", extra);
+    let lone_string = |z: i32| string(z, &[]);
+    let mut rows = Vec::new();
+    for (label, world) in [
+        ("adjacent", vec![facing_back(1)]),
+        ("one-string", vec![lone_string(1), facing_back(2)]),
+        ("two-strings", vec![lone_string(1), lone_string(2), facing_back(3)]),
+        ("air-gap", vec![lone_string(1), facing_back(3)]),
+        ("powered-string", vec![string(1, &[("powered", "true")]), lone_string(2), facing_back(3)]),
+        (
+            "disarmed-powered-string",
+            vec![string(1, &[("powered", "true"), ("disarmed", "true")]), lone_string(2), facing_back(3)],
+        ),
+        (
+            "attached-strings",
+            vec![string(1, &[("attached", "true")]), string(2, &[("attached", "true")]), facing_back(3)],
+        ),
+        (
+            "receiver-already-attached",
+            vec![lone_string(1), block([0, 64, 2], "tripwire_hook", &[("facing", "north"), ("attached", "true")])],
+        ),
+        (
+            "receiver-powered",
+            vec![lone_string(1), block([0, 64, 2], "tripwire_hook", &[("facing", "north"), ("powered", "true")])],
+        ),
+        ("long-line", (1..20).map(lone_string).chain([facing_back(20)]).collect()),
+        ("end-of-reach", (1..41).map(lone_string).chain([facing_back(41)]).collect()),
+        ("past-reach", (1..42).map(lone_string).chain([facing_back(42)]).collect()),
+        ("wrong-facing-end", vec![lone_string(1), block([0, 64, 2], "tripwire_hook", &[("facing", "east")])]),
+    ] {
+        let mut world = world;
+        world.push(stone.clone());
+        rows.push(row(&format!("hook-pair-{label}"), &["tripwire_hook"], world, at));
     }
     rows
 }

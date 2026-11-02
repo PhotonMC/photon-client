@@ -96,18 +96,11 @@ pub fn placement_state(
         // `mustSurvive` is false: the scaffolding is checked by its own distance.
         ItemPlacement::Scaffolding => state_for_placement(block, ctx),
         _ => match state_for_placement(block, ctx) {
-            Rule::Known(Some(state)) if hook_pairs(state, ctx) => Rule::Unported,
             Rule::Known(Some(state)) => survives(state, ctx).map(|stands| stands.then_some(state)),
             Rule::Known(None) => Rule::Known(None),
             Rule::Unported => Rule::Unported,
         },
     }
-}
-
-/// Whether the state is a tripwire hook that pairs with another along its line.
-fn hook_pairs(state: BlockStateId, ctx: &PlaceContext<'_>) -> bool {
-    block(state).is_some_and(|block| block.class.is(BlockClass::TripWireHookBlock))
-        && super::chorus::hook_has_receiver(state, ctx.clicked_pos(), ctx)
 }
 
 /// `ScaffoldingBlockItem.updatePlacementContext`: on scaffolding already, the click moves along
@@ -256,14 +249,14 @@ fn place_flags(kind: ItemPlacement) -> u32 {
 }
 
 /// The blocks `BlockItem.place` sets for a placed state, in order.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaceWrites {
     /// What the item sets first: the space above a tall block, cleared to air or water.
     pub before: Option<Write>,
     /// The block itself.
     pub block: Write,
-    /// What the placed block's `setPlacedBy` adds: the other part.
-    pub after: Option<Write>,
+    /// What the placed block's `setPlacedBy` adds: the other part, or a hook's pairing.
+    pub after: Vec<Write>,
 }
 
 impl PlaceWrites {
@@ -272,7 +265,7 @@ impl PlaceWrites {
         self.before
             .into_iter()
             .chain([self.block])
-            .chain(self.after)
+            .chain(self.after.iter().copied())
     }
 }
 
@@ -312,11 +305,15 @@ pub fn place_writes(
 const WATER_STATE: BlockStateId = registry::default_state_named("minecraft:water");
 
 /// `setPlacedBy` of the blocks that put down a second part (`setBlockAndUpdate`, flags 3).
-pub fn placed_by(
-    placed: BlockStateId,
-    pos: (i32, i32, i32),
-    ctx: &PlaceContext<'_>,
-) -> Option<Write> {
+pub fn placed_by(placed: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> Vec<Write> {
+    if block(placed).is_some_and(|block| block.class.is(BlockClass::TripWireHookBlock)) {
+        return super::tripwire::placed_hook(placed, pos, ctx);
+    }
+    other_part(placed, pos, ctx).into_iter().collect()
+}
+
+/// The second part a door, tall plant or bed puts down.
+fn other_part(placed: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> Option<Write> {
     let class = block(placed)?.class;
     let flags = 3;
     if class.is(BlockClass::DoorBlock) {
@@ -324,14 +321,6 @@ pub fn placed_by(
         return Some(Write {
             pos: (pos.0, pos.1 + 1, pos.2),
             state: upper,
-            flags,
-        });
-    }
-    // `TripWireHookBlock.setPlacedBy` with nothing to pair with sets the hook as it is.
-    if class.is(BlockClass::TripWireHookBlock) {
-        return Some(Write {
-            pos,
-            state: placed,
             flags,
         });
     }

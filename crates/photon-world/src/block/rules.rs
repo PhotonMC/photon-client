@@ -46,6 +46,7 @@ mod speleothem;
 mod sulfur;
 mod survive;
 mod tall;
+mod tripwire;
 mod vine;
 
 pub use bucket::{
