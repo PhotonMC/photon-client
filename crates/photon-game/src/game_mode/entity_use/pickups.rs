@@ -1,6 +1,7 @@
 //! `Bucketable.bucketMobPickup`: a water bucket scoops up a fish, an axolotl or a tadpole.
 //!
-//! Not covered: the components the bucket keeps (variant, age) and the sound.
+//! Not covered: the components the bucket keeps (variant, age). (The pickup sound is played with
+//! no excluded player, which a client never plays.)
 
 use super::*;
 

@@ -1,7 +1,8 @@
 //! `Pig.mobInteract` and `Strider.mobInteract`: a saddled mount is boarded (a swing, the server
 //! does the rest), food feeds it, and a saddle in hand goes on through the item.
 //!
-//! Not covered: the eating sound of a strider and what boarding clears locally.
+//! Not covered: what boarding clears locally. (The strider's eating sound is played with no
+//! excluded player, which a client never plays.)
 
 use super::*;
 
@@ -20,6 +21,33 @@ impl Context<'_> {
             return EntityUse::Success { swing: true };
         }
         self.feed_animal(id, hand, tag)
+    }
+
+    /// `Mob.attemptToShearEquipment` through `Entity.interact`, with shears in hand: a mob that
+    /// is not ridden (a wolf: only its owner's) and whose player is not sneaking loses the first
+    /// shearable thing it wears, saddle and body armor alike. The shears' wear is the server's.
+    pub(super) fn shear_equipment(&mut self, id: EntityId) -> bool {
+        use photon_world::EquipmentSlot::{Body, Saddle};
+        let ridden = self
+            .world
+            .entity_passengers(id)
+            .is_some_and(|riders| !riders.is_empty());
+        let Some(entity) = self.world.entities().at(id) else {
+            return false;
+        };
+        let owned = entity.owner().is_some() && entity.owner() == self.profile_id;
+        if ridden || self.player.is_shift_key_down() || (entity.is_wolf() && !owned) {
+            return false;
+        }
+        // The slots in `EquipmentSlot.VALUES` order: the body before the saddle.
+        let Some(slot) = [Body, Saddle]
+            .into_iter()
+            .find(|&slot| entity.equipment(slot).is_some_and(shearable))
+        else {
+            return false;
+        };
+        self.world.entities_mut().apply_equipment(id, slot, None);
+        true
     }
 
     /// Whether the mob wears a saddle and has a passenger.
@@ -100,4 +128,12 @@ fn can_use_slot(name: &str, slot: photon_world::EquipmentSlot, baby: bool, tame:
         }
         _ => true,
     }
+}
+
+/// `Equippable.canBeSheared`: the saddle, harnesses, wolf, horse and nautilus armor and a llama's
+/// carpet, which are the equippables of the saddle and body slots.
+fn shearable(worn: &photon_world::ClientItemStackState) -> bool {
+    photon_world::block::rules::item(worn.item_registry_id())
+        .and_then(|row| row.equippable)
+        .is_some_and(|equip| matches!(equip.slot, "saddle" | "body"))
 }

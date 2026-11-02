@@ -433,8 +433,7 @@ impl Context<'_> {
     /// The end of `Entity.interact` for a `Leashable` that lives, which `Mob.interact` runs
     /// before the class's own rule: taking back the lead the player holds succeeds with a swing;
     /// a lead in hand, on a mob no player holds, is consumed on the client (the server ties it).
-    /// Shears on a leashed mob are not covered.
-    fn lead_on_mob(&self, id: EntityId, hand: u8) -> Option<EntityUse> {
+    fn lead_on_mob(&mut self, id: EntityId, hand: u8) -> Option<EntityUse> {
         let entity = self.world.entities().at(id)?;
         if !entity.is_mob() || entity.health().is_some_and(|health| health <= 0.0) {
             return None;
@@ -446,6 +445,9 @@ impl Context<'_> {
             .held(hand)
             .is_some_and(|(item, _)| crate::item::id_of("minecraft:shears") == Some(item));
         if holder == Some(me) || (shears && holder.is_some()) {
+            return Some(EntityUse::Success { swing: true });
+        }
+        if shears && self.shear_equipment(id) {
             return Some(EntityUse::Success { swing: true });
         }
         let holder_is_player = holder

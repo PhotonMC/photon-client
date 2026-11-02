@@ -53,6 +53,11 @@ impl EntityView<'_> {
         end > 0 && end - game_time as i64 > 0
     }
 
+    /// Whether this is a wolf.
+    pub fn is_wolf(&self) -> bool {
+        self.type_id == photon_data::entity_type::ids::WOLF
+    }
+
     /// `TamableAnimal.isInSittingPose`.
     pub fn is_sitting(&self) -> bool {
         self.living.tamable_flags & 1 != 0
