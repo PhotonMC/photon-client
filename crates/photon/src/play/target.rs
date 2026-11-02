@@ -12,10 +12,13 @@ pub(crate) enum Target {
 }
 
 impl Target {
-    pub(super) fn resolve(&self) -> Option<SocketAddr> {
+    /// The address and the host name the handshake announces for it (none: the address's own).
+    pub(super) fn resolve(&self) -> Option<(SocketAddr, Option<String>)> {
         match self {
-            Self::Address(address) => Some(*address),
-            Self::Name(ip) => crate::menu::resolve(ip),
+            Self::Address(address) => Some((*address, None)),
+            Self::Name(ip) => {
+                crate::menu::resolve_named(ip).map(|(address, host)| (address, Some(host)))
+            }
         }
     }
 }

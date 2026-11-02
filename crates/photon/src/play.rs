@@ -450,16 +450,32 @@ pub(crate) enum JoinWait {
 /// A join that waits for the level by the chunk-present rule, for the probes.
 pub(crate) fn join_loaded(server: SocketAddr) -> Result<PlaySession> {
     join(
-        server,
+        (server, None),
         &Status::default(),
         JoinWait::Chunks,
         &packs::unattended(),
     )
 }
 
+/// What a join that never saw its level reports.
+fn level_timeout(session: &PlaySession) -> String {
+    let world = session.world();
+    let cache = world.client_chunk_cache_snapshot();
+    format!(
+        "the level did not load within thirty seconds: player at {:?}, {} chunks, cache centre {:?}",
+        session.player().map(|player| player.position()),
+        world.loaded_chunk_count(),
+        cache.map(|cache| (
+            cache.view_center_x,
+            cache.view_center_z,
+            cache.storage_radius
+        )),
+    )
+}
+
 /// Join a server and wait as `wait` says.
 pub(crate) fn join(
-    server: SocketAddr,
+    (server, host): (SocketAddr, Option<String>),
     status: &Status,
     wait: JoinWait,
     packs: &PackSource,
@@ -478,6 +494,7 @@ pub(crate) fn join(
         account,
         packs: packs.clone(),
         login_stage: Some(status.stage.clone()),
+        handshake_host: host,
         ..ConnectionState::default()
     };
     let mut session =
@@ -494,15 +511,7 @@ pub(crate) fn join(
         session.wait(Duration::from_millis(100))?;
         session.tick_level_load()?;
         if started.elapsed() > Duration::from_secs(30) {
-            let world = session.world();
-            let cache = world.client_chunk_cache_snapshot();
-            return Err(format!(
-                "the level did not load within thirty seconds: player at {:?}, {} chunks, cache centre {:?}",
-                session.player().map(|player| player.position()),
-                world.loaded_chunk_count(),
-                cache.map(|cache| (cache.view_center_x, cache.view_center_z, cache.storage_radius)),
-            )
-            .into());
+            return Err(level_timeout(&session).into());
         }
     }
     if wait == JoinWait::Level {

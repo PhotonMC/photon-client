@@ -36,12 +36,28 @@ pub fn query_status_and_ping_recorded(
     timeout: Duration,
     recorder: &mut dyn Recorder,
 ) -> Result<ServerStatus, ConnectionError> {
+    query_status_and_ping_for(address, None, timeout, recorder)
+}
+
+/// The same, with the host name and port the handshake announces (the address as typed, which a
+/// proxy routes by) where they are not the address's own.
+pub fn query_status_and_ping_for(
+    address: SocketAddr,
+    announced: Option<(&str, u16)>,
+    timeout: Duration,
+    recorder: &mut dyn Recorder,
+) -> Result<ServerStatus, ConnectionError> {
     if timeout.is_zero() {
         return Err(ConnectionError::InvalidArgument("timeout"));
     }
 
     let mut stream = connect_stream(address, timeout)?;
-    send_handshake_intention(&mut stream, address, ClientIntent::Status)?;
+    match announced {
+        Some(host_and_port) => {
+            send_status_handshake(&mut stream, host_and_port, ClientIntent::Status)?;
+        }
+        None => send_handshake_intention(&mut stream, address, ClientIntent::Status)?,
+    }
     let status_response = request_status(&mut stream, recorder)?;
     let (pong_time, round_trip_ms) = ping(&mut stream, recorder)?;
     Ok(ServerStatus {
@@ -131,4 +147,35 @@ fn ping(
         return Err(ConnectionError::Codec("status pong echo"));
     }
     Ok((pong.time, ping_start.elapsed().as_millis() as i64))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Read;
+    use std::net::TcpListener;
+
+    use super::*;
+
+    #[test]
+    fn the_handshake_announces_the_address_as_typed() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut seen = [0u8; 64];
+            let read = stream.read(&mut seen).unwrap();
+            seen[..read].to_vec()
+        });
+        let asked = query_status_and_ping_for(
+            address,
+            Some(("play.example.com", 25565)),
+            Duration::from_secs(2),
+            &mut NoRecorder,
+        );
+        assert!(asked.is_err());
+        let handshake = server.join().unwrap();
+        let text = String::from_utf8_lossy(&handshake);
+        assert!(text.contains("play.example.com"), "{handshake:?}");
+        assert!(!text.contains("127.0.0.1"));
+    }
 }

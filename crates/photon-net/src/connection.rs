@@ -31,7 +31,8 @@ pub use session::{
 };
 pub use state::{ConnectionState, LoginStage, stage};
 pub use status::{
-    ServerStatus, query_status_and_ping, query_status_and_ping_recorded, query_status_text,
+    ServerStatus, query_status_and_ping, query_status_and_ping_for, query_status_and_ping_recorded,
+    query_status_text,
 };
 pub use transport::Transport;
 pub use version::{development_version, remember_protocol, select_version};

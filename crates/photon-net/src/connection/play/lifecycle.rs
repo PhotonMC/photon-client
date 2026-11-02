@@ -317,8 +317,9 @@ impl PlaySession {
         information: photon_protocol::configuration::ClientInformation,
         first: ConnectionState,
     ) -> Result<Self, ConnectionError> {
+        let host = first.handshake_host.clone();
         Self::connect_through(
-            (address, None),
+            (address, host),
             (username, auto_jump),
             timeout,
             information,

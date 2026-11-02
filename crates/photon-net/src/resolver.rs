@@ -17,11 +17,16 @@ const QUERY_TIMEOUT: Duration = Duration::from_secs(1);
 /// without the blocked address list): the name itself resolves first, then an SRV record for it
 /// replaces the host and port when there is one.
 pub fn resolve_server(host: &str, port: u16) -> Option<SocketAddr> {
-    let mut resolved = lookup(host, port);
+    resolve_named(host, port).map(|(address, _)| address)
+}
+
+/// The same, with the host name the address was looked up by: what a login handshake announces
+/// (`InetSocketAddress.getHostName`), which a proxy routes by. An SRV redirect names its target.
+pub fn resolve_named(host: &str, port: u16) -> Option<(SocketAddr, String)> {
     if let Some((srv_host, srv_port)) = redirect(host, port) {
-        resolved = lookup(&srv_host, srv_port);
+        return lookup(&srv_host, srv_port).map(|address| (address, srv_host));
     }
-    resolved
+    lookup(host, port).map(|address| (address, host.to_owned()))
 }
 
 fn lookup(host: &str, port: u16) -> Option<SocketAddr> {

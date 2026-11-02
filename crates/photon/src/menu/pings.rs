@@ -27,15 +27,28 @@ fn ping(ip: &str) -> Pinged {
     let Some(address) = resolve(ip) else {
         return Pinged::unreachable(true);
     };
-    modern_ping(address)
+    modern_ping(ip, address)
         .or_else(|| legacy_ping(ip, address))
         .unwrap_or_else(|| Pinged::unreachable(false))
 }
 
 /// The status protocol's ping: its answer and the pong's time.
-fn modern_ping(address: std::net::SocketAddr) -> Option<Pinged> {
-    let trace =
-        photon_net::connection::query_status_and_ping(address, Duration::from_secs(30)).ok()?;
+fn modern_ping(ip: &str, address: std::net::SocketAddr) -> Option<Pinged> {
+    // The handshake carries the address as typed (`rawAddress`), not the one it resolved to.
+    let with_port = address_with_port(ip);
+    let announced = with_port.rsplit_once(':').and_then(|(host, port)| {
+        Some((
+            host.trim_start_matches('[').trim_end_matches(']'),
+            port.parse().ok()?,
+        ))
+    });
+    let trace = photon_net::connection::query_status_and_ping_for(
+        address,
+        announced,
+        Duration::from_secs(30),
+        &mut photon_net::connection::NoRecorder,
+    )
+    .ok()?;
     let status = ServerStatus::parse(&trace.status_response)?;
     if let Some((_, protocol)) = &status.version {
         crate::updates::note_server_protocol(*protocol);
@@ -64,10 +77,15 @@ fn legacy_ping(ip: &str, address: std::net::SocketAddr) -> Option<Pinged> {
 /// The address a server's `ip` names (`ServerAddress.parseString`, then
 /// `ServerNameResolver.resolveAddress` with its SRV redirect).
 pub(crate) fn resolve(ip: &str) -> Option<std::net::SocketAddr> {
+    resolve_named(ip).map(|(address, _)| address)
+}
+
+/// The same, with the host name a login handshake announces for it.
+pub(crate) fn resolve_named(ip: &str) -> Option<(std::net::SocketAddr, String)> {
     let with_port = address_with_port(ip);
     let (host, port) = with_port.rsplit_once(':')?;
     let host = host.trim_start_matches('[').trim_end_matches(']');
-    let resolved = photon_net::resolver::resolve_server(host, port.parse().ok()?);
+    let resolved = photon_net::resolver::resolve_named(host, port.parse().ok()?);
     if resolved.is_none() {
         log::warn!("cannot resolve {ip}");
     }

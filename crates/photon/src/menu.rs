@@ -33,7 +33,7 @@ mod icons;
 mod input;
 pub(crate) mod panorama;
 mod pings;
-pub(crate) use pings::resolve;
+pub(crate) use pings::resolve_named;
 mod servers;
 mod settings;
 mod startup;
