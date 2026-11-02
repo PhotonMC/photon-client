@@ -87,6 +87,17 @@ impl LocalPlayer {
         }
     }
 
+    /// `LivingEntity.drop` on a client: `LocalPlayer.swing(MAIN_HAND)`, which tells the server too.
+    pub fn swing_for_drop(&mut self) {
+        self.swing_hand(false);
+        self.use_edge.drop_swings += 1;
+    }
+
+    /// The swings of drops the server is yet to be told of.
+    pub fn take_drop_swings(&mut self) -> u32 {
+        std::mem::take(&mut self.use_edge.drop_swings)
+    }
+
     /// `LivingEntity.getCurrentSwingDuration`: how long the swinging hand's item swings, less what
     /// haste or the conduit's power takes off and plus what mining fatigue adds.
     pub fn current_swing_duration(&self) -> i32 {
@@ -457,6 +468,8 @@ pub struct UseEdge {
     pub(super) particles: Vec<crate::particles::LevelParticles>,
     /// `autoSpinAttackTicks`: the ticks a riptide throw spins on.
     pub(super) spin_ticks: i32,
+    /// Main hand swings a client drop made (`LivingEntity.drop`) that the server has not heard of.
+    pub(super) drop_swings: u32,
 }
 
 /// How the use of an item changes the field of view.

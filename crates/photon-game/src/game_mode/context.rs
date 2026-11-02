@@ -174,6 +174,14 @@ impl Context<'_> {
         out.push(Outgoing::Swing { hand });
     }
 
+    /// The swings that drops made while the use ran go out before the use's own packet, as the
+    /// `LocalPlayer.swing` of `LivingEntity.drop` did.
+    pub(super) fn send_drop_swings(&mut self, out: &mut Vec<Outgoing>) {
+        for _ in 0..self.player.take_drop_swings() {
+            out.push(Outgoing::Swing { hand: MAIN_HAND });
+        }
+    }
+
     /// The inventory menu slot a hand holds.
     pub(super) fn hand_slot(&self, hand: u8) -> i16 {
         if hand == MAIN_HAND {

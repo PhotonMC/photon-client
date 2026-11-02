@@ -72,6 +72,8 @@ impl PlaySession {
         } else {
             (0.8, 0.8 + self.effects.level_random.next_float() * 0.4)
         };
+        // `ClientLevel.playLocalSound` seeds the sound from the level's random.
+        self.effects.level_random.next_long();
         self.world.push_sound(LocalSound {
             relative: false,
             delay_ticks: 0,

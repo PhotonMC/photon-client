@@ -175,6 +175,7 @@ impl GameMode {
         }
         let sequence = ctx.world.start_predicting();
         let result = self.perform_use_item_on(ctx, hand, aim);
+        ctx.send_drop_swings(out);
         out.push(Outgoing::UseItemOn {
             hand,
             x,
@@ -285,7 +286,9 @@ impl GameMode {
         if let Some(by_hand) = super::placing::redstone_wire_use(ctx, state, pos) {
             return Self::by_hand(ctx, by_hand);
         }
-        if let Rule::Known(by_hand) = rules::use_by_hand(state, pos, user_of(ctx, aim)) {
+        if let Rule::Known(by_hand) =
+            rules::use_by_hand(state, pos, super::block_user::user_of(ctx, aim))
+        {
             return Self::by_hand(ctx, by_hand);
         }
         match rules::use_without_item(state) {
@@ -406,6 +409,7 @@ impl GameMode {
             None => UseResult::Pass,
         };
         super::base_use::after_instant_use(ctx, hand, before.as_ref(), result);
+        ctx.send_drop_swings(out);
         out.push(Outgoing::UseItem {
             hand,
             sequence,
@@ -440,7 +444,7 @@ impl GameMode {
             self.start_use_item(ctx, aim, &mut out);
         }
         super::brush::use_tick(ctx, (aim, keys.main_arm_left));
-        super::bundle_use::use_tick(ctx);
+        super::bundle_use::use_tick(ctx, &mut out);
         self.continue_attack(ctx, keys.attack_held && !instant_attack, aim, &mut out);
         if self.miss_time > 0 {
             self.miss_time -= 1;
@@ -541,35 +545,6 @@ impl GameMode {
             face,
             sequence,
         }
-    }
-}
-
-/// Who uses a block by hand, and where the click landed.
-fn user_of(ctx: &Context<'_>, aim: Aim) -> rules::User {
-    let Aim::Block {
-        x,
-        y,
-        z,
-        face,
-        location,
-        ..
-    } = aim
-    else {
-        unreachable!("a block is used from an aim at a block");
-    };
-    rules::User {
-        facing: photon_core::direction::Direction::from_y_rot(f64::from(ctx.player.rotation().0)),
-        may_build: ctx.mode != ClientPlayerGameMode::Adventure,
-        face: photon_core::direction::Direction::from_3d_data_value(i32::from(face)),
-        click_y: location[1] - f64::from(y),
-        location,
-        can_eat: ctx.player.abilities().invulnerable()
-            || ctx
-                .world
-                .local_player()
-                .is_some_and(|state| state.food() < 20),
-        main_hand_empty: ctx.held(MAIN_HAND).is_none(),
-        block_entity: ctx.world.block_entity_at(x, y, z).is_some(),
     }
 }
 

@@ -79,6 +79,7 @@ impl Default for GameMode {
 
 mod after_use;
 mod base_use;
+mod block_user;
 mod bone_meal;
 mod brush;
 mod bundle_use;

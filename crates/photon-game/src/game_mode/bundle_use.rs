@@ -1,6 +1,6 @@
 //! `BundleItem.onUseTick`: what a bundle in use does on a client.
 
-use super::{Context, MAIN_HAND, OFF_HAND};
+use super::{Context, MAIN_HAND, OFF_HAND, Outgoing};
 use photon_data::item::classes::ItemClass;
 use photon_world::block::rules;
 use photon_world::local_player::{LocalSound, LocalSoundSource};
@@ -11,7 +11,7 @@ const USE_DURATION: i32 = 200;
 /// The first tick of a use takes one stack out of the bundle, and so does every second tick from
 /// the eleventh on: the stack leaves the bundle with its sound, and `Player.drop` on a client only
 /// swings the main hand.
-pub(super) fn use_tick(ctx: &mut Context<'_>) {
+pub(super) fn use_tick(ctx: &mut Context<'_>, out: &mut Vec<Outgoing>) {
     if !ctx.player.is_using_item() {
         return;
     }
@@ -47,7 +47,9 @@ pub(super) fn use_tick(ctx: &mut Context<'_>) {
     // player, so the server's copy is the one heard and only its pitch is drawn.
     let random = ctx.world.level_random();
     let pitch = 0.8 + random.next_float() * 0.4;
-    let _ = random.next_float();
+    // `ClientLevel.playLocalSound` seeds the sound from the level's random.
+    random.next_long();
+    random.next_float();
     let at = ctx.player.position();
     ctx.world.push_sound(LocalSound::at(
         crate::menus::container::BUNDLE_REMOVE_ONE,
@@ -55,7 +57,8 @@ pub(super) fn use_tick(ctx: &mut Context<'_>) {
         (0.8, pitch),
         (at.x, at.y, at.z),
     ));
-    ctx.player.swing_hand(false);
+    ctx.player.swing_for_drop();
+    ctx.send_drop_swings(out);
 }
 
 #[cfg(test)]
@@ -100,7 +103,8 @@ mod tests {
             profile_id: None,
             creaking_active: false,
         };
-        use_tick(&mut ctx);
+        let mut out = Vec::new();
+        use_tick(&mut ctx, &mut out);
         let after = ctx
             .world
             .local_player()
@@ -109,6 +113,7 @@ mod tests {
             after.is_some_and(|stack| crate::menus::container::bundle_fullness(&stack) == 0.0);
         assert!(emptied);
         assert!(ctx.player.is_swinging());
+        assert!(matches!(out[..], [Outgoing::Swing { hand: MAIN_HAND }]));
         assert!(!ctx.world.take_sounds().is_empty());
     }
 }

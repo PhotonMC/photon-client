@@ -288,10 +288,10 @@ fn filled_result_of(
 }
 
 /// `Inventory.add` or, when nothing has room, `Player.drop`: a client spawns no item entity for the
-/// drop, it only swings the main hand.
+/// drop, it only swings the main hand (and tells the server so).
 pub(super) fn add_or_drop(ctx: &mut Context<'_>, fresh: ClientItemStackState) {
     if !add_to_inventory(ctx, fresh) {
-        ctx.player.swing_hand(false);
+        ctx.player.swing_for_drop();
     }
 }
 
@@ -374,7 +374,10 @@ mod tests {
         let fits = add_to_inventory(&mut ctx, ClientItemStackState::new(1, bucket));
         let mut again = ctx;
         add_or_drop(&mut again, ClientItemStackState::new(1, bucket));
-        (fits, again.player.is_swinging())
+        (
+            fits,
+            again.player.is_swinging() && again.player.take_drop_swings() == 1,
+        )
     }
 
     /// A full inventory drops the bucket, which a client shows as the main hand's swing only.
