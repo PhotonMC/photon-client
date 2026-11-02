@@ -36,6 +36,7 @@ impl PlaySession {
                 tag: entity.tag.as_deref(),
             }),
         );
+        self.log_chunk(chunk);
         self.world.apply_chunk_light(
             chunk.x,
             chunk.z,
@@ -51,6 +52,20 @@ impl PlaySession {
                     updates: &chunk.light_data.block_updates,
                 },
             },
+        );
+    }
+
+    /// What a chunk brought, for a report of a level that draws wrong.
+    fn log_chunk(&self, chunk: &ChunkPacketObservation) {
+        log::debug!(
+            "chunk {},{}: {} sections, sky light for {} (empty {}), block light for {}, range {:?}",
+            chunk.x,
+            chunk.z,
+            chunk.section_observations.len(),
+            chunk.light_data.sky_updates.len(),
+            chunk.light_data.empty_sky_mask.len(),
+            chunk.light_data.block_updates.len(),
+            self.section_range(),
         );
     }
 
