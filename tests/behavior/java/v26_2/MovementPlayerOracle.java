@@ -235,6 +235,13 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         net.minecraft.world.entity.animal.allay.Allay.class, "DATA_DANCING").get(null);
                     allay.getEntityData().set(accessor, true);
                 }
+                if (described.has("responds") && entity instanceof net.minecraft.world.entity.Interaction interaction) {
+                    // `setResponse` is private: the server's data is set directly.
+                    @SuppressWarnings("unchecked")
+                    var accessor = (net.minecraft.network.syncher.EntityDataAccessor<Boolean>) Reflect.field(
+                        net.minecraft.world.entity.Interaction.class, "DATA_RESPONSE_ID").get(null);
+                    interaction.getEntityData().set(accessor, true);
+                }
                 if (described.has("on_back") && entity instanceof net.minecraft.world.entity.animal.panda.Panda panda) {
                     panda.setOnBack(true);
                 }

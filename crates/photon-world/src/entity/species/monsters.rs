@@ -41,6 +41,11 @@ impl EntityView<'_> {
     }
 
     /// `Goat.isScreamingGoat`.
+    /// `Interaction.getResponse`.
+    pub fn interaction_responds(&self) -> bool {
+        self.living.interaction_response
+    }
+
     /// `Ocelot.isTrusting`.
     pub fn is_trusting_ocelot(&self) -> bool {
         self.living.trusting_ocelot

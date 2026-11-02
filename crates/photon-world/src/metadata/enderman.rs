@@ -38,6 +38,9 @@ impl crate::entity::EntityViewMut<'_> {
             let height =
                 metadata_float_value(metadata, INTERACTION_HEIGHT_DATA_ID).unwrap_or(height);
             self.living.interaction_size = Some((JavaF32::new(width), JavaF32::new(height)));
+            if let Some(response) = metadata_boolean_value(metadata, INTERACTION_RESPONSE_DATA_ID) {
+                self.living.interaction_response = response;
+            }
         }
     }
 

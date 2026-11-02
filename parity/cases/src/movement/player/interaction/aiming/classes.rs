@@ -218,6 +218,10 @@ fn placed_table() -> Vec<Placed> {
         placed("use-chest-boat-with-stone", "oak_chest_boat", "minecraft:stone"),
         Placed { sneaking: true, ..placed("use-chest-boat-sneaking", "oak_chest_boat", "minecraft:stone") },
         placed("use-interaction-with-stone", "interaction", "minecraft:stone"),
+        Placed {
+            flags: &["responds"],
+            ..placed("use-responding-interaction-with-stone", "interaction", "minecraft:stone")
+        },
         placed("use-leash-knot-with-stone", "leash_knot", "minecraft:stone"),
         placed("use-leash-knot-with-shears", "leash_knot", "minecraft:shears"),
     ]

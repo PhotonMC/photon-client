@@ -249,6 +249,8 @@ pub const ENDERMAN_STARED_AT_DATA_ID: u8 = 18;
 /// Where an interaction's width and height (floats) sit among its data.
 pub const INTERACTION_WIDTH_DATA_ID: u8 = 8;
 pub const INTERACTION_HEIGHT_DATA_ID: u8 = 9;
+/// Where it keeps whether it answers a click (`DATA_RESPONSE_ID`, a boolean).
+pub const INTERACTION_RESPONSE_DATA_ID: u8 = 10;
 pub const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
 /// Where an abstract horse's flags (a byte: eating 16, standing 32, mouth open
 /// 64), a horse's variant data (an int) and a chested horse's chest (a

@@ -33,7 +33,14 @@ impl Context<'_> {
                 }
             }
             // `Interaction.interact` on the client: consume, or succeed when it answers.
-            "minecraft:interaction" => EntityUse::Success { swing: false },
+            "minecraft:interaction" => {
+                let responds = self
+                    .world
+                    .entities()
+                    .at(id)
+                    .is_some_and(|entity| entity.interaction_responds());
+                EntityUse::Success { swing: responds }
+            }
             // `LeashFenceKnotEntity.interact` succeeds on the client.
             "minecraft:leash_knot" => EntityUse::Success { swing: true },
             _ => self.interact_mob_class(name, id, hand),
