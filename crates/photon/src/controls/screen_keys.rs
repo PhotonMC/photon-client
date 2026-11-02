@@ -1,6 +1,31 @@
 use super::*;
 
 impl Controls {
+    /// Whether an event is the character of the key that opened the inventory, which is not text
+    /// for the screen: it comes right after the key, and a key or a character settles it.
+    fn is_opening_key_char(&mut self, event: &glfw::WindowEvent) -> bool {
+        let settles = matches!(
+            event,
+            glfw::WindowEvent::Char(_) | glfw::WindowEvent::Key(..)
+        );
+        settles
+            && std::mem::take(&mut self.inventory_key_char)
+            && matches!(event, glfw::WindowEvent::Char(_))
+    }
+
+    /// [`Self::screen_event`], but for the character of the key that opened the inventory.
+    pub(super) fn screen_event_unless_key_char(
+        &mut self,
+        event: glfw::WindowEvent,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+    ) -> Result {
+        if self.is_opening_key_char(&event) {
+            return Ok(());
+        }
+        self.screen_event(event, session, surface)
+    }
+
     /// The modifier keys held (control, the command key on macOS, F3 for the debug keys).
     pub(super) fn track_modifiers(
         &mut self,

@@ -126,6 +126,7 @@ impl Controls {
                 assets,
             );
             self.show_saved_hotbars(&assets.lang);
+            self.inventory_key_char = true;
             self.captured = false;
             self.turning.inventory_opened = true;
             self.release_keys();
@@ -378,7 +379,7 @@ impl Controls {
             Err(event) => event,
         };
         if self.screen.is_some() && for_screen {
-            let handled = self.screen_event(event, session, surface);
+            let handled = self.screen_event_unless_key_char(event, session, surface);
             self.drain_screen_actions(session)?;
             handled
         } else {
