@@ -179,6 +179,8 @@ pub(crate) struct EntityState {
     /// `AbstractCubeMob.getSize` once the data has said (one before), and its squish.
     pub(crate) cube_size: Option<i32>,
     pub(crate) cube: crate::mobs::cube_mob::CubeMobState,
+    /// An illusioner's mirror images.
+    pub(crate) illusion: crate::mobs::illusioner::IllusionState,
     /// A shulker's attach face (a direction's data value, down at first), raw
     /// peek and colour (`None` for the default), and its lid.
     pub(crate) shulker_face: i32,
@@ -478,26 +480,6 @@ impl EntityView<'_> {
 
     pub fn is_sleeping(&self) -> bool {
         self.vitals.sleeping_pos.is_some()
-    }
-
-    pub fn ticks_frozen(&self) -> i32 {
-        self.vitals.ticks_frozen
-    }
-
-    pub fn percent_frozen(&self) -> f32 {
-        (self
-            .vitals
-            .ticks_frozen
-            .min(DEFAULT_TICKS_REQUIRED_TO_FREEZE) as f32)
-            / DEFAULT_TICKS_REQUIRED_TO_FREEZE as f32
-    }
-
-    pub fn is_fully_frozen(&self) -> bool {
-        self.vitals.ticks_frozen >= DEFAULT_TICKS_REQUIRED_TO_FREEZE
-    }
-
-    pub fn is_freezing(&self) -> bool {
-        self.vitals.ticks_frozen > 0
     }
 }
 

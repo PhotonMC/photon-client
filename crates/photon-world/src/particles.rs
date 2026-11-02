@@ -40,6 +40,7 @@ mod level_events_trial;
 mod level_events_vault;
 mod light;
 mod look;
+mod mirror_clouds;
 
 mod parrots;
 mod particle;

@@ -2,9 +2,10 @@
 //! illusioner (`IllagerRenderer` and its subclasses).
 
 use photon_core::ids::EntityTypeId;
+use photon_core::math::mth_cos_f64;
 use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::{
-    IllagerArmPose, IllagerState, QuadrupedState, mob_vertices,
+    IllagerArmPose, IllagerState, MobPlacement, QuadrupedState, mob_vertices,
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
@@ -112,8 +113,7 @@ fn shows_hand_items(kind: Kind, entity: EntityView<'_>) -> bool {
 }
 
 /// `IllagerRenderer` for the illagers the server added, with what they hold
-/// and wear on the head. The illusioner's mirror images while it cannot be
-/// seen and the pillager's crossbow charge are not drawn yet.
+/// and wear on the head. The pillager's crossbow charge is not drawn yet.
 pub fn remote_illagers(
     session: &PlaySession,
     models: &mut MobModels,
@@ -145,27 +145,57 @@ pub fn remote_illagers(
         model.setup_illager(&illager_state(illager, entity, &snapshot, partial));
         let placed = placement(world, &snapshot, view, entity.scale());
         let hands = shows_hand_items(illager.kind, entity);
-        Hands {
-            base: &photon_render::entity::mob_model::placement_pose(&placed),
-            root: model.root(),
-            hand_shift: 0.0,
-            baby: false,
-            light: placed.light,
-            right: entity.item_held_by_arm(false).filter(|_| hands),
-            left: entity.item_held_by_arm(true).filter(|_| hands),
-            head: entity.equipment(EquipmentSlot::Head),
-            head_transforms: HEAD_TRANSFORMS,
-            eye: None,
-            motions: Default::default(),
-        }
-        .collect_outlined(held, HeldItem::glow_holder(entity));
-        // `IllusionerRenderer.isBodyVisible` is always true.
-        if illager.kind == Kind::Illusioner {
-            vertices.extend(mob_vertices(model, &placed, rect));
-        } else {
-            vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
+        for placed in mirror_placements(illager.kind, entity, placed, partial) {
+            Hands {
+                base: &photon_render::entity::mob_model::placement_pose(&placed),
+                root: model.root(),
+                hand_shift: 0.0,
+                baby: false,
+                light: placed.light,
+                right: entity.item_held_by_arm(false).filter(|_| hands),
+                left: entity.item_held_by_arm(true).filter(|_| hands),
+                head: entity.equipment(EquipmentSlot::Head),
+                head_transforms: HEAD_TRANSFORMS,
+                eye: None,
+                motions: Default::default(),
+            }
+            .collect_outlined(held, HeldItem::glow_holder(entity));
+            // `IllusionerRenderer.isBodyVisible` is always true.
+            if illager.kind == Kind::Illusioner {
+                vertices.extend(mob_vertices(model, &placed, rect));
+            } else {
+                vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
+            }
         }
     }
+}
+
+/// Where each pass of the renderer draws: the illager itself, or, for an
+/// invisible illusioner, its four mirror images (`IllusionerRenderer.submit`)
+/// shifted by their offsets and a wobble.
+fn mirror_placements(
+    kind: Kind,
+    entity: EntityView<'_>,
+    placed: MobPlacement,
+    partial: f32,
+) -> Vec<MobPlacement> {
+    if kind != Kind::Illusioner || !entity.is_invisible() {
+        return vec![placed];
+    }
+    let age = entity.tick_count() as f32 + partial;
+    let wobble = |i: usize, speed: f32| f64::from(mth_cos_f64(f64::from(i as f32 + age * speed)));
+    entity
+        .illusion_offsets(partial)
+        .into_iter()
+        .enumerate()
+        .map(|(i, (x, y, z))| {
+            let mut copy = placed;
+            copy.feet[0] += (x + wobble(i, 0.5) * 0.025) as f32;
+            copy.feet[1] += (y + wobble(i, 0.75) * 0.0125) as f32;
+            copy.feet[2] += (z + wobble(i, 0.7) * 0.025) as f32;
+            copy
+        })
+        .collect()
 }
 
 /// What the illager's model is posed from.

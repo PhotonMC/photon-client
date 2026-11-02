@@ -121,6 +121,11 @@ impl EntityView<'_> {
         &self.living.cube
     }
 
+    /// `Illusioner.getIllusionOffsets`.
+    pub fn illusion_offsets(&self, partial_tick: f32) -> [(f64, f64, f64); 4] {
+        self.living.illusion.offsets(partial_tick)
+    }
+
     /// `GlowSquid.getDarkTicksRemaining`.
     pub fn glow_dark_ticks(&self) -> i32 {
         self.living.glow_dark_ticks

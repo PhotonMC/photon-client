@@ -39,6 +39,7 @@ pub use boat::*;
 pub(crate) mod equipment;
 pub use equipment::*;
 mod flags;
+mod freezing;
 pub(crate) use flags::*;
 mod identity;
 pub(crate) use identity::*;

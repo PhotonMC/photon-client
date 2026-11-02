@@ -224,6 +224,7 @@ impl ClientWorld {
             at: entity.position(),
             size: (entity.dimensions().width(), entity.bb_height()),
             particle,
+            mirror: false,
         })
     }
 }

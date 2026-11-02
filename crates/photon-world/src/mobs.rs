@@ -17,6 +17,7 @@ pub mod fox;
 pub mod frog;
 pub mod guardian;
 pub mod horse;
+pub mod illusioner;
 pub mod panda;
 pub mod parrot;
 pub mod polar_bear;

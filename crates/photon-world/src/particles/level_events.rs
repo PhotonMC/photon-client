@@ -470,6 +470,10 @@ impl ParticleEngine {
         burst: crate::mobs::burst::EntityBurst,
         context: &mut LevelEventContext<'_, F>,
     ) {
+        if burst.mirror {
+            self.mirror_clouds(burst, context);
+            return;
+        }
         let (x, y, z) = burst.at;
         let (width, height) = (f64::from(burst.size.0), f64::from(burst.size.1));
         for _ in 0..crate::mobs::burst::BURST_COUNT {

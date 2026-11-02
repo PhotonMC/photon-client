@@ -17,6 +17,8 @@ pub struct EntityBurst {
     pub at: (f64, f64, f64),
     pub size: (f32, f32),
     pub particle: &'static str,
+    /// The clouds an illusioner makes when its mirror images move, not the pets' signs.
+    pub mirror: bool,
 }
 
 /// Whether the entity type is a `TamableAnimal` or an `AbstractHorse`, which answer 6 and 7.

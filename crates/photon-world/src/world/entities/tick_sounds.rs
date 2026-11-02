@@ -3,6 +3,7 @@
 
 use crate::entity::TickSound;
 use crate::local_player::{LocalSound, LocalSoundSource};
+use crate::mobs::burst::EntityBurst;
 use crate::*;
 use photon_data::entity_type::ids::{BLAZE, ELDER_GUARDIAN, ILLUSIONER, PHANTOM, SNIFFER};
 use photon_data::sound_event::vanilla;
@@ -33,15 +34,32 @@ impl ClientWorld {
         let view = entity.as_view();
         let at = view.position();
         let eye = (at.0, at.1 + f64::from(view.eye_height()), at.2);
+        let view_invisible = view.is_invisible();
         let facts = Facts {
             id,
             type_id,
             tick_count,
             at,
             silent: view.is_silent(),
-            mirrors: view.is_invisible() && (view.living.hurt_time == 1 || tick_count % 1200 == 0),
+            mirrors: view_invisible && (view.living.hurt_time == 1 || tick_count % 1200 == 0),
             searching: view.sniffer().is_some_and(|sniffer| sniffer.is_searching()),
         };
+        if type_id == ILLUSIONER && view_invisible {
+            let hurt_time = entity.living.hurt_time;
+            let random = self.entity_sound_random.source();
+            // `hurtDuration` of a mob is ten.
+            let settle = hurt_time == 9 && !facts.mirrors;
+            entity.living.illusion.tick(facts.mirrors, settle, random);
+            if facts.mirrors {
+                let burst = EntityBurst {
+                    at,
+                    size: (entity.dimensions().width(), entity.as_view().bb_height()),
+                    particle: "cloud",
+                    mirror: true,
+                };
+                self.level_events.0.push(LevelEvent::EntityBurst(burst));
+            }
+        }
         let mut sounds = self.counted_sounds(&facts);
         for request in requests {
             sounds.push(self.requested_sound(request, (at, eye), type_id == ELDER_GUARDIAN));
