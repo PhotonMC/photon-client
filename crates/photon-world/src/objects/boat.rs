@@ -21,6 +21,8 @@ pub struct BoatState {
     paddle_positions: [f32; 2],
     /// `AbstractBoat.isUnderWater`: its status at the start of the last tick.
     pub is_under_water: bool,
+    /// `AbstractBoat.outOfControlTicks`: how long it has been under the water.
+    out_of_control_ticks: f32,
 }
 
 impl Default for BoatState {
@@ -35,6 +37,7 @@ impl Default for BoatState {
             bubble_angle_old: 0.0,
             paddle_positions: [0.0; 2],
             is_under_water: false,
+            out_of_control_ticks: 0.0,
         }
     }
 }
@@ -47,6 +50,11 @@ impl BoatState {
     /// damage running down, then the bubble column's shaking and the paddles
     /// (`paddling` is whether each is rowing with someone to row it).
     pub(crate) fn tick(&mut self, under_water: bool, paddling: [bool; 2], tick_count: i32) {
+        self.out_of_control_ticks = if under_water {
+            self.out_of_control_ticks + 1.0
+        } else {
+            0.0
+        };
         self.tick_start(under_water);
         self.tick_end(paddling, tick_count);
     }
@@ -77,6 +85,11 @@ impl BoatState {
         for (position, rows) in self.paddle_positions.iter_mut().zip(paddling) {
             *position = if rows { *position + PADDLE_STEP } else { 0.0 };
         }
+    }
+
+    /// Whether it has been under the water too long to be boarded (`outOfControlTicks >= 60`).
+    pub fn is_out_of_control(&self) -> bool {
+        self.out_of_control_ticks >= 60.0
     }
 
     /// How far a paddle has turned (`paddlePositions`).

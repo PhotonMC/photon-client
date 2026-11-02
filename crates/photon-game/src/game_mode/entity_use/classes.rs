@@ -282,7 +282,8 @@ impl Context<'_> {
     /// holds something, a swallowable item it does not already hold is swallowed (one is used
     /// up, the server does the rest) and an empty bucket scoops it up.
     ///
-    /// Not covered: a primed cube and the fire starters.
+    /// A primed cube passes. A fire starter does nothing on the client even to a cube that swallowed
+    /// TNT: the explosion data is set where the equipment is checked, on the server only.
     fn interact_sulfur_cube(&mut self, id: EntityId, hand: u8) -> EntityUse {
         let Some(entity) = self.world.entities().at(id) else {
             return EntityUse::Pass;
@@ -309,7 +310,14 @@ impl Context<'_> {
         body: Option<photon_core::ids::ItemId>,
     ) -> EntityUse {
         let held = self.held(hand).map(|(item, _)| item);
-        if body.is_some() && self.holds_id(hand, photon_data::item::ids::SHEARS) {
+        let primed = self
+            .world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| entity.sulfur_fuse() >= 0);
+        if primed {
+            EntityUse::Pass
+        } else if body.is_some() && self.holds_id(hand, photon_data::item::ids::SHEARS) {
             EntityUse::Success { swing: true }
         } else if self.holds_tagged(hand, "minecraft:sulfur_cube_swallowable") {
             if body.is_some() && body == held {

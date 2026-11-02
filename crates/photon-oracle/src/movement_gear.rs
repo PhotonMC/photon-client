@@ -42,8 +42,12 @@ pub(super) fn before_tick(
 pub(super) fn after_tick(
     world: &mut photon_world::ClientWorld,
     player: &mut photon_world::local_player::LocalPlayer,
-    breaking: Option<&Value>,
+    (row, breaking): (&Value, Option<&Value>),
 ) {
+    if row["tick_boats"].as_bool() == Some(true) {
+        // The boats nobody rides tick on their own, after the player.
+        world.tick_entities(false);
+    }
     if breaking.is_some_and(|breaking| breaking["rockets"].is_number()) {
         let runs_normally = breaking.is_none_or(|breaking| breaking["frozen"].is_null());
         world.tick_entities(!runs_normally);

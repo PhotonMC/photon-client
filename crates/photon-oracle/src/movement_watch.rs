@@ -100,6 +100,11 @@ pub(super) fn apply_species_data(
             [photon_world::PANDA_MAIN_GENE_DATA_ID, 0, 2, 255],
         ),
         ("dancing", [photon_world::ALLAY_DANCING_DATA_ID, 8, 1, 255]),
+        // A fuse of fifty ticks (an int, serializer one).
+        (
+            "primed",
+            [photon_world::SULFUR_CUBE_FUSE_DATA_ID, 1, 50, 255],
+        ),
         (
             "responds",
             [photon_world::INTERACTION_RESPONSE_DATA_ID, 8, 1, 255],

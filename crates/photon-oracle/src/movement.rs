@@ -412,7 +412,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     }
                 }
             };
-            after_tick(&mut world, &mut player, breaking);
+            after_tick(&mut world, &mut player, (row, breaking));
             failure = failure.or(tick_block_entities(&mut world, &mut player, row).err());
             let position = player.position();
             let motion = player.delta_movement();

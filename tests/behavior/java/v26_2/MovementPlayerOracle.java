@@ -242,6 +242,13 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         net.minecraft.world.entity.Interaction.class, "DATA_RESPONSE_ID").get(null);
                     interaction.getEntityData().set(accessor, true);
                 }
+                if (described.has("primed") && entity instanceof net.minecraft.world.entity.monster.cubemob.SulfurCube cube) {
+                    // `primeTime` runs on a server level only: the synced fuse is set directly.
+                    @SuppressWarnings("unchecked")
+                    var accessor = (net.minecraft.network.syncher.EntityDataAccessor<Integer>) Reflect.field(
+                        net.minecraft.world.entity.monster.cubemob.SulfurCube.class, "MAX_FUSE").get(null);
+                    cube.getEntityData().set(accessor, 50);
+                }
                 if (described.has("worried") && entity instanceof net.minecraft.world.entity.animal.panda.Panda worried) {
                     worried.setMainGene(net.minecraft.world.entity.animal.panda.Panda.Gene.WORRIED);
                 }
@@ -337,6 +344,10 @@ class MovementPlayerOracle extends MovementWorldOracle {
         }
         // A vehicle the player rides, as the server's passengers packet makes it: the player is put
         // aboard and, on a boat, turned the way the boat faces.
+        if (row.has("tick_boats")) {
+            // A boat that ticks asks for the teams of what it could push (no team here).
+            setField(listener, "scoreboard", new net.minecraft.world.scores.Scoreboard());
+        }
         net.minecraft.world.entity.Entity vehicle = null;
         if (row.has("ride")) {
             var ride = row.getAsJsonObject("ride");
@@ -476,6 +487,14 @@ class MovementPlayerOracle extends MovementWorldOracle {
             // the old position and rotation and counts the tick first, and
             // both are read during the tick.
             level.tickNonPassenger(vehicle != null ? vehicle : player);
+            if (row.has("tick_boats")) {
+                // The boats the row lets tick on their own (the ones nobody rides).
+                for (var other : level.entitiesForRendering()) {
+                    if (other instanceof net.minecraft.world.entity.vehicle.boat.AbstractBoat) {
+                        level.tickNonPassenger(other);
+                    }
+                }
+            }
             // The rockets were added after the player, so the level ticks them after it.
             for (var rocket : rockets) {
                 // `ClientLevel.tickEntities`' gate: a frozen level ticks no rocket, only players and their passengers.

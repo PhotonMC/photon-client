@@ -4,9 +4,10 @@ use serde_json::{Value, json};
 
 use super::herding::{flagged_animal, sneaking_click};
 use super::{aims, facing};
+use crate::movement::world::put;
 
 pub(super) fn rows() -> Vec<Value> {
-    [plain_rows(), tiny_rows(), health_rows(), worn_rows(), placed_rows()].concat()
+    [plain_rows(), tiny_rows(), health_rows(), worn_rows(), placed_rows(), submerged_boat_rows()].concat()
 }
 
 /// One use click, then a stretch of ticks with no input.
@@ -140,6 +141,24 @@ fn health_rows() -> Vec<Value> {
 
 /// Rows that read the equipment the mob wears: label, kind, flag, worn item, held item, sneaking.
 const WORN: &[(&str, &str, &str, &str, &str, bool)] = &[
+    (
+        "use-tnt-sulfur-cube-with-flint-and-steel",
+        "sulfur_cube",
+        "armored",
+        "minecraft:tnt",
+        "minecraft:flint_and_steel",
+        false,
+    ),
+    ("use-tnt-sulfur-cube-with-fire-charge", "sulfur_cube", "armored", "minecraft:tnt", "minecraft:fire_charge", false),
+    ("use-tnt-sulfur-cube-with-stone", "sulfur_cube", "armored", "minecraft:tnt", "minecraft:stone", false),
+    (
+        "use-stone-sulfur-cube-with-flint-and-steel",
+        "sulfur_cube",
+        "armored",
+        "minecraft:stone",
+        "minecraft:flint_and_steel",
+        false,
+    ),
     ("use-swallowing-sulfur-cube-with-stone", "sulfur_cube", "armored", "minecraft:stone", "minecraft:stone", false),
     ("use-swallowing-sulfur-cube-with-dirt", "sulfur_cube", "armored", "minecraft:stone", "minecraft:dirt", false),
     ("use-swallowing-sulfur-cube-with-shears", "sulfur_cube", "armored", "minecraft:stone", "minecraft:shears", false),
@@ -169,7 +188,16 @@ const WORN: &[(&str, &str, &str, &str, &str, bool)] = &[
     ("use-piglin-holding-stone-with-gold", "piglin", "offhand", "minecraft:stone", "minecraft:gold_ingot", false),
 ];
 
+/// A cube with a block of TNT in it and a fuse already burning passes the click.
+fn primed_cube_row() -> Value {
+    let mut entity = flagged_animal("sulfur_cube", &[]);
+    entity["armored"] = json!("minecraft:tnt");
+    entity["primed"] = json!(true);
+    clicked("use-primed-tnt-sulfur-cube-with-stone", entity, ("minecraft:stone", 30.0), once())
+}
+
 fn worn_rows() -> Vec<Value> {
+    let primed = primed_cube_row();
     WORN.iter()
         .map(|&(label, kind, key, worn, held, sneaking)| {
             let mut entity = flagged_animal(kind, &[]);
@@ -177,6 +205,7 @@ fn worn_rows() -> Vec<Value> {
             let clicks = if sneaking { sneaking_click() } else { once() };
             clicked(label, entity, (held, 30.0), clicks)
         })
+        .chain(std::iter::once(primed))
         .collect()
 }
 
@@ -280,6 +309,29 @@ fn placed_rows() -> Vec<Value> {
             };
             let storm = row.flags.contains(&"stormy");
             clicked_in(row.label, entity, (row.item, row.aim), (clicks, storm))
+        })
+        .collect()
+}
+
+/// A boat under the water for sixty ticks cannot be boarded (`outOfControlTicks`); a click soon after
+/// it sank still boards it.
+fn submerged_boat_rows() -> Vec<Value> {
+    let pool = || -> Vec<Value> {
+        (-1..2).flat_map(|x| (1..5).flat_map(move |z| (64..67).map(move |y| put(x, y, z, "minecraft:water")))).collect()
+    };
+    let boat = || super::mob(31, "oak_boat", 0.5, 64.0, 2.5);
+    [("use-submerged-boat-after-a-while", 70), ("use-submerged-boat-soon", 20)]
+        .into_iter()
+        .map(|(label, wait)| {
+            let clicks = [aims(wait).inventory().go(), once()].concat();
+            let mut row = facing(label, vec![boat()], clicks)
+                .blocks(pool())
+                .x_rot(30.0)
+                .main_hand("minecraft:stone")
+                .count(2)
+                .row();
+            row["tick_boats"] = json!(true);
+            row
         })
         .collect()
 }

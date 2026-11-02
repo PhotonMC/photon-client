@@ -1,7 +1,5 @@
 //! `interact` of the boats, the interaction entity and the leash knot: the entities that are
 //! neither mobs nor the older vehicles handled in the parent module.
-//!
-//! Not covered: a boat that is out of control (`outOfControlTicks` is not tracked).
 
 use super::*;
 
@@ -26,7 +24,14 @@ impl Context<'_> {
             // (a success on the client).
             n if is_boat(n) => {
                 let chest = n.contains("_chest_");
-                if self.player.is_shift_key_down() && !chest {
+                let out_of_control = self
+                    .world
+                    .entities()
+                    .at(id)
+                    .and_then(|entity| entity.boat().map(|boat| boat.is_out_of_control()))
+                    .unwrap_or(false);
+                let sneaking = self.player.is_shift_key_down();
+                if (sneaking && !chest) || (out_of_control && !(sneaking && chest)) {
                     EntityUse::Pass
                 } else {
                     EntityUse::Success { swing: true }
