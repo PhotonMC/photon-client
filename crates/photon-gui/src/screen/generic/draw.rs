@@ -199,20 +199,20 @@ impl GenericScreen {
     /// The title, in the styles the server gave it; the dispenser centres it and the others keep
     /// it at the corner.
     fn draw_title(&self, draw: &mut ScreenDraw<'_, '_>, (left, top): (i32, i32), width: i32) {
-        let (label_x, label_y) = transform::title_label(self.kind);
-        let title_x = if matches!(
-            self.kind,
-            MenuKind::Dispenser | MenuKind::Furnace(_) | MenuKind::Brewing | MenuKind::Crafter
-        ) {
-            (width - draw.font.width(&self.titles.title)) / 2
-        } else {
-            label_x
-        };
         let plain = [photon_game::text::Run {
             text: self.titles.title.clone(),
             style: photon_game::text::Style::default(),
         }];
         let runs = crate::draw_runs(self.titles.title_runs.as_deref().unwrap_or(&plain));
+        let (label_x, label_y) = transform::title_label(self.kind);
+        let title_x = if matches!(
+            self.kind,
+            MenuKind::Dispenser | MenuKind::Furnace(_) | MenuKind::Brewing | MenuKind::Crafter
+        ) {
+            (width - draw.font.width_of_text_runs(&runs)) / 2
+        } else {
+            label_x
+        };
         draw.frame.styled_text_runs(
             draw.atlas,
             draw.font,

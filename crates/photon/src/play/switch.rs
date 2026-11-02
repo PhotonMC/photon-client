@@ -170,6 +170,7 @@ impl Play {
         let size = (scale.gui_scaled_width(), scale.gui_scaled_height());
         if self.controls.switch.is_none() {
             self.close_screens();
+            self.controls.release_keys();
             self.controls.captured = false;
             self.surface.set_cursor_captured(false);
             self.controls.switch = Some(SwitchView {

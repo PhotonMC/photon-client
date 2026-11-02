@@ -136,6 +136,8 @@ impl Play {
 
     fn begin_loading(&mut self) -> Result<()> {
         self.close_screens();
+        // `Gui.setScreen`: a screen opened lets go of every key.
+        self.controls.release_keys();
         self.controls.captured = false;
         self.surface.set_cursor_captured(false);
         self.backend.set_gui_only(true);

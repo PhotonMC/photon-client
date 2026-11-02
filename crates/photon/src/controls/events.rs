@@ -188,7 +188,7 @@ impl Controls {
     }
 
     /// Let go of every key, as the mouse is freed.
-    pub(super) fn release_keys(&mut self) {
+    pub(crate) fn release_keys(&mut self) {
         self.keys = HeldKeys::default();
         self.tab_held = false;
         self.spectator_outlines_held = false;
