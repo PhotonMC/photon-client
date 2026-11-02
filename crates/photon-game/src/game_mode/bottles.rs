@@ -110,6 +110,6 @@ pub(super) fn take_honey(ctx: &mut Context<'_>, hand: u8) {
     if emptied {
         ctx.world.put_local_player_slot(slot, fresh);
     } else {
-        super::buckets::add_to_inventory(ctx, fresh);
+        super::buckets::add_or_drop(ctx, fresh);
     }
 }

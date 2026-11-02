@@ -282,22 +282,29 @@ fn filled_result_of(
     if emptied {
         ctx.world.put_local_player_slot(slot, fresh);
     } else {
-        // What does not fit is dropped, which the client does not predict.
-        add_to_inventory(ctx, fresh);
+        add_or_drop(ctx, fresh);
     }
     result
 }
 
+/// `Inventory.add` or, when nothing has room, `Player.drop`: a client spawns no item entity for the
+/// drop, it only swings the main hand.
+pub(super) fn add_or_drop(ctx: &mut Context<'_>, fresh: ClientItemStackState) {
+    if !add_to_inventory(ctx, fresh) {
+        ctx.player.swing_hand(false);
+    }
+}
+
 /// `Inventory.add` of one item: onto a stack with room (the selected slot, the off hand, then the
 /// hotbar and the rest in order), else into the first free slot.
-pub(super) fn add_to_inventory(ctx: &mut Context<'_>, fresh: ClientItemStackState) {
+pub(super) fn add_to_inventory(ctx: &mut Context<'_>, fresh: ClientItemStackState) -> bool {
     let menu_slot = |index: i16| if index < 9 { 36 + index } else { index };
     let order: Vec<i16> = [menu_slot(ctx.selected_slot as i16), 45]
         .into_iter()
         .chain((0..36).map(menu_slot))
         .collect();
     let Some(state) = ctx.world.local_player() else {
-        return;
+        return false;
     };
     let has_room = |slot: i16| {
         state.inventory_slot(slot).is_some_and(|stack| {
@@ -316,5 +323,66 @@ pub(super) fn add_to_inventory(ctx: &mut Context<'_>, fresh: ClientItemStackStat
         ctx.world.grow_local_player_slot(slot, 1);
     } else if let Some(slot) = (0..36).map(menu_slot).find(|slot| free(*slot)) {
         ctx.world.put_local_player_slot(slot, fresh);
+    } else {
+        return false;
+    }
+    true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::game_mode::{Context, Miner};
+    use photon_world::{
+        ClientPlayerGameMode, ClientWorld, DimensionBounds, local_player::LocalPlayer,
+    };
+
+    /// A survival player whose slots 9 to 45 hold full stacks of cobblestone, but for `free`.
+    fn add_water_bucket(free: Option<i16>) -> (bool, bool) {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let mut player = LocalPlayer::new(
+            photon_core::ids::EntityId(1),
+            photon_core::math::Vec3::new(0.5, 1.0, 0.5),
+            0.0,
+            0.0,
+            ClientPlayerGameMode::Survival,
+            true,
+        );
+        world.set_local_player_id(player.entity_id());
+        let stone = crate::item::id_of("minecraft:cobblestone").expect("an item");
+        for slot in (9..=45).filter(|slot| Some(*slot) != free) {
+            let stack = ClientItemStackState::new(64, stone);
+            world.apply_local_player_container_slot(0, 0, slot, Some(&stack));
+        }
+        let mut cooldowns = crate::item::cooldowns::ItemCooldowns::default();
+        let mut ctx = Context {
+            miner: &Miner::of(&world, 0),
+            world: &mut world,
+            player: &mut player,
+            mode: ClientPlayerGameMode::Survival,
+            selected_slot: 0,
+            cooldowns: &mut cooldowns,
+            instruments: &[],
+            spin_attack: &[],
+            prevents_armor_change: &[],
+            difficulty: 2,
+            game_master: false,
+            profile_id: None,
+            creaking_active: false,
+        };
+        let bucket = crate::item::id_of("minecraft:water_bucket").expect("an item");
+        let fits = add_to_inventory(&mut ctx, ClientItemStackState::new(1, bucket));
+        let mut again = ctx;
+        add_or_drop(&mut again, ClientItemStackState::new(1, bucket));
+        (fits, again.player.is_swinging())
+    }
+
+    /// A full inventory drops the bucket, which a client shows as the main hand's swing only.
+    #[test]
+    fn a_bucket_that_fits_nowhere_swings_the_main_hand() {
+        let (fits, swinging) = add_water_bucket(None);
+        assert!(!fits && swinging);
+        let (fits, _) = add_water_bucket(Some(20));
+        assert!(fits);
     }
 }
