@@ -323,6 +323,24 @@ fn bucket_rows() -> Vec<Value> {
     ]
 }
 
+/// A player who may not build pours a bucket only on the blocks its `can_place_on` names.
+fn adventure_bucket_rows() -> Vec<Value> {
+    let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
+    let around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3), (0, 64, 1)];
+    let run = || {
+        [uses(1, Some(&top_of), &around).clicks(1).inventory().go(), uses(3, Some(&top_of), &around).inventory().go()]
+            .concat()
+    };
+    let bucket = |label: &str| {
+        using(label, vec![], run()).main_hand("minecraft:water_bucket").count(1).game_mode("adventure").x_rot(39.0)
+    };
+    vec![
+        bucket("adventure-water-bucket").row(),
+        bucket("adventure-water-bucket-on-stone").patch(patch(&[(CAN_PLACE_ON, adventure_blocks(&[1]))])).row(),
+        bucket("adventure-water-bucket-on-dirt").patch(patch(&[(CAN_PLACE_ON, adventure_blocks(&[9]))])).row(),
+    ]
+}
+
 /// Water poured out in the nether boils away: a hiss and steam, and nothing placed.
 fn nether_bucket_rows() -> Vec<Value> {
     let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
@@ -455,6 +473,7 @@ pub fn rows() -> Vec<Value> {
         bucket_rows_2(),
         bucket_rows_3(),
         nether_bucket_rows(),
+        adventure_bucket_rows(),
     ]
     .concat()
 }
