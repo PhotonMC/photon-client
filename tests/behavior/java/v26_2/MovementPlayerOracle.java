@@ -228,6 +228,13 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 if (described.has("scared") && entity instanceof net.minecraft.world.entity.animal.armadillo.Armadillo armadillo) {
                     armadillo.switchToState(net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState.SCARED);
                 }
+                if (described.has("dancing") && entity instanceof net.minecraft.world.entity.animal.allay.Allay allay) {
+                    // `setDancing` does nothing on a client level: the server's data is set directly.
+                    @SuppressWarnings("unchecked")
+                    var accessor = (net.minecraft.network.syncher.EntityDataAccessor<Boolean>) Reflect.field(
+                        net.minecraft.world.entity.animal.allay.Allay.class, "DATA_DANCING").get(null);
+                    allay.getEntityData().set(accessor, true);
+                }
                 if (described.has("on_back") && entity instanceof net.minecraft.world.entity.animal.panda.Panda panda) {
                     panda.setOnBack(true);
                 }

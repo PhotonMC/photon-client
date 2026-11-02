@@ -2,7 +2,7 @@
 //! golem, allay, bogged, piglin, panda, happy ghast and armadillo.
 //!
 //! Not covered: the data a panda's righting clears on the client, an allay
-//! that is dancing (or whose hand shows a tick early), a sheared bogged, a piglin
+//! whose duplication is cooling down (or whose hand shows a tick early), a sheared bogged, a piglin
 //! whose brain refuses to admire, the iron golem's health after a repair and its attribute-based
 //! maximum, and the sounds.
 
@@ -56,6 +56,10 @@ impl Context<'_> {
         }
     }
 
+    fn holds_id(&self, hand: u8, wanted: photon_core::ids::ItemId) -> bool {
+        self.held(hand).is_some_and(|(item, _)| item == wanted)
+    }
+
     fn holds_item(&self, hand: u8, name: &str) -> bool {
         self.held(hand)
             .is_some_and(|(item, _)| crate::item::id_of(name) == Some(item))
@@ -99,7 +103,7 @@ impl Context<'_> {
             .at(id)
             .and_then(|entity| entity.health())
             .is_some_and(|health| health < IRON_GOLEM_HEALTH);
-        if hurt && self.holds_item(hand, "minecraft:iron_ingot") {
+        if hurt && self.holds_id(hand, photon_data::item::ids::IRON_INGOT) {
             self.use_up(hand);
             EntityUse::Success { swing: true }
         } else {
@@ -115,7 +119,17 @@ impl Context<'_> {
                 .is_some()
         });
         let holds = self.held(hand).is_some();
-        if !carries && holds {
+        let dancing = self
+            .world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| entity.is_allay_dancing());
+        // The synced `can duplicate` flag is true until the data says not.
+        if dancing && self.holds_tagged(hand, "minecraft:duplicates_allays") {
+            self.use_up(hand);
+            self.allay_sound(id, "minecraft:block.amethyst_block.chime");
+            EntityUse::Success { swing: true }
+        } else if !carries && holds {
             self.use_up(hand);
             self.allay_sound(id, "minecraft:entity.allay.item_given");
             EntityUse::Success { swing: true }
@@ -147,7 +161,7 @@ impl Context<'_> {
             .entities()
             .at(id)
             .is_some_and(|entity| entity.is_bogged_sheared());
-        if !sheared && self.holds_item(hand, "minecraft:shears") {
+        if !sheared && self.holds_id(hand, photon_data::item::ids::SHEARS) {
             EntityUse::Success { swing: true }
         } else {
             EntityUse::Pass
@@ -253,7 +267,7 @@ impl Context<'_> {
             )
         });
         let takes = self.held(hand).is_none() && carries;
-        if takes || (shearable && self.holds_item(hand, "minecraft:shears")) {
+        if takes || (shearable && self.holds_id(hand, photon_data::item::ids::SHEARS)) {
             EntityUse::Success { swing: true }
         } else {
             EntityUse::Pass
@@ -291,7 +305,7 @@ impl Context<'_> {
         body: Option<photon_core::ids::ItemId>,
     ) -> EntityUse {
         let held = self.held(hand).map(|(item, _)| item);
-        if body.is_some() && self.holds_item(hand, "minecraft:shears") {
+        if body.is_some() && self.holds_id(hand, photon_data::item::ids::SHEARS) {
             EntityUse::Success { swing: true }
         } else if self.holds_tagged(hand, "minecraft:sulfur_cube_swallowable") {
             if body.is_some() && body == held {
@@ -328,7 +342,7 @@ impl Context<'_> {
                 armadillo.mode() != photon_world::mobs::armadillo::ArmadilloMode::Idle
             })
         });
-        if adult && self.holds_item(hand, "minecraft:brush") {
+        if adult && self.holds_id(hand, photon_data::item::ids::BRUSH) {
             EntityUse::Success { swing: true }
         } else if scared {
             // `InteractionResult.FAIL`.

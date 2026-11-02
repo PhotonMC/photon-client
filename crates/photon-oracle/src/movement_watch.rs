@@ -82,6 +82,7 @@ pub(super) fn apply_species_data(
             [photon_world::mobs::armadillo::STATE_DATA_ID, 36, 2, 255],
         ),
         ("on_back", [photon_world::PANDA_FLAGS_DATA_ID, 0, 16, 255]),
+        ("dancing", [photon_world::ALLAY_DANCING_DATA_ID, 8, 1, 255]),
     ] {
         if described.get(flag).is_some() {
             world.apply_entity_metadata(id, &data);

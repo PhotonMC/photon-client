@@ -12,10 +12,13 @@ macro_rules! items {
 }
 
 items! {
+    BRUSH = brush,
     BUCKET = bucket,
     DRAGON_HEAD = dragon_head,
+    IRON_INGOT = iron_ingot,
     LAVA_BUCKET = lava_bucket,
     MILK_BUCKET = milk_bucket,
+    SHEARS = shears,
     SULFUR_CUBE_BUCKET = sulfur_cube_bucket,
     TRIDENT = trident,
 }

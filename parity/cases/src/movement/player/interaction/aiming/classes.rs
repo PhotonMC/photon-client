@@ -192,6 +192,13 @@ fn placed_table() -> Vec<Placed> {
         },
         Placed { flags: &["scared"], ..placed("use-scared-armadillo-with-brush", "armadillo", "minecraft:brush") },
         Placed { flags: &["scared"], ..placed("use-scared-armadillo-with-apple", "armadillo", "minecraft:apple") },
+        // A dancing allay is duplicated by an amethyst shard and takes any other item as usual.
+        Placed {
+            flags: &["dancing"],
+            ..placed("use-dancing-allay-with-amethyst-shard", "allay", "minecraft:amethyst_shard")
+        },
+        Placed { flags: &["dancing"], ..placed("use-dancing-allay-with-diamond", "allay", "minecraft:diamond") },
+        Placed { flags: &["dancing"], ..placed("use-allay-with-amethyst-shard", "allay", "minecraft:amethyst_shard") },
         // A panda on its back is righted by the click, whatever it is given.
         Placed { flags: &["on_back"], ..placed("use-panda-on-back-with-bamboo", "panda", "minecraft:bamboo") },
         Placed { flags: &["on_back"], ..placed("use-panda-on-back-with-stone", "panda", "minecraft:stone") },
