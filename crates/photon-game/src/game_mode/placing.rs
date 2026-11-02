@@ -43,6 +43,7 @@ pub(super) fn place(ctx: &mut Context<'_>, hand: u8, item: ItemId, aim: Aim) -> 
     place_ctx.secondary_use = ctx.player.is_shift_key_down();
     place_ctx.inside = inside;
     place_ctx.game_master = ctx.can_use_game_master_blocks();
+    place_ctx.creaking_active = Some(ctx.creaking_active);
     place_ctx.limits = super::place_prediction::limits_of(world);
     let (pos, state) = match super::place_prediction::predicted_state(kind, block, &mut place_ctx) {
         Ok(predicted) => predicted,

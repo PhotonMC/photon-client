@@ -195,6 +195,7 @@ mod tests {
                 difficulty: 2,
                 game_master: false,
                 profile_id: None,
+                creaking_active: false,
             };
             let keys = Keys {
                 use_clicks: u32::from(tick == 0),

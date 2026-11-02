@@ -27,6 +27,9 @@ impl Play {
         if let Some(materials) = self.particles.materials() {
             self.session.set_precipitation(materials);
         }
+        let creaking = self.sky.ambience(&self.session);
+        let creaking = photon_world::particles::Ambience::creaking_active(&creaking);
+        self.session.set_creaking_active(creaking);
         let session = &mut self.session;
         // `Minecraft.handleKeybinds`: the attack key is spent before the
         // player moves, aiming the way `GameRenderer.pick` aims.

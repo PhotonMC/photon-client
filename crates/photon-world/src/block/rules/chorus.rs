@@ -139,7 +139,7 @@ pub(super) fn flower_survives(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> b
 }
 
 /// `CreakingHeartBlock.getStateForPlacement`: the axis of the face clicked. Between two logs of
-/// the axis it wakes by the time of day, which is not known here.
+/// the axis it wakes or sleeps by the `creaking_active` attribute.
 fn creaking_heart(default: BlockStateId, ctx: &PlaceContext<'_>) -> Rule<Option<BlockStateId>> {
     let axis = match ctx.face.axis() {
         Axis::X => "x",
@@ -157,11 +157,14 @@ fn creaking_heart(default: BlockStateId, ctx: &PlaceContext<'_>) -> Rule<Option<
             tagged(ctx, log, "minecraft:pale_oak_logs")
                 && property(ctx.state(log), "axis") == Some(axis)
         });
-    if between_logs {
-        Rule::Unported
-    } else {
-        Rule::Known(Some(state))
+    if !between_logs {
+        return Rule::Known(Some(state));
     }
+    let Some(active) = ctx.creaking_active else {
+        return Rule::Unported;
+    };
+    let awake = if active { "awake" } else { "dormant" };
+    Rule::Known(with_property(state, "creaking_heart_state", awake))
 }
 
 /// `TripWireBlock.getStateForPlacement`: each side joins a tripwire or a hook facing it. The

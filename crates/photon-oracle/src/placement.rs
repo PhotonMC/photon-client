@@ -50,6 +50,7 @@ fn placement_row(row: &Value, tags: &BlockTags) -> Result<Value, String> {
         ctx.secondary_use = row["sneak"].as_bool().unwrap_or(false);
         ctx.inside = row["inside"].as_bool().unwrap_or(false);
         ctx.game_master = row["game_master"].as_bool().unwrap_or(false);
+        ctx.creaking_active = Some(row["creaking_active"].as_bool().unwrap_or(false));
         let raw_light = row["raw_light"]
             .as_i64()
             .and_then(|n| i32::try_from(n).ok());

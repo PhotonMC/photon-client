@@ -333,15 +333,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                             x,
                             y,
                             z,
-                            face: match string(target, "face")? {
-                                "down" => 0,
-                                "up" => 1,
-                                "north" => 2,
-                                "south" => 3,
-                                "west" => 4,
-                                "east" => 5,
-                                other => return Err(format!("unknown face {other}")),
-                            },
+                            face: face_index(string(target, "face")?)?,
                             location,
                             inside: target["inside"].as_bool().unwrap_or(false),
                         }
@@ -362,6 +354,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     difficulty: 0,
                     game_master: false,
                     profile_id: row.get("player_uuid").map(|_| oracle_player_uuid()),
+                    creaking_active: false,
                 };
                 actions = game_mode.keys_tick(&mut ctx, movement_gear::keys_of(attack)?, aim);
             }
@@ -520,4 +513,17 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
         }
     }
     Ok(json!({"rows": out}))
+}
+
+/// The wire value of a face name (`Direction.get3DDataValue`).
+fn face_index(name: &str) -> Result<u8, String> {
+    match name {
+        "down" => Ok(0),
+        "up" => Ok(1),
+        "north" => Ok(2),
+        "south" => Ok(3),
+        "west" => Ok(4),
+        "east" => Ok(5),
+        other => Err(format!("unknown face {other}")),
+    }
 }

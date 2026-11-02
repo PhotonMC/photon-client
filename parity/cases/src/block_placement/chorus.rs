@@ -86,6 +86,13 @@ pub fn lone_rows() -> Vec<Value> {
             let at = click(hit, face, location, 0.0, 0.0);
             rows.push(row(&format!("creaking-heart-{face}-{label}"), &heart, world, &at));
         }
+        for active in [false, true] {
+            let world = vec![log(hit, axis), log(far, axis)];
+            let at = click(hit, face, location, 0.0, 0.0);
+            let mut between = row(&format!("creaking-heart-{face}-between-active-{active}"), &heart, world, &at);
+            between["creaking_active"] = json!(active);
+            rows.push(between);
+        }
     }
     rows
 }

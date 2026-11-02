@@ -30,6 +30,18 @@ class BlockPlacementOracle extends BlockItemOracle {
         java.util.List<Object[]> writes;
         net.minecraft.world.level.border.WorldBorder border;
         int rawLight;
+        boolean creakingActive;
+
+        /** The row's `creaking_active`, as the dimension's attribute would answer it. */
+        @Override
+        public net.minecraft.world.attribute.EnvironmentAttributeSystem environmentAttributes() {
+            return net.minecraft.world.attribute.EnvironmentAttributeSystem.builder()
+                .addConstantLayer(net.minecraft.world.attribute.EnvironmentAttributeMap.builder()
+                    .set(net.minecraft.world.attribute.EnvironmentAttributes.CREAKING_ACTIVE,
+                        creakingActive)
+                    .build())
+                .build();
+        }
 
         ScriptedLevel() {
             super(null, null, null, null, 0, 0, null, false, 0L, 0);
@@ -284,6 +296,7 @@ class BlockPlacementOracle extends BlockItemOracle {
             var spec = element.getAsJsonObject();
             level.states.put(position(spec.getAsJsonArray("pos")).asLong(), scriptedState(spec));
         }
+        level.creakingActive = row.has("creaking_active") && row.get("creaking_active").getAsBoolean();
         level.rawLight = row.has("raw_light") ? row.get("raw_light").getAsInt() : 15;
         viewer.yaw = Oracle.f32(row, "yaw");
         viewer.pitch = Oracle.f32(row, "pitch");

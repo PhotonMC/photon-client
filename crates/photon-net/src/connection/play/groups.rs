@@ -50,6 +50,8 @@ pub(super) struct LocalState {
     /// last said; a login starts at normal and unlocked (`new ClientLevelData`).
     pub(super) difficulty: u8,
     pub(super) difficulty_locked: bool,
+    /// The dimension's `creaking_active` attribute, which the client's sky data answers each tick.
+    pub(super) creaking_active: bool,
     /// `Player.isReducedDebugInfo`: the login's word, then entity events 22 and 23.
     pub(super) reduced_debug_info: bool,
     /// `Options.reducedDebugInfo`, which `showOnlyReducedInfo` adds to the server's word.
@@ -302,6 +304,7 @@ impl Default for LocalState {
             online_mode: false,
             difficulty: 2,
             difficulty_locked: false,
+            creaking_active: false,
             reduced_debug_info: false,
             reduced_debug_option: false,
             advancements: photon_game::advancements::ClientAdvancements::default(),

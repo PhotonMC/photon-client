@@ -75,6 +75,8 @@ pub struct Context<'a> {
     pub game_master: bool,
     /// The player's profile id, as the server logged it in (`Player.getUUID`).
     pub profile_id: Option<photon_core::binary::Uuid>,
+    /// The `creaking_active` environment attribute of the dimension at this tick.
+    pub creaking_active: bool,
 }
 
 impl Context<'_> {

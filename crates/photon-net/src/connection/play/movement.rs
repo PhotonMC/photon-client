@@ -45,6 +45,7 @@ impl PlaySession {
             difficulty: self.local.difficulty,
             game_master: self.local.permission_level >= 2,
             profile_id: self.state.profile_id,
+            creaking_active: self.local.creaking_active,
         };
         let keys = photon_game::game_mode::Keys {
             main_arm_left,

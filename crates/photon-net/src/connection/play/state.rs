@@ -195,6 +195,11 @@ impl PlaySession {
         }
     }
 
+    /// The dimension's `creaking_active` attribute at this tick, which the placing rules read.
+    pub fn set_creaking_active(&mut self, active: bool) {
+        self.local.creaking_active = active;
+    }
+
     /// The current dimension type's registry name.
     pub fn dimension_type(&self) -> Option<&str> {
         self.registry_names("minecraft:dimension_type")
