@@ -219,3 +219,42 @@ pub(super) fn drawer<'a>(
         )
     }
 }
+
+/// A mount in the box of its screen, between two ticks as it stands now.
+pub(super) fn entity_vertices(
+    (session, id): (&PlaySession, photon_core::ids::EntityId),
+    (mob_models, armor): (&mut crate::mobs::MobModels, &std::cell::RefCell<&mut Armor>),
+    entity_textures: &EntityTextures,
+    (area, size, offset_y, mouse): PreviewBox,
+) -> Vec<photon_render::gui::GuiItemVertex> {
+    let world = session.world();
+    let Some(entity) = world.entities().at(id) else {
+        return Vec::new();
+    };
+    let view = photon_render::entity::player_renderer::GuiEntityView::new(
+        area,
+        size,
+        offset_y,
+        mouse,
+        entity.bb_height(),
+    );
+    crate::mobs::animals::farm_animals::gui_preview(
+        world,
+        (&mut *mob_models, &mut **armor.borrow_mut()),
+        entity_textures,
+        entity,
+        &view,
+    )
+    .or_else(|| {
+        crate::mobs::aquatic::nautilus::gui_preview(
+            world,
+            session.registry_names("minecraft:zombie_nautilus_variant"),
+            (&mut *mob_models, &mut **armor.borrow_mut()),
+            entity_textures,
+            entity,
+            &view,
+        )
+    })
+    .map(|vertices| photon_render::entity::player_renderer::gui_mob_vertices(&vertices, &view))
+    .unwrap_or_default()
+}

@@ -6,7 +6,7 @@ use super::gui;
 use crate::components::{
     BANNER_PATTERNS, CAN_BREAK, CAN_PLACE_ON, CONTAINER, CUSTOM_NAME, DAMAGE, INSTRUMENT, LORE, MAP_ID,
     MAP_POST_PROCESSING, OMINOUS_BOTTLE_AMPLIFIER, POTION_CONTENTS, Stack, WRITTEN_BOOK_CONTENT, adventure_blocks,
-    bundle, item_id, nbt_text as nbt, patch, stack, text, vi,
+    adventure_tag, bundle, item_id, nbt_text as nbt, patch, stack, text, vi,
 };
 
 /// `ItemContainerContents`: an optional stack per slot.
@@ -110,6 +110,9 @@ fn adventure_rows() -> Vec<Tooltip> {
             vec![(CAN_BREAK, adventure_blocks(&[274, 224, 579, 783, 778, 454, 460, 255, 202, 388]))],
         ),
         with("can break unknown", vec![(CAN_BREAK, format!("{}{}", vi(1), "0000000000"))]),
+        // A tag lists its members where it stands, nested tags expanded, each block once.
+        with("can break tag", vec![(CAN_BREAK, adventure_tag("minecraft:wool"))]),
+        with("can place tag nested", vec![(CAN_PLACE_ON, adventure_tag("minecraft:logs"))]),
     ]
 }
 

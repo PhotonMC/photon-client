@@ -258,7 +258,7 @@ pub fn lines(
         }
     }
     honey_line(&values, shows(ids::BLOCK_STATE), &mut out);
-    adventure_tooltips(&values, &shows, &mut out);
+    adventure_tooltips(&values, (&shows, context.block_tag_members), &mut out);
     if flags.advanced {
         advanced_lines(stack, &values, shows, &mut out);
     }
@@ -284,7 +284,11 @@ fn honey_line(values: &Values, shown: bool, out: &mut Vec<Component>) {
 }
 
 /// The `can_break` and `can_place_on` sections.
-fn adventure_tooltips(values: &Values, shows: &dyn Fn(i32) -> bool, out: &mut Vec<Component>) {
+fn adventure_tooltips(
+    values: &Values,
+    (shows, members): (&dyn Fn(i32) -> bool, super::details::TagMembers<'_>),
+    out: &mut Vec<Component>,
+) {
     for (component, header) in [
         (ids::CAN_BREAK, "item.canBreak"),
         (ids::CAN_PLACE_ON, "item.canPlace"),
@@ -292,7 +296,7 @@ fn adventure_tooltips(values: &Values, shows: &dyn Fn(i32) -> bool, out: &mut Ve
         if shows(component)
             && let Some(value) = values.raw(component)
         {
-            adventure_lines(value, header, out);
+            adventure_lines(value, (header, members), out);
         }
     }
 }
@@ -307,9 +311,13 @@ fn block_description_key(block: &photon_data::block::definition::Block) -> Strin
 }
 
 /// `AdventureModePredicate.addToTooltip` after its header.
-fn adventure_lines(value: &[u8], header: &str, out: &mut Vec<Component>) {
+fn adventure_lines(
+    value: &[u8],
+    (header, members): (&str, super::details::TagMembers<'_>),
+    out: &mut Vec<Component>,
+) {
     use crate::item_components::{AdventureTooltip, adventure_tooltip};
-    let Some(tooltip) = adventure_tooltip(value) else {
+    let Some(tooltip) = adventure_tooltip(value, members) else {
         return;
     };
     out.push(Component::empty());
@@ -328,7 +336,6 @@ fn adventure_lines(value: &[u8], header: &str, out: &mut Vec<Component>) {
                 }
             }
         }
-        AdventureTooltip::Tagged => {}
     }
 }
 

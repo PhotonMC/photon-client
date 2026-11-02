@@ -109,6 +109,12 @@ impl ClientWorld {
         &self.block_state_registry
     }
 
+    /// The block registry ids of a block tag the server sent, in its order.
+    pub fn block_tag_members(&self, tag: &str) -> Vec<i32> {
+        let tags = self.block_state_registry.tags();
+        tags.members(tag).map(|block| block as i32).collect()
+    }
+
     /// Apply a clientbound common update-tags packet to the world registry copy.
     pub fn apply_update_tags_packet(
         &mut self,

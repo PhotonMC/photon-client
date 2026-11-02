@@ -349,51 +349,24 @@ impl Gui {
                 (skin, held_layers, (renderer, tints)),
             );
             // A mount in the box of its screen, between two ticks as it stands now.
-            let world = session.world();
-            let mut draw_entity = |id: EntityId,
-                                   area: (i32, i32, i32, i32),
-                                   size: f32,
-                                   offset_y: f32,
-                                   mouse: (f32, f32)| {
-                let Some(entity) = world.entities().at(id) else {
-                    return Vec::new();
-                };
-                let view = photon_render::entity::player_renderer::GuiEntityView::new(
-                    area,
-                    size,
-                    offset_y,
-                    mouse,
-                    entity.bb_height(),
-                );
-                crate::mobs::animals::farm_animals::gui_preview(
-                    world,
-                    (&mut *mob_models, &mut **armor.borrow_mut()),
+            let mut draw_entity = |id: EntityId, area, size, offset_y, mouse| {
+                preview::entity_vertices(
+                    (session, id),
+                    (&mut *mob_models, &armor),
                     entity_textures,
-                    entity,
-                    &view,
+                    (area, size, offset_y, mouse),
                 )
-                .or_else(|| {
-                    crate::mobs::aquatic::nautilus::gui_preview(
-                        world,
-                        session.registry_names("minecraft:zombie_nautilus_variant"),
-                        (&mut *mob_models, &mut **armor.borrow_mut()),
-                        entity_textures,
-                        entity,
-                        &view,
-                    )
-                })
-                .map(|vertices| {
-                    photon_render::entity::player_renderer::gui_mob_vertices(&vertices, &view)
-                })
-                .unwrap_or_default()
             };
             // A stack's tooltip in words.
+            let world = session.world();
             let maps = |id: i32| map_info(world, id);
+            let block_tags = |tag: &str| world.block_tag_members(tag);
             let mut tooltip_lines = Self::stack_tooltip_lines(
                 (&self.lang, &self.registries),
                 controls.options.advanced_item_tooltips,
                 photon_game::tooltip::Context {
                     maps: &maps,
+                    block_tag_members: &block_tags,
                     tick_rate: session.tick_rate(),
                 },
             );

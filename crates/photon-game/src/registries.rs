@@ -156,6 +156,19 @@ fn tag_values(data_root: &Path, directory: &str, tag: &str) -> Vec<String> {
     out
 }
 
+/// The block registry ids of a block tag of a data pack, each once, nested tags expanded.
+pub fn block_tag_members(data_root: &Path, tag: &str) -> Vec<i32> {
+    let mut ids = Vec::new();
+    for name in tag_values(data_root, "block", tag) {
+        if let Some(id) = photon_data::block::registry::block_index(&name).map(|id| id as i32)
+            && !ids.contains(&id)
+        {
+            ids.push(id);
+        }
+    }
+    ids
+}
+
 /// A field of an entry that is a text component, as its JSON.
 fn component(object: &JsonObject, key: &str) -> Option<JsonValue> {
     object.get_str(key).cloned()

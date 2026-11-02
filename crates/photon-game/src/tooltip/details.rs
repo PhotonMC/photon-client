@@ -15,10 +15,15 @@ pub struct MapInfo {
 /// `Context.mapData`: the map data the client holds for a map id.
 pub type Maps<'a> = &'a dyn Fn(i32) -> Option<MapInfo>;
 
-/// `Item.Context`: the map data the client holds and the tick rate effect times are read at.
+/// The block registry ids of a block tag the server sent, in the tag's order.
+pub type TagMembers<'a> = &'a dyn Fn(&str) -> Vec<i32>;
+
+/// `Item.Context`: the map data the client holds, the block tags it holds and the tick rate effect
+/// times are read at.
 #[derive(Clone, Copy)]
 pub struct Context<'a> {
     pub maps: Maps<'a>,
+    pub block_tag_members: TagMembers<'a>,
     pub tick_rate: f32,
 }
 
@@ -27,12 +32,17 @@ impl Context<'static> {
     /// and twenty ticks a second.
     pub const EMPTY: Self = Self {
         maps: &no_maps,
+        block_tag_members: &no_members,
         tick_rate: 20.0,
     };
 }
 
 fn no_maps(_: i32) -> Option<MapInfo> {
     None
+}
+
+fn no_members(_: &str) -> Vec<i32> {
+    Vec::new()
 }
 
 /// `SmithingTemplateItem.appendHoverText`: the netherite upgrade and every

@@ -20,6 +20,7 @@ pub(super) fn tooltip_lines_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
     };
     let context = Context {
         maps: &|_| map,
+        block_tag_members: &|tag| photon_game::registries::block_tag_members(&data_root, tag),
         tick_rate: row["tick_rate"].as_f64().unwrap_or(20.0) as f32,
     };
     let lines: Vec<Value> = lines(&stack, false, flags, &registries, context)

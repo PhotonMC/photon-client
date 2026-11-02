@@ -117,35 +117,31 @@ pub fn adventure_predicate(value: &[u8]) -> Option<Vec<BlockPredicate>> {
 pub enum AdventureTooltip {
     /// A predicate names no blocks: `item.canUse.unknown`.
     Unknown,
-    /// The distinct block registry ids, in order.
+    /// The distinct block registry ids, in order; a tag lists its members where it stands.
     Blocks(Vec<i32>),
-    /// A predicate names a tag, whose members this does not list.
-    Tagged,
 }
 
 /// The tooltip of a `can_break` or `can_place_on` value; none when it cannot be read.
-pub fn adventure_tooltip(value: &[u8]) -> Option<AdventureTooltip> {
+/// `members` answers the block registry ids of a tag the server sent.
+pub fn adventure_tooltip(
+    value: &[u8],
+    members: &dyn Fn(&str) -> Vec<i32>,
+) -> Option<AdventureTooltip> {
     let predicates = adventure_predicate(value)?;
     let mut ids = Vec::new();
-    let mut tagged = false;
     for predicate in &predicates {
-        match &predicate.blocks {
+        let found = match &predicate.blocks {
             None => return Some(AdventureTooltip::Unknown),
-            Some(Blocks::Tag(_)) => tagged = true,
-            Some(Blocks::Ids(found)) => {
-                for id in found {
-                    if !ids.contains(id) {
-                        ids.push(*id);
-                    }
-                }
+            Some(Blocks::Tag(tag)) => members(tag),
+            Some(Blocks::Ids(found)) => found.clone(),
+        };
+        for id in found {
+            if !ids.contains(&id) {
+                ids.push(id);
             }
         }
     }
-    Some(if tagged {
-        AdventureTooltip::Tagged
-    } else {
-        AdventureTooltip::Blocks(ids)
-    })
+    Some(AdventureTooltip::Blocks(ids))
 }
 
 impl BlockPredicate {
