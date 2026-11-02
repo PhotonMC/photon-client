@@ -136,7 +136,16 @@ fn health_rows() -> Vec<Value> {
         entity["hurt"] = json!(health);
         clicked(label, entity, (item, 30.0), once())
     })
+    .chain([again_row()])
     .collect()
+}
+
+/// A golem a little short of full health: the first ingot heals it to the maximum, so a second
+/// click passes and keeps the ingot.
+fn again_row() -> Value {
+    let mut entity = flagged_animal("iron_golem", &[]);
+    entity["hurt"] = json!(90.0);
+    clicked("use-iron-golem-with-ingot-twice", entity, ("minecraft:iron_ingot", 30.0), twice())
 }
 
 /// Rows that read the equipment the mob wears: label, kind, flag, worn item, held item, sneaking.

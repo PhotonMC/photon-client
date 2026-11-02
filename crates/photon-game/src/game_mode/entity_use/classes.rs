@@ -1,10 +1,8 @@
 //! The `mobInteract` of the classes that answer one fixed way on the client: ocelot, dolphin, iron
 //! golem, allay, bogged, piglin, panda, happy ghast and armadillo.
 //!
-//! Not covered: an allay
-//! whose hand shows a tick early, a piglin
-//! whose brain refuses to admire, the iron golem's health after a repair and its attribute-based
-//! maximum, and the sounds.
+//! Not covered: an allay whose hand shows a tick early, a piglin whose brain refuses to admire,
+//! and the sounds.
 
 use super::*;
 use photon_world::local_player::{LocalSound, LocalSoundSource};
@@ -95,15 +93,9 @@ impl Context<'_> {
         }
     }
 
-    /// `IronGolem.mobInteract`: an ingot repairs a golem that is hurt.
+    /// `IronGolem.mobInteract`: an ingot heals a golem that is hurt by twenty-five.
     fn interact_iron_golem(&mut self, id: EntityId, hand: u8) -> EntityUse {
-        let hurt = self
-            .world
-            .entities()
-            .at(id)
-            .and_then(|entity| entity.health())
-            .is_some_and(|health| health < IRON_GOLEM_HEALTH);
-        if hurt && self.holds_id(hand, photon_data::item::ids::IRON_INGOT) {
+        if self.holds_id(hand, photon_data::item::ids::IRON_INGOT) && self.heal_local(id, 25.0) {
             self.use_up(hand);
             EntityUse::Success { swing: true }
         } else {
@@ -368,6 +360,3 @@ impl Context<'_> {
         }
     }
 }
-
-/// `IronGolem`'s maximum health.
-const IRON_GOLEM_HEALTH: f32 = 100.0;
