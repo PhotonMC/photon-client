@@ -94,3 +94,31 @@ impl ClientWorld {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_frame_box_sits_against_the_wall_behind_it() {
+        let wall = pop_box((0, 64, 1), Direction::North, 0.75);
+        assert_eq!(
+            (wall.min_x, wall.max_x, wall.min_y, wall.max_y),
+            (0.125, 0.875, 64.125, 64.875)
+        );
+        assert_eq!(
+            (wall.min_z, wall.max_z),
+            (1.96875 - 0.03125, 1.96875 + 0.03125)
+        );
+    }
+
+    #[test]
+    fn a_floor_frame_is_flat_on_the_block_below() {
+        let floor = pop_box((0, 65, 2), Direction::Up, 0.75);
+        assert_eq!(
+            (floor.min_y, floor.max_y),
+            (65.03125 - 0.03125, 65.03125 + 0.03125)
+        );
+        assert_eq!((floor.min_x, floor.max_x), (0.125, 0.875));
+    }
+}
