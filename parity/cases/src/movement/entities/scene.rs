@@ -16,10 +16,21 @@ pub struct Item {
     on_ground: bool,
     entity_id: i64,
     events: Vec<Value>,
+    block_events: Option<Vec<Value>>,
 }
 
 pub fn row(label: impl Into<String>, blocks: Vec<Value>, position: Vec3, motion: Vec3, ticks: i64) -> Item {
-    Item { label: label.into(), blocks, position, motion, ticks, on_ground: false, entity_id: 21, events: vec![] }
+    Item {
+        label: label.into(),
+        blocks,
+        position,
+        motion,
+        ticks,
+        on_ground: false,
+        entity_id: 21,
+        events: vec![],
+        block_events: None,
+    }
 }
 
 impl Item {
@@ -35,7 +46,20 @@ impl Item {
         Self { events, ..self }
     }
 
+    /// The block events of the server, which make the pistons' moving blocks.
+    pub fn block_events(self, block_events: Vec<Value>) -> Self {
+        Self { block_events: Some(block_events), ..self }
+    }
+
     pub fn row(self) -> Value {
+        let mut row = self.plain_row();
+        if let Some(events) = self.block_events {
+            row["block_events"] = json!(events);
+        }
+        row
+    }
+
+    fn plain_row(&self) -> Value {
         json!({
             "events": self.events, "label": self.label, "blocks": self.blocks, "chunk_radius": 1,
             "entity_id": self.entity_id, "x": f64_bits(self.position.0), "y": f64_bits(self.position.1),

@@ -18,7 +18,7 @@ pub(super) enum MoverType {
 }
 
 /// `PistonMath.getMovementArea`: the space a box sweeps when it moves `amount` along `direction`.
-fn movement_area(aabb: Aabb, direction: Direction, amount: f64) -> Aabb {
+pub(crate) fn movement_area(aabb: Aabb, direction: Direction, amount: f64) -> Aabb {
     let (sx, sy, sz) = direction.step();
     let delta = amount * f64::from(sx + sy + sz);
     let (min, max) = (delta.min(0.0), delta.max(0.0));
@@ -76,7 +76,7 @@ fn movement_area(aabb: Aabb, direction: Direction, amount: f64) -> Aabb {
 
 /// `PistonMovingBlockEntity.getMovement`: how far `aabb` must go along `movement` to leave
 /// `outside_of`.
-fn movement_out_of(outside_of: Aabb, movement: Direction, aabb: Aabb) -> f64 {
+pub(crate) fn movement_out_of(outside_of: Aabb, movement: Direction, aabb: Aabb) -> f64 {
     match movement {
         Direction::East => outside_of.max_x - aabb.min_x,
         Direction::West => aabb.max_x - outside_of.min_x,
@@ -88,7 +88,7 @@ fn movement_out_of(outside_of: Aabb, movement: Direction, aabb: Aabb) -> f64 {
 }
 
 /// `moveByPositionAndProgress`: a box of the block as the moving block has it by now.
-fn at_progress(pos: Pos, aabb: Aabb, moving: &MovingPiston) -> Aabb {
+pub(crate) fn at_progress(pos: Pos, aabb: Aabb, moving: &MovingPiston) -> Aabb {
     let current = f64::from(moving.extended_progress());
     let (sx, sy, sz) = moving.direction.step();
     aabb.move_by(

@@ -237,7 +237,7 @@ mod inside_blocks;
 pub(crate) use inside_blocks::*;
 mod level;
 pub(crate) use level::*;
-mod piston;
+pub(crate) mod piston;
 use piston::MoverType;
 mod pose;
 pub use pose::*;

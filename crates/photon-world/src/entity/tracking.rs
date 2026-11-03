@@ -33,6 +33,9 @@ pub(crate) struct Tracking {
     /// (`Entity.packetPositionCodec`): the last position a packet gave, which
     /// is not the entity's own once the client moves it.
     pub(crate) packet_base_bits: [u64; 3],
+    /// `Entity.pistonDeltas` and `pistonDeltasGameTime`: what pistons moved the entity this tick,
+    /// as bits, and the tick.
+    pub(crate) piston: (i64, [u64; 3]),
 }
 
 impl Tracking {
@@ -40,6 +43,7 @@ impl Tracking {
         Self {
             support: Support::default(),
             packet_base_bits: [x.to_bits(), y.to_bits(), z.to_bits()],
+            piston: (0, [0; 3]),
         }
     }
 }

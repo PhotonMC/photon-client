@@ -46,7 +46,7 @@ struct ItemState {
 }
 
 /// `EntityType.ITEM`'s size.
-fn item_box(position: Vec3) -> Aabb {
+pub(crate) fn item_box(position: Vec3) -> Aabb {
     ClientEntityDimensions::scalable(0.25, 0.25).make_bounding_box(position)
 }
 

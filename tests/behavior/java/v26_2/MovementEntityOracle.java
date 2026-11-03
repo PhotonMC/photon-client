@@ -41,10 +41,32 @@ class MovementEntityOracle extends MovementSupport {
             // `handleMoveEntity` and the teleports hand the packet's flag over.
             item.setOnGround(true);
         }
+        boolean pistons = row.has("block_events");
+        if (pistons) {
+            // Block events of pistons make the moving blocks, whose block entities tick after the
+            // entities and push what stands in their way.
+            setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+            level.setTimeFromServer(1000L);
+        }
         var ticks = new JsonArray();
         for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
             applyEvents(listener, row, tick, entityId);
+            if (pistons) {
+                for (var eventElement : row.getAsJsonArray("block_events")) {
+                    var event = eventElement.getAsJsonObject();
+                    if (event.get("tick").getAsInt() == tick) {
+                        var at = new net.minecraft.core.BlockPos(event.get("x").getAsInt(),
+                            event.get("y").getAsInt(), event.get("z").getAsInt());
+                        level.blockEvent(at, level.getBlockState(at).getBlock(), event.get("b0").getAsInt(),
+                            event.get("b1").getAsInt());
+                    }
+                }
+            }
             level.tickNonPassenger(item);
+            if (pistons) {
+                level.tickBlockEntities();
+                level.setTimeFromServer(level.getGameTime() + 1L);
+            }
             var described = new JsonObject();
             described.addProperty("x", Oracle.bits(item.getX()));
             described.addProperty("y", Oracle.bits(item.getY()));

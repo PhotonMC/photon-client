@@ -108,6 +108,18 @@ fn tick_with_events(
     Ok(())
 }
 
+/// `Minecraft.tick` after the entities, for a row with block events: the block entities tick (the
+/// moving pistons push what is in their way), and the clock moves on.
+fn tick_block_entities_after(world: &mut ClientWorld, pistons: bool) -> Result<(), String> {
+    if pistons {
+        world
+            .tick_after_entities(None, true)
+            .map_err(|unsupported| unsupported.to_string())?;
+        world.set_game_time(world.game_time() + 1);
+    }
+    Ok(())
+}
+
 /// `item_entity_ticks`: a dropped item put in the scene by the server's
 /// packets (place, motion, ground flag), then ticked with the level.
 pub(super) fn item_entity_ticks_result(request: &Value) -> Result<Value, String> {
@@ -147,9 +159,12 @@ pub(super) fn item_entity_ticks_result(request: &Value) -> Result<Value, String>
             world.apply_entity_ground_state(entity_id, true);
         }
         let mut ticks = Vec::new();
+        let block_events = row.get("block_events").and_then(Value::as_array);
         for tick in 0..i32_field(row, "tick_count")? {
             apply_events(&mut world, row, tick, entity_id)?;
+            crate::movement_gear::apply_block_events(&mut world, block_events, tick as usize)?;
             world.tick_entities(false);
+            tick_block_entities_after(&mut world, block_events.is_some())?;
             let entity = world
                 .entities()
                 .at(entity_id)

@@ -457,6 +457,7 @@ impl ClientWorld {
             return Ok(());
         }
         let new_progress = moving.progress + 0.5;
+        self.push_items_by_piston((pos, &moving), new_progress);
         let pushed = match player {
             Some(player) => player.pushed_by_piston(self, (pos, &moving), new_progress),
             None => Ok(()),

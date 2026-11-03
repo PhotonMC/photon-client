@@ -35,6 +35,7 @@ mod lighting;
 mod local_player;
 mod minecarts;
 mod pickup;
+mod piston_items;
 pub(crate) mod piston_shapes;
 mod pistons;
 mod rebind;
