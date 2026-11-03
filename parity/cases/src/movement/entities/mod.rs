@@ -9,6 +9,7 @@ mod item_pistons;
 mod items;
 mod lighting;
 mod living;
+mod orbs;
 mod pick_table;
 mod prelude;
 mod projectiles;
@@ -26,6 +27,7 @@ pub fn cases() -> Vec<Value> {
     vec![
         ticks("movement/item-entity-ticks", "item_entity_ticks", items::rows()),
         ticks("movement/item-pistons", "item_entity_ticks", item_pistons::rows()),
+        ticks("movement/orb-ticks", "item_entity_ticks", orbs::rows()),
         ticks("movement/living-entity-ticks", "living_entity_ticks", damage::rows()),
         ticks("movement/living-entity-animations", "living_entity_ticks", animation::rows()),
         pick_table::entity_pick_table(),

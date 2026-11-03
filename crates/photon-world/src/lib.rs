@@ -53,6 +53,7 @@ pub mod map;
 mod metadata;
 pub mod mobs;
 pub mod objects;
+mod orb_physics;
 mod paletted;
 pub mod particles;
 mod pick;
@@ -474,15 +475,16 @@ fn block_attached_position(type_id: EntityTypeId, (x, y, z): (f64, f64, f64)) ->
     }
 }
 
-/// What a projectile does of its own in a tick: the orb ticks either way and takes the blocked path
-/// as input; the others only advance while their path stays open.
+/// What a projectile does of its own in a tick: the others only advance while their path stays
+/// open. An orb eases to the server's position here; whether the world then moves it (it does
+/// not on its first tick) is the answer.
 fn tick_projectile(
     entity: &mut EntityViewMut<'_>,
     kind: VanillaProjectileKind,
     path_is_open: bool,
-) {
+) -> bool {
     match kind {
-        VanillaProjectileKind::ExperienceOrb => entity.tick_experience_orb(path_is_open),
+        VanillaProjectileKind::ExperienceOrb => return entity.begin_experience_orb_tick(),
         _ if !path_is_open => {}
         VanillaProjectileKind::Snowball => entity.tick_snowball(),
         VanillaProjectileKind::ExperienceBottle => entity.tick_experience_bottle(),
@@ -491,6 +493,7 @@ fn tick_projectile(
         VanillaProjectileKind::FallingBlock => entity.tick_falling_block(),
         VanillaProjectileKind::Firework => entity.tick_firework(),
     }
+    false
 }
 mod world;
 

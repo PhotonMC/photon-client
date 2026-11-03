@@ -192,7 +192,7 @@ impl ClientWorld {
             }
         }
         let game_time = self.level().game_time;
-        {
+        let orb_moves = {
             let mut entity = self
                 .entities
                 .at_mut(entity_id)
@@ -217,10 +217,10 @@ impl ClientWorld {
                 entity.vel.motion.y = JavaF64::new(0.0_f64);
                 entity.vel.motion.z = JavaF64::new(0.0_f64);
             }
-            if let Some(kind) = projectile_kind {
-                tick_projectile(&mut entity, kind, projectile_path_is_open);
-            }
-        }
+            projectile_kind
+                .is_some_and(|kind| tick_projectile(&mut entity, kind, projectile_path_is_open))
+        };
+        self.tick_experience_orb_movement(entity_id, orb_moves);
         self.tick_after_species(entity_id, ridden);
         if self.discard_spent_entity(entity_id) {
             return;

@@ -39,6 +39,8 @@ class MovementEntityOracle extends MovementSupport {
                 net.minecraft.resources.Identifier.parse(row.get("entity_type").getAsString()));
             item = type.create(level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
             item.setPos(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"));
+            item.setDeltaMovement(Oracle.f64(row, "motion_x"), Oracle.f64(row, "motion_y"),
+                Oracle.f64(row, "motion_z"));
         } else {
             item = new net.minecraft.world.entity.item.ItemEntity(level,
                 Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),

@@ -250,36 +250,11 @@ impl EntityViewMut<'_> {
         self.vel.motion.z = JavaF64::new(motion.2);
     }
 
-    pub(crate) fn tick_experience_orb(&mut self, path_is_open: bool) {
+    /// `ExperienceOrb.tick`'s start: the position eases to the server's, and the first tick does
+    /// nothing else. Whether the orb moves on this tick.
+    pub(crate) fn begin_experience_orb_tick(&mut self) -> bool {
         self.tick_position_interpolation();
-        if self.first_tick {
-            self.first_tick = false;
-            return;
-        }
-        if !path_is_open {
-            return;
-        }
-
-        let current_motion = self.motion();
-        let motion = (
-            current_motion.0,
-            current_motion.1
-                - if self.status.no_gravity {
-                    0.0
-                } else {
-                    VANILLA_EXPERIENCE_ORB_GRAVITY
-                },
-            current_motion.2,
-        );
-        let current_position = self.position();
-        self.pos.position.x = JavaF64::new(current_position.0 + motion.0);
-        self.pos.position.y = JavaF64::new(current_position.1 + motion.1);
-        self.pos.position.z = JavaF64::new(current_position.2 + motion.2);
-
-        let air_friction = f64::from(VANILLA_EXPERIENCE_ORB_AIR_FRICTION);
-        self.vel.motion.x = JavaF64::new(motion.0 * air_friction);
-        self.vel.motion.y = JavaF64::new(motion.1 * air_friction);
-        self.vel.motion.z = JavaF64::new(motion.2 * air_friction);
+        !std::mem::replace(&mut self.first_tick, false)
     }
 
     pub(crate) fn tick_firework(&mut self) {

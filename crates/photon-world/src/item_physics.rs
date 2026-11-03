@@ -47,13 +47,21 @@ struct ItemState {
 
 /// `EntityType.ITEM`'s size.
 pub(crate) fn item_box(position: Vec3) -> Aabb {
-    ClientEntityDimensions::scalable(0.25, 0.25).make_bounding_box(position)
+    square_dimensions(ITEM_SIZE).make_bounding_box(position)
+}
+
+/// `EntityType.ITEM`'s width and height.
+const ITEM_SIZE: f32 = 0.25;
+
+/// The size of an entity as wide as it is tall.
+pub(crate) fn square_dimensions(size: f32) -> ClientEntityDimensions {
+    ClientEntityDimensions::scalable(size, size)
 }
 
 /// `Entity.applyEffectsFromBlocks`'s `stepOn` for an item on the ground: a
 /// slime block slows what slides over it. (The block effects of being inside
 /// a block, as a cobweb's, are not carried yet.)
-fn step_on(
+pub(crate) fn step_on(
     level: &Level<'_>,
     (position, main_supporting_block): (Vec3, Option<BlockPos>),
     on_ground: bool,
@@ -72,9 +80,22 @@ fn step_on(
 
 /// What the fluids around an item do to it: `Entity.updateFluidInteraction`
 /// finds the water and lava the box is in, and the currents push the item.
-fn fluid_pass(level: &Level<'_>, position: Vec3, delta: Vec3) -> Option<(fluid::Fluids, Vec3)> {
-    let eye_height = ClientEntityDimensions::scalable(0.25, 0.25).eye_height();
-    let fluids = fluid::scan(level, (item_box(position), position, eye_height), false).ok()?;
+pub(crate) fn fluid_pass(
+    level: &Level<'_>,
+    size: f32,
+    (position, delta): (Vec3, Vec3),
+) -> Option<(fluid::Fluids, Vec3)> {
+    let dimensions = square_dimensions(size);
+    let fluids = fluid::scan(
+        level,
+        (
+            dimensions.make_bounding_box(position),
+            position,
+            dimensions.eye_height(),
+        ),
+        false,
+    )
+    .ok()?;
     let mut delta = delta;
     if fluids.water.height > 0.0 {
         delta = fluid::apply_current(fluids.water, delta, WATER_FLOW_SCALE, Pushed::Other);
@@ -104,7 +125,7 @@ fn fluid_movement(delta: Vec3, multiplier: f32) -> Vec3 {
 fn item_step(level: &Level<'_>, state: &ItemState) -> Option<ItemStep> {
     let mut position = state.position;
     // `baseTick`'s fluid pass, before the movement is chosen.
-    let (fluids, mut delta) = fluid_pass(level, position, state.delta)?;
+    let (fluids, mut delta) = fluid_pass(level, ITEM_SIZE, (position, state.delta))?;
     if fluids.water.height > f64::from(0.1_f32) {
         delta = fluid_movement(delta, 0.99);
     } else if fluids.lava.height > f64::from(0.1_f32) {
@@ -171,7 +192,7 @@ fn item_step(level: &Level<'_>, state: &ItemState) -> Option<ItemStep> {
         }
     }
     // The pass at the end of the tick, which the next tick's movement feels.
-    let (_, delta) = fluid_pass(level, position, delta)?;
+    let (_, delta) = fluid_pass(level, ITEM_SIZE, (position, delta))?;
     Some(ItemStep {
         position,
         delta,
