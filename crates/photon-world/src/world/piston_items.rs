@@ -289,6 +289,7 @@ impl ClientWorld {
         if by.x == 0.0 && by.y == 0.0 && by.z == 0.0 {
             return;
         }
+        let before = self.item_position(id);
         let Some(step) = self.piston_item_step(id, piston, by) else {
             return;
         };
@@ -298,6 +299,9 @@ impl ClientWorld {
         entity.set_position((step.position.x, step.position.y, step.position.z));
         entity.on_ground = step.on_ground;
         entity.tracking.support = step.support;
+        if let Some(from) = before {
+            self.apply_effects_after_push(id, from);
+        }
     }
 
     /// `Entity.move`'s collision and ground flags for an item a piston moves by `by`.

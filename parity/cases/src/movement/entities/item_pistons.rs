@@ -43,6 +43,14 @@ fn other_rows() -> Vec<Value> {
             (1.5, 64.0, 6.5),
             extend(1, (0, 64, 6), 5),
         ),
+        // The arm pushes the pig into a bubble column: the effects of the block it ends in apply.
+        mob(
+            "pig-pushed-into-bubbles",
+            "minecraft:pig",
+            vec![piston((0, 64, 14), "east"), put_with(2, 64, 14, "minecraft:bubble_column", &[("drag", "false")])],
+            (1.5, 64.0, 14.5),
+            extend(1, (0, 64, 14), 5),
+        ),
         // An entity without physics is moved by the arm with no limit and no collision.
         mob(
             "bullet-pushed-east",
