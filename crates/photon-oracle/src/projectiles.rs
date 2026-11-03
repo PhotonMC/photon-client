@@ -128,7 +128,6 @@ pub(super) fn item_entity_ticks_result(request: &Value) -> Result<Value, String>
             .map(f64::from_bits)
             .map_err(|error| format!("{key}: {error}"))
     };
-    let hex = |value: f64| format!("{:016x}", value.to_bits());
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
@@ -159,6 +158,7 @@ pub(super) fn item_entity_ticks_result(request: &Value) -> Result<Value, String>
         {
             world.apply_entity_ground_state(entity_id, true);
         }
+        spawn_scene_players(&mut world, row)?;
         let mut ticks = Vec::new();
         let block_events = row.get("block_events").and_then(Value::as_array);
         for tick in 0..i32_field(row, "tick_count")? {
@@ -170,17 +170,54 @@ pub(super) fn item_entity_ticks_result(request: &Value) -> Result<Value, String>
                 .entities()
                 .at(entity_id)
                 .ok_or("item entity vanished")?;
-            let (x, y, z) = entity.position();
-            let (motion_x, motion_y, motion_z) = entity.motion();
-            ticks.push(json!({
-                "x": hex(x), "y": hex(y), "z": hex(z),
-                "motion_x": hex(motion_x), "motion_y": hex(motion_y), "motion_z": hex(motion_z),
-                "on_ground": entity.on_ground(),
-            }));
+            ticks.push(entity_tick_json(&entity));
         }
         out.push(json!({"label": row["label"], "outcome": "ticked", "ticks": ticks}));
     }
     Ok(json!({"rows": out}))
+}
+
+/// What a tick left of an entity: its place, motion and ground flag, as bits.
+fn entity_tick_json(entity: &photon_world::EntityView<'_>) -> Value {
+    let hex = |value: f64| format!("{:016x}", value.to_bits());
+    let (x, y, z) = entity.position();
+    let (motion_x, motion_y, motion_z) = entity.motion();
+    json!({
+        "x": hex(x), "y": hex(y), "z": hex(z),
+        "motion_x": hex(motion_x), "motion_y": hex(motion_y), "motion_z": hex(motion_z),
+        "on_ground": entity.on_ground(),
+    })
+}
+
+/// The remote players a scene row lists (`players`: uuid and place), numbered from 100 like the
+/// reference's.
+fn spawn_scene_players(world: &mut ClientWorld, row: &Value) -> Result<(), String> {
+    let Some(players) = row.get("players").and_then(Value::as_array) else {
+        return Ok(());
+    };
+    let type_id = photon_data::entity_type::id("minecraft:player").ok_or("no player type")?;
+    for (index, player) in players.iter().enumerate() {
+        let bits = |key: &str| -> Result<f64, String> {
+            u64::from_str_radix(string(player, key)?, 16)
+                .map(f64::from_bits)
+                .map_err(|error| format!("{key}: {error}"))
+        };
+        let id = EntityId(100 + index as i32);
+        if !world.apply_entity(EntityInput {
+            entity_id: id,
+            uuid: Uuid::new(1, index as u64 + 1),
+            type_id,
+            x: bits("x")?,
+            y: bits("y")?,
+            z: bits("z")?,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }) {
+            return Err("player was rejected".into());
+        }
+    }
+    Ok(())
 }
 
 /// `projectile_ticks`: a projectile the server added, ticked by the client between the server's

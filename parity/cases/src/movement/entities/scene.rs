@@ -18,6 +18,7 @@ pub struct Item {
     events: Vec<Value>,
     block_events: Option<Vec<Value>>,
     entity_type: Option<&'static str>,
+    players: Vec<(Vec3, [i64; 4])>,
 }
 
 pub fn row(label: impl Into<String>, blocks: Vec<Value>, position: Vec3, motion: Vec3, ticks: i64) -> Item {
@@ -32,6 +33,7 @@ pub fn row(label: impl Into<String>, blocks: Vec<Value>, position: Vec3, motion:
         events: vec![],
         block_events: None,
         entity_type: None,
+        players: vec![],
     }
 }
 
@@ -53,6 +55,11 @@ impl Item {
         Self { entity_type: Some(entity_type), ..self }
     }
 
+    /// Players standing in the scene, by place and uuid.
+    pub fn players(self, players: Vec<(Vec3, [i64; 4])>) -> Self {
+        Self { players, ..self }
+    }
+
     /// The block events of the server, which make the pistons' moving blocks.
     pub fn block_events(self, block_events: Vec<Value>) -> Self {
         Self { block_events: Some(block_events), ..self }
@@ -65,6 +72,13 @@ impl Item {
         }
         if let Some(entity_type) = self.entity_type {
             row["entity_type"] = json!(entity_type);
+        }
+        if !self.players.is_empty() {
+            row["players"] = self
+                .players
+                .iter()
+                .map(|(at, uuid)| json!({"uuid": uuid, "x": f64_bits(at.0), "y": f64_bits(at.1), "z": f64_bits(at.2)}))
+                .collect();
         }
         row
     }

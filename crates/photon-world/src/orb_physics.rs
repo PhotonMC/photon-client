@@ -8,7 +8,10 @@ use photon_core::math::{Vec3, floor_f64};
 
 use super::ClientWorld;
 use super::collision::collide_entity_movement;
-use super::constants::{VANILLA_EXPERIENCE_ORB_AIR_FRICTION, VANILLA_EXPERIENCE_ORB_GRAVITY};
+use super::constants::{
+    VANILLA_EXPERIENCE_ORB_AIR_FRICTION, VANILLA_EXPERIENCE_ORB_GRAVITY,
+    VANILLA_PLAYER_ENTITY_TYPE_ID,
+};
 use super::entity::Support;
 use super::item_physics::{fluid_pass, square_dimensions, step_on};
 use super::local_player::Level;
@@ -20,6 +23,8 @@ const BELOW_OFFSET: f32 = 0.999_999;
 
 /// The orb as it goes into the tick.
 struct OrbState {
+    /// Where the player the orb follows is aiming at (`followNearbyPlayer`), if one is near.
+    pull_target: Option<Vec3>,
     position: Vec3,
     delta: Vec3,
     on_ground: bool,
@@ -33,6 +38,14 @@ struct OrbStep {
     delta: Vec3,
     on_ground: bool,
     support: Support,
+}
+
+/// What `followNearbyPlayer` adds to the motion: towards the player, the harder the nearer.
+fn pull(towards: Vec3) -> Vec3 {
+    let power = 1.0 - towards.length_squared().sqrt() / 8.0;
+    let unit = towards.normalized();
+    let strength = power * power * 0.1;
+    Vec3::new(unit.x * strength, unit.y * strength, unit.z * strength)
 }
 
 /// `ExperienceOrb.tick` after the first tick: the water's current and buoyancy, or gravity unless
@@ -61,6 +74,9 @@ fn orb_step(level: &Level<'_>, state: &OrbState) -> Option<OrbStep> {
         delta = delta.add_vec3(Vec3::new(0.0, -gravity, 0.0));
     }
 
+    if let Some(target) = state.pull_target {
+        delta = delta.add_vec3(pull(target.subtract_vec3(position)));
+    }
     let fall_speed = delta.y;
     let (position, on_ground, support, landed, _) = move_orb(level, state, delta)?;
     let delta = drag(
@@ -69,7 +85,6 @@ fn orb_step(level: &Level<'_>, state: &OrbState) -> Option<OrbStep> {
         (delta, landed.then_some(fall_speed)),
         gravity,
     );
-    let (_, delta) = fluid_pass(level, SIZE, (position, delta))?;
     Some(OrbStep {
         position,
         delta,
@@ -147,6 +162,38 @@ fn drag(
 }
 
 impl ClientWorld {
+    /// `ExperienceOrb.followNearbyPlayer`'s pick: the nearest player within eight blocks who is
+    /// not a spectator nor dying, and the point halfway up their eyes the orb is drawn to.
+    fn orb_pull_target(&self, orb: Vec3) -> Option<Vec3> {
+        let remote = self
+            .entities
+            .all()
+            .filter(|entity| entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID)
+            .filter(|entity| !entity.is_spectator() && !entity.is_dead_or_dying())
+            .map(|entity| {
+                let (x, y, z) = entity.position();
+                (Vec3::new(x, y, z), entity.scaled_dimensions().eye_height())
+            });
+        let local = self
+            .local_player
+            .as_ref()
+            .filter(|player| !player.game_mode.is_spectator() && player.health() > 0.0)
+            .map(|player| {
+                let (x, y, z) = player.position();
+                (Vec3::new(x, y, z), player.player_dimensions().eye_height())
+            });
+        remote
+            .chain(local)
+            .map(|(position, eye)| (position, eye, position.subtract_vec3(orb).length_squared()))
+            .filter(|&(_, _, distance)| distance < 64.0)
+            .min_by(|a, b| a.2.total_cmp(&b.2))
+            .map(|(position, eye, _)| {
+                Vec3::new(position.x, position.y + f64::from(eye) / 2.0, position.z)
+            })
+    }
+}
+
+impl ClientWorld {
     /// One client tick of an experience orb's movement, after its position has eased and its
     /// first tick has passed.
     pub(crate) fn tick_experience_orb_movement(&mut self, entity_id: EntityId, moves: bool) {
@@ -156,6 +203,7 @@ impl ClientWorld {
         let (x, y, z) = entity.position();
         let (dx, dy, dz) = entity.motion();
         let state = OrbState {
+            pull_target: self.orb_pull_target(Vec3::new(x, y, z)),
             position: Vec3::new(x, y, z),
             delta: Vec3::new(dx, dy, dz),
             on_ground: entity.on_ground,
