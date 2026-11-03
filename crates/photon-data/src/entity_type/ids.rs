@@ -31,6 +31,7 @@ entity_types! {
     GLOW_ITEM_FRAME = glow_item_frame,
     ITEM_FRAME = item_frame,
     PAINTING = painting,
+    PIG = pig,
     GLOW_SQUID = glow_squid,
     GUARDIAN = guardian,
     HOGLIN = hoglin,

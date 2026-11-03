@@ -61,7 +61,7 @@ The table is computed by `cargo xtask progress` and checked in CI. Counts of thi
 | Block entity types with a renderer, named by the client | 24 / 26 |
 | Particle types named by the client | 120 / 125 |
 | Parity cases | 27,495 in 19 families |
-| Lint baseline entries | 950 (at introduction: 1,234) |
+| Lint baseline entries | 947 (at introduction: 1,234) |
 <!-- progress:end -->
 
 Features finished before the move to GitHub issues (2026-10-10) are summarised in [history](docs/history.md).
@@ -94,7 +94,7 @@ Closed and total issues per milestone on GitHub; these are issue counts, not com
 | [M8 Particles, effects and block entities](https://github.com/PhotonMC/photon-client/milestone/12) | 6 / 6 |
 | [M9 Server compatibility](https://github.com/PhotonMC/photon-client/milestone/13) | 5 / 5 |
 | [M10 Parity closure and distribution](https://github.com/PhotonMC/photon-client/milestone/14) | 0 / 1 |
-| [Parity leftovers](https://github.com/PhotonMC/photon-client/milestone/15) | 11 / 26 |
+| [Parity leftovers](https://github.com/PhotonMC/photon-client/milestone/15) | 12 / 26 |
 | [R1 First release](https://github.com/PhotonMC/photon-client/milestone/16) | 5 / 8 |
 | [Later (post-1.0)](https://github.com/PhotonMC/photon-client/milestone/17) | 0 / 6 |
 <!-- milestones:end -->

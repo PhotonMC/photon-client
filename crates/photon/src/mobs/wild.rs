@@ -354,14 +354,21 @@ pub fn remote_mobs(
         };
         pose_mob(model, kind, entity, (&snapshot, partial));
         let placed = placement(world, &snapshot, view, entity.scale());
+        let saddle = super::animals::pig_saddle::pig_saddle(
+            entity,
+            (&mut *armor, textures),
+            (&snapshot, &placed),
+        );
         let instanced = !entity.is_glowing() && !entity.is_invisible();
         if instanced && models.instance_body(&layer, (&placed, rect)) {
+            vertices.extend(saddle);
             continue;
         }
         let Some(model) = models.model(&layer) else {
             continue;
         };
         vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
+        vertices.extend(saddle);
     }
     let frame = models.instancer.finish(vertices);
     models.instanced = frame;

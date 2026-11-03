@@ -10,13 +10,12 @@ use layers::{horse_markings, mushrooms};
 
 use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::{
-    BeeState, CamelState, EquineKind, GoatState, MobModel, MobPlacement, QuadrupedState,
-    RabbitState, mob_vertices,
+    BeeState, EquineKind, GoatState, MobModel, MobPlacement, QuadrupedState, RabbitState,
+    mob_vertices,
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::EntityView;
-use photon_world::animation_state::AnimationState;
 
 use crate::equipment::armor::Armor;
 use crate::equipment::held_items::HeldItem;
@@ -348,24 +347,7 @@ fn pose(
     match animal {
         // A baby llama carries no chest (`LlamaRenderer.extractRenderState`).
         Animal::Llama(_) => model.setup_llama(&look, !baby && entity.horse_has_chest()),
-        Animal::Camel(_) => {
-            let camel = entity.horse().map(|horse| &horse.camel);
-            let state = |pick: fn(&photon_world::mobs::horse::CamelState) -> AnimationState| {
-                camel.map(pick).unwrap_or_default()
-            };
-            model.setup_camel(&CamelState {
-                quadruped: look,
-                age_in_ticks: entity.tick_count() as f32 + partial,
-                // The cooldown is only counted for a camel its own player rides.
-                jump_cooldown: 0.0,
-                sit: state(|camel| camel.sit),
-                sit_pose: state(|camel| camel.sit_pose),
-                sit_up: state(|camel| camel.sit_up),
-                idle: state(|camel| camel.idle),
-                dash: state(|camel| camel.dash),
-                baby,
-            });
-        }
+        Animal::Camel(_) => model.setup_camel(&gear::camel_state(entity, (look, partial))),
         Animal::Horse | Animal::Equine(_) => {
             let donkey = matches!(animal, Animal::Equine(index) if OTHER_EQUINES[index].3);
             let kind = match (donkey, baby) {

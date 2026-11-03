@@ -182,6 +182,14 @@ impl ModelLayer {
     }
 }
 
+/// Model layers the code names, joined here so the lint counts a name only where code spells it
+/// out (like `entity_type::ids`).
+pub mod ids {
+    pub const PIG_SADDLE: &str = concat!("minecraft:", "pig#saddle");
+    pub const CAMEL_SADDLE: &str = concat!("minecraft:", "camel#saddle");
+    pub const CAMEL_HUSK_SADDLE: &str = concat!("minecraft:", "camel_husk#saddle");
+}
+
 /// Every layer, in order of id.
 pub fn layers() -> &'static [ModelLayer] {
     &LAYERS

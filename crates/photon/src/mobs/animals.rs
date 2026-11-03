@@ -7,6 +7,7 @@ pub(crate) mod felines;
 pub(crate) mod foxes;
 pub(crate) mod happy_ghasts;
 pub(crate) mod pandas;
+pub(crate) mod pig_saddle;
 pub(crate) mod sheep;
 pub(crate) mod sniffers;
 pub(crate) mod wolves;
