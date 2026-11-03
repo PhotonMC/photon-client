@@ -68,7 +68,18 @@ fn honeycomb() -> Vec<Value> {
         )]
     };
     let plain = |block: &str| vec![put(0, 64, 2, block)];
+    let chest = |x: i64, kind: &str| {
+        put_with(x, 64, 2, "minecraft:copper_chest", &[("facing", "south"), ("type", kind), ("waterlogged", "false")])
+    };
     vec![
+        row("item-on-copper-honeycomb-chest", vec![chest(0, "single")], &north())
+            .main_hand("minecraft:honeycomb")
+            .count(3)
+            .row(),
+        row("item-on-copper-honeycomb-chest-double", vec![chest(0, "left"), chest(1, "right")], &north())
+            .main_hand("minecraft:honeycomb")
+            .count(3)
+            .row(),
         row("item-on-copper-honeycomb", plain("minecraft:copper_block"), &north())
             .main_hand("minecraft:honeycomb")
             .count(3)
