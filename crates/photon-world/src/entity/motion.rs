@@ -147,8 +147,10 @@ impl EntityViewMut<'_> {
             self.tick_position_interpolation();
         }
         self.tick_head_rotation();
-        if living == Some(LivingKind::Mob) {
+        if matches!(living, Some(LivingKind::Mob | LivingKind::Other)) {
             self.tick_mob_motion(was_interpolating);
+        }
+        if living == Some(LivingKind::Mob) {
             self.tick_squid();
             self.tick_cube_mob();
             self.tick_shulker();

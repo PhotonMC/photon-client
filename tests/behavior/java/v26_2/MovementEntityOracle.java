@@ -28,10 +28,20 @@ class MovementEntityOracle extends MovementSupport {
         setField(splashRenderer, "mainCamera", new net.minecraft.client.Camera());
         setField(scene.minecraft(), "gameRenderer", splashRenderer);
         setField(scene.minecraft(), "particleEngine", unsafe.allocateInstance(DroppingParticleEngine.class));
-        var item = new net.minecraft.world.entity.item.ItemEntity(level,
-            Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
-            new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND),
-            Oracle.f64(row, "motion_x"), Oracle.f64(row, "motion_y"), Oracle.f64(row, "motion_z"));
+        net.minecraft.world.entity.Entity item;
+        if (row.has("entity_type")) {
+            // Another entity the server added: an armor stand, which the client does not move
+            // itself, only pistons do.
+            var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
+                net.minecraft.resources.Identifier.parse(row.get("entity_type").getAsString()));
+            item = type.create(level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
+            item.setPos(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"));
+        } else {
+            item = new net.minecraft.world.entity.item.ItemEntity(level,
+                Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND),
+                Oracle.f64(row, "motion_x"), Oracle.f64(row, "motion_y"), Oracle.f64(row, "motion_z"));
+        }
         int entityId = row.get("entity_id").getAsInt();
         item.setId(entityId);
         // `recreateFromPacket`: where the server's relative moves count from.

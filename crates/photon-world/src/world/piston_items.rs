@@ -14,7 +14,7 @@ use crate::block::entity::MovingPiston;
 use crate::block::piston::Pos;
 use crate::collision::collide_entity_movement;
 use crate::constants::VANILLA_ITEM_ENTITY_TYPE_ID;
-use crate::item_physics::item_box;
+use crate::entity::armor_stand_type_id;
 use crate::local_player::Level;
 use crate::local_player::piston::{at_progress, movement_area, movement_out_of};
 
@@ -41,16 +41,26 @@ fn distance_to_leave(
 }
 
 impl ClientWorld {
-    /// The ids of the dropped items, in id order.
-    fn dropped_item_ids(&self) -> Vec<EntityId> {
+    /// The ids of the entities a piston pushes the client moves by itself the same way, in id
+    /// order: dropped items and armor stands (a marker's `getPistonPushReaction` is IGNORE).
+    fn pushable_ids(&self) -> Vec<EntityId> {
+        let armor_stand = armor_stand_type_id();
         let mut ids: Vec<EntityId> = self
             .entities
             .all()
-            .filter(|entity| entity.type_id == VANILLA_ITEM_ENTITY_TYPE_ID)
+            .filter(|entity| {
+                entity.type_id == VANILLA_ITEM_ENTITY_TYPE_ID
+                    || entity.type_id == armor_stand && !entity.armor_stand().is_marker()
+            })
             .map(|entity| entity.id())
             .collect();
         ids.sort_by_key(|id| id.0);
         ids
+    }
+
+    /// The box of a pushable entity where it is.
+    fn pushable_box(&self, id: EntityId) -> Option<Aabb> {
+        Some(self.entities.at(id)?.bounding_box())
     }
 
     fn item_position(&self, id: EntityId) -> Option<Vec3> {
@@ -74,18 +84,17 @@ impl ClientWorld {
         let area = movement_area(aabb, movement, delta_progress).minmax(aabb);
         let slime = block::state_or_air(moving.moved_state).block
             == photon_data::block::blocks::id::SLIME_BLOCK as u16;
-        for id in self.dropped_item_ids() {
-            let Some(position) = self.item_position(id) else {
+        for id in self.pushable_ids() {
+            let Some(entity_box) = self.pushable_box(id) else {
                 continue;
             };
-            if !area.intersects(item_box(position)) {
+            if !area.intersects(entity_box) {
                 continue;
             }
             if slime {
                 self.bounce_item(id, movement);
             }
-            let delta =
-                distance_to_leave(&shape, (pos, moving), item_box(position), delta_progress);
+            let delta = distance_to_leave(&shape, (pos, moving), entity_box, delta_progress);
             if delta <= 0.0 {
                 continue;
             }
@@ -123,10 +132,9 @@ impl ClientWorld {
         pos: Pos,
         (direction, delta_progress): (Direction, f64),
     ) {
-        let Some(position) = self.item_position(id) else {
+        let Some(entity) = self.pushable_box(id) else {
             return;
         };
-        let entity = item_box(position);
         let block = Aabb::new(
             f64::from(pos.0),
             f64::from(pos.1),
@@ -217,9 +225,10 @@ impl ClientWorld {
         let entity = self.entities.at(id)?;
         let mut support = entity.tracking.support;
         let mut on_ground = entity.on_ground;
-        let mut position = self.item_position(id)?;
+        let start = self.item_position(id)?;
+        let mut position = start;
         let level = Level::new(self).moved_by_piston(piston);
-        let bounding_box = item_box(position);
+        let bounding_box = self.pushable_box(id)?;
         let colliders = level
             .colliders(bounding_box.expand_towards_vec3(by), 0.0, position)
             .ok()?;
@@ -233,7 +242,11 @@ impl ClientWorld {
             level
                 .check_supporting_block(
                     (&mut support.main_block, &mut support.no_blocks),
-                    (item_box(position), position, 0.0),
+                    (
+                        bounding_box.move_by_vec3(position.subtract_vec3(start)),
+                        position,
+                        0.0,
+                    ),
                     on_ground,
                     Some(moved),
                 )

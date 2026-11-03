@@ -14,7 +14,28 @@ fn extend(tick: i64, at: (i64, i64, i64), facing: i64) -> Value {
 }
 
 pub fn rows() -> Vec<Value> {
-    [arm_rows(), slime_rows(), edge_rows()].concat()
+    [arm_rows(), slime_rows(), edge_rows(), stand_rows()].concat()
+}
+
+/// An armor stand, which the client does not move itself, in the way of the arm.
+fn stand_rows() -> Vec<Value> {
+    let stand = |label: &str, blocks: Vec<Value>, at: (f64, f64, f64), event: Value| {
+        row(label, cat![floor(), blocks], at, (0.0, 0.0, 0.0), 12)
+            .on_ground(true)
+            .entity_type("minecraft:armor_stand")
+            .block_events(vec![event])
+            .row()
+    };
+    vec![
+        stand("stand-pushed-east", vec![piston((0, 64, -6), "east")], (1.5, 64.0, -5.5), extend(1, (0, 64, -6), 5)),
+        stand("stand-lifted", vec![piston((6, 64, -4), "up")], (6.5, 65.0, -3.5), extend(1, (6, 64, -4), 1)),
+        stand(
+            "stand-slime-pushed",
+            vec![piston((0, 64, -2), "east"), put(1, 64, -2, "minecraft:slime_block")],
+            (2.5, 64.0, -1.5),
+            extend(1, (0, 64, -2), 5),
+        ),
+    ]
 }
 
 /// The arm reaches the item, or a block pushed along its way.

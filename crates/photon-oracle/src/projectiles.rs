@@ -134,7 +134,8 @@ pub(super) fn item_entity_ticks_result(request: &Value) -> Result<Value, String>
     for row in rows {
         let mut world = movement_world(row)?;
         let entity_id = entity_id_field(row, "entity_id")?;
-        let item_type = photon_data::entity_type::id("minecraft:item").ok_or("no item type")?;
+        let type_name = row["entity_type"].as_str().unwrap_or("minecraft:item");
+        let item_type = photon_data::entity_type::id(type_name).ok_or("no entity type")?;
         if !world.apply_entity(EntityInput {
             entity_id,
             uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),

@@ -17,6 +17,7 @@ pub struct Item {
     entity_id: i64,
     events: Vec<Value>,
     block_events: Option<Vec<Value>>,
+    entity_type: Option<&'static str>,
 }
 
 pub fn row(label: impl Into<String>, blocks: Vec<Value>, position: Vec3, motion: Vec3, ticks: i64) -> Item {
@@ -30,6 +31,7 @@ pub fn row(label: impl Into<String>, blocks: Vec<Value>, position: Vec3, motion:
         entity_id: 21,
         events: vec![],
         block_events: None,
+        entity_type: None,
     }
 }
 
@@ -46,6 +48,11 @@ impl Item {
         Self { events, ..self }
     }
 
+    /// Another entity than a dropped item: the one of this type, standing still.
+    pub fn entity_type(self, entity_type: &'static str) -> Self {
+        Self { entity_type: Some(entity_type), ..self }
+    }
+
     /// The block events of the server, which make the pistons' moving blocks.
     pub fn block_events(self, block_events: Vec<Value>) -> Self {
         Self { block_events: Some(block_events), ..self }
@@ -53,8 +60,11 @@ impl Item {
 
     pub fn row(self) -> Value {
         let mut row = self.plain_row();
-        if let Some(events) = self.block_events {
+        if let Some(events) = &self.block_events {
             row["block_events"] = json!(events);
+        }
+        if let Some(entity_type) = self.entity_type {
+            row["entity_type"] = json!(entity_type);
         }
         row
     }
