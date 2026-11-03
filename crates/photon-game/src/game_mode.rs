@@ -84,6 +84,7 @@ mod bone_meal;
 mod brush;
 mod bundle_use;
 mod equipping;
+mod hanging;
 mod spawn_egg;
 pub use after_use::finish_use;
 mod block_use;

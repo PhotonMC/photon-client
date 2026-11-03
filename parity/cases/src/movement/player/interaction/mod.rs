@@ -11,6 +11,7 @@ mod consuming;
 mod copper;
 mod digging;
 mod effects;
+mod frames;
 mod geysers;
 mod gliding;
 mod hanging;
@@ -295,6 +296,7 @@ pub fn cases() -> Vec<Value> {
                 solid_bucket::rows(),
                 bone_meal::rows(),
                 spawn_egg::rows(),
+                frames::rows(),
             ]
             .concat(),
         ),
