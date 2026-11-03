@@ -447,6 +447,7 @@ pub(super) fn locator_bar_case(ctx: &mut GuiContext, row: &Value) -> Result<Valu
     let uuid = row["player"]["uuid"].as_array().ok_or("uuid")?;
     let half = |index: usize| uuid[index].as_i64().unwrap_or(0) as u64;
     let input = LocatorInput {
+        entity_eyes: Default::default(),
         waypoints,
         camera: LocatorCamera {
             y_rot: camera["yaw"].as_f64().unwrap_or(0.0) as f32,

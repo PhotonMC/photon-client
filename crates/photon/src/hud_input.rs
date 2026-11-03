@@ -83,8 +83,19 @@ fn locator_input(
     session: &PlaySession,
     camera: LocatorCamera,
     player: Option<&photon_world::local_player::LocalPlayer>,
+    partial: f32,
 ) -> Option<LocatorInput> {
     session.waypoints().has_waypoints().then(|| LocatorInput {
+        entity_eyes: session.waypoints().entity_eyes(|uuid, vector| {
+            session.world().waypoint_eye(uuid, vector, |id| {
+                // Each entity at its own partial tick (`LocatorBar` asks the level's supplier).
+                if session.world().draws_at_running_partial(id) {
+                    partial
+                } else {
+                    world_partial(session, partial)
+                }
+            })
+        }),
         waypoints: session.waypoints().clone(),
         camera,
         viewer: Viewer {
@@ -247,7 +258,7 @@ fn jump_input(
 pub fn hud_input(
     session: &PlaySession,
     first_person: bool,
-    camera: LocatorCamera,
+    (camera, partial): (LocatorCamera, f32),
     attack_indicator: AttackIndicator,
 ) -> photon_gui::HudInput {
     let status = *session.status();
@@ -290,7 +301,7 @@ pub fn hud_input(
         experience_progress: status.experience_progress,
         experience_level: status.experience_level,
         experience_prioritised: prioritised(status.experience_display_start_tick, player),
-        locator: locator_input(session, camera, player),
+        locator: locator_input(session, camera, player, partial),
         overlays: Default::default(),
         attack_strength: player.map_or(1.0, |player| {
             player.attack_strength_scale(0.0, attack_speed(local))
@@ -326,7 +337,7 @@ pub fn frame_input(
         ..hud_input(
             session,
             controls.camera_type == crate::view::CameraType::FirstPerson,
-            camera,
+            (camera, partial),
             controls.options.attack_indicator,
         )
     };

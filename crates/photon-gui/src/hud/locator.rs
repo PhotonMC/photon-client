@@ -238,21 +238,33 @@ impl LocatorCamera {
 
 /// What the bar asks of a waypoint, against the camera and the viewer.
 trait Located {
-    fn yaw_angle(&self, camera: &LocatorCamera) -> f64;
-    fn pitch(&self, camera: &LocatorCamera) -> Pitch;
+    fn yaw_angle(&self, camera: &LocatorCamera, eyes: &EntityEyes) -> f64;
+    fn pitch(&self, camera: &LocatorCamera, eyes: &EntityEyes) -> Pitch;
     fn distance_squared(&self, viewer: &Viewer) -> f64;
+}
+
+/// The eyes of the entities that waypoints name, where they stand near the position sent
+/// (`Vec3iWaypoint.position`), by the entity's UUID.
+pub type EntityEyes = HashMap<u128, [f64; 3]>;
+
+/// `Vec3iWaypoint.position`: the named entity's eyes when it is near, else the block's centre.
+fn point(waypoint: &TrackedWaypoint, block: [i32; 3], eyes: &EntityEyes) -> [f64; 3] {
+    match waypoint.id {
+        WaypointId::Uuid(uuid) => eyes.get(&uuid).copied().unwrap_or_else(|| centre_of(block)),
+        WaypointId::Name(_) => centre_of(block),
+    }
 }
 
 impl Located for TrackedWaypoint {
     /// `yawAngleToCamera`.
-    fn yaw_angle(&self, camera: &LocatorCamera) -> f64 {
+    fn yaw_angle(&self, camera: &LocatorCamera, eyes: &EntityEyes) -> f64 {
         match &self.kind {
             WaypointKind::Empty => f64::NAN,
             WaypointKind::Azimuth(angle) => f64::from(mth_degrees_difference_f32(
                 camera.yaw(),
                 angle * DEGREES_PER_RADIAN,
             )),
-            WaypointKind::Position(block) => camera.yaw_to_point(centre_of(*block)),
+            WaypointKind::Position(block) => camera.yaw_to_point(point(self, *block, eyes)),
             WaypointKind::Chunk([x, z]) => camera.yaw_to_point(centre_of([
                 x * 16 + 8,
                 camera.position[1] as i32,
@@ -262,7 +274,7 @@ impl Located for TrackedWaypoint {
     }
 
     /// `pitchDirectionToCamera`.
-    fn pitch(&self, camera: &LocatorCamera) -> Pitch {
+    fn pitch(&self, camera: &LocatorCamera, eyes: &EntityEyes) -> Pitch {
         let from_horizon = |horizon: f64| {
             if horizon < -1.0 {
                 Pitch::Down
@@ -276,7 +288,7 @@ impl Located for TrackedWaypoint {
             WaypointKind::Empty => Pitch::None,
             WaypointKind::Azimuth(_) | WaypointKind::Chunk(_) => from_horizon(camera.horizon()),
             WaypointKind::Position(block) => {
-                let on_screen = camera.project(centre_of(*block));
+                let on_screen = camera.project(point(self, *block, eyes));
                 let behind = on_screen[2] > 1.0;
                 let in_front = if behind { -on_screen[1] } else { on_screen[1] };
                 if in_front < -1.0 {
@@ -386,6 +398,7 @@ pub struct LocatorInput {
     pub waypoints: WaypointManager,
     pub camera: LocatorCamera,
     pub viewer: Viewer,
+    pub entity_eyes: EntityEyes,
 }
 
 /// `LocatorBar.extractBackground`: a nine-slice sprite (12 by 5, a border of 5 at the sides and 1
@@ -419,7 +432,7 @@ pub fn draw_dots(
         if waypoint.id == WaypointId::Uuid(viewer.uuid) {
             continue;
         }
-        let angle = waypoint.yaw_angle(camera);
+        let angle = waypoint.yaw_angle(camera, &input.entity_eyes);
         if angle <= -VISIBLE_DEGREES || angle > VISIBLE_DEGREES {
             continue;
         }
@@ -440,7 +453,7 @@ pub fn draw_dots(
             (middle + dot, top - 2, 9, 9),
             colour as u32,
         );
-        match waypoint.pitch(camera) {
+        match waypoint.pitch(camera, &input.entity_eyes) {
             Pitch::None => {}
             Pitch::Down => {
                 frame.sprite(
@@ -525,5 +538,21 @@ mod style_tests {
         for distance in [0.0, 0.5, 1.0, 1000.0] {
             assert_eq!(style.sprite(distance), "hud/locator_bar_dot/missingno");
         }
+    }
+
+    #[test]
+    fn a_waypoint_points_at_the_eyes_of_its_near_entity() {
+        let waypoint = TrackedWaypoint {
+            id: WaypointId::Uuid(7),
+            icon: photon_core::waypoint::WaypointIcon {
+                style: String::new(),
+                colour: None,
+            },
+            kind: WaypointKind::Position([1, 2, 3]),
+        };
+        let mut eyes = EntityEyes::new();
+        assert_eq!(point(&waypoint, [1, 2, 3], &eyes), [1.5, 2.5, 3.5]);
+        eyes.insert(7, [1.2, 3.62, 3.4]);
+        assert_eq!(point(&waypoint, [1, 2, 3], &eyes), [1.2, 3.62, 3.4]);
     }
 }

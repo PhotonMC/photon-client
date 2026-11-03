@@ -48,4 +48,5 @@ pub(crate) mod boat_place;
 pub(crate) mod hanging_place;
 pub(crate) mod rain;
 pub(crate) mod touch;
+mod waypoint_eye;
 mod weather;
