@@ -67,15 +67,12 @@ impl ClientWorld {
     /// spawners and marker armor stands).
     fn pushable_ids(&self) -> Vec<EntityId> {
         let armor_stand = armor_stand_type_id();
-        // The vehicle the local player drives moves with its ride body, not here yet.
-        let driven = self.ridden_vehicle_of_local_player();
         let mut ids: Vec<EntityId> = self
             .entities
             .all()
             .filter(|entity| {
                 !piston_ignores(entity.type_id)
                     && !entity.is_spectator()
-                    && Some(entity.id()) != driven
                     && !(entity.type_id == armor_stand && entity.armor_stand().is_marker())
             })
             .map(|entity| entity.id())

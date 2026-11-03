@@ -156,7 +156,7 @@ impl ClientWorld {
 
     /// `LAUNCH_ENTITY_TICKER`: the entities in the geyser's column go up. The client only
     /// simulates the local player, so the others are left to the server.
-    fn launch_entities(&self, pos: Pos, player: Option<&mut LocalPlayer>) {
+    fn launch_entities(&mut self, pos: Pos, player: Option<&mut LocalPlayer>) {
         let (Some(source), Some(player)) = (self.noxious_gas_source(pos), player) else {
             return;
         };
@@ -172,6 +172,32 @@ impl ClientWorld {
         )
         .expand_towards(0.0, f64::from(height - 1), 0.0);
         player.launched_by_geyser(column, water_blocks);
+        self.launch_ridden_vehicle(column, water_blocks);
+    }
+
+    /// The same ticker on the vehicle the local player drives: the client simulates it
+    /// (`canSimulateMovement`), and the vehicle itself is no passenger. (The fall distance cap
+    /// of `checkFallDistanceAccumulation` is not applied to the ride's body.)
+    fn launch_ridden_vehicle(&mut self, column: Aabb, water_blocks: i32) {
+        let Some(id) = self.ridden_vehicle_of_local_player() else {
+            return;
+        };
+        if !self.vehicle_view(id).is_some_and(|view| view.controlled)
+            || self.entity_vehicle_id(id).is_some()
+        {
+            return;
+        }
+        let Some(entity) = self.entities.at(id) else {
+            return;
+        };
+        let slow = entity.motion().1 < f64::from(0.3_f32) + f64::from(water_blocks) * 0.1;
+        if entity.is_spectator() || !column.intersects(entity.bounding_box()) || !slow {
+            return;
+        }
+        if let Some(entity) = self.entities.at_mut(id) {
+            let up = entity.vel.motion.y.get() + f64::from(0.2_f32);
+            entity.vel.motion.y = photon_core::java_float::JavaF64::new(up);
+        }
     }
 
     /// `getUnobstructedBlockCount`: how many cells up from a place the geyser's force reaches,
