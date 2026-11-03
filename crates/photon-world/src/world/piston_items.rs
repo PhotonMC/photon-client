@@ -213,6 +213,24 @@ impl ClientWorld {
         }
     }
 
+    /// The types that set `noPhysics` for good: `Entity.move` just sets their position.
+    fn passes_through_blocks(&self, id: EntityId) -> bool {
+        use photon_data::entity_type::ids;
+        self.entities.at(id).is_some_and(|entity| {
+            [ids::ENDER_DRAGON, ids::SHULKER_BULLET].contains(&entity.type_id)
+        })
+    }
+
+    /// `Entity.move` of an entity without physics: no limit, no collision, no ground flags.
+    fn move_without_physics(&mut self, id: EntityId, by: Vec3) {
+        let Some(at) = self.item_position(id) else {
+            return;
+        };
+        if let Some(mut entity) = self.entities.at_mut(id) {
+            entity.set_position((at.x + by.x, at.y + by.y, at.z + by.z));
+        }
+    }
+
     /// `Entity.limitPistonMovement`: a piston moves an entity at most 0.51 along one axis in a
     /// game tick, and one axis at a time.
     fn limit_item_piston_movement(&mut self, id: EntityId, delta: Vec3) -> Vec3 {
@@ -263,6 +281,10 @@ impl ClientWorld {
             delta * f64::from(sy),
             delta * f64::from(sz),
         );
+        if self.passes_through_blocks(id) {
+            self.move_without_physics(id, by);
+            return;
+        }
         let by = self.limit_item_piston_movement(id, by);
         if by.x == 0.0 && by.y == 0.0 && by.z == 0.0 {
             return;

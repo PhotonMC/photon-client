@@ -43,6 +43,21 @@ fn other_rows() -> Vec<Value> {
             (1.5, 64.0, 6.5),
             extend(1, (0, 64, 6), 5),
         ),
+        // An entity without physics is moved by the arm with no limit and no collision.
+        mob(
+            "bullet-pushed-east",
+            "minecraft:shulker_bullet",
+            vec![piston((0, 64, 10), "east")],
+            (1.5, 64.0, 10.5),
+            extend(1, (0, 64, 10), 5),
+        ),
+        mob(
+            "dragon-pushed-east",
+            "minecraft:ender_dragon",
+            vec![piston((0, 64, 12), "east")],
+            (1.5, 64.0, 12.5),
+            extend(1, (0, 64, 12), 5),
+        ),
         // Honey carries what stands on it along; the pig is on the honey block the arm pushes.
         mob(
             "pig-carried-on-honey",

@@ -53,6 +53,7 @@ entity_types! {
     POLAR_BEAR = polar_bear,
     RABBIT = rabbit,
     SHULKER = shulker,
+    SHULKER_BULLET = shulker_bullet,
     SNIFFER = sniffer,
     SNOW_GOLEM = snow_golem,
     SULFUR_CUBE = sulfur_cube,
