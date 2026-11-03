@@ -43,6 +43,14 @@ fn other_rows() -> Vec<Value> {
             (1.5, 64.0, 6.5),
             extend(1, (0, 64, 6), 5),
         ),
+        // Honey carries what stands on it along; the pig is on the honey block the arm pushes.
+        mob(
+            "pig-carried-on-honey",
+            "minecraft:pig",
+            vec![piston((0, 64, 8), "east"), put(1, 64, 8, "minecraft:honey_block")],
+            (1.5, 65.0, 8.5),
+            extend(1, (0, 64, 8), 5),
+        ),
     ]
 }
 

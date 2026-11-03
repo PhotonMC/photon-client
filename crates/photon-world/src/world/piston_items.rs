@@ -2,12 +2,13 @@
 //! and `Entity.move(MoverType.PISTON, ..)` for an item).
 
 use photon_core::aabb::Aabb;
+use photon_core::binary::BlockPos;
 use photon_core::direction::Direction;
 use photon_core::ids::{EntityId, EntityTypeId};
 use photon_core::java_float::JavaF64;
 use photon_core::math::Vec3;
 
-use super::piston_shapes::pushing_shape;
+use super::piston_shapes::{carried_shape, carries_honey, pushing_shape};
 use crate::ClientWorld;
 use crate::block;
 use crate::block::entity::MovingPiston;
@@ -129,6 +130,38 @@ impl ClientWorld {
                 self.fix_item_within_piston_base(id, pos, (movement, delta_progress));
             }
         }
+    }
+
+    /// `moveStuckEntities` for the other entities: honey takes along what stands on it.
+    pub(crate) fn carry_items_by_honey(
+        &mut self,
+        (pos, moving): (Pos, &MovingPiston),
+        new_progress: f32,
+    ) {
+        let movement = moving.movement_direction();
+        if !carries_honey(moving) || matches!(movement, Direction::Up | Direction::Down) {
+            return;
+        }
+        let top = carried_shape(moving, pos).max(photon_core::direction::Axis::Y);
+        let area = at_progress(pos, Aabb::new(0.0, top, 0.0, 1.0, 1.500_001, 1.0), moving);
+        let delta_progress = f64::from(new_progress - moving.progress);
+        let below = BlockPos::new(pos.0, pos.1, pos.2);
+        for id in self.pushable_ids() {
+            if self.stands_on_honey(id, area, below) {
+                self.move_item_by_piston(id, movement, (delta_progress, movement));
+            }
+        }
+    }
+
+    /// `matchesStickyCritera`: on the ground, in the area, and over the block or supported by it.
+    fn stands_on_honey(&self, id: EntityId, area: Aabb, below: BlockPos) -> bool {
+        let Some(entity) = self.entities.at(id) else {
+            return false;
+        };
+        let (x, _, z) = entity.position();
+        let inside = x >= area.min_x && x <= area.max_x && z >= area.min_z && z <= area.max_z;
+        let supported = entity.tracking.support.main_block == Some(below);
+        entity.on_ground && entity.bounding_box().intersects(area) && (supported || inside)
     }
 
     /// A slime block sends what it pushes along its way at full speed.
