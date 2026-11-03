@@ -86,16 +86,16 @@ fn locator_input(
     partial: f32,
 ) -> Option<LocatorInput> {
     session.waypoints().has_waypoints().then(|| LocatorInput {
-        entity_eyes: session.waypoints().entity_eyes(|uuid, vector| {
-            session.world().waypoint_eye(uuid, vector, |id| {
+        entity_eyes: session
+            .world()
+            .waypoint_eyes(&session.waypoints().named_positions(), |id| {
                 // Each entity at its own partial tick (`LocatorBar` asks the level's supplier).
                 if session.world().draws_at_running_partial(id) {
                     partial
                 } else {
                     world_partial(session, partial)
                 }
-            })
-        }),
+            }),
         waypoints: session.waypoints().clone(),
         camera,
         viewer: Viewer {

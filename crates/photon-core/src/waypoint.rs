@@ -109,19 +109,12 @@ impl WaypointManager {
         }
     }
 
-    /// The eyes of the entities that position waypoints name, for each of them `eye_of` (the
-    /// entity's UUID and the position sent) finds.
-    pub fn entity_eyes(
-        &self,
-        mut eye_of: impl FnMut(crate::binary::Uuid, [i32; 3]) -> Option<[f64; 3]>,
-    ) -> HashMap<u128, [f64; 3]> {
+    /// The position waypoints that name an entity: its UUID and the position sent.
+    pub fn named_positions(&self) -> Vec<(u128, [i32; 3])> {
         self.waypoints
             .values()
             .filter_map(|waypoint| match (&waypoint.id, &waypoint.kind) {
-                (WaypointId::Uuid(uuid), WaypointKind::Position(block)) => {
-                    let split = crate::binary::Uuid::new((uuid >> 64) as u64, *uuid as u64);
-                    eye_of(split, *block).map(|eye| (*uuid, eye))
-                }
+                (WaypointId::Uuid(uuid), WaypointKind::Position(block)) => Some((*uuid, *block)),
                 _ => None,
             })
             .collect()
