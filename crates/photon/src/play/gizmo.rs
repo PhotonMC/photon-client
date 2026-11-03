@@ -112,16 +112,18 @@ impl Play {
         if !shown.contains(&"entity_hitboxes") {
             return Vec::new();
         }
-        let partial = view.partial as f32;
         let place = |x: f64, y: f64, z: f64| -> [f32; 3] {
             let at = [x, y, z];
             std::array::from_fn(|axis| (at[axis] - f64::from(view.origin[axis])) as f32)
         };
         let mut lines = Vec::new();
-        for entity in self.session.world().entities().drawn() {
+        let world = self.session.world();
+        for entity in world.entities().drawn() {
             if entity.is_invisible() {
                 continue;
             }
+            // `EntityHitboxDebugRenderer`: a frozen level draws a player at the running tick.
+            let partial = view.partial_of(world, entity.id()) as f32;
             let at = entity.interpolated_position(partial);
             let latest = entity.position();
             let bb =
