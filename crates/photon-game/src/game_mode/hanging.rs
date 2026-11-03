@@ -6,7 +6,7 @@
 use photon_core::direction::Direction;
 use photon_core::ids::ItemId;
 use photon_data::item::classes::ItemClass;
-use photon_data::item::component_types::ENTITY_DATA;
+use photon_data::item::component_types::{ENTITY_DATA, PAINTING_VARIANT};
 use photon_data::item::ids;
 
 use super::context::Context;
@@ -42,14 +42,16 @@ fn hung(item: ItemId) -> Option<Hung> {
     }
 }
 
-/// Whether the stack in `hand` brings its own `entity_data`, which the server applies.
+/// Whether the stack in `hand` brings its own `entity_data` or painting variant, which change
+/// what is hung (the variant sets the painting's size).
 fn configured(ctx: &Context<'_>, hand: u8, item: ItemId) -> bool {
     ctx.world
         .local_player()
         .and_then(|state| state.inventory_slot(ctx.hand_slot(hand)))
         .is_some_and(|stack| {
-            Values::new(item, stack.patch_bytes()).raw(ENTITY_DATA)
-                != Values::new(item, &[0, 0]).raw(ENTITY_DATA)
+            let values = Values::new(item, stack.patch_bytes());
+            values.raw(ENTITY_DATA) != Values::new(item, &[0, 0]).raw(ENTITY_DATA)
+                || values.has(PAINTING_VARIANT)
         })
 }
 

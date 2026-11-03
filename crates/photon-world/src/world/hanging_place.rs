@@ -43,16 +43,21 @@ const HANGING: [photon_core::ids::EntityTypeId; 3] = [
 impl ClientWorld {
     /// `ItemFrame.survives` for a new frame in `pos` facing `direction`.
     pub fn item_frame_survives(&self, pos: (i32, i32, i32), direction: Direction) -> bool {
-        self.hanging_survives(pos, direction, 0.75)
+        self.hanging_survives(pos, direction, (0.75, false))
     }
 
     /// `Painting.survives` for a one by one painting, the smallest variant: when it does not
     /// survive, no variant does.
     pub fn small_painting_survives(&self, pos: (i32, i32, i32), direction: Direction) -> bool {
-        self.hanging_survives(pos, direction, 1.0)
+        self.hanging_survives(pos, direction, (1.0, true))
     }
 
-    fn hanging_survives(&self, pos: (i32, i32, i32), direction: Direction, span: f64) -> bool {
+    fn hanging_survives(
+        &self,
+        pos: (i32, i32, i32),
+        direction: Direction,
+        (span, painting): (f64, bool),
+    ) -> bool {
         let area = pop_box(pos, direction, span);
         let centre = Vec3::new(
             (area.min_x + area.max_x) / 2.0,
@@ -75,14 +80,16 @@ impl ClientWorld {
                             class == photon_data::block::classes::BlockClass::DiodeBlock
                         })
             });
-        holds && !self.hanging_faces(area, direction)
+        holds && !self.hanging_blocks(area, direction, painting)
     }
 
-    /// Whether a frame or painting already faces `direction` inside `area`.
-    fn hanging_faces(&self, area: Aabb, direction: Direction) -> bool {
+    /// `HangingEntity.canCoexist`: whether a hanging entity inside `area` faces `direction` (a
+    /// frame's rule) or, for a painting, is a painting at all.
+    fn hanging_blocks(&self, area: Aabb, direction: Direction, painting: bool) -> bool {
         self.entities.values().any(|entity| {
             HANGING.contains(&entity.type_id)
-                && entity.data == direction.data3d()
+                && (entity.data == direction.data3d()
+                    || painting && entity.type_id == photon_data::entity_type::ids::PAINTING)
                 && entity.bounding_box().intersects(area)
         })
     }
