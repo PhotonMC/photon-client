@@ -26,6 +26,9 @@ pub struct GuiHeads {
     skinned: Vec<photon_render::scene::Vertex>,
     /// The picture the item model gives a head.
     default: Option<[f32; 4]>,
+    /// The scoreboard name of the glowing entity whose stack is drawn next: its skinned head joins
+    /// the outline (`ItemEntityRenderer` and `ItemFrameRenderer` submit the model with the colour).
+    glow_holder: Option<String>,
 }
 
 /// A texture coordinate moved from one picture's place to another's.
@@ -107,7 +110,15 @@ impl GuiHeads {
             return;
         };
         super::skinned_heads::wear_skin_from(drawn, default, rect);
+        if let Some(holder) = &self.glow_holder {
+            crate::mobs::outline::record_holder(holder.clone(), drawn.clone());
+        }
         self.skinned.append(drawn);
+    }
+
+    /// Whose outline the heads drawn next join: a glowing entity's, or none.
+    pub fn set_glow_holder(&mut self, holder: Option<String>) {
+        self.glow_holder = holder;
     }
 
     /// The triangles of the heads found since the last call.

@@ -2,6 +2,7 @@
 //! one) and the item in it, turned by eighths, or the map in it once the map's data has come
 //! (the map's colours in a texture of its own, its decorations over them).
 
+use crate::equipment::held_items::HeldItem;
 use photon_core::direction::Direction;
 use photon_core::ids::BlockStateId;
 use photon_core::math::Vec3;
@@ -304,13 +305,27 @@ pub fn item_frames(
             frame_map(state, (&poses.map, data), (slot, map_light), textures);
         } else if let Some(stack) = stack {
             let item_light = if glowing { GLOW_ITEM_LIGHT } else { light };
-            state.layers.set_owner(Some(frame_owner(entity, direction)));
-            let layers = state.layers.get(stack, renderer, tints);
+            let layers = framed_layers(state, (entity, direction), stack, (renderer, tints));
             let drawn = item_layer_vertices(layers, &[poses.item], item_light, false);
             outlined(entity, &drawn);
             state.layers.extend_with_glint(stack, drawn, vertices);
         }
     }
+}
+
+/// The layers of the stack in a frame, drawn for the frame that holds it (and, when it glows, in
+/// its outline).
+fn framed_layers<'a>(
+    state: &'a mut FrameState,
+    (entity, direction): (EntityView<'_>, Direction),
+    stack: &photon_world::ClientItemStackState,
+    (renderer, tints): (&BlockRenderer, &BiomeTints),
+) -> &'a [photon_render::block::world_mesh::ItemLayer] {
+    let glow = HeldItem::glow_holder(entity);
+    state
+        .layers
+        .set_owner_glowing(frame_owner(entity, direction), glow);
+    state.layers.get(stack, renderer, tints)
 }
 
 /// A glowing frame's model and item join its outline (a map does not: `MapRenderer.render` takes

@@ -1,6 +1,7 @@
 //! The items lying in the world (`ItemEntityRenderer`): each stack's copies,
 //! bobbing and spinning where the server says the item is.
 
+use crate::equipment::held_items::HeldItem;
 use photon_core::math::Vec3;
 use photon_net::connection::PlaySession;
 use photon_render::block::biome_tint::BiomeTints;
@@ -68,7 +69,7 @@ pub fn dropped_items(
                 snapshot.position.2,
             ),
         );
-        layers.set_owner(Some(ground_owner(entity)));
+        layers.set_owner_glowing(ground_owner(entity), HeldItem::glow_holder(entity));
         let first = vertices.len();
         draw_item(
             item,
