@@ -35,6 +35,14 @@ fn other_rows() -> Vec<Value> {
             extend(1, (0, 64, 4), 5),
         ),
         mob("cow-lifted", "minecraft:cow", vec![piston((6, 64, 2), "up")], (6.5, 65.0, 2.5), extend(1, (6, 64, 2), 1)),
+        // The arm pushes the pig against a slab: a mob steps up it.
+        mob(
+            "pig-pushed-onto-slab",
+            "minecraft:pig",
+            vec![piston((0, 64, 6), "east"), put_with(2, 64, 6, "minecraft:stone_slab", &[("type", "bottom")])],
+            (1.5, 64.0, 6.5),
+            extend(1, (0, 64, 6), 5),
+        ),
     ]
 }
 

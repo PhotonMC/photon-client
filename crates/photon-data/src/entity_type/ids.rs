@@ -41,6 +41,8 @@ entity_types! {
     GUARDIAN = guardian,
     HOGLIN = hoglin,
     INTERACTION = interaction,
+    LEASH_KNOT = leash_knot,
+    MARKER = marker,
     ILLUSIONER = illusioner,
     MOOSHROOM = mooshroom,
     OCELOT = ocelot,
@@ -60,3 +62,6 @@ entity_types! {
     WOLF = wolf,
     ZOMBIE_VILLAGER = zombie_villager,
 }
+
+/// `Attributes.STEP_HEIGHT`, the name the registry gives it.
+pub const STEP_HEIGHT_ATTRIBUTE: &str = concat!("minecraft:", "step_height");

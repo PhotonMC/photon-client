@@ -12,7 +12,7 @@ use crate::ClientWorld;
 use crate::block;
 use crate::block::entity::MovingPiston;
 use crate::block::piston::Pos;
-use crate::collision::collide_entity_movement;
+use crate::collision::{collide_entity_movement, select_step_up_movement};
 use crate::entity::armor_stand_type_id;
 use crate::local_player::Level;
 use crate::local_player::piston::{at_progress, movement_area, movement_out_of};
@@ -39,8 +39,9 @@ fn distance_to_leave(
     delta
 }
 
-/// The types whose `getPistonPushReaction` is IGNORE: displays, interactions, effect clouds and
-/// ominous item spawners.
+/// The types a piston leaves alone: those whose `getPistonPushReaction` is IGNORE (displays,
+/// interactions, markers, effect clouds and ominous item spawners) and the ones attached to a
+/// block, whose `move` does nothing on the client.
 fn piston_ignores(type_id: EntityTypeId) -> bool {
     use photon_data::entity_type::ids;
     [
@@ -48,6 +49,11 @@ fn piston_ignores(type_id: EntityTypeId) -> bool {
         ids::ITEM_DISPLAY,
         ids::TEXT_DISPLAY,
         ids::INTERACTION,
+        ids::MARKER,
+        ids::ITEM_FRAME,
+        ids::GLOW_ITEM_FRAME,
+        ids::PAINTING,
+        ids::LEASH_KNOT,
         ids::AREA_EFFECT_CLOUD,
         ids::OMINOUS_ITEM_SPAWNER,
     ]
@@ -60,11 +66,15 @@ impl ClientWorld {
     /// spawners and marker armor stands).
     fn pushable_ids(&self) -> Vec<EntityId> {
         let armor_stand = armor_stand_type_id();
+        // The vehicle the local player drives moves with its ride body, not here yet.
+        let driven = self.ridden_vehicle_of_local_player();
         let mut ids: Vec<EntityId> = self
             .entities
             .all()
             .filter(|entity| {
                 !piston_ignores(entity.type_id)
+                    && !entity.is_spectator()
+                    && Some(entity.id()) != driven
                     && !(entity.type_id == armor_stand && entity.armor_stand().is_marker())
             })
             .map(|entity| entity.id())
@@ -244,10 +254,15 @@ impl ClientWorld {
         let mut position = start;
         let level = Level::new(self).moved_by_piston(piston);
         let bounding_box = self.pushable_box(id)?;
-        let colliders = level
-            .colliders(bounding_box.expand_towards_vec3(by), 0.0, position)
-            .ok()?;
-        let moved = collide_entity_movement(by, bounding_box, &colliders);
+        let max_up_step = entity
+            .attribute_value(photon_data::entity_type::ids::STEP_HEIGHT_ATTRIBUTE)
+            .map_or(0.0, |height| height as f32);
+        let moved = collide_with_step(
+            &level,
+            (bounding_box, position),
+            (by, on_ground),
+            max_up_step,
+        )?;
         let length = moved.length_squared();
         if length > 1.0e-7 || by.length_squared() - length < 1.0e-7 {
             position = position.add_vec3(moved);
@@ -273,6 +288,42 @@ impl ClientWorld {
             support,
         })
     }
+}
+
+/// `Entity.collide`: the movement the blocks leave, and a step up on to what a grounded entity
+/// walks into when it can climb (`maxUpStep`, the step height of a living entity).
+fn collide_with_step(
+    level: &Level<'_>,
+    (aabb, position): (Aabb, Vec3),
+    (movement, on_ground): (Vec3, bool),
+    max_up_step: f32,
+) -> Option<Vec3> {
+    let colliders = level
+        .colliders(aabb.expand_towards_vec3(movement), 0.0, position)
+        .ok()?;
+    let step = collide_entity_movement(movement, aabb, &colliders);
+    let landed = movement.y != step.y && movement.y < 0.0;
+    let blocked = movement.x != step.x || movement.z != step.z;
+    if max_up_step <= 0.0 || !(landed || on_ground) || !blocked {
+        return Some(step);
+    }
+    let grounded = if landed {
+        aabb.move_by(0.0, step.y, 0.0)
+    } else {
+        aabb
+    };
+    let mut area = grounded.expand_towards(movement.x, f64::from(max_up_step), movement.z);
+    if !landed {
+        area = area.expand_towards(0.0, f64::from(-1.0e-5_f32), 0.0);
+    }
+    let colliders = level.colliders(area, 0.0, position).ok()?;
+    Some(select_step_up_movement(
+        movement,
+        step,
+        (aabb, grounded),
+        &colliders,
+        (max_up_step, step.y as f32),
+    ))
 }
 
 /// What a piston's move leaves of an item.
