@@ -165,6 +165,7 @@ impl GameMode {
                 .world
                 .sign_view(pos)
                 .is_some_and(|sign| crate::sign::is_waxed(sign.tag)),
+            click_commands: click_commands(ctx, pos),
         };
         let answer = rules::use_item_with(state, pos, describe(ctx, hand), user)?;
         // `RedStoneOreBlock.useItemOn`: a client shows the dust, whatever the answer.
@@ -185,6 +186,17 @@ impl GameMode {
         }
         Some(answer.result)
     }
+}
+
+/// Whether the hanging sign at `pos` is waxed and has click commands on the side the player is
+/// on (`SignBlockEntity.canExecuteClickCommands(isFacingFrontText(player), player)`).
+fn click_commands(ctx: &Context<'_>, pos: (i32, i32, i32)) -> bool {
+    let Some(sign) = ctx.world.sign_view(pos).filter(|sign| sign.hanging) else {
+        return false;
+    };
+    let at = ctx.player.position();
+    let front = crate::sign::faces_front(&sign, pos, (at.x, at.z));
+    crate::sign::can_execute_click_commands(sign.tag, front)
 }
 
 #[cfg(test)]

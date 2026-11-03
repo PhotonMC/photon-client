@@ -80,6 +80,9 @@ pub struct ItemUser {
     pub off_hand_glowstone: bool,
     /// The sign's block entity says it is waxed.
     pub waxed: bool,
+    /// A waxed hanging sign's side that faces the player carries click commands
+    /// (`SignBlockEntity.canExecuteClickCommands`).
+    pub click_commands: bool,
     /// The fluid above the block is water (`CauldronInteractions.isUnderWater`).
     pub water_above: bool,
     /// `BlockPlaceContext.canPlace` for the stack in the hand against the face hit; `None` when
@@ -426,7 +429,7 @@ fn sign(use_: &Use) -> Option<ItemOn> {
 }
 
 /// `CeilingHangingSignBlock.useItemOn`: a hanging sign held against the underside passes, so
-/// another hangs below. A waxed sign may carry click commands, which are not known here.
+/// another hangs below, unless a waxed sign carries click commands.
 fn ceiling_hanging_sign(use_: &Use) -> Option<ItemOn> {
     chaining(use_, use_.user.face == Direction::Down)
 }
@@ -444,8 +447,8 @@ fn chaining(use_: &Use, side: bool) -> Option<ItemOn> {
     if !use_.held.hanging_sign || !use_.user.block_entity {
         return sign(use_);
     }
-    if use_.user.waxed {
-        return None;
+    if use_.user.click_commands {
+        return sign(use_);
     }
     if side { pass() } else { sign(use_) }
 }
@@ -579,6 +582,7 @@ mod tests {
             block_entity,
             off_hand_glowstone: false,
             waxed: false,
+            click_commands: false,
             water_above: false,
             can_place: Some(true),
         }
@@ -646,6 +650,7 @@ mod tests {
         let at = (0, 64, 2);
         let waxed = ItemUser {
             waxed: true,
+            click_commands: false,
             ..user(true)
         };
         assert_eq!(
@@ -668,8 +673,23 @@ mod tests {
             hanging_sign: true,
             ..stone()
         };
-        // A waxed hanging sign may carry click commands, which are not known here.
-        assert_eq!(use_item_with(hanging, at, sign_item, waxed), None);
+        // Waxed without click commands, a hanging sign still chains below it; with them it holds.
+        let below = ItemUser {
+            face: Direction::Down,
+            ..waxed
+        };
+        assert_eq!(
+            use_item_with(hanging, at, sign_item, below).map(|on| on.result),
+            Some(UseResult::Pass)
+        );
+        let commanded = ItemUser {
+            click_commands: true,
+            ..below
+        };
+        assert_eq!(
+            use_item_with(hanging, at, sign_item, commanded).map(|on| on.result),
+            Some(SUCCESS)
+        );
     }
 
     /// A hanging sign held against the underside of a ceiling one, or a side of a wall one that

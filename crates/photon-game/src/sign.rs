@@ -128,6 +128,43 @@ pub fn is_waxed(tag: Option<&[u8]>) -> bool {
         .is_some_and(|field| matches!(field.value, FieldValue::Byte(value) if value != 0))
 }
 
+/// `SignBlockEntity.isFacingFrontText` for a sign whose hitbox is centred in its block (the
+/// hanging signs): whether the player at `(x, z)` stands on the side the sign faces.
+pub fn faces_front(
+    view: &photon_world::SignView<'_>,
+    pos: (i32, i32, i32),
+    player: (f64, f64),
+) -> bool {
+    let y_rot = match view.wall {
+        Some(facing) => facing.to_y_rot(),
+        None => view.rotation as f32 * 22.5,
+    };
+    let (xd, zd) = (
+        player.0 - (f64::from(pos.0) + 0.5),
+        player.1 - (f64::from(pos.2) + 0.5),
+    );
+    let player_y_rot = (photon_core::math::mth_atan2(zd, xd) * 180.0
+        / f64::from(std::f32::consts::PI)) as f32
+        - 90.0;
+    photon_core::math::wrap_degrees_f32(player_y_rot - y_rot).abs() <= 90.0
+}
+
+/// `SignBlockEntity.canExecuteClickCommands`: waxed, and a line of the side that is read carries
+/// a command to run when clicked (`SignText.hasAnyClickCommands`; text is not filtered here).
+pub fn can_execute_click_commands(tag: Option<&[u8]>, front: bool) -> bool {
+    if !is_waxed(tag) {
+        return false;
+    }
+    let (front_text, back_text) = sign_texts(tag);
+    let text = if front { front_text } else { back_text };
+    text.messages(false).iter().any(|message| {
+        matches!(
+            message.style.click.as_deref(),
+            Some(photon_core::text::ClickEvent::RunCommand(_))
+        )
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -147,6 +184,58 @@ mod tests {
         assert!(!is_waxed(Some(&tag(Some(0)))));
         assert!(!is_waxed(Some(&tag(None))));
         assert!(!is_waxed(None));
+    }
+
+    fn text_with(command: bool) -> FieldValue {
+        let line = |click: bool| {
+            let mut fields = vec![field("text", FieldValue::Str("x".into()))];
+            if click {
+                fields.push(field(
+                    "click_event",
+                    FieldValue::Compound(vec![
+                        field("action", FieldValue::Str("run_command".into())),
+                        field("command", FieldValue::Str("say hi".into())),
+                    ]),
+                ));
+            }
+            FieldValue::Compound(fields)
+        };
+        FieldValue::Compound(vec![field(
+            "messages",
+            FieldValue::List(vec![line(command), line(false), line(false), line(false)]),
+        )])
+    }
+
+    #[test]
+    fn click_commands_need_wax_and_the_side_that_is_read() {
+        let tag = |waxed: i8| {
+            let fields = vec![
+                field("is_waxed", FieldValue::Byte(waxed)),
+                field("front_text", text_with(true)),
+                field("back_text", text_with(false)),
+            ];
+            let mut bytes = Vec::new();
+            photon_core::nbt::write_nbt(Some(&fields), &mut bytes);
+            bytes
+        };
+        assert!(can_execute_click_commands(Some(&tag(1)), true));
+        assert!(!can_execute_click_commands(Some(&tag(1)), false));
+        assert!(!can_execute_click_commands(Some(&tag(0)), true));
+    }
+
+    #[test]
+    fn a_player_on_the_facing_side_reads_the_front() {
+        let view = |rotation| photon_world::SignView {
+            block: "minecraft:oak_hanging_sign",
+            hanging: true,
+            wall: None,
+            rotation,
+            tag: None,
+        };
+        // Rotation 0 faces south (positive z).
+        assert!(faces_front(&view(0), (0, 64, 0), (0.5, 3.5)));
+        assert!(!faces_front(&view(0), (0, 64, 0), (0.5, -2.5)));
+        assert!(faces_front(&view(8), (0, 64, 0), (0.5, -2.5)));
     }
 
     fn field(key: &str, value: FieldValue) -> Field {
