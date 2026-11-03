@@ -116,9 +116,13 @@ const LEGGINGS: &str = "humanoid_leggings";
 const BABY: &str = "humanoid_baby";
 const WINGS: &str = "wings";
 /// The layer types mobs wear one piece in (`SimpleEquipmentLayer`, `LlamaDecorLayer`): the
-/// saddles, the happy ghast's harness, the nautilus's and the horse's armor, the llama's carpet.
-const SIMPLE: [&str; 11] = [
+/// saddles, the happy ghast's harness, the nautilus's, the wolf's and the horse's armor, the llama's carpet.
+const SIMPLE: [&str; 15] = [
     "strider_saddle",
+    "pig_saddle",
+    "camel_saddle",
+    "camel_husk_saddle",
+    "wolf_body",
     "happy_ghast_body",
     "nautilus_body",
     "nautilus_saddle",
