@@ -68,9 +68,11 @@ pub(super) fn decode_packet(
     registries: &VersionRegistries,
 ) -> Result<Incoming, ConnectionError> {
     let (packet_id, payload) = split_packet(body)?;
-    match decoders().get(&packet_id) {
-        Some(decode) => decode(packet_id, payload, registries),
-        None => Ok(Box::new(Ignored)),
+    if let Some(decode) = decoders().get(&packet_id) {
+        decode(packet_id, payload, registries)
+    } else {
+        log::debug!("dropped play packet with no decoder, id {packet_id}");
+        Ok(Box::new(Ignored))
     }
 }
 
