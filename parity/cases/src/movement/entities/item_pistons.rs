@@ -14,7 +14,28 @@ fn extend(tick: i64, at: (i64, i64, i64), facing: i64) -> Value {
 }
 
 pub fn rows() -> Vec<Value> {
-    [arm_rows(), slime_rows(), edge_rows(), stand_rows()].concat()
+    [arm_rows(), slime_rows(), edge_rows(), stand_rows(), other_rows()].concat()
+}
+
+/// Other entities the server added: the client moves them by the arm too.
+fn other_rows() -> Vec<Value> {
+    let mob = |label: &str, kind: &'static str, blocks: Vec<Value>, at: (f64, f64, f64), event: Value| {
+        row(label, cat![floor(), blocks], at, (0.0, 0.0, 0.0), 12)
+            .on_ground(true)
+            .entity_type(kind)
+            .block_events(vec![event])
+            .row()
+    };
+    vec![
+        mob(
+            "pig-pushed-east",
+            "minecraft:pig",
+            vec![piston((0, 64, 4), "east")],
+            (1.5, 64.0, 4.5),
+            extend(1, (0, 64, 4), 5),
+        ),
+        mob("cow-lifted", "minecraft:cow", vec![piston((6, 64, 2), "up")], (6.5, 65.0, 2.5), extend(1, (6, 64, 2), 1)),
+    ]
 }
 
 /// An armor stand, which the client does not move itself, in the way of the arm.

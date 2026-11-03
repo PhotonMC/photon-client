@@ -20,8 +20,11 @@ class MovementEntityOracle extends MovementSupport {
         setField(listener, "level", level);
         setField(listener, "minecraft", scene.minecraft());
         // The handlers ask whether the player rides the entity; this one rides nothing.
-        setField(scene.minecraft(), "player",
-            unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class));
+        var scenePlayer = (net.minecraft.client.player.LocalPlayer)
+            unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+        setField(scene.minecraft(), "player", scenePlayer);
+        // A mob's tick looks at the entities around it, the player among them: far away.
+        scenePlayer.setBoundingBox(new net.minecraft.world.phys.AABB(1000, 1000, 1000, 1001, 1002, 1001));
         // A splash in the water asks the renderer's camera whether to show
         // its particles, and the engine to make them; none are drawn here.
         var splashRenderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);

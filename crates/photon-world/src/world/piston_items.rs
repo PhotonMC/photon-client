@@ -3,7 +3,7 @@
 
 use photon_core::aabb::Aabb;
 use photon_core::direction::Direction;
-use photon_core::ids::EntityId;
+use photon_core::ids::{EntityId, EntityTypeId};
 use photon_core::java_float::JavaF64;
 use photon_core::math::Vec3;
 
@@ -13,7 +13,6 @@ use crate::block;
 use crate::block::entity::MovingPiston;
 use crate::block::piston::Pos;
 use crate::collision::collide_entity_movement;
-use crate::constants::VANILLA_ITEM_ENTITY_TYPE_ID;
 use crate::entity::armor_stand_type_id;
 use crate::local_player::Level;
 use crate::local_player::piston::{at_progress, movement_area, movement_out_of};
@@ -40,17 +39,33 @@ fn distance_to_leave(
     delta
 }
 
+/// The types whose `getPistonPushReaction` is IGNORE: displays, interactions, effect clouds and
+/// ominous item spawners.
+fn piston_ignores(type_id: EntityTypeId) -> bool {
+    use photon_data::entity_type::ids;
+    [
+        ids::BLOCK_DISPLAY,
+        ids::ITEM_DISPLAY,
+        ids::TEXT_DISPLAY,
+        ids::INTERACTION,
+        ids::AREA_EFFECT_CLOUD,
+        ids::OMINOUS_ITEM_SPAWNER,
+    ]
+    .contains(&type_id)
+}
+
 impl ClientWorld {
-    /// The ids of the entities a piston pushes the client moves by itself the same way, in id
-    /// order: dropped items and armor stands (a marker's `getPistonPushReaction` is IGNORE).
+    /// The ids of the entities a piston pushes, in id order: all but those whose
+    /// `getPistonPushReaction` is IGNORE (displays, interactions, effect clouds, ominous item
+    /// spawners and marker armor stands).
     fn pushable_ids(&self) -> Vec<EntityId> {
         let armor_stand = armor_stand_type_id();
         let mut ids: Vec<EntityId> = self
             .entities
             .all()
             .filter(|entity| {
-                entity.type_id == VANILLA_ITEM_ENTITY_TYPE_ID
-                    || entity.type_id == armor_stand && !entity.armor_stand().is_marker()
+                !piston_ignores(entity.type_id)
+                    && !(entity.type_id == armor_stand && entity.armor_stand().is_marker())
             })
             .map(|entity| entity.id())
             .collect();
