@@ -470,7 +470,7 @@ impl ParticleEngine {
         burst: crate::mobs::burst::EntityBurst,
         context: &mut LevelEventContext<'_, F>,
     ) {
-        if burst.mirror {
+        if burst.mirror.is_some() {
             self.mirror_clouds(burst, context);
             return;
         }

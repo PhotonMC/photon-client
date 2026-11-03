@@ -6,21 +6,17 @@ use super::engine::ParticleEngine;
 use super::level_events::LevelEventContext;
 
 impl ParticleEngine {
-    /// Sixteen clouds at random places in the entity's box, standing still.
+    /// Sixteen clouds at the places the illusioner's own random gave, standing still.
     pub(super) fn mirror_clouds<F: FnMut() -> RandomSource>(
         &mut self,
         burst: crate::mobs::burst::EntityBurst,
         context: &mut LevelEventContext<'_, F>,
     ) {
-        let (x, y, z) = burst.at;
-        let (width, height) = (f64::from(burst.size.0), f64::from(burst.size.1));
-        for _ in 0..16 {
-            let random = &mut *context.level_random;
-            let at = (
-                x + (2.0 * random.next_double() - 1.0) * 0.5 * width,
-                y + height * random.next_double(),
-                z + (2.0 * random.next_double() - 1.0) * 0.5 * width,
-            );
+        for at in burst
+            .mirror
+            .iter()
+            .flat_map(|clouds| clouds.iter().copied())
+        {
             self.level_add(context, burst.particle, at, (0.0, 0.0, 0.0));
         }
     }

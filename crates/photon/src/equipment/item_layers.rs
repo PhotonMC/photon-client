@@ -159,17 +159,15 @@ impl ItemLayerCache {
 
     /// The entity that holds the stacks drawn next (`ItemOwner`); none for the local player.
     pub fn set_owner(&mut self, owner: Option<super::needle::Owner>) {
-        if owner.is_none() {
-            self.heads.set_glow_holder(None);
-        }
+        self.heads.set_glow_holder(None);
         self.owner = owner;
     }
 
     /// The glowing entity that holds the stacks drawn next: its skinned heads join the outline
     /// (`glow` is its scoreboard name, none when it does not glow).
     pub fn set_owner_glowing(&mut self, owner: super::needle::Owner, glow: Option<String>) {
+        self.set_owner(Some(owner));
         self.heads.set_glow_holder(glow);
-        self.owner = Some(owner);
     }
 
     /// `ItemFeatureRenderer.prepareFoilSubmit`: the glint over the triangles a stack drew, if it

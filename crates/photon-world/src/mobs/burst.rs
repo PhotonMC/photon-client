@@ -12,13 +12,14 @@ pub(crate) const TAMING_WORKED_EVENT: i8 = 7;
 
 /// A burst the particle engine is to draw: where the entity stands, how big its box is and which
 /// particle it is.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct EntityBurst {
     pub at: (f64, f64, f64),
     pub size: (f32, f32),
     pub particle: &'static str,
-    /// The clouds an illusioner makes when its mirror images move, not the pets' signs.
-    pub mirror: bool,
+    /// The places of the sixteen clouds an illusioner makes when its mirror images move (drawn
+    /// from its own random), none for the pets' signs.
+    pub mirror: Option<Box<[(f64, f64, f64); 16]>>,
 }
 
 /// Whether the entity type is a `TamableAnimal` or an `AbstractHorse`, which answer 6 and 7.

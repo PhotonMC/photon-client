@@ -51,11 +51,18 @@ impl ClientWorld {
             let settle = hurt_time == 9 && !facts.mirrors;
             entity.living.illusion.tick(facts.mirrors, settle, random);
             if facts.mirrors {
+                let size = (entity.dimensions().width(), entity.as_view().bb_height());
+                // `getRandomX(0.5)`, `getRandomY()` and the fixed `getZ(0.5)`, from the entity's random.
+                let clouds = std::array::from_fn(|_| {
+                    let x = at.0 + f64::from(size.0) * (2.0 * random.next_double() - 1.0) * 0.5;
+                    let y = at.1 + f64::from(size.1) * random.next_double();
+                    (x, y, at.2 + f64::from(size.0) * 0.5)
+                });
                 let burst = EntityBurst {
                     at,
-                    size: (entity.dimensions().width(), entity.as_view().bb_height()),
+                    size,
                     particle: "cloud",
-                    mirror: true,
+                    mirror: Some(Box::new(clouds)),
                 };
                 self.level_events.0.push(LevelEvent::EntityBurst(burst));
             }
