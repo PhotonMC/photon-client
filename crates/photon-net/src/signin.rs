@@ -31,10 +31,9 @@ pub struct ClientId {
     flow: Flow,
 }
 
-/// The application of the official launcher, which the project owner chose to sign in with until
-/// Photon has a registration of its own. It signs in through the consumer service.
 /// Photon's own Azure application (a public client; it holds no secret).
 const PHOTON_CLIENT_ID: &str = "5a6a8989-522e-4eea-aac0-ef0b5c4c503a";
+/// The application of the official launcher, which signs in through the consumer service.
 const LAUNCHER_CLIENT_ID: &str = "00000000402b5328";
 
 impl ClientId {
