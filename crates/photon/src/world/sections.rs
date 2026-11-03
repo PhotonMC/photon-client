@@ -215,6 +215,24 @@ impl SectionMeshes {
         Ok(())
     }
 
+    /// F3+A, `LevelExtractor.allChanged`: besides what was built, queued or in flight, every
+    /// section of every loaded chunk is built again, so one that was lost on the way comes back.
+    pub fn rebuild_all_loaded(
+        &mut self,
+        session: &PlaySession,
+        backend: &mut VulkanBackend,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.rebuild_all(backend)?;
+        for (chunk_x, chunk_z) in session.world().loaded_chunk_positions() {
+            for section_y in self.sections.clone() {
+                let key = (chunk_x, section_y, chunk_z);
+                self.pending.entry(key).or_insert(false);
+                self.unchecked.push(key);
+            }
+        }
+        Ok(())
+    }
+
     /// The sections of the level the session is in now (a respawn can bring a dimension of
     /// another height, such as the overworld after a lobby in the end).
     pub fn set_dimension(&mut self, session: &PlaySession) {

@@ -38,7 +38,10 @@ impl Play {
         if let Ok(length) = pacing::chunk_fade(self.script.is_some(), quality.chunk_fade) {
             self.sections.set_chunk_fade(length);
         }
-        if std::mem::take(&mut self.controls.reload_chunks) || blend_changed || leaves_changed {
+        if std::mem::take(&mut self.controls.reload_chunks) {
+            self.sections
+                .rebuild_all_loaded(&self.session, &mut self.backend)?;
+        } else if blend_changed || leaves_changed {
             self.sections.rebuild_all(&mut self.backend)?;
         }
         self.sections

@@ -74,6 +74,11 @@ impl ClientWorld {
         })
     }
 
+    /// The positions of the loaded chunks, in order.
+    pub fn loaded_chunk_positions(&self) -> Vec<(i32, i32)> {
+        self.chunks().positions()
+    }
+
     pub fn loaded_chunk_count(&self) -> usize {
         self.chunks().len()
     }
