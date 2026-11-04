@@ -2,11 +2,15 @@
 //! over the panorama.
 //! It replaces the title screen; what a press chooses is a [`HomeAction`] the menu acts on.
 
+mod page;
 mod tabs;
+
+pub use page::GameInfo;
 
 use crate::kit::{Painter, State, grid, inside};
 use crate::layout::Rect;
 use crate::tokens::{CLASSIC, Skin};
+use page::{Hit, Page, Words};
 use photon_game::text::Lang;
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
@@ -22,8 +26,12 @@ pub enum HomeAction {
     Options,
     Quit,
     Credits,
-    /// The card of the directory's server at this index.
+    /// The play arrow of the directory's server at this index: straight into the game.
     Join(usize),
+    /// The card of the directory's server at this index. The home screen opens its page itself.
+    OpenGame(usize),
+    /// Play on the open game page; [`HomeScreen::open_game_id`] says which game.
+    PlayOpen,
 }
 
 const BAR_HEIGHT: i32 = 26;
@@ -31,6 +39,7 @@ const TAB_HEIGHT: i32 = 18;
 const LOGO_WIDTH: i32 = 64;
 const CARD_SIZE: (i32, i32) = (148, 88);
 const MARGIN: i32 = 12;
+const ARROW: i32 = 16;
 
 /// How a target is drawn.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,6 +86,13 @@ pub struct HomeScreen {
     heading: (String, String),
     /// The cards' title, detail and what they do: the page's own, then the directory's.
     entries: Vec<(String, String, Option<HomeAction>)>,
+    /// The directory's games, as the page shows them.
+    games: Vec<GameInfo>,
+    /// Each card's play arrow; only the directory's cards have one.
+    arrows: Vec<Option<Rect>>,
+    words: Words,
+    /// The game page, when one is open in place of the cards.
+    page: Option<Page>,
 }
 
 impl HomeScreen {
@@ -109,6 +125,10 @@ impl HomeScreen {
             friends_ready: false,
             focus: None,
             entries: Vec::new(),
+            games: Vec::new(),
+            arrows: Vec::new(),
+            words: Words::new(lang),
+            page: None,
             heading: (
                 lang.text("photon.home.heading"),
                 lang.text("photon.home.subtitle"),
@@ -165,14 +185,27 @@ impl HomeScreen {
 
     /// The page's cards. The directory is not connected yet, so the first one adds a server by
     /// address and the second says what is coming.
-    fn card_targets(&self) -> Vec<Target> {
+    fn card_targets(&mut self) -> Vec<Target> {
         let area = Rect {
             x: MARGIN,
             y: BAR_HEIGHT + 40,
             width: self.size.0 - 2 * MARGIN,
             height: self.size.1 - BAR_HEIGHT - 52,
         };
-        grid::cards(area, self.entries.len(), CARD_SIZE, 8)
+        let rects = grid::cards(area, self.entries.len(), CARD_SIZE, 8);
+        self.arrows = rects
+            .iter()
+            .zip(&self.entries)
+            .map(|(rect, (_, _, action))| {
+                matches!(action, Some(HomeAction::OpenGame(_))).then_some(Rect {
+                    x: rect.x + rect.width - ARROW - 4,
+                    y: rect.y + rect.height - ARROW - 4,
+                    width: ARROW,
+                    height: ARROW,
+                })
+            })
+            .collect();
+        rects
             .into_iter()
             .zip(self.entries.iter().cloned())
             .map(|(rect, (label, detail, action))| Target {
@@ -186,19 +219,22 @@ impl HomeScreen {
             .collect()
     }
 
-    /// The directory's servers, as the cards after the first: title and detail of each. Without
-    /// any the page keeps its placeholder card.
-    pub fn set_directory(&mut self, cards: Vec<(String, String)>) {
-        if cards.is_empty() {
+    /// The directory's servers, as the cards after the first. Without any the page keeps its
+    /// placeholder card. A game page that is open keeps the game it was opened with.
+    pub fn set_directory(&mut self, games: Vec<GameInfo>) {
+        if games.is_empty() {
             return;
         }
         self.entries.truncate(1);
-        self.entries.extend(
-            cards
-                .into_iter()
-                .enumerate()
-                .map(|(index, (title, detail))| (title, detail, Some(HomeAction::Join(index)))),
-        );
+        self.entries
+            .extend(games.iter().enumerate().map(|(index, game)| {
+                (
+                    game.name.clone(),
+                    game.detail.clone(),
+                    Some(HomeAction::OpenGame(index)),
+                )
+            }));
+        self.games = games;
         self.cards = self.card_targets();
         self.focus = None;
     }
@@ -253,16 +289,85 @@ impl HomeScreen {
             .position(|target| target.enabled && inside(target.rect, mouse))
     }
 
+    /// The id of the game whose page is open: what [`HomeAction::PlayOpen`] plays.
+    pub fn open_game_id(&self) -> Option<&str> {
+        self.page.as_ref().map(|page| page.game.id.as_str())
+    }
+
+    /// Escape: an open game page closes. Whether there was one.
+    pub fn escape(&mut self) -> bool {
+        self.page.take().is_some()
+    }
+
+    fn open_game(&mut self, index: usize) {
+        if let Some(game) = self.games.get(index).cloned() {
+            self.page = Some(Page::new(self.size, game, &self.games, self.words.clone()));
+        }
+    }
+
+    /// What a press on the open page chose: another page, the way back, or playing.
+    fn page_hit(&mut self, hit: Hit) -> Option<HomeAction> {
+        crate::ui_sound::play_down_sound();
+        match hit {
+            Hit::Play => return Some(HomeAction::PlayOpen),
+            Hit::Back => self.page = None,
+            Hit::Other(index) => self.open_game(index),
+        }
+        None
+    }
+
+    /// Opening a game's page is the home screen's own business; the rest goes on to the menu.
+    fn resolved(&mut self, action: Option<HomeAction>) -> Option<HomeAction> {
+        if let Some(HomeAction::OpenGame(index)) = action {
+            self.open_game(index);
+            return None;
+        }
+        action
+    }
+
+    /// The play arrow under the mouse: its game's place in the directory.
+    fn arrow_at(&self, mouse: (i32, i32)) -> Option<usize> {
+        if self.page.is_some() {
+            return None;
+        }
+        // Entry 0 is the page's own card; the directory's games follow it.
+        let at = self
+            .arrows
+            .iter()
+            .position(|arrow| arrow.is_some_and(|rect| inside(rect, mouse)))?;
+        at.checked_sub(1)
+    }
+
     /// A mouse press: what the thing under it chose.
     pub fn clicked(&mut self, mouse: (i32, i32)) -> Option<HomeAction> {
+        if let Some(hit) = self.page.as_ref().and_then(|page| page.hit_at(mouse)) {
+            return self.page_hit(hit);
+        }
+        if let Some(game) = self.arrow_at(mouse) {
+            crate::ui_sound::play_down_sound();
+            return Some(HomeAction::Join(game));
+        }
         let index = self.target_at(mouse)?;
+        if self.page.is_some()
+            && self
+                .targets()
+                .nth(index)
+                .is_some_and(|t| t.look == Look::Card)
+        {
+            return None;
+        }
         self.focus = Some(index);
         crate::ui_sound::play_down_sound();
-        self.targets().nth(index).and_then(|target| target.action)
+        let action = self.targets().nth(index).and_then(|target| target.action);
+        self.resolved(action)
     }
 
     /// Tab (or arrow keys): focus moves to the next pressable thing, or the previous one.
     pub fn step_focus(&mut self, forward: bool) {
+        if let Some(page) = &mut self.page {
+            page.step(forward);
+            return;
+        }
         let order = self.enabled_indices();
         let (Some(first), Some(last)) = (order.first().copied(), order.last().copied()) else {
             return;
@@ -279,7 +384,11 @@ impl HomeScreen {
     }
 
     /// Enter or Space: what the focused thing chose.
-    pub fn pressed(&self) -> Option<HomeAction> {
+    pub fn pressed(&mut self) -> Option<HomeAction> {
+        if let Some(page) = &self.page {
+            let hit = page.pressed();
+            return self.page_hit(hit);
+        }
         let focus = self.focus?;
         let action = self
             .targets()
@@ -287,7 +396,7 @@ impl HomeScreen {
             .filter(|target| target.enabled)
             .and_then(|target| target.action)?;
         crate::ui_sound::play_down_sound();
-        Some(action)
+        self.resolved(Some(action))
     }
 
     /// The panorama's dimming, the top bar, the page and the version.
@@ -312,11 +421,50 @@ impl HomeScreen {
         painter.label(&self.version, (8, 14), muted);
         let hovered = self.target_at(mouse);
         for (index, target) in self.targets().enumerate() {
+            if self.page.is_some() && target.look == Look::Card {
+                continue;
+            }
             let focused = self.focus == Some(index) || hovered == Some(index);
             Self::draw_target(&mut painter, target, focused);
         }
+        if let Some(page) = &self.page {
+            page.draw(&mut painter, mouse);
+            return;
+        }
+        self.draw_arrows(&mut painter, mouse);
         painter.label(&self.heading.0, (MARGIN, BAR_HEIGHT + 10), ink);
         painter.label(&self.heading.1, (MARGIN, BAR_HEIGHT + 24), muted);
+    }
+
+    /// The play arrow of the card the mouse or the focus is on.
+    fn draw_arrows(&self, painter: &mut Painter, mouse: (i32, i32)) {
+        let focused = self.focus.and_then(|at| at.checked_sub(self.nav.len()));
+        for (at, (card, arrow)) in self.cards.iter().zip(&self.arrows).enumerate() {
+            let Some(rect) = *arrow else { continue };
+            if !inside(card.rect, mouse) && focused != Some(at) {
+                continue;
+            }
+            let state = if inside(rect, mouse) {
+                State::Hover
+            } else {
+                State::Normal
+            };
+            painter.button(rect, "", state);
+            let ink = painter.skin.button_ink;
+            for row in 0..8_i32 {
+                let width = (9 - (2 * row - 7).abs()) / 2;
+                let (x, y) = (rect.x + 6, rect.y + 4 + row);
+                painter.fill_rect(
+                    Rect {
+                        x,
+                        y,
+                        width,
+                        height: 1,
+                    },
+                    ink | 0xFF00_0000,
+                );
+            }
+        }
     }
 
     fn draw_target(painter: &mut Painter, target: &Target, focused: bool) {
@@ -429,20 +577,71 @@ mod tests {
         assert_eq!(screen().pressed(), None);
     }
 
+    fn game(name: &str) -> GameInfo {
+        GameInfo {
+            id: name.to_lowercase(),
+            name: name.to_owned(),
+            detail: "0 online".to_owned(),
+            description: String::new(),
+            videos: 0,
+            images: 0,
+        }
+    }
+
     #[test]
-    fn directory_cards_join_by_their_index_and_an_empty_directory_changes_nothing() {
+    fn a_directory_card_opens_its_page_and_its_arrow_joins() {
         let mut home = screen();
         home.set_directory(Vec::new());
         assert_eq!(home.cards.len(), 2);
-        home.set_directory(vec![
-            ("Skyblock".to_owned(), "3 players".to_owned()),
-            ("Arena".to_owned(), "0 players".to_owned()),
-        ]);
+        home.set_directory(vec![game("Skyblock"), game("Arena")]);
         assert_eq!(home.cards.len(), 3);
-        let second = centre(home.cards[2].rect);
-        assert_eq!(home.clicked(second), Some(HomeAction::Join(1)));
+        // The arrow sits inside the card and wins over it.
+        let arrow = home.arrows[2].expect("arrow");
+        assert!(inside(home.cards[2].rect, centre(arrow)));
+        assert_eq!(home.clicked(centre(arrow)), Some(HomeAction::Join(1)));
+        // The rest of the card opens the page and nothing leaves the screen.
+        let body = (home.cards[2].rect.x + 3, home.cards[2].rect.y + 3);
+        assert_eq!(home.clicked(body), None);
+        assert_eq!(home.open_game_id(), Some("arena"));
         let first = centre(home.cards[0].rect);
+        assert_eq!(
+            home.clicked(first),
+            None,
+            "the cards are hidden under a page"
+        );
+        assert!(home.escape());
         assert_eq!(home.clicked(first), Some(HomeAction::Servers));
+        // The placeholder cards have no arrow.
+        assert!(home.arrows[0].is_none());
+    }
+
+    #[test]
+    fn a_click_on_an_arrow_sounds_once_and_enter_opens_the_page() {
+        let mut home = screen();
+        home.set_directory(vec![game("Arena")]);
+        crate::ui_sound::take();
+        home.clicked(centre(home.arrows[1].expect("arrow")));
+        assert_eq!(crate::ui_sound::take().len(), 1);
+        // Tab does not stop on arrows; Enter on the card opens the page.
+        for _ in 0..4 {
+            home.step_focus(true);
+        }
+        assert_eq!(home.focus, Some(home.nav.len() + 1));
+        assert_eq!(home.pressed(), None);
+        assert_eq!(home.open_game_id(), Some("arena"));
+        // On the page Enter plays, and Back returns.
+        assert_eq!(home.pressed(), Some(HomeAction::PlayOpen));
+        assert!(home.escape());
+        assert_eq!(home.open_game_id(), None);
+    }
+
+    #[test]
+    fn a_page_keeps_its_game_when_the_directory_changes() {
+        let mut home = screen();
+        home.set_directory(vec![game("Arena"), game("Skyblock")]);
+        home.clicked((home.cards[1].rect.x + 3, home.cards[1].rect.y + 3));
+        home.set_directory(vec![game("Skyblock")]);
+        assert_eq!(home.open_game_id(), Some("arena"));
     }
 
     #[test]
@@ -451,9 +650,9 @@ mod tests {
         home.set_directory_unavailable("Directory unavailable");
         assert_eq!(home.entries[1].1, "Directory unavailable");
         assert_eq!(home.entries[1].2, None);
-        home.set_directory(vec![("Arena".to_owned(), "1 online".to_owned())]);
+        home.set_directory(vec![game("Arena")]);
         home.set_directory_unavailable("Directory unavailable");
         assert_eq!(home.entries[1].0, "Arena");
-        assert_eq!(home.entries[1].1, "1 online");
+        assert_eq!(home.entries[1].1, "0 online");
     }
 }

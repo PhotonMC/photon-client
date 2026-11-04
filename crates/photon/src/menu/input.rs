@@ -25,6 +25,10 @@ pub(super) fn title_event(
                 None
             }
             Key::Enter | Key::KpEnter | Key::Space => screen.pressed(),
+            Key::Escape => {
+                screen.escape();
+                None
+            }
             _ => None,
         },
         _ => None,

@@ -6,7 +6,7 @@ use std::sync::mpsc::{Receiver, channel};
 use std::time::{Duration, Instant};
 
 use photon_game::text::Lang;
-use photon_gui::screen::home::HomeScreen;
+use photon_gui::screen::home::{GameInfo, HomeScreen};
 use photon_net::backend::{BackendError, DirectoryServer};
 
 use super::resume::Resume;
@@ -39,7 +39,7 @@ fn due(elapsed: Duration, on_home: bool, in_flight: bool) -> bool {
 
 impl Directory {
     /// The cards of the servers known so far.
-    pub(super) fn cards(&self) -> Vec<(String, String)> {
+    pub(super) fn cards(&self) -> Vec<GameInfo> {
         self.servers.iter().map(card).collect()
     }
 
@@ -99,9 +99,16 @@ impl Directory {
 }
 
 /// What a card of the directory says: the name over the players and the version.
-fn card(server: &DirectoryServer) -> (String, String) {
+fn card(server: &DirectoryServer) -> GameInfo {
     let detail = format!("{} online  {}", server.players, server.version);
-    (server.name.clone(), detail.trim_end().to_owned())
+    GameInfo {
+        id: server.id.clone(),
+        name: server.name.clone(),
+        detail: detail.trim_end().to_owned(),
+        description: server.description.clone(),
+        videos: server.videos.len(),
+        images: server.images.len(),
+    }
 }
 
 impl Menu {
@@ -132,7 +139,17 @@ impl Menu {
         }
     }
 
-    /// A press on the card of the directory's server at `index`: its address is joined.
+    /// Play on an open game page: the server it was opened for, if the directory still has it.
+    pub(super) fn join_open_game(&mut self, size: (i32, i32)) -> Option<Choice> {
+        let Screen::Home(screen) = &self.screen else {
+            return None;
+        };
+        let id = screen.open_game_id()?;
+        let index = self.directory.servers.iter().position(|s| s.id == id)?;
+        self.join_directory(index, size)
+    }
+
+    /// A press on the play arrow of the directory's server at `index`: its address is joined.
     pub(super) fn join_directory(&mut self, index: usize, size: (i32, i32)) -> Option<Choice> {
         let server = self.directory.servers.get(index)?.clone();
         self.joined_from_home = true;
@@ -193,6 +210,7 @@ mod tests {
             description: String::new(),
             version: "1".to_owned(),
             images: Vec::new(),
+            videos: Vec::new(),
             players,
         }
     }

@@ -36,6 +36,8 @@ pub struct DirectoryServer {
     pub description: String,
     pub version: String,
     pub images: Vec<String>,
+    /// Operator-hosted video files (https); empty from a backend that lists none.
+    pub videos: Vec<String>,
     pub players: i32,
 }
 
@@ -201,22 +203,25 @@ fn field(object: &JsonObject, name: &str) -> Result<String, BackendError> {
 }
 
 fn directory_server(object: &JsonObject) -> Option<DirectoryServer> {
-    let images = object
-        .array("images")
-        .unwrap_or_default()
-        .iter()
-        .filter_map(|image| match image {
-            JsonValue::String(units) => String::from_utf16(units).ok(),
-            _ => None,
-        })
-        .collect();
+    let strings = |name: &str| -> Vec<String> {
+        object
+            .array(name)
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|item| match item {
+                JsonValue::String(units) => String::from_utf16(units).ok(),
+                _ => None,
+            })
+            .collect()
+    };
     Some(DirectoryServer {
         id: object.text("id")?,
         name: object.text("name")?,
         address: object.text("address")?,
         description: object.text("description").unwrap_or_default(),
         version: object.text("version").unwrap_or_default(),
-        images,
+        images: strings("images"),
+        videos: strings("videos"),
         players: object.i32("players").unwrap_or(0),
     })
 }
@@ -252,9 +257,14 @@ mod tests {
 
     #[test]
     fn a_directory_entry_with_videos_still_reads() {
-        let text = r#"{"id":"a","name":"A","address":"h:1","videos":["dQw4w9WgXcQ"],"players":1}"#;
+        let text =
+            r#"{"id":"a","name":"A","address":"h:1","videos":["https://h/v.webm"],"players":1}"#;
         let server = directory_server(&object(text).expect("object")).expect("entry");
         assert_eq!((server.id.as_str(), server.players), ("a", 1));
+        assert_eq!(server.videos, ["https://h/v.webm"]);
+        let old = r#"{"id":"a","name":"A","address":"h:1"}"#;
+        let server = directory_server(&object(old).expect("object")).expect("entry");
+        assert!(server.videos.is_empty());
     }
 
     #[test]
