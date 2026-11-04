@@ -3,6 +3,7 @@
 //! stays as it is.
 
 use std::sync::mpsc::{Receiver, channel};
+use std::time::{Duration, Instant};
 
 use photon_game::text::Lang;
 use photon_gui::screen::home::HomeScreen;
@@ -13,12 +14,25 @@ use crate::launch_link::Outcome;
 use crate::play::Target;
 use photon_game::text::Component;
 
+/// How long the home screen shows a directory before it asks again.
+const REFRESH: Duration = Duration::from_secs(30);
+
+type Fetched = Result<Vec<DirectoryServer>, BackendError>;
+
 /// The directory being fetched, and what it said.
 pub(super) struct Directory {
-    receiver: Option<Receiver<Result<Vec<DirectoryServer>, BackendError>>>,
+    receiver: Option<Receiver<Fetched>>,
     pub(super) servers: Vec<DirectoryServer>,
-    /// The fetch was answered with an error.
+    /// The fetch was answered with an error and there is no list to keep showing.
     failed: bool,
+    /// When the last fetch started.
+    started: Instant,
+}
+
+/// Whether a new fetch is due: the home screen is showing, none is going on, and the last one
+/// is old enough.
+fn due(elapsed: Duration, on_home: bool, in_flight: bool) -> bool {
+    on_home && !in_flight && elapsed >= REFRESH
 }
 
 impl Directory {
@@ -39,7 +53,19 @@ impl Directory {
 
     /// Starts the fetch when a backend is named; nothing otherwise.
     pub(super) fn look_up() -> Self {
-        let receiver = crate::links_config::backend().map(|backend| {
+        let mut directory = Self {
+            receiver: None,
+            servers: Vec::new(),
+            failed: false,
+            started: Instant::now(),
+        };
+        directory.fetch();
+        directory
+    }
+
+    fn fetch(&mut self) {
+        self.started = Instant::now();
+        self.receiver = crate::links_config::backend().map(|backend| {
             let (sender, receiver) = channel();
             let _ = std::thread::Builder::new()
                 .name("Directory".to_owned())
@@ -49,11 +75,24 @@ impl Directory {
                 });
             receiver
         });
-        Self {
-            receiver,
-            servers: Vec::new(),
-            failed: false,
+    }
+
+    /// Takes an answer: a list replaces the one shown; an error keeps a list that was already
+    /// there, and only says "unavailable" when there is nothing else to show. Whether the cards
+    /// differ from before.
+    fn received(&mut self, answer: Fetched) -> bool {
+        let before = self.cards();
+        match answer {
+            Ok(servers) => {
+                self.servers = servers;
+                self.failed = false;
+            }
+            Err(error) => {
+                log::warn!("the directory could not be read: {error:?}");
+                self.failed = self.servers.is_empty();
+            }
         }
+        before != self.cards() || self.failed
     }
 }
 
@@ -64,23 +103,23 @@ fn card(server: &DirectoryServer) -> (String, String) {
 }
 
 impl Menu {
-    /// The answer of the fetch, when it has come: the cards on the home screen.
+    /// The answer of the fetch, when it has come: the cards on the home screen; and the next
+    /// fetch, once the home screen has shown the last one for a while.
     pub(super) fn directory_polled(&mut self) {
         let Some(receiver) = self.directory.receiver.as_ref() else {
+            let on_home = matches!(self.screen, Screen::Home(_));
+            if due(self.directory.started.elapsed(), on_home, false) {
+                self.directory.fetch();
+            }
             return;
         };
         let Ok(answer) = receiver.try_recv() else {
             return;
         };
         self.directory.receiver = None;
-        match answer {
-            Ok(servers) => self.directory.servers = servers,
-            Err(error) => {
-                log::warn!("the directory could not be read: {error:?}");
-                self.directory.failed = true;
-            }
+        if self.directory.received(answer) {
+            self.show_directory();
         }
-        self.show_directory();
     }
 
     /// The cards of the servers known so far, on the home screen when it is open.
@@ -129,5 +168,67 @@ impl Menu {
             Outcome::Unavailable => "photon.link.unavailable",
         };
         self.join_failed(&Component::translatable(key), size, true);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn server(name: &str, players: i32) -> DirectoryServer {
+        DirectoryServer {
+            id: name.to_owned(),
+            name: name.to_owned(),
+            address: "h:1".to_owned(),
+            description: String::new(),
+            version: "1".to_owned(),
+            images: Vec::new(),
+            players,
+        }
+    }
+
+    fn empty() -> Directory {
+        Directory {
+            receiver: None,
+            servers: Vec::new(),
+            failed: false,
+            started: Instant::now(),
+        }
+    }
+
+    #[test]
+    fn a_list_replaces_the_one_shown() {
+        let mut directory = empty();
+        assert!(directory.received(Ok(vec![server("a", 1)])));
+        assert!(directory.received(Ok(vec![server("a", 2)])));
+        assert!(!directory.received(Ok(vec![server("a", 2)])));
+        assert_eq!(directory.servers[0].players, 2);
+    }
+
+    #[test]
+    fn an_error_keeps_the_list_that_was_there() {
+        let mut directory = empty();
+        directory.received(Ok(vec![server("a", 1)]));
+        assert!(!directory.received(Err(BackendError::Unavailable)));
+        assert_eq!(directory.servers.len(), 1);
+        assert!(!directory.failed);
+    }
+
+    #[test]
+    fn an_error_with_nothing_shown_says_unavailable_until_a_list_comes() {
+        let mut directory = empty();
+        assert!(directory.received(Err(BackendError::Unavailable)));
+        assert!(directory.failed);
+        directory.received(Ok(vec![server("a", 1)]));
+        assert!(!directory.failed);
+    }
+
+    #[test]
+    fn a_fetch_is_due_only_on_the_home_screen_when_none_is_going_on_and_the_last_is_old() {
+        let old = REFRESH;
+        assert!(due(old, true, false));
+        assert!(!due(old, false, false));
+        assert!(!due(old, true, true));
+        assert!(!due(REFRESH - Duration::from_secs(1), true, false));
     }
 }
