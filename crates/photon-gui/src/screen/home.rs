@@ -301,10 +301,11 @@ mod tests {
 
     #[test]
     fn a_narrow_window_drops_unavailable_tabs_before_it_overlaps_quit() {
-        let home = HomeScreen::new((320, 240), "v0.1.0", &Font::default());
+        let home = HomeScreen::new((180, 240), "v0.1.0", &Font::default());
         let last = home.nav.last().expect("tabs");
         assert!(last.rect.x + last.rect.width <= home.quit.rect.x);
         assert!(home.nav.iter().any(|tab| tab.label == "Settings"));
+        assert!(home.nav.iter().all(|tab| tab.label != "Marketplace"));
     }
 
     #[test]
