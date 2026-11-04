@@ -6,7 +6,7 @@ use std::sync::mpsc::{Receiver, channel};
 
 use photon_game::text::Lang;
 use photon_gui::screen::home::HomeScreen;
-use photon_net::backend::{Backend, BackendError, DirectoryServer};
+use photon_net::backend::{BackendError, DirectoryServer};
 
 use super::{Choice, Menu, Screen};
 use crate::launch_link::Outcome;
@@ -39,7 +39,7 @@ impl Directory {
 
     /// Starts the fetch when a backend is named; nothing otherwise.
     pub(super) fn look_up() -> Self {
-        let receiver = Backend::from_environment().map(|backend| {
+        let receiver = crate::links_config::backend().map(|backend| {
             let (sender, receiver) = channel();
             let _ = std::thread::Builder::new()
                 .name("Directory".to_owned())

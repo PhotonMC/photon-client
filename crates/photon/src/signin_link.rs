@@ -5,7 +5,7 @@
 
 use std::process::Command;
 
-use photon_net::backend::{Backend, BackendError, signin_url};
+use photon_net::backend::{BackendError, signin_url};
 
 /// How the attempt ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,17 +24,10 @@ pub(crate) fn signed_in_name() -> Option<String> {
     account.map(|account| account.name)
 }
 
-/// The website's address: the player's own `PHOTON_WEBSITE`.
-fn website() -> Option<String> {
-    std::env::var("PHOTON_WEBSITE")
-        .ok()
-        .filter(|value| !value.is_empty())
-}
-
 /// Signs in to the backend with the player's own account, gets the web code for `state` and
 /// opens the browser. Nothing here is logged: the address carries the code.
 pub(crate) fn run(state: &str) -> Outcome {
-    let Some(website) = website() else {
+    let Some(website) = crate::links_config::website() else {
         return Outcome::NoWebsite;
     };
     // The address is checked before the Mojang join the sign-in costs.
@@ -44,7 +37,7 @@ pub(crate) fn run(state: &str) -> Outcome {
     let Some((_, Some(account))) = crate::profile_login::identity().ok() else {
         return Outcome::NotSignedIn;
     };
-    let code = Backend::from_environment()
+    let code = crate::links_config::backend()
         .unwrap_or(Err(BackendError::Unavailable))
         .and_then(|backend| {
             let session = backend.sign_in(&account)?;

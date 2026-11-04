@@ -74,14 +74,6 @@ impl Backend {
         })
     }
 
-    /// The backend `PHOTON_BACKEND` names: none when it is not set, which keeps the client as it is.
-    pub fn from_environment() -> Option<Result<Self, BackendError>> {
-        std::env::var("PHOTON_BACKEND")
-            .ok()
-            .filter(|value| !value.is_empty())
-            .map(|value| Self::new(&value))
-    }
-
     /// One call: the answer's body when the status is a success.
     fn call(
         &self,

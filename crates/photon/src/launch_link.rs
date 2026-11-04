@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use std::sync::mpsc::{Receiver, channel};
 
 use photon_core::binary::Uuid;
-use photon_net::backend::{Backend, BackendError, Launch, is_same_profile};
+use photon_net::backend::{BackendError, Launch, is_same_profile};
 
 /// The link the game was started with, until the menu takes it.
 static PENDING: Mutex<Option<Link>> = Mutex::new(None);
@@ -102,7 +102,7 @@ impl LinkTask {
         let _ = std::thread::Builder::new()
             .name("Launch Link".to_owned())
             .spawn(move || {
-                let answer = Backend::from_environment()
+                let answer = crate::links_config::backend()
                     .unwrap_or(Err(BackendError::Unavailable))
                     .and_then(|backend| backend.exchange(&code));
                 let signed_in = crate::profile_login::identity()

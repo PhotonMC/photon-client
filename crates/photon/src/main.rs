@@ -13,6 +13,7 @@ mod identity_proof;
 mod indexed;
 mod keyring_store;
 mod launch_link;
+mod links_config;
 mod logger;
 mod menu;
 mod mobs;
