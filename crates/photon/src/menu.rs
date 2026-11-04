@@ -12,9 +12,9 @@ use photon_game::servers::{PackStatus, ServerData, ServerList};
 use photon_game::text::Component;
 use photon_gui::screen::confirm::{ConfirmAction, ConfirmScreen};
 use photon_gui::screen::credits::CreditsScreen;
-use photon_gui::screen::disconnected::DisconnectedScreen;
 use photon_gui::screen::home::{HomeAction, HomeScreen};
 use photon_gui::screen::loading::LoadingScreen;
+use photon_gui::screen::notice::NoticeScreen;
 use photon_gui::screen::server_form::{FormKind, FormResult, ServerFormScreen};
 use photon_gui::screen::servers::{JoinMultiplayerScreen, ServersAction};
 use photon_net::connection::PlaySession;
@@ -62,8 +62,8 @@ enum Screen {
     Confirm(ConfirmScreen, usize),
     /// A join going on, and the question about the server's resource packs while one is up.
     Connecting(LoadingScreen, JoinTask, Option<ConfirmScreen>),
-    /// A join that failed (`DisconnectedScreen` with `connect.failed`).
-    Failed(DisconnectedScreen),
+    /// A join that failed, and whether the way back is the home screen, not the server list.
+    Failed(NoticeScreen, bool),
     /// The credits of the title screen (`WinScreen` without the poem), and when it last drew.
     Credits(CreditsScreen, Instant),
     /// The options, language or accessibility screens of the title, which the host draws.
@@ -173,6 +173,8 @@ struct Menu {
     directory: directory::Directory,
     /// The launch link the game was started with, while its code is being spent.
     link: Option<crate::launch_link::LinkTask>,
+    /// Whether the join going on began on the home screen, which a failure returns to.
+    joined_from_home: bool,
     /// What those screens are made with.
     assets: crate::screens::ScreenAssets,
     /// `Panorama.spin`, in degrees, and when it last advanced.
@@ -238,6 +240,7 @@ impl Menu {
             friends_title: friends::TitleFriends::look_up(),
             directory: directory::Directory::look_up(),
             link: crate::launch_link::LinkTask::start(),
+            joined_from_home: false,
             options,
         })
     }
@@ -292,7 +295,7 @@ impl Menu {
             Ok(session) => Some(Box::new(session)),
             Err(reason) => {
                 crate::packs::shared().cleanup_after_disconnect();
-                self.join_failed(&reason, size);
+                self.join_failed(&reason, size, self.joined_from_home);
                 None
             }
         }
@@ -337,16 +340,28 @@ impl Menu {
         }
     }
 
-    /// A join that failed: `DisconnectedScreen` with `connect.failed`.
-    fn join_failed(&mut self, reason: &Component, size: (i32, i32)) {
+    /// A join that failed: the notice screen, back to the home screen for a join that did not
+    /// start in the server list.
+    fn join_failed(&mut self, reason: &Component, size: (i32, i32), home: bool) {
         let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
-        self.screen = Screen::Failed(DisconnectedScreen::titled(
-            font,
-            lang,
-            size,
-            &Component::translatable("connect.failed"),
-            reason,
-        ));
+        let back = if home {
+            "photon.notice.back_home"
+        } else {
+            "photon.notice.back_servers"
+        };
+        self.screen = Screen::Failed(
+            NoticeScreen::new(
+                font,
+                lang,
+                size,
+                (
+                    &Component::translatable("photon.notice.join_failed"),
+                    reason,
+                    &Component::translatable(back),
+                ),
+            ),
+            home,
+        );
     }
 
     fn run(&mut self, client: &mut Client) -> Result<Choice> {
@@ -442,9 +457,13 @@ impl Menu {
                 self.settings_event(event, client);
                 return Ok(None);
             }
-            Screen::Failed(screen) => {
+            Screen::Failed(screen, home) => {
                 if failed_event(screen, event, mouse) {
-                    self.screen = self.server_list(size);
+                    self.screen = if *home {
+                        self.title(size)
+                    } else {
+                        self.server_list(size)
+                    };
                 }
                 return Ok(None);
             }

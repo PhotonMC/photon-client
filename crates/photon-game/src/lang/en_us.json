@@ -16,5 +16,8 @@
   "photon.link.not_signed_in": "Sign in to Photon to use that link.",
   "photon.link.refused": "That link has expired or was already used.",
   "photon.link.unavailable": "Photon's servers could not be reached.",
+  "photon.notice.join_failed": "Couldn't join",
+  "photon.notice.back_home": "Back to Home",
+  "photon.notice.back_servers": "Back to servers",
   "photon.loading.server": "Server"
 }

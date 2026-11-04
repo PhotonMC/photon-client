@@ -16,5 +16,8 @@
   "photon.link.not_signed_in": "Bu linki kullanmak i\u00e7in Photon'a giri\u015f yap.",
   "photon.link.refused": "Bu linkin s\u00fcresi doldu ya da zaten kullan\u0131ld\u0131.",
   "photon.link.unavailable": "Photon sunucular\u0131na ula\u015f\u0131lamad\u0131.",
+  "photon.notice.join_failed": "Kat\u0131l\u0131namad\u0131",
+  "photon.notice.back_home": "Ana sayfaya d\u00f6n",
+  "photon.notice.back_servers": "Sunuculara d\u00f6n",
   "photon.loading.server": "Sunucu"
 }

@@ -192,6 +192,7 @@ impl Menu {
             self.servers.add(ServerData::new(name, ip), true);
             self.servers.save(&self.game_directory)?;
         }
+        self.joined_from_home = false;
         self.connect(Target::Name(ip.to_owned()), Some(ip), (name, ip), size);
         Ok(())
     }
@@ -244,6 +245,7 @@ impl Menu {
             return;
         };
         let (name, ip) = (server.name.clone(), server.ip.clone());
+        self.joined_from_home = false;
         self.connect(Target::Name(ip.clone()), Some(&ip), (&name, &ip), size);
     }
 

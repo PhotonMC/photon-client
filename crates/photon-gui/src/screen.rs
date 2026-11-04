@@ -24,6 +24,7 @@ pub mod home;
 pub mod jigsaw;
 pub mod loading;
 pub mod logo;
+pub mod notice;
 pub mod pause;
 pub mod restrictions;
 pub mod server_form;

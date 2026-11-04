@@ -2,6 +2,8 @@
 
 [files]
 extend-exclude = [
+    # Turkish text, written with \u escapes the spellchecker splits into false words.
+    "crates/photon-game/src/lang/tr_tr.json",
     # Legacy Turkish records, being converted under #12.
     # Hex tables, ported maths and test data that look like words.
     "crates/photon-core/src/math/fdlibm.rs",

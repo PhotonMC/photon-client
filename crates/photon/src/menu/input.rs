@@ -32,7 +32,7 @@ pub(super) fn title_event(
 
 /// An event for the failed join's screen: whether its button was pressed.
 pub(super) fn failed_event(
-    screen: &mut DisconnectedScreen,
+    screen: &mut NoticeScreen,
     event: WindowEvent,
     mouse: (i32, i32),
 ) -> bool {
@@ -45,6 +45,7 @@ pub(super) fn failed_event(
         WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
             screen.pressed()
         }
+        WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
         _ => false,
     }
 }

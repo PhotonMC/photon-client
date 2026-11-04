@@ -76,6 +76,7 @@ impl Menu {
     /// A press on the card of the directory's server at `index`: its address is joined.
     pub(super) fn join_directory(&mut self, index: usize, size: (i32, i32)) -> Option<Choice> {
         let server = self.directory.servers.get(index)?.clone();
+        self.joined_from_home = true;
         self.connect(
             Target::Name(server.address.clone()),
             Some(&server.address),
@@ -95,6 +96,7 @@ impl Menu {
         self.link = None;
         let key = match outcome {
             Outcome::Join(address) => {
+                self.joined_from_home = true;
                 self.connect(
                     Target::Name(address.clone()),
                     Some(&address),
@@ -108,6 +110,6 @@ impl Menu {
             Outcome::Refused => "photon.link.refused",
             Outcome::Unavailable => "photon.link.unavailable",
         };
-        self.join_failed(&Component::translatable(key), size);
+        self.join_failed(&Component::translatable(key), size, true);
     }
 }
