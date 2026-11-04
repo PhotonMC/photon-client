@@ -33,9 +33,7 @@ impl Controls {
         self.chat = None;
         // A launch link's question about leaving is moot once the game is gone: its spent code
         // is joined after the disconnected screen instead of being lost.
-        if let Some((_, ConfirmTarget::Game(address, name))) = self.link_confirm.take() {
-            self.join_after = Some((address, name));
-        }
+        self.keep_link_join();
         self.pause = None;
         self.options_screen = None;
         self.video_screen = None;
@@ -87,6 +85,13 @@ impl Controls {
                 self.leave = true;
             }
             _ => {}
+        }
+    }
+
+    /// The join a launch question asked about, kept when the game ends before it is answered.
+    fn keep_link_join(&mut self) {
+        if let Some((_, target)) = self.link_confirm.take() {
+            self.join_after = kept_join(target).or(self.join_after.take());
         }
     }
 
@@ -209,5 +214,26 @@ impl Controls {
             Some(action) => self.death_action(action, session, surface, assets),
             None => Ok(()),
         }
+    }
+}
+
+/// The join a pending question stands for: only a launch question's, any other is dropped.
+fn kept_join(target: ConfirmTarget) -> Option<(String, String)> {
+    match target {
+        ConfirmTarget::Game(address, name) => Some((address, name)),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_launch_question_leaves_a_join_behind() {
+        let join = kept_join(ConfirmTarget::Game("h:1".to_owned(), "G".to_owned()));
+        assert_eq!(join, Some(("h:1".to_owned(), "G".to_owned())));
+        assert_eq!(kept_join(ConfirmTarget::Notice), None);
+        assert_eq!(kept_join(ConfirmTarget::Link("u".to_owned())), None);
     }
 }
