@@ -2,6 +2,7 @@ use photon_api::{Event, Owner};
 
 use super::*;
 
+const MS: Duration = Duration::from_secs(1);
 const MOD: Owner = Owner::new("test-mod");
 
 const EMPTY: &str = r#"(component
@@ -24,7 +25,7 @@ const ENDLESS: &str = r#"(component
 #[test]
 fn an_empty_tick_returns() {
     let host = Host::new().unwrap();
-    let mut loaded = host.load(MOD, EMPTY.as_bytes(), &[], 1000).unwrap();
+    let mut loaded = host.load(MOD, EMPTY.as_bytes(), &[], MS).unwrap();
     assert!(loaded.tick().is_ok());
     assert_eq!(loaded.owner(), MOD);
 }
@@ -32,21 +33,18 @@ fn an_empty_tick_returns() {
 #[test]
 fn an_import_that_was_not_granted_is_refused() {
     let host = Host::new().unwrap();
-    let refused = host.load(MOD, NEEDS_REGISTRY.as_bytes(), &[], 1000);
+    let refused = host.load(MOD, NEEDS_REGISTRY.as_bytes(), &[], MS);
     assert!(matches!(refused, Err(HostError::Load(why)) if why.contains("registry-read")));
-    let granted = host.load(
-        MOD,
-        NEEDS_REGISTRY.as_bytes(),
-        &[("registry-read", 7)],
-        1000,
-    );
+    let granted = host.load(MOD, NEEDS_REGISTRY.as_bytes(), &[("registry-read", 7)], MS);
     assert!(granted.is_ok());
 }
 
 #[test]
 fn an_endless_loop_is_stopped_by_the_clock() {
     let host = Host::new().unwrap();
-    let mut loaded = host.load(MOD, ENDLESS.as_bytes(), &[], 20).unwrap();
+    let mut loaded = host
+        .load(MOD, ENDLESS.as_bytes(), &[], Duration::from_millis(20))
+        .unwrap();
     let started = std::time::Instant::now();
     let Err(HostError::Call(why)) = loaded.tick() else {
         panic!("the loop returned");
@@ -59,7 +57,7 @@ fn an_endless_loop_is_stopped_by_the_clock() {
 fn many_mods_fit_at_once() {
     let host = Host::new().unwrap();
     let mut all: Vec<Mod> = (0..300)
-        .map(|_| host.load(MOD, EMPTY.as_bytes(), &[], 1000).unwrap())
+        .map(|_| host.load(MOD, EMPTY.as_bytes(), &[], MS).unwrap())
         .collect();
     for loaded in &mut all {
         loaded.tick().unwrap();
@@ -70,7 +68,7 @@ fn many_mods_fit_at_once() {
 fn unloading_a_mod_takes_its_handlers_with_it() {
     let host = Host::new().unwrap();
     let mut ticks: Event<()> = Event::default();
-    let loaded = host.load(MOD, EMPTY.as_bytes(), &[], 1000).unwrap();
+    let loaded = host.load(MOD, EMPTY.as_bytes(), &[], MS).unwrap();
     ticks.register(loaded.owner(), |_| {});
     let owner = loaded.owner();
     drop(loaded);
@@ -81,10 +79,10 @@ fn unloading_a_mod_takes_its_handlers_with_it() {
 #[test]
 fn a_dropped_mod_gives_its_slot_back() {
     let host = Host::with_slots(1).unwrap();
-    let first = host.load(MOD, EMPTY.as_bytes(), &[], 1000).unwrap();
-    assert!(host.load(MOD, EMPTY.as_bytes(), &[], 1000).is_err());
+    let first = host.load(MOD, EMPTY.as_bytes(), &[], MS).unwrap();
+    assert!(host.load(MOD, EMPTY.as_bytes(), &[], MS).is_err());
     drop(first);
-    assert!(host.load(MOD, EMPTY.as_bytes(), &[], 1000).is_ok());
+    assert!(host.load(MOD, EMPTY.as_bytes(), &[], MS).is_ok());
 }
 
 #[test]
@@ -95,5 +93,5 @@ fn code_that_runs_while_loading_is_not_cut_off_at_once() {
   (core instance $i (instantiate $m))
   (func (export "tick") (canon lift (core func $i "tick"))))"#;
     std::thread::sleep(Duration::from_millis(20));
-    assert!(host.load(MOD, busy.as_bytes(), &[], 1000).is_ok());
+    assert!(host.load(MOD, busy.as_bytes(), &[], MS).is_ok());
 }
