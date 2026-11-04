@@ -153,6 +153,31 @@ impl ConfirmScreen {
         screen
     }
 
+    /// A message with one button, which only closes it.
+    pub fn notice(
+        font: &Font,
+        lang: &Lang,
+        size: (i32, i32),
+        (title, message): (&Component, &Component),
+        label: &Component,
+    ) -> Self {
+        Self::build(
+            font,
+            lang,
+            size,
+            Content {
+                title: title.clone(),
+                message: message.clone(),
+                buttons: vec![(label.clone(), ConfirmAction::No)],
+                button_width: 150,
+                extra: None,
+                dark_panel: false,
+                wrapped_title: false,
+                popup: false,
+            },
+        )
+    }
+
     fn two_buttons(
         font: &Font,
         lang: &Lang,

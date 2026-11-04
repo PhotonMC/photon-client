@@ -33,23 +33,33 @@ impl Controls {
         }
         let lang = &assets.lang;
         let text = |key: &str| Component::literal(lang.text(key));
-        let (message, labels, target) = match prompt {
-            InPlay::Ask(address, name) => (
-                Component::literal(lang.text("photon.link.leave_ask").replace("%s", &name)),
-                ("gui.yes", "gui.no"),
-                ConfirmTarget::Game(address, name),
-            ),
-            InPlay::Say(key) => (text(key), ("gui.back", "gui.back"), ConfirmTarget::Notice),
+        let (font, size) = (&assets.creative.font, Self::gui_size(surface));
+        let (screen, target) = match prompt {
+            InPlay::Ask(address, name) => {
+                let message = lang.text("photon.link.leave_ask").replace("%s", &name);
+                let screen = ConfirmScreen::new(
+                    font,
+                    lang,
+                    size,
+                    &text("photon.link.leave_title"),
+                    &Component::literal(message),
+                    (&text("gui.yes"), &text("gui.no")),
+                );
+                (screen, ConfirmTarget::Game(address, name))
+            }
+            InPlay::Say(key) => {
+                let title = text("photon.notice.join_failed");
+                let screen = ConfirmScreen::notice(
+                    font,
+                    lang,
+                    size,
+                    (&title, &text(key)),
+                    &text("gui.back"),
+                );
+                (screen, ConfirmTarget::Notice)
+            }
         };
-        let screen = ConfirmScreen::new(
-            &assets.creative.font,
-            lang,
-            Self::gui_size(surface),
-            &text("photon.link.leave_title"),
-            &message,
-            (&text(labels.0), &text(labels.1)),
-        )
-        .with_background(ConfirmBackground::Menu { in_world: true });
+        let screen = screen.with_background(ConfirmBackground::Menu { in_world: true });
         self.link_confirm = Some((screen, target));
     }
 

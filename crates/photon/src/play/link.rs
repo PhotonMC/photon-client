@@ -22,7 +22,8 @@ impl Play {
             held.task = None;
             held.ready = Some(outcome);
         }
-        if self.controls.link_confirm.is_some() {
+        // The answer waits for the player to close what is open (a code, once spent, lasts).
+        if self.controls.link_confirm.is_some() || self.controls.screen_open_besides_pause() {
             return;
         }
         if let Some(outcome) = self.controls.game_link.ready.take() {

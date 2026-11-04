@@ -50,6 +50,15 @@ impl Controls {
         self.social.is_some() || self.friends.is_some() || self.debug_options.is_some()
     }
 
+    /// Whether a screen other than the pause menu is up: the pause menu may be what a question
+    /// opens over, nothing else may.
+    pub(crate) fn screen_open_besides_pause(&mut self) -> bool {
+        let pause = self.pause.take();
+        let open = self.any_screen_open();
+        self.pause = pause;
+        open
+    }
+
     /// Whether a screen is up over the game (`Gui.screen != null`): any of the screens and
     /// dialogs the controls hold.
     pub(crate) fn any_screen_open(&self) -> bool {
