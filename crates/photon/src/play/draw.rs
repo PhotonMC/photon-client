@@ -22,6 +22,7 @@ impl Play {
         self.gui
             .add_pending_toasts(pending, self.controls.options.notification_display_time);
         self.social_interactions_toast();
+        self.game_link_frame();
         self.gui
             .feed_sounds(self.sound.as_mut(), &self.controls.options, song);
     }

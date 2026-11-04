@@ -18,6 +18,49 @@ impl Controls {
         self.link_confirm = Some((screen, ConfirmTarget::Link(url.to_owned())));
     }
 
+    /// A link handed over during the game (over the pause menu, which opens for it): the question
+    /// whether to leave for another game, or why the link did nothing.
+    pub(crate) fn ask_about_game(
+        &mut self,
+        prompt: crate::launch_link::InPlay,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        use crate::launch_link::InPlay;
+        use photon_game::text::Component;
+        if self.pause.is_none() {
+            self.open_pause(surface, assets);
+        }
+        let (message, labels, target) = match prompt {
+            InPlay::Ask(address, name) => (
+                Component::translatable_with(
+                    "photon.link.leave_ask",
+                    vec![Component::literal(&name)],
+                ),
+                ("gui.yes", "gui.no"),
+                ConfirmTarget::Game(address, name),
+            ),
+            InPlay::Say(key) => (
+                Component::translatable(key),
+                ("gui.back", "gui.back"),
+                ConfirmTarget::Notice,
+            ),
+        };
+        let screen = ConfirmScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            Self::gui_size(surface),
+            &Component::translatable("photon.link.leave_title"),
+            &message,
+            (
+                &Component::translatable(labels.0),
+                &Component::translatable(labels.1),
+            ),
+        )
+        .with_background(ConfirmBackground::Menu { in_world: true });
+        self.link_confirm = Some((screen, target));
+    }
+
     /// `PauseScreen`: the menu opens and the mouse is let go. The game goes
     /// on behind it, as on a server.
     pub(super) fn open_pause(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {

@@ -23,6 +23,10 @@ pub enum ConfirmTarget {
     FriendsList,
     /// `FriendEntry.confirmRemoveFriend`: the friend to remove once the player agrees.
     RemoveFriend(photon_core::binary::Uuid),
+    /// A link's question: leave for this address, shown under this name, once the player agrees.
+    Game(String, String),
+    /// A link's notice, which only goes away.
+    Notice,
 }
 
 impl Controls {

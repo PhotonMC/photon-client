@@ -201,11 +201,6 @@ impl Play {
 
     /// The window's events, as `Controls` takes them.
     pub(super) fn poll_events(&mut self, frame_start: Instant) -> Result<()> {
-        // A link handed over during a game brings the window forward; the menu takes the link
-        // once the player has left (it is dropped after a minute, as its code is).
-        if crate::link_socket::arrived() {
-            self.surface.raise();
-        }
         self.limiter.input_sampled(Instant::now());
         for event in self.surface.poll() {
             if is_input(&event) {

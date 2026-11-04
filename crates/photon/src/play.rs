@@ -629,7 +629,9 @@ use clock::GameClock;
 pub(crate) use loading::LoadingView;
 pub(crate) use switch::SwitchView;
 pub(crate) use target::Target;
+mod link;
 mod tick_parts;
 mod ticks;
+
 mod tutorial;
 mod world_text;

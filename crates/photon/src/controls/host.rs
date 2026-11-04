@@ -150,21 +150,7 @@ impl Controls {
         }
         if self.link_confirm.is_some() {
             if let Some((action, target)) = self.link_answer(event, surface) {
-                match (action, target) {
-                    (LinkAction::Yes, ConfirmTarget::Link(url)) => open_uri(&url),
-                    (LinkAction::Copy, ConfirmTarget::Link(url)) => surface.set_clipboard(&url),
-                    (LinkAction::Yes, ConfirmTarget::Pack(id)) => self.select_confirmed_pack(&id),
-                    (LinkAction::Yes, ConfirmTarget::Drop(paths)) => {
-                        self.copy_confirmed_packs(&paths, assets);
-                    }
-                    (
-                        action,
-                        target @ (ConfirmTarget::FriendsList | ConfirmTarget::RemoveFriend(_)),
-                    ) => {
-                        self.answer_friends_confirm(action, &target, surface);
-                    }
-                    _ => {}
-                }
+                self.answer_link(action, target, surface, assets);
             }
             return;
         }
@@ -173,5 +159,31 @@ impl Controls {
             return;
         }
         let _ = self.option_screens_event(event, surface, assets);
+    }
+
+    /// What the answer to the open question does.
+    fn answer_link(
+        &mut self,
+        action: LinkAction,
+        target: ConfirmTarget,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        match (action, target) {
+            (LinkAction::Yes, ConfirmTarget::Link(url)) => open_uri(&url),
+            (LinkAction::Copy, ConfirmTarget::Link(url)) => surface.set_clipboard(&url),
+            (LinkAction::Yes, ConfirmTarget::Game(address, name)) => {
+                self.join_after = Some((address, name));
+                self.leave = true;
+            }
+            (LinkAction::Yes, ConfirmTarget::Pack(id)) => self.select_confirmed_pack(&id),
+            (LinkAction::Yes, ConfirmTarget::Drop(paths)) => {
+                self.copy_confirmed_packs(&paths, assets);
+            }
+            (action, target @ (ConfirmTarget::FriendsList | ConfirmTarget::RemoveFriend(_))) => {
+                self.answer_friends_confirm(action, &target, surface);
+            }
+            _ => {}
+        }
     }
 }

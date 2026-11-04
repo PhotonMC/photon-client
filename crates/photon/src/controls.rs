@@ -233,6 +233,8 @@ pub struct Controls {
     pub leave: bool,
     /// The game to join (address and name) after leaving, from a link answered Yes.
     pub join_after: Option<(String, String)>,
+    /// A launch link handed over during the game, while it is spent and until it is answered.
+    pub(crate) game_link: crate::launch_link::GameLink,
     /// The options were saved since the session last looked (`Options.save` then
     /// `broadcastOptions`).
     pub options_saved: bool,

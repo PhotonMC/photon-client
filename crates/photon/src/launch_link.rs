@@ -73,6 +73,46 @@ pub(crate) fn take_pending() -> Option<Link> {
     Some(link)
 }
 
+/// The launch code of the pending link, once; a sign-in link stays pending for the menu.
+pub(crate) fn take_pending_launch() -> Option<String> {
+    let mut pending = PENDING.lock().ok()?;
+    if !matches!(pending.as_ref(), Some((Link::Launch(_), _))) {
+        return None;
+    }
+    let (link, arrived) = pending.take()?;
+    drop(pending);
+    match link {
+        Link::Launch(code) if arrived.elapsed() <= FRESH => Some(code),
+        _ => None,
+    }
+}
+
+/// A link's answer while a game is played: the nowhere-else-handled outcomes, and the question.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum InPlay {
+    /// Ask whether to leave for this address, shown under this name.
+    Ask(String, String),
+    /// Say why the link did nothing, by translation key.
+    Say(&'static str),
+}
+
+pub(crate) fn in_play(outcome: Outcome) -> InPlay {
+    match outcome {
+        Outcome::Join(address, name) => InPlay::Ask(address, name),
+        Outcome::OtherProfile => InPlay::Say("photon.link.other_profile"),
+        Outcome::NotSignedIn => InPlay::Say("photon.link.not_signed_in"),
+        Outcome::Refused => InPlay::Say("photon.link.refused"),
+        Outcome::Unavailable => InPlay::Say("photon.link.unavailable"),
+    }
+}
+
+/// What a game holds of a link handed over while it is played.
+#[derive(Default)]
+pub(crate) struct GameLink {
+    pub(crate) task: Option<LinkTask>,
+    pub(crate) ready: Option<Outcome>,
+}
+
 /// What the answer to a link makes the menu do.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Outcome {
@@ -183,6 +223,28 @@ mod tests {
         ] {
             assert_eq!(parse(&link), None, "{link}");
         }
+    }
+
+    #[test]
+    fn a_game_takes_a_launch_link_and_leaves_a_sign_in_link() {
+        remember(&format!("photon://signin?state={CODE}")).expect("remembered");
+        assert_eq!(take_pending_launch(), None);
+        assert!(take_pending().is_some());
+        remember(&format!("photon://launch?code={CODE}")).expect("remembered");
+        assert_eq!(take_pending_launch(), Some(CODE.to_owned()));
+        assert_eq!(take_pending_launch(), None);
+    }
+
+    #[test]
+    fn a_game_asks_about_a_join_and_says_the_rest() {
+        assert_eq!(
+            in_play(Outcome::Join("a:1".into(), "A".into())),
+            InPlay::Ask("a:1".into(), "A".into())
+        );
+        assert_eq!(
+            in_play(Outcome::Refused),
+            InPlay::Say("photon.link.refused")
+        );
     }
 
     #[test]

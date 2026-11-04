@@ -15,6 +15,8 @@
   "photon.link.other_profile": "That link was issued for another account. Sign in to that account and try again.",
   "photon.link.not_signed_in": "Sign in to Photon to use that link.",
   "photon.link.refused": "That link has expired or was already used.",
+  "photon.link.leave_ask": "Leave this game and join %s?",
+  "photon.link.leave_title": "Join another game?",
   "photon.link.unavailable": "Photon's servers could not be reached.",
   "photon.notice.join_failed": "Couldn't join",
   "photon.notice.back_home": "Back to Home",
