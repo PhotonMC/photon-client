@@ -28,6 +28,7 @@
   "photon.signin.cancel": "Cancel",
   "photon.signin.confirm": "Sign in",
   "photon.signin.opened": "Continue in your browser.",
+  "photon.signin.changed": "The signed-in player changed. Open the link again.",
   "photon.signin.not_signed_in": "Sign in to Photon to use the website.",
   "photon.signin.no_website": "No secure website address is set.",
   "photon.signin.unavailable": "Photon's servers could not be reached.",

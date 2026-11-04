@@ -27,7 +27,9 @@ impl SignInFlow {
         let _ = std::thread::Builder::new()
             .name("Sign-in Link".to_owned())
             .spawn(move || {
-                let _ = sender.send(signin_link::signed_in_name());
+                signin_link::signed_in_name(|name| {
+                    let _ = sender.send(name);
+                });
             });
         Self::Looking(receiver, state)
     }
@@ -80,10 +82,10 @@ impl Menu {
                     };
                 }
             }
-            Screen::Ask(screen, state) => {
+            Screen::Ask(screen, asked) => {
                 if let Some(answer) = ask_event(screen, event, mouse) {
-                    let state = state.clone();
-                    self.signin_answered(answer, &state, size);
+                    let asked = asked.clone();
+                    self.signin_answered(answer, (&asked.0, &asked.1), size);
                 }
             }
             _ => {}
@@ -120,7 +122,7 @@ impl Menu {
                 &Component::translatable("photon.signin.confirm"),
             ),
         );
-        self.screen = Screen::Ask(question, state);
+        self.screen = Screen::Ask(question, (state, name.to_owned()));
     }
 
     /// The joining screen while a link's task is out, so the home screen never shows first.
@@ -159,16 +161,21 @@ impl Menu {
     }
 
     /// The answer to the question: a no goes home; a yes starts the sign-in.
-    pub(super) fn signin_answered(&mut self, answer: Answer, state: &str, size: (i32, i32)) {
+    pub(super) fn signin_answered(
+        &mut self,
+        answer: Answer,
+        (state, name): (&str, &str),
+        size: (i32, i32),
+    ) {
         match answer {
             Answer::Back => self.screen = self.title(size),
             Answer::Yes => {
-                let state = state.to_owned();
+                let (state, name) = (state.to_owned(), name.to_owned());
                 let (sender, receiver) = channel();
                 let _ = std::thread::Builder::new()
                     .name("Sign-in".to_owned())
                     .spawn(move || {
-                        let _ = sender.send(signin_link::run(&state));
+                        let _ = sender.send(signin_link::run(&state, Some(&name)));
                     });
                 self.signin = Some(SignInFlow::Working(receiver));
                 self.show_linking(size);

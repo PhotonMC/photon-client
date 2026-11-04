@@ -71,7 +71,7 @@ impl Play {
         let _ = std::thread::Builder::new()
             .name("Sign-in Link".to_owned())
             .spawn(move || {
-                let _ = sender.send(signin_link::signed_in_name());
+                let _ = sender.send(signin_link::resumed_name());
             });
         SignInStep::Looking(receiver, state)
     }
@@ -82,7 +82,7 @@ impl Play {
         let _ = std::thread::Builder::new()
             .name("Sign-in".to_owned())
             .spawn(move || {
-                let _ = sender.send(signin_link::run(&state));
+                let _ = sender.send(signin_link::run(&state, None));
             });
         SignInStep::Working(receiver)
     }

@@ -101,6 +101,11 @@ fn resume_stored() -> Result<Option<Account>, String> {
     let host = session_host();
     let store = crate::keyring_store::os_store();
     let resumed = signin::resume(&signin::Hosts::default(), &client, (&host, store.as_ref()));
+    match &resumed {
+        Ok(Some(session)) => crate::signin_hint::write(&session.account.name),
+        Ok(None) => crate::signin_hint::clear(),
+        Err(_) => {}
+    }
     resumed
         .map(|session| session.map(|session| session.account))
         .map_err(|error| error.to_string())

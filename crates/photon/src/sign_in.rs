@@ -28,6 +28,7 @@ pub(crate) fn run_sign_in() -> Result<(), Box<dyn std::error::Error>> {
     let host = crate::profile_login::session_host();
     let store = crate::keyring_store::os_store();
     let session = signin::finish_sign_in(&hosts, &tokens, (&host, store.as_ref()))?;
+    crate::signin_hint::write(&session.account.name);
     println!("Signed in as {}", session.account.name);
     Ok(())
 }
@@ -35,6 +36,7 @@ pub(crate) fn run_sign_in() -> Result<(), Box<dyn std::error::Error>> {
 /// Forget the signed-in player.
 pub(crate) fn run_sign_out() -> Result<(), Box<dyn std::error::Error>> {
     signin::sign_out(crate::keyring_store::os_store().as_ref())?;
+    crate::signin_hint::clear();
     println!("Signed out");
     Ok(())
 }

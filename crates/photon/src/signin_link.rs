@@ -13,6 +13,8 @@ pub(crate) enum Outcome {
     /// The browser was opened with the code.
     Opened,
     NotSignedIn,
+    /// The resumed account is not the player the question named.
+    Changed,
     /// The website address is missing or not secure.
     NoWebsite,
     Unavailable,
@@ -23,20 +25,34 @@ pub(crate) fn message_key(outcome: &Outcome) -> &'static str {
     match outcome {
         Outcome::Opened => "photon.signin.opened",
         Outcome::NotSignedIn => "photon.signin.not_signed_in",
+        Outcome::Changed => "photon.signin.changed",
         Outcome::NoWebsite => "photon.signin.no_website",
         Outcome::Unavailable => "photon.signin.unavailable",
     }
 }
 
-/// The name of the signed-in player, for the question; nothing when nobody is signed in.
-pub(crate) fn signed_in_name() -> Option<String> {
+/// The name of the signed-in player, for the question; nothing when nobody is signed in. The
+/// name kept from the last sign-in comes at once and the account services are asked meanwhile
+/// (so the sign-in that follows finds the session ready); without one, the services are waited on.
+pub(crate) fn signed_in_name(answer: impl FnOnce(Option<String>)) {
+    match crate::signin_hint::read() {
+        Some(name) => {
+            answer(Some(name));
+            let _ = resumed_name();
+        }
+        None => answer(resumed_name()),
+    }
+}
+
+/// The name of the signed-in player from the account services, waited on.
+pub(crate) fn resumed_name() -> Option<String> {
     let (_, account) = crate::profile_login::identity().ok()?;
     account.map(|account| account.name)
 }
 
 /// Signs in to the backend with the player's own account, gets the web code for `state` and
 /// opens the browser. Nothing here is logged: the address carries the code.
-pub(crate) fn run(state: &str) -> Outcome {
+pub(crate) fn run(state: &str, shown: Option<&str>) -> Outcome {
     let Some(website) = crate::links_config::website() else {
         return Outcome::NoWebsite;
     };
@@ -47,6 +63,10 @@ pub(crate) fn run(state: &str) -> Outcome {
     let Some((_, Some(account))) = crate::profile_login::identity().ok() else {
         return Outcome::NotSignedIn;
     };
+    // The question named a player; only that player is signed in.
+    if shown.is_some_and(|shown| account.name != shown) {
+        return Outcome::Changed;
+    }
     let code = crate::links_config::backend()
         .unwrap_or(Err(BackendError::Unavailable))
         .and_then(|backend| {

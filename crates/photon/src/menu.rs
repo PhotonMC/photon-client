@@ -67,7 +67,8 @@ enum Screen {
     /// A join that failed, and whether the way back is the home screen, not the server list.
     Failed(NoticeScreen, bool),
     /// The question of a website sign-in link, with the browser's state.
-    Ask(NoticeScreen, String),
+    /// A question about a website sign-in: the browser's state and the name it names.
+    Ask(NoticeScreen, (String, String)),
     /// The credits of the title screen (`WinScreen` without the poem), and when it last drew.
     Credits(CreditsScreen, Instant),
     /// The options, language or accessibility screens of the title, which the host draws.
