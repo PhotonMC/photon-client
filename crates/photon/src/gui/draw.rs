@@ -57,9 +57,17 @@ impl Gui {
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
         let blurriness = controls.options.menu_background_blurriness;
         Self::draw_popup_background((atlas, font, lang), controls, frame, gui_size);
-        if let Some((link, _)) = controls.link_confirm.as_mut() {
+        if let Some((link, target)) = controls.link_confirm.as_mut() {
             if link.size() != gui_size {
                 *link = link.resized(font, lang, gui_size);
+                // A question about another game or a sign-in stays asleep through a resize.
+                if matches!(
+                    target,
+                    crate::controls::ConfirmTarget::Game(..)
+                        | crate::controls::ConfirmTarget::SignIn(_)
+                ) {
+                    link.rest();
+                }
             }
             link.draw(frame, (atlas, font), mouse, blurriness);
         } else if controls.has_world_overlay() {

@@ -334,6 +334,15 @@ impl ConfirmScreen {
         }
     }
 
+    /// Puts the buttons back to sleep when a delay is still running: a screen made again for
+    /// another size has them awake (as `rebuildWidgets` leaves them), which Photon's own
+    /// questions, asked over a game, must not.
+    pub fn rest(&mut self) {
+        if self.delay > 0 {
+            self.set_delay(self.delay);
+        }
+    }
+
     pub fn size(&self) -> (i32, i32) {
         self.size
     }
@@ -467,5 +476,58 @@ impl ConfirmScreen {
     /// Escape: "No", once the delay has run out.
     pub fn escape(&self) -> Option<ConfirmAction> {
         (self.delay <= 0).then_some(ConfirmAction::No)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn question() -> ConfirmScreen {
+        let (font, lang) = (Font::default(), Lang::default());
+        ConfirmScreen::new(
+            &font,
+            &lang,
+            (427, 240),
+            &Component::literal("Title"),
+            &Component::literal("Message"),
+            (&Component::literal("Yes"), &Component::literal("No")),
+        )
+    }
+
+    /// Whether any click on the screen is answered.
+    fn answers_a_click(screen: &ConfirmScreen) -> bool {
+        (0..427).any(|x| (0..240).any(|y| screen.clicked((x, y)).is_some()))
+    }
+
+    #[test]
+    fn a_sleeping_question_answers_nothing_until_its_delay_runs_out() {
+        let mut screen = question();
+        screen.set_delay(2);
+        assert!(!answers_a_click(&screen));
+        screen.tab(true);
+        assert_eq!(screen.pressed(), None);
+        assert_eq!(screen.escape(), None);
+        screen.tick();
+        assert!(!answers_a_click(&screen));
+        screen.tick();
+        assert!(answers_a_click(&screen));
+        // Nothing is focused, so Enter and Space answer nothing even awake.
+        assert_eq!(question().pressed(), None);
+    }
+
+    #[test]
+    fn a_resize_wakes_the_buttons_as_the_reference_does_until_they_rest() {
+        let (font, lang) = (Font::default(), Lang::default());
+        let mut screen = question();
+        screen.set_delay(20);
+        let mut resized = screen.resized(&font, &lang, (320, 240));
+        assert!(answers_a_click(&resized));
+        resized.rest();
+        assert!(!answers_a_click(&resized));
+        // Once the delay is over there is nothing to put back to sleep.
+        let mut awake = question();
+        awake.rest();
+        assert!(answers_a_click(&awake));
     }
 }
