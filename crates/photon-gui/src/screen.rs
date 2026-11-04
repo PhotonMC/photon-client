@@ -15,7 +15,6 @@ pub mod debug_options;
 pub mod dialog;
 mod dialog_body;
 mod dialog_input;
-pub mod disconnected;
 mod faces;
 pub mod friends;
 pub mod game_mode;

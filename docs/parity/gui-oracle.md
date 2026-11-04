@@ -29,7 +29,7 @@ Screen patterns:
 | --- | --- |
 | HUD | `hud_hotbar`, `hud_status`, `titles`, `boss_bar`, `locator_bar`, `sidebar`, `tab_list`, `name_tags` |
 | Chat and commands | `chat`, `chat_draft`, `suggestions`, `command_parse`, `command_suggest` |
-| Menus | `title_screen`, `pause_screen`, `death_screen`, `disconnected_screen`, `connect_screen`, `credits_screen`, `confirm_screen`, `dialog_screen`, `game_mode_switcher`, `social_interactions_screen`, `panorama_view` |
+| Menus | `title_screen`, `pause_screen`, `death_screen`, `connect_screen`, `credits_screen`, `confirm_screen`, `dialog_screen`, `game_mode_switcher`, `social_interactions_screen`, `panorama_view` |
 | Multiplayer | `join_multiplayer_screen`, `server_form` |
 | Options | `widgets`, `options_screen`, `video_settings_screen`, `chat_options_screen`, `mouse_settings_screen`, `controls_screen`, `sound_options_screen`, `skin_customization_screen`, `key_binds_screen`, `key_mappings`, `language_screen`, `lang_text` |
 | Containers and items | `container_screen`, `tooltip_lines`, `bundle_tooltip` |

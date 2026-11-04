@@ -1,12 +1,8 @@
-//! The death and disconnected screens.
+//! The death screen.
 
 use serde_json::{Value, json};
 
 use super::gui;
-
-fn key(name: &str) -> Value {
-    json!({"do": "key", "key": name})
-}
 
 const SIZE: (i64, i64) = (427, 240);
 
@@ -90,42 +86,4 @@ pub fn death_screen() -> Value {
         death("hover-elsewhere", Death { mouse: (10, 10), ..awake }),
     ];
     gui("death-screen", "death_screen", [rows, press_rows(awake)].concat())
-}
-
-/// The disconnected screen for short and long reasons (wrapped at the
-/// screen's width less 50), in several screen sizes, and with the mouse
-/// over the button.
-pub fn disconnected_screen() -> Value {
-    let row = |label: &str, reason: &str, (width, height): (i64, i64), mouse: (i64, i64)| json!({"label": label, "width": width, "height": height, "mouse": [mouse.0, mouse.1], "reason": reason});
-    let long = "You are not whitelisted on this server and the reason is long enough to wrap ".repeat(3);
-    let rows = vec![
-        row("short", "Disconnected", SIZE, (0, 0)),
-        row("kicked", "Kicked for flying", SIZE, (0, 0)),
-        row("long", &long, SIZE, (0, 0)),
-        row("small", "Timed out", (320, 240), (0, 0)),
-        row("wide", &long, (854, 480), (0, 0)),
-        row("tiny", &long, (200, 150), (0, 0)),
-        row("empty", "", SIZE, (0, 0)),
-        row("lines", "one\ntwo\nthree", SIZE, (0, 0)),
-        row("hover", "Disconnected", SIZE, (213, 140)),
-    ];
-    let press = |label: &str, size: (i64, i64), steps: Vec<Value>| {
-        let mut row = row(label, "Disconnected", size, (0, 0));
-        row["steps"] = json!(steps);
-        row
-    };
-    let click = |x: i64, y: i64| json!({"do": "click", "x": x, "y": y});
-    let rows = [
-        rows,
-        vec![
-            press("click-button", SIZE, vec![click(213, 140)]),
-            press("click-elsewhere", SIZE, vec![click(10, 10)]),
-            press("click-small", (320, 240), vec![click(160, 140)]),
-            press("enter-nothing-focused", SIZE, vec![key("enter")]),
-            press("tab-enter", SIZE, vec![key("tab"), key("enter")]),
-            press("tab-tab-enter", SIZE, vec![key("tab"), key("tab"), key("enter")]),
-        ],
-    ]
-    .concat();
-    gui("disconnected-screen", "disconnected_screen", rows)
 }

@@ -86,7 +86,6 @@ const ORDER: &[Generator] = &[
     item_custom::cases,
     || vec![item_bundle::item_fullness()],
     || vec![screens::death_screen()],
-    || vec![screens::disconnected_screen()],
     || vec![credits::credits_screen()],
     || vec![social::social_interactions_screen()],
     || vec![hud::tab_list()],

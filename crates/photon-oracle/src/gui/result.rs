@@ -165,10 +165,9 @@ fn screen_case(
 
 /// The operations whose rows carry the sounds the interface asked for (the Java oracle writes
 /// them after the row's steps).
-const SOUND_OPERATIONS: [&str; 39] = [
+const SOUND_OPERATIONS: [&str; 38] = [
     "container_screen",
     "death_screen",
-    "disconnected_screen",
     "pause_screen",
     "stats_screen",
     "advancements_screen",
@@ -273,7 +272,6 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 "credits_screen" => credits_screen_case(&mut ctx, row)?,
                 "music_manager" | "musics" => crate::music::music_row(operation, row)?,
                 "social_interactions_screen" => social_interactions_screen_case(&mut ctx, row)?,
-                "disconnected_screen" => disconnected_screen_case(&mut ctx, row)?,
                 "hud_hotbar" => hud_hotbar_case(&mut ctx, row)?,
                 "boss_bar" => boss_bar_case(&mut ctx, row)?,
                 "locator_bar" => locator_bar_case(&mut ctx, row)?,

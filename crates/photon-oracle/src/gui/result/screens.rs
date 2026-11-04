@@ -332,49 +332,6 @@ pub(super) fn death_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
     }))
 }
-
-pub(super) fn disconnected_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    let root = &ctx.root;
-    let font = &ctx.font;
-    let atlas = &ctx.atlas;
-    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    let mut frame = GuiFrame {
-        log: Some(Vec::new()),
-        ..GuiFrame::default()
-    };
-    let lang = photon_game::text::Lang::load(root);
-    let size = (int("width"), int("height"));
-    let reason = photon_game::text::Component::literal(row["reason"].as_str().unwrap_or_default());
-    let mut screen =
-        photon_gui::screen::disconnected::DisconnectedScreen::new(font, &lang, size, &reason);
-    for step in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
-        match (step["do"].as_str(), step["key"].as_str()) {
-            (Some("click"), _) => {
-                let at = (
-                    step["x"].as_i64().unwrap_or(0) as i32,
-                    step["y"].as_i64().unwrap_or(0) as i32,
-                );
-                screen.clicked(at);
-            }
-            (_, Some("tab")) => screen.tab(),
-            (_, Some("enter")) => {
-                screen.pressed();
-            }
-            _ => return Err(format!("unknown step {step}")),
-        }
-    }
-    let mouse = (
-        row["mouse"][0].as_i64().unwrap_or(0) as i32,
-        row["mouse"][1].as_i64().unwrap_or(0) as i32,
-    );
-    screen.draw(&mut frame, atlas, font, mouse);
-
-    Ok(json!({
-        "label": row["label"],
-        "ops": gui_ops(&frame.log.take().unwrap_or_default()),
-    }))
-}
-
 pub(super) fn credits_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let mut frame = GuiFrame {

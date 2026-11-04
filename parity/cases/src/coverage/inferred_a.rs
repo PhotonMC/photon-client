@@ -155,7 +155,6 @@ pub const INFERRED: &[(&str, &str, &str)] = &[
     ("gui", "death_screen", "network/syncher/SynchedEntityData, client/player/LocalPlayer"),
     ("gui", "debug_options_screen", "client/InputType, resources/Identifier"),
     ("gui", "dialog_screen", "network/chat/Component, server/ServerLinks"),
-    ("gui", "disconnected_screen", "client/gui/screens/DisconnectedScreen, network/chat/Component"),
     ("gui", "font_options_screen", "network/chat/Component, server/packs/repository/Pack"),
     ("gui", "font_width", "client/gui/font/glyphs/BakedGlyph, network/chat/Component"),
     ("gui", "friends_overlay", "network/chat/Component, server/packs/repository/Pack"),
