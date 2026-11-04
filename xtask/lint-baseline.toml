@@ -283,7 +283,7 @@
 "crates/photon-oracle/src/error.rs::common_packet_result" = 12
 "crates/photon-oracle/src/frog.rs::airborne_model_result" = 36
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::step" = 12
-"crates/photon-oracle/src/gui/result.rs::gui_result" = 35
+"crates/photon-oracle/src/gui/result.rs::gui_result" = 34
 "crates/photon-oracle/src/gui/result/books.rs::step_key" = 15
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 12
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 17
