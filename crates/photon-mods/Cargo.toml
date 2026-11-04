@@ -1,0 +1,18 @@
+[package]
+name = "photon-mods"
+description = "The mod host: runs a mod's WebAssembly component inside the budgets and capabilities it was granted."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+photon-api.workspace = true
+wasmtime = { version = "50", default-features = false, features = ["component-model", "cranelift", "runtime", "pooling-allocator", "std", "gc-drc"] }
+
+[dev-dependencies]
+wasmtime = { version = "50", default-features = false, features = ["wat"] }
+
+[lints]
+workspace = true

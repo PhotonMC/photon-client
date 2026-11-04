@@ -55,6 +55,7 @@ photon-net = [
 photon-content = ["photon-core", "photon-net"]
 photon-api = []
 photon-update = ["photon-api"]
+photon-mods = ["photon-api"]
 photon-render = ["photon-core", "photon-data", "photon-world", "photon-assets"]
 photon-gui = [
     "photon-core",
