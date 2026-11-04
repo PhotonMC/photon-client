@@ -255,7 +255,7 @@ impl Menu {
         if self.friends_title.ready {
             screen.friends_available();
         }
-        screen.set_directory(self.directory.cards());
+        self.directory.apply(&mut screen, self.gui.lang());
         Screen::Home(screen)
     }
 

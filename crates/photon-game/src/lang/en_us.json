@@ -19,5 +19,6 @@
   "photon.notice.join_failed": "Couldn't join",
   "photon.notice.back_home": "Back to Home",
   "photon.notice.back_servers": "Back to servers",
+  "photon.home.games.unavailable": "Directory unavailable",
   "photon.loading.server": "Server"
 }

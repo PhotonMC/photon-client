@@ -203,6 +203,14 @@ impl HomeScreen {
         self.focus = None;
     }
 
+    /// A directory that could not be read: the placeholder card says so instead of "coming soon".
+    pub fn set_directory_unavailable(&mut self, detail: &str) {
+        if let Some((_, text, None)) = self.entries.get_mut(1) {
+            *text = detail.to_owned();
+            self.cards = self.card_targets();
+        }
+    }
+
     fn sync_friends(&mut self) {
         let ready = self.friends_ready;
         for target in &mut self.nav {
@@ -435,5 +443,17 @@ mod tests {
         assert_eq!(home.clicked(second), Some(HomeAction::Join(1)));
         let first = centre(home.cards[0].rect);
         assert_eq!(home.clicked(first), Some(HomeAction::Servers));
+    }
+
+    #[test]
+    fn an_unavailable_directory_changes_only_the_placeholder_card() {
+        let mut home = screen();
+        home.set_directory_unavailable("Directory unavailable");
+        assert_eq!(home.entries[1].1, "Directory unavailable");
+        assert_eq!(home.entries[1].2, None);
+        home.set_directory(vec![("Arena".to_owned(), "1 online".to_owned())]);
+        home.set_directory_unavailable("Directory unavailable");
+        assert_eq!(home.entries[1].0, "Arena");
+        assert_eq!(home.entries[1].1, "1 online");
     }
 }

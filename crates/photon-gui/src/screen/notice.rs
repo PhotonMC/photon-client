@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn the_panel_and_its_button_stay_on_a_narrow_screen() {
-        // The test font has no glyphs, so the wrapping itself is checked live; the geometry is not.
+        // The test font has no glyphs, so wrapping is not tested here (a live capture showed it).
         for width in [427, 120, 60] {
             let notice = screen((width, 240), "A reason");
             assert!(notice.panel.x >= 0 && notice.panel.x + notice.panel.width <= width);

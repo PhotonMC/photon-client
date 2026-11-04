@@ -4,6 +4,8 @@
 
 use std::sync::mpsc::{Receiver, channel};
 
+use photon_game::text::Lang;
+use photon_gui::screen::home::HomeScreen;
 use photon_net::backend::{Backend, BackendError, DirectoryServer};
 
 use super::{Choice, Menu, Screen};
@@ -15,12 +17,24 @@ use photon_game::text::Component;
 pub(super) struct Directory {
     receiver: Option<Receiver<Result<Vec<DirectoryServer>, BackendError>>>,
     pub(super) servers: Vec<DirectoryServer>,
+    /// The fetch was answered with an error.
+    failed: bool,
 }
 
 impl Directory {
     /// The cards of the servers known so far.
     pub(super) fn cards(&self) -> Vec<(String, String)> {
         self.servers.iter().map(card).collect()
+    }
+
+    /// What is known so far on the home screen: the servers' cards, or the failure on the
+    /// placeholder.
+    pub(super) fn apply(&self, screen: &mut HomeScreen, lang: &Lang) {
+        screen.set_directory(self.cards());
+        if self.failed {
+            let key = "photon.home.games.unavailable";
+            screen.set_directory_unavailable(lang.get(key).unwrap_or(key));
+        }
     }
 
     /// Starts the fetch when a backend is named; nothing otherwise.
@@ -38,6 +52,7 @@ impl Directory {
         Self {
             receiver,
             servers: Vec::new(),
+            failed: false,
         }
     }
 }
@@ -60,16 +75,19 @@ impl Menu {
         self.directory.receiver = None;
         match answer {
             Ok(servers) => self.directory.servers = servers,
-            Err(error) => log::warn!("the directory could not be read: {error:?}"),
+            Err(error) => {
+                log::warn!("the directory could not be read: {error:?}");
+                self.directory.failed = true;
+            }
         }
         self.show_directory();
     }
 
     /// The cards of the servers known so far, on the home screen when it is open.
     pub(super) fn show_directory(&mut self) {
-        let cards = self.directory.cards();
+        let lang = self.gui.lang();
         if let Screen::Home(screen) = &mut self.screen {
-            screen.set_directory(cards);
+            self.directory.apply(screen, lang);
         }
     }
 
