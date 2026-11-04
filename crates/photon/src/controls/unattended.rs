@@ -25,6 +25,8 @@ pub enum ConfirmTarget {
     RemoveFriend(photon_core::binary::Uuid),
     /// A link's question: leave for this address, shown under this name, once the player agrees.
     Game(String, String),
+    /// A link's question: sign the website's browser (this state) in, once the player agrees.
+    SignIn(String),
     /// A link's notice, which only goes away.
     Notice,
 }
@@ -151,7 +153,10 @@ impl Controls {
             }
             (
                 LinkAction::Yes,
-                ConfirmTarget::Pack(_) | ConfirmTarget::Drop(_) | ConfirmTarget::Game(..),
+                ConfirmTarget::Pack(_)
+                | ConfirmTarget::Drop(_)
+                | ConfirmTarget::Game(..)
+                | ConfirmTarget::SignIn(_),
             ) => self.agreed(target, assets),
             (action, ConfirmTarget::FriendsList | ConfirmTarget::RemoveFriend(_)) => {
                 self.answer_friends_confirm(action, target, surface);
@@ -170,6 +175,7 @@ impl Controls {
                 self.join_after = Some((address.clone(), name.clone()));
                 self.leave = true;
             }
+            ConfirmTarget::SignIn(state) => self.game_link.signin_agreed = Some(state.clone()),
             _ => {}
         }
     }

@@ -33,31 +33,28 @@ impl Controls {
         }
         let lang = &assets.lang;
         let text = |key: &str| Component::literal(lang.text(key));
+        let worded = |key: &str, name: &str| Component::literal(lang.text(key).replace("%s", name));
+        let (title, message, buttons, target) = match prompt {
+            InPlay::Ask(address, name) => (
+                text("photon.link.leave_title"),
+                worded("photon.link.leave_ask", &name),
+                Some(("gui.yes", "gui.no")),
+                ConfirmTarget::Game(address, name),
+            ),
+            InPlay::AskSignIn(state, name) => (
+                text("photon.signin.heading"),
+                worded("photon.signin.ask", &name),
+                Some(("photon.signin.confirm", "photon.signin.cancel")),
+                ConfirmTarget::SignIn(state),
+            ),
+            InPlay::Say(title, key) => (text(title), text(key), None, ConfirmTarget::Notice),
+        };
         let (font, size) = (&assets.creative.font, Self::gui_size(surface));
-        let (screen, target) = match prompt {
-            InPlay::Ask(address, name) => {
-                let message = lang.text("photon.link.leave_ask").replace("%s", &name);
-                let screen = ConfirmScreen::new(
-                    font,
-                    lang,
-                    size,
-                    &text("photon.link.leave_title"),
-                    &Component::literal(message),
-                    (&text("gui.yes"), &text("gui.no")),
-                );
-                (screen, ConfirmTarget::Game(address, name))
+        let screen = match buttons {
+            Some((yes, no)) => {
+                ConfirmScreen::new(font, lang, size, &title, &message, (&text(yes), &text(no)))
             }
-            InPlay::Say(key) => {
-                let title = text("photon.notice.join_failed");
-                let screen = ConfirmScreen::notice(
-                    font,
-                    lang,
-                    size,
-                    (&title, &text(key)),
-                    &text("gui.back"),
-                );
-                (screen, ConfirmTarget::Notice)
-            }
+            None => ConfirmScreen::notice(font, lang, size, (&title, &message), &text("gui.back")),
         };
         let screen = screen.with_background(ConfirmBackground::Menu { in_world: true });
         self.link_confirm = Some((screen, target));

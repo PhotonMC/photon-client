@@ -73,6 +73,20 @@ pub(crate) fn take_pending() -> Option<Link> {
     Some(link)
 }
 
+/// The state of the pending sign-in link, once; a launch link stays pending.
+pub(crate) fn take_pending_signin() -> Option<String> {
+    let mut pending = PENDING.lock().ok()?;
+    if !matches!(pending.as_ref(), Some((Link::SignIn(_), _))) {
+        return None;
+    }
+    let (link, arrived) = pending.take()?;
+    drop(pending);
+    match link {
+        Link::SignIn(state) if arrived.elapsed() <= FRESH => Some(state),
+        _ => None,
+    }
+}
+
 /// The launch code of the pending link, once; a sign-in link stays pending for the menu.
 pub(crate) fn take_pending_launch() -> Option<String> {
     let mut pending = PENDING.lock().ok()?;
@@ -92,18 +106,31 @@ pub(crate) fn take_pending_launch() -> Option<String> {
 pub(crate) enum InPlay {
     /// Ask whether to leave for this address, shown under this name.
     Ask(String, String),
-    /// Say why the link did nothing, by translation key.
-    Say(&'static str),
+    /// Say why the link did nothing, under a heading, both by translation key.
+    Say(&'static str, &'static str),
+    /// Ask whether to sign the website's browser (the state) in as this player.
+    AskSignIn(String, String),
 }
+
+/// The heading of what a launch link could not do.
+const JOIN_FAILED: &str = "photon.notice.join_failed";
 
 pub(crate) fn in_play(outcome: Outcome) -> InPlay {
     match outcome {
         Outcome::Join(address, name) => InPlay::Ask(address, name),
-        Outcome::OtherProfile => InPlay::Say("photon.link.other_profile"),
-        Outcome::NotSignedIn => InPlay::Say("photon.link.not_signed_in"),
-        Outcome::Refused => InPlay::Say("photon.link.refused"),
-        Outcome::Unavailable => InPlay::Say("photon.link.unavailable"),
+        Outcome::OtherProfile => InPlay::Say(JOIN_FAILED, "photon.link.other_profile"),
+        Outcome::NotSignedIn => InPlay::Say(JOIN_FAILED, "photon.link.not_signed_in"),
+        Outcome::Refused => InPlay::Say(JOIN_FAILED, "photon.link.refused"),
+        Outcome::Unavailable => InPlay::Say(JOIN_FAILED, "photon.link.unavailable"),
     }
+}
+
+/// Where a sign-in link has got to in a game.
+pub(crate) enum SignInStep {
+    /// Looking up who is signed in, for the question; the browser's state waits.
+    Looking(Receiver<Option<String>>, String),
+    /// The browser's state, signed in and opened on a thread.
+    Working(Receiver<crate::signin_link::Outcome>),
 }
 
 /// What a game holds of a link handed over while it is played.
@@ -111,6 +138,9 @@ pub(crate) fn in_play(outcome: Outcome) -> InPlay {
 pub(crate) struct GameLink {
     pub(crate) task: Option<LinkTask>,
     pub(crate) ready: Option<Outcome>,
+    pub(crate) signin: Option<SignInStep>,
+    /// The state the player agreed to sign in, to be started.
+    pub(crate) signin_agreed: Option<String>,
 }
 
 /// What the answer to a link makes the menu do.
@@ -236,6 +266,16 @@ mod tests {
     }
 
     #[test]
+    fn a_game_takes_a_sign_in_link_and_leaves_a_launch_link() {
+        remember(&format!("photon://launch?code={CODE}")).expect("remembered");
+        assert_eq!(take_pending_signin(), None);
+        assert!(take_pending().is_some());
+        remember(&format!("photon://signin?state={CODE}")).expect("remembered");
+        assert_eq!(take_pending_signin(), Some(CODE.to_owned()));
+        assert_eq!(take_pending_signin(), None);
+    }
+
+    #[test]
     fn a_game_asks_about_a_join_and_says_the_rest() {
         assert_eq!(
             in_play(Outcome::Join("a:1".into(), "A".into())),
@@ -243,7 +283,7 @@ mod tests {
         );
         assert_eq!(
             in_play(Outcome::Refused),
-            InPlay::Say("photon.link.refused")
+            InPlay::Say(JOIN_FAILED, "photon.link.refused")
         );
     }
 

@@ -174,7 +174,10 @@ impl Controls {
             (LinkAction::Copy, ConfirmTarget::Link(url)) => surface.set_clipboard(url),
             (
                 LinkAction::Yes,
-                ConfirmTarget::Pack(_) | ConfirmTarget::Drop(_) | ConfirmTarget::Game(..),
+                ConfirmTarget::Pack(_)
+                | ConfirmTarget::Drop(_)
+                | ConfirmTarget::Game(..)
+                | ConfirmTarget::SignIn(_),
             ) => self.agreed(&target, assets),
             (action, ConfirmTarget::FriendsList | ConfirmTarget::RemoveFriend(_)) => {
                 self.answer_friends_confirm(action, &target, surface);

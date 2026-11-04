@@ -18,6 +18,16 @@ pub(crate) enum Outcome {
     Unavailable,
 }
 
+/// The translation key of what to tell the player of an outcome.
+pub(crate) fn message_key(outcome: &Outcome) -> &'static str {
+    match outcome {
+        Outcome::Opened => "photon.signin.opened",
+        Outcome::NotSignedIn => "photon.signin.not_signed_in",
+        Outcome::NoWebsite => "photon.signin.no_website",
+        Outcome::Unavailable => "photon.signin.unavailable",
+    }
+}
+
 /// The name of the signed-in player, for the question; nothing when nobody is signed in.
 pub(crate) fn signed_in_name() -> Option<String> {
     let (_, account) = crate::profile_login::identity().ok()?;

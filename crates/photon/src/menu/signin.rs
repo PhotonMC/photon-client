@@ -132,12 +132,7 @@ impl Menu {
     }
 
     fn signin_done(&mut self, outcome: Outcome, size: (i32, i32)) {
-        let key = match outcome {
-            Outcome::Opened => "photon.signin.opened",
-            Outcome::NotSignedIn => "photon.signin.not_signed_in",
-            Outcome::NoWebsite => "photon.signin.no_website",
-            Outcome::Unavailable => "photon.signin.unavailable",
-        };
+        let key = signin_link::message_key(&outcome);
         self.notice(key, size);
     }
 
