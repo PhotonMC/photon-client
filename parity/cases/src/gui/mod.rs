@@ -134,7 +134,6 @@ const ORDER: &[Generator] = &[
     language::settings_keys,
     || vec![draft::chat_draft()],
     || vec![locator::name_tags()],
-    || vec![title::title_screen()],
     || vec![loading::loading_overlay()],
     || vec![title::join_multiplayer_screen()],
     || vec![title::server_form()],

@@ -12,6 +12,7 @@ extend-exclude = [
 [default.extend-words]
 # Names the reference spells this way.
 Visiblity = "Visiblity"
+Critera = "Critera"
 Chage = "Chage"
 shoudl = "shoudl"
 texure0 = "texure0"

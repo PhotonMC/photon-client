@@ -13,7 +13,7 @@ use crate::chat::split;
 use photon_render::gui::font::Font;
 use photon_render::gui::{DrawOp, GuiAtlas, GuiFrame};
 
-use super::title::draw_logo;
+use super::logo::draw_logo;
 
 /// The speed of the roll in screen units a frame, for the credits alone and with the poem.
 const CREDITS_SPEED: f32 = 0.75;

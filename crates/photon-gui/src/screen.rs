@@ -22,6 +22,7 @@ pub mod game_mode;
 pub mod game_rules;
 pub mod home;
 pub mod jigsaw;
+pub mod logo;
 pub mod pause;
 pub mod restrictions;
 pub mod server_form;
@@ -32,7 +33,6 @@ pub mod stats;
 pub mod structure_block;
 pub mod test_block;
 pub mod test_instance_block;
-pub mod title;
 pub mod waiting;
 
 pub mod book;

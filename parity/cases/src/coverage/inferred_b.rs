@@ -23,7 +23,6 @@ pub const INFERRED: &[(&str, &str, &str)] = &[
     ("gui", "tab_list", "network/chat/Component, world/scores/criteria/ObjectiveCriteria"),
     ("gui", "test_block_screen", "client/InputType, client/gui/components/CycleButton"),
     ("gui", "test_instance_screen", "client/InputType, client/input/MouseButtonEvent"),
-    ("gui", "title_screen", "client/InputType, client/gui/screens/TitleScreen"),
     ("gui", "titles", "network/chat/Component, client/DeltaTracker"),
     ("gui", "toasts", "resources/Identifier, network/chat/Component"),
     ("gui", "tooltip_lines", "server/packs/PackType, server/RegistryLayer"),

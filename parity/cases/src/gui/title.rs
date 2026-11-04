@@ -7,10 +7,6 @@ use super::gui;
 use super::icons::favicon;
 use crate::ordered::{Ordered, object};
 
-fn frame(ms: i64) -> Value {
-    json!({"do": "frame", "ms": ms})
-}
-
 fn key(name: &str) -> Value {
     json!({"do": "key", "key": name})
 }
@@ -38,77 +34,6 @@ struct View {
 
 fn view() -> View {
     View { size: (427, 240), mouse: (0, 0), steps: vec![], ms: 0 }
-}
-
-/// One title screen scenario.
-struct Title {
-    label: String,
-    view: View,
-    splash: &'static str,
-    hide: bool,
-}
-
-fn title(label: impl Into<String>) -> Title {
-    Title { label: label.into(), view: view(), splash: "Hello world!", hide: false }
-}
-
-impl Title {
-    fn row(self) -> Value {
-        let View { size, mouse, steps, ms } = self.view;
-        json!({
-            "label": self.label, "width": size.0, "height": size.1, "mouse": [mouse.0, mouse.1], "steps": steps,
-            "ms": ms, "splash": self.splash, "hide_splash": self.hide,
-        })
-    }
-}
-
-/// The title screen in screens of several sizes, with the splash at
-/// several moments of its beat, the mouse over each button, the icons'
-/// tooltips and the keyboard focus.
-pub fn title_screen() -> Value {
-    let buttons = [
-        ("singleplayer", (213, 115)),
-        ("multiplayer", (213, 140)),
-        ("realms", (213, 165)),
-        ("friends", (189, 190)),
-        ("language", (213, 190)),
-        ("accessibility", (237, 190)),
-        ("options", (160, 210)),
-        ("quit", (265, 210)),
-        ("copyright", (400, 233)),
-    ];
-    let sized =
-        |label: &str, width: i64, height: i64| Title { view: View { size: (width, height), ..view() }, ..title(label) };
-    let at = |label: String, mouse: (i64, i64), steps: Vec<Value>, ms: i64| Title {
-        view: View { mouse, steps, ms, ..view() },
-        ..title(label)
-    };
-    let stepped = |label: String, steps: Vec<Value>, ms: i64| at(label, (0, 0), steps, ms);
-    let mut rows = vec![
-        title("default"),
-        sized("small", 320, 240),
-        sized("wide", 640, 360),
-        sized("tall", 427, 480),
-        Title { hide: true, ..title("splash-hidden") },
-        Title { splash: "Absolutely no memes!", ..title("long-splash") },
-        stepped("beat-quarter".into(), vec![], 250),
-        stepped("beat-half".into(), vec![], 500),
-        stepped("beat-later".into(), vec![], 12_345),
-    ];
-    rows.extend(buttons.iter().map(|(name, point)| at(format!("hover-{name}"), *point, vec![], 0)));
-    for name in ["friends", "language", "accessibility"] {
-        let point = buttons.iter().find(|(button, _)| *button == name).map_or((0, 0), |(_, point)| *point);
-        rows.push(at(format!("tip-{name}"), point, vec![frame(0)], 10));
-    }
-    rows.extend([1, 4, 9].map(|count| stepped(format!("tab-{count}"), keys("tab", count), 0)));
-    rows.extend([
-        stepped("tab-icon-tip".into(), [keys("tab", 5), vec![frame(0)]].concat(), 10),
-        stepped("shift-tab".into(), keys("shift+tab", 2), 0),
-        stepped("arrow-down".into(), keys("down", 3), 0),
-        stepped("arrow-icons".into(), [keys("down", 4), vec![key("right")]].concat(), 0),
-        stepped("arrow-to-quit".into(), [keys("down", 5), vec![key("right")]].concat(), 0),
-    ]);
-    gui("title-screen", "title_screen", rows.into_iter().map(Title::row).collect())
 }
 
 /// One server list scenario.

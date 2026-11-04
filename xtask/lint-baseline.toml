@@ -469,7 +469,7 @@
 "crates/photon-world/src/world/entities/events.rs::ClientWorld::apply_entity_event" = 30
 "crates/photon-world/src/world/entities/motion.rs::ClientWorld::apply_entity_rotation" = 13
 "crates/photon-world/src/world/entities/state.rs::ClientWorld::apply_entity_metadata" = 76
-"crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 12
+"crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 11
 "crates/photon/examples/bench.rs::world" = 14
 "crates/photon/src/controls.rs::menu_key" = 14
 "crates/photon/src/controls/book.rs::Controls::book_event" = 13
@@ -619,7 +619,6 @@
 "crates/photon-gui/src/screen/social.rs::layout" = 70
 "crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw" = 86
 "crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw_entry" = 96
-"crates/photon-gui/src/screen/title.rs::TitleScreen::new" = 104
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::draw_formatted" = 90
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::key_pressed" = 64
 "crates/photon-gui/src/widgets/multiline.rs::MultilineTextField::key_pressed" = 86

@@ -165,7 +165,7 @@ fn screen_case(
 
 /// The operations whose rows carry the sounds the interface asked for (the Java oracle writes
 /// them after the row's steps).
-const SOUND_OPERATIONS: [&str; 40] = [
+const SOUND_OPERATIONS: [&str; 39] = [
     "container_screen",
     "death_screen",
     "disconnected_screen",
@@ -183,7 +183,6 @@ const SOUND_OPERATIONS: [&str; 40] = [
     "book_edit_screen",
     "book_sign_screen",
     "book_view",
-    "title_screen",
     "join_multiplayer_screen",
     "server_form",
     "connect_screen",
@@ -257,7 +256,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 "titles" => titles_case(&mut ctx, row)?,
                 "sidebar" => sidebar_case(&mut ctx, row)?,
                 "pause_screen" => pause_screen_case(&mut ctx, row)?,
-                "title_screen" | "loading_overlay" => title_case(&mut ctx, row, operation)?,
+                "loading_overlay" => loading::loading_overlay_case(&mut ctx, row)?,
                 "join_multiplayer_screen" => join_multiplayer_screen_case(&mut ctx, row)?,
                 "server_form" => server_form_case(&mut ctx, row)?,
                 "connect_screen" => connect_screen_case(&mut ctx, row)?,
