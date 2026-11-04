@@ -85,7 +85,7 @@ pub(crate) fn run(state: &str, shown: Option<&str>) -> Outcome {
 
 /// Opens an address in the default browser, with no shell. `PHOTON_OPEN_WITH` names another
 /// program to hand it to (development only: tests read the address from it).
-fn open(url: &str) -> bool {
+pub(crate) fn open(url: &str) -> bool {
     let program = std::env::var("PHOTON_OPEN_WITH").unwrap_or_else(|_| default_opener().to_owned());
     Command::new(program)
         .arg(url)

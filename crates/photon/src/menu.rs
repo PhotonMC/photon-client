@@ -23,6 +23,7 @@ use self::input::confirm_event;
 use crate::gui::Gui;
 use crate::play::{self, Client, Exit, JoinTask, Target};
 
+mod account;
 mod audio;
 mod credits;
 mod directory;
@@ -69,6 +70,10 @@ enum Screen {
     /// The question of a website sign-in link, with the browser's state.
     /// A question about a website sign-in: the browser's state and the name it names.
     Ask(NoticeScreen, (String, String)),
+    /// The question of a player who is not signed in: sign in now, or not.
+    Offer(NoticeScreen),
+    /// The code to type for a Microsoft sign-in, and the address to type it at.
+    Code(NoticeScreen),
     /// The credits of the title screen (`WinScreen` without the poem), and when it last drew.
     Credits(CreditsScreen, Instant),
     /// The options, language or accessibility screens of the title, which the host draws.
@@ -206,6 +211,8 @@ struct Menu {
     link: Option<crate::launch_link::LinkTask>,
     /// The website sign-in link the game was started with, as far as it has got.
     signin: Option<signin::SignInFlow>,
+    /// A Microsoft sign-in the player started here.
+    account: Option<account::AccountSignIn>,
     /// Whether the join going on began on the home screen, which a failure returns to.
     joined_from_home: bool,
     /// What those screens are made with.
@@ -272,6 +279,7 @@ impl Menu {
             directory: directory::Directory::look_up(),
             link,
             signin,
+            account: None,
             joined_from_home: false,
             options,
         };
@@ -447,6 +455,7 @@ impl Menu {
             self.link_arrived(client);
             self.link_polled(size);
             self.signin_polled(size);
+            self.account_polled(size);
             self.friends_ticked(client);
             self.fit_screen(size);
             self.spin_panorama(client);
@@ -510,6 +519,10 @@ impl Menu {
             }
             Screen::Failed(..) | Screen::Ask(..) => {
                 self.notice_event(event, size);
+                return Ok(None);
+            }
+            Screen::Offer(..) | Screen::Code(..) => {
+                self.account_event(event, size);
                 return Ok(None);
             }
             Screen::Confirm(screen, index) => {

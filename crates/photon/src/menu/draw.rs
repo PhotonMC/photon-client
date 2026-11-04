@@ -29,7 +29,10 @@ pub(super) fn draw_screen(
             draw_connecting(screen, task, question, (frame, atlas, font), (lang, mouse));
         }
         Screen::Linking(screen) => screen.draw(frame, atlas, font, mouse),
-        Screen::Failed(screen, _) | Screen::Ask(screen, _) => {
+        Screen::Failed(screen, _)
+        | Screen::Ask(screen, _)
+        | Screen::Offer(screen)
+        | Screen::Code(screen) => {
             screen.draw(frame, atlas, font, mouse);
         }
         Screen::Settings => draw_settings(host, (frame, atlas, font), (lang, size)),

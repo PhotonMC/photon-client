@@ -163,7 +163,7 @@ impl Menu {
                 return;
             }
             Outcome::OtherProfile => "photon.link.other_profile",
-            Outcome::NotSignedIn => "photon.link.not_signed_in",
+            Outcome::NotSignedIn => return self.offer_sign_in("photon.link.not_signed_in", size),
             Outcome::Refused => "photon.link.refused",
             Outcome::Unavailable => "photon.link.unavailable",
         };

@@ -77,9 +77,19 @@ const RESUMED_FOR: std::time::Duration = std::time::Duration::from_secs(30 * 60)
 /// resume as it starts, so the join or sign-in that follows does not wait for the services (the
 /// reference joins with the session it already holds). Callers that arrive during a resume wait
 /// for it.
+type Resumed = (std::time::Instant, Option<Account>);
+static KEPT: std::sync::Mutex<Option<Resumed>> = std::sync::Mutex::new(None);
+
+/// A player who has just signed in is the signed-in player: the next join uses this session
+/// instead of resuming the stored one.
+pub(crate) fn keep(account: Account) {
+    let mut kept = KEPT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    *kept = Some((std::time::Instant::now(), Some(account)));
+}
+
 fn stored() -> Result<Option<Account>, String> {
-    type Resumed = (std::time::Instant, Option<Account>);
-    static KEPT: std::sync::Mutex<Option<Resumed>> = std::sync::Mutex::new(None);
     let mut kept = KEPT
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);

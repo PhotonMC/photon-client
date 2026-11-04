@@ -97,7 +97,7 @@ impl Menu {
         match self.signin.take() {
             Some(SignInFlow::Looking(receiver, state)) => match receiver.try_recv() {
                 Ok(Some(name)) => self.ask_to_sign_in(&name, state, size),
-                Ok(None) => self.notice("photon.signin.not_signed_in", size),
+                Ok(None) => self.offer_sign_in("photon.signin.not_signed_in", size),
                 Err(_) => self.signin = Some(SignInFlow::Looking(receiver, state)),
             },
             Some(SignInFlow::Working(receiver)) => match receiver.try_recv() {
@@ -128,6 +128,7 @@ impl Menu {
     /// The joining screen while a link's task is out, so the home screen never shows first.
     pub(super) fn show_linking(&mut self, size: (i32, i32)) {
         let key = match (&self.link, &self.signin) {
+            _ if self.account.is_some() => "photon.loading.contacting",
             (Some(_), _) => "photon.loading.joining",
             (None, Some(SignInFlow::Looking(..))) => "photon.loading.checking_signin",
             (None, Some(SignInFlow::Working(_))) => "photon.loading.signing_in",
@@ -156,6 +157,7 @@ impl Menu {
         if leave {
             self.link = None;
             self.signin = None;
+            self.cancel_account();
             self.screen = self.title(size);
         }
     }
