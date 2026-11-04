@@ -13,6 +13,13 @@ use photon_net::backend::{BackendError, Launch, is_same_profile};
 /// How long a link is worth keeping: its launch code lasts a minute at the backend.
 const FRESH: std::time::Duration = std::time::Duration::from_secs(60);
 
+/// Tests that use the pending slot take turns, since it is one for the whole process.
+#[cfg(test)]
+pub(crate) static SLOT_TESTS: Mutex<()> = Mutex::new(());
+
+/// A launch link a game ended holding: being spent, or spent to something the menu must say.
+static HANDED_ON: Mutex<Option<LinkTask>> = Mutex::new(None);
+
 static PENDING: Mutex<Option<(Link, std::time::Instant)>> = Mutex::new(None);
 
 /// The length of the codes and states: 16 random bytes in hex.
@@ -97,6 +104,20 @@ pub(crate) fn requeue_signin(state: String) {
     }
 }
 
+/// Keeps `task` for whoever takes it next, unless one is kept already.
+pub(crate) fn hand_on(task: LinkTask) {
+    if let Ok(mut kept) = HANDED_ON.lock()
+        && kept.is_none()
+    {
+        *kept = Some(task);
+    }
+}
+
+/// The launch link a game handed on, once: the menu or the next game takes it.
+pub(crate) fn take_handed_on() -> Option<LinkTask> {
+    HANDED_ON.lock().ok()?.take()
+}
+
 /// The launch code of the pending link, once; a sign-in link stays pending for the menu.
 pub(crate) fn take_pending_launch() -> Option<String> {
     let mut pending = PENDING.lock().ok()?;
@@ -176,6 +197,15 @@ impl GameLink {
         asked.or(held).or(ready).or(looking)
     }
 
+    /// What a launch link still has to say when the game ends, as a task the menu polls: the one
+    /// being spent, else a decision that is not a join (a join is joined, see `take_ready_join`).
+    pub(crate) fn take_launch_task(&mut self) -> Option<LinkTask> {
+        let spent = self
+            .ready
+            .take_if(|outcome| !matches!(outcome, Outcome::Join(..)));
+        self.task.take().or(spent.map(LinkTask::decided))
+    }
+
     /// The join a spent code was waiting to ask about, taken out of it.
     pub(crate) fn take_ready_join(&mut self) -> Option<(String, String)> {
         match self.ready.take() {
@@ -241,6 +271,13 @@ impl LinkTask {
         Self { receiver }
     }
 
+    /// A task whose decision is already made, to be handed on as it is.
+    pub(crate) fn decided(outcome: Outcome) -> Self {
+        let (sender, receiver) = channel();
+        let _ = sender.send(outcome);
+        Self { receiver }
+    }
+
     /// The decision, when it has come.
     pub(crate) fn poll(&self) -> Option<Outcome> {
         self.receiver.try_recv().ok()
@@ -271,6 +308,23 @@ mod tests {
         // A running sign-in finishes on its thread; only a notice would be lost.
         held.signin = Some(SignInStep::Working(channel().1));
         assert_eq!(held.take_signin_state(None), None);
+    }
+
+    #[test]
+    fn a_game_hands_on_the_launch_task_or_a_decision_that_is_not_a_join() {
+        let mut held = GameLink::default();
+        assert!(held.take_launch_task().is_none());
+        held.ready = Some(Outcome::Join("h:1".to_owned(), "G".to_owned()));
+        assert!(held.take_launch_task().is_none());
+        assert!(held.ready.is_some());
+        held.ready = Some(Outcome::Refused);
+        let task = held.take_launch_task().expect("task");
+        assert_eq!(task.poll(), Some(Outcome::Refused));
+        assert!(held.ready.is_none());
+        held.task = Some(LinkTask::decided(Outcome::Unavailable));
+        held.ready = Some(Outcome::NotSignedIn);
+        let task = held.take_launch_task().expect("task");
+        assert_eq!(task.poll(), Some(Outcome::Unavailable));
     }
 
     #[test]
@@ -334,6 +388,9 @@ mod tests {
 
     #[test]
     fn a_game_takes_a_launch_link_and_leaves_a_sign_in_link() {
+        let _turn = SLOT_TESTS
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         remember(&format!("photon://signin?state={CODE}")).expect("remembered");
         assert_eq!(take_pending_launch(), None);
         assert!(take_pending().is_some());
@@ -344,6 +401,9 @@ mod tests {
 
     #[test]
     fn a_game_takes_a_sign_in_link_and_leaves_a_launch_link() {
+        let _turn = SLOT_TESTS
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         remember(&format!("photon://launch?code={CODE}")).expect("remembered");
         assert_eq!(take_pending_signin(), None);
         assert!(take_pending().is_some());

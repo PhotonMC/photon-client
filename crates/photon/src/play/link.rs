@@ -21,11 +21,10 @@ impl Play {
     /// asked about. The answer waits for the player to close what is open (a spent code lasts).
     fn launch_link_frame(&mut self) {
         let held = &mut self.controls.game_link;
-        if held.task.is_none()
-            && held.ready.is_none()
-            && let Some(code) = launch_link::take_pending_launch()
-        {
-            held.task = Some(LinkTask::start(code));
+        if held.task.is_none() && held.ready.is_none() {
+            // What the game before this one handed on comes first, then a link that arrived.
+            held.task = launch_link::take_handed_on()
+                .or_else(|| launch_link::take_pending_launch().map(LinkTask::start));
         }
         if let Some(outcome) = held.task.as_ref().and_then(LinkTask::poll) {
             held.task = None;

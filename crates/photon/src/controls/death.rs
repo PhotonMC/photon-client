@@ -102,6 +102,9 @@ impl Controls {
         if let Some(state) = self.game_link.take_signin_state(asked.as_ref()) {
             crate::launch_link::requeue_signin(state);
         }
+        if let Some(task) = self.game_link.take_launch_task() {
+            crate::launch_link::hand_on(task);
+        }
         let waiting = self.game_link.take_ready_join();
         let kept = asked.and_then(kept_join).or(waiting);
         self.join_after = self.join_after.take().or(kept);

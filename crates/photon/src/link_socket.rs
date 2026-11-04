@@ -141,6 +141,9 @@ mod imp {
 
         #[test]
         fn a_launch_link_is_answered_ok_and_kept() {
+            let _turn = crate::launch_link::SLOT_TESTS
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             let zeros = "0".repeat(32);
             assert_eq!(
                 asked(format!("photon://launch?code={zeros}\n").as_bytes()),

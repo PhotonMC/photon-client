@@ -35,6 +35,9 @@ impl SignInFlow {
 /// The link the game was started with, as far as the menu takes it: a launch link starts spending
 /// its code, a sign-in link starts looking up who is signed in.
 pub(super) fn pending_link() -> (Option<LinkTask>, Option<SignInFlow>) {
+    if let Some(task) = launch_link::take_handed_on() {
+        return (Some(task), None);
+    }
     match launch_link::take_pending() {
         Some(Link::Launch(code)) => (Some(LinkTask::start(code)), None),
         Some(Link::SignIn(state)) => (None, Some(SignInFlow::look_up(state))),
