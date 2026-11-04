@@ -76,6 +76,24 @@ fn unloading_a_mod_takes_its_handlers_with_it() {
     drop(loaded);
     assert_eq!(ticks.remove_owner(owner), 1);
     assert!(ticks.is_empty());
-    // The slot is free again: a new mod loads into the pool.
+}
+
+#[test]
+fn a_dropped_mod_gives_its_slot_back() {
+    let host = Host::with_slots(1).unwrap();
+    let first = host.load(MOD, EMPTY.as_bytes(), &[], 1000).unwrap();
+    assert!(host.load(MOD, EMPTY.as_bytes(), &[], 1000).is_err());
+    drop(first);
     assert!(host.load(MOD, EMPTY.as_bytes(), &[], 1000).is_ok());
+}
+
+#[test]
+fn code_that_runs_while_loading_is_not_cut_off_at_once() {
+    let host = Host::new().unwrap();
+    let busy = r#"(component
+  (core module $m (func $f (local i32) (loop (local.set 0 (i32.add (local.get 0) (i32.const 1))) (br_if 0 (i32.lt_u (local.get 0) (i32.const 1000000))))) (start $f) (func (export "tick")))
+  (core instance $i (instantiate $m))
+  (func (export "tick") (canon lift (core func $i "tick"))))"#;
+    std::thread::sleep(Duration::from_millis(20));
+    assert!(host.load(MOD, busy.as_bytes(), &[], 1000).is_ok());
 }

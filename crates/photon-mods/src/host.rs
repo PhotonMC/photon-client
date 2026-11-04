@@ -45,14 +45,19 @@ pub struct Host {
 
 impl Host {
     pub fn new() -> Result<Self, HostError> {
+        Self::with_slots(MOD_SLOTS)
+    }
+
+    /// A host that keeps at most `slots` mods at once.
+    pub(crate) fn with_slots(slots: u32) -> Result<Self, HostError> {
         let mut config = Config::new();
         config.wasm_component_model(true);
         config.epoch_interruption(true);
         let mut pool = PoolingAllocationConfig::default();
-        pool.total_component_instances(MOD_SLOTS);
-        pool.total_core_instances(MOD_SLOTS);
-        pool.total_memories(MOD_SLOTS);
-        pool.total_tables(MOD_SLOTS);
+        pool.total_component_instances(slots);
+        pool.total_core_instances(slots);
+        pool.total_memories(slots);
+        pool.total_tables(slots);
         pool.max_memory_size(MEMORY_BUDGET);
         config.allocation_strategy(InstanceAllocationStrategy::Pooling(pool));
         let engine = Engine::new(&config).map_err(|e| HostError::Engine(e.to_string()))?;
@@ -95,6 +100,8 @@ impl Host {
                 .map_err(load)?;
         }
         let mut store = Store::new(&self.engine, ());
+        // The clock is already running: a start function gets the same allowance as a tick.
+        store.set_epoch_deadline(ticks_allowed);
         let instance = linker.instantiate(&mut store, &component).map_err(load)?;
         let tick = instance
             .get_typed_func::<(), ()>(&mut store, "tick")
