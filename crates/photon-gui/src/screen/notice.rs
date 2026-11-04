@@ -15,6 +15,13 @@ const PANEL_WIDTH: i32 = 260;
 const BUTTON: (i32, i32) = (150, 20);
 const PAD: i32 = 10;
 
+/// What a question's buttons answer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Answer {
+    Yes,
+    Back,
+}
+
 pub struct NoticeScreen {
     size: (i32, i32),
     heading: Vec<Run>,
@@ -23,8 +30,9 @@ pub struct NoticeScreen {
     panel: Rect,
     button: Rect,
     focused: bool,
-    /// What it was made for, to make it again for another size.
-    made_for: (Component, Component, Component),
+    /// The second button of a question, and whether it has the focus (the first is the "no").
+    yes: Option<(Vec<Run>, Rect)>,
+    yes_focused: bool,
 }
 
 impl NoticeScreen {
@@ -63,14 +71,65 @@ impl NoticeScreen {
             panel,
             button,
             focused: false,
-            made_for: (heading.clone(), reason.clone(), back.clone()),
+            yes: None,
+            yes_focused: false,
         }
     }
 
-    /// The screen again for a screen of another size.
-    pub fn resized(&self, font: &Font, lang: &Lang, size: (i32, i32)) -> Self {
-        let (heading, reason, back) = &self.made_for;
-        Self::new(font, lang, size, (heading, reason, back))
+    /// A question: the same screen with a second button. The first button, which Escape and a
+    /// stray Enter choose, says no.
+    pub fn asking(
+        font: &Font,
+        lang: &Lang,
+        size: (i32, i32),
+        (heading, reason, no, yes): (&Component, &Component, &Component, &Component),
+    ) -> Self {
+        let mut screen = Self::new(font, lang, size, (heading, reason, no));
+        let width = (screen.panel.width - 3 * PAD) / 2;
+        let y = screen.button.y;
+        screen.button = Rect {
+            x: screen.panel.x + PAD,
+            width,
+            ..screen.button
+        };
+        let rect = Rect {
+            x: screen.panel.x + PAD + width + PAD,
+            y,
+            width,
+            height: BUTTON.1,
+        };
+        screen.yes = Some((lang.runs(yes, &Style::default()), rect));
+        screen.focused = true;
+        screen
+    }
+
+    /// A press at the mouse of a question: which button it was on.
+    pub fn answer_clicked(&self, mouse: (i32, i32)) -> Option<Answer> {
+        let answer = match &self.yes {
+            Some((_, rect)) if inside(*rect, mouse) => Answer::Yes,
+            _ if inside(self.button, mouse) => Answer::Back,
+            _ => return None,
+        };
+        crate::ui_sound::play_down_sound();
+        Some(answer)
+    }
+
+    /// Enter or Space on a question: the focused button, which starts as the "no".
+    pub fn answer_pressed(&self) -> Option<Answer> {
+        crate::ui_sound::play_down_sound();
+        Some(if self.yes_focused {
+            Answer::Yes
+        } else {
+            Answer::Back
+        })
+    }
+
+    /// Tab on a question moves the focus to the other button.
+    pub fn cycle(&mut self) {
+        if self.yes.is_some() {
+            self.yes_focused = !self.yes_focused;
+        }
+        self.focused = true;
     }
 
     pub fn size(&self) -> (i32, i32) {
@@ -112,13 +171,23 @@ impl NoticeScreen {
                 .styled_text(atlas, font, line, (centred(line), y), skin.muted, false);
             y += 9;
         }
-        let state = if inside(self.button, mouse) || self.focused {
-            State::Hover
-        } else {
-            State::Normal
+        let lit = |rect: Rect, focused: bool| {
+            if inside(rect, mouse) || focused {
+                State::Hover
+            } else {
+                State::Normal
+            }
         };
-        let label: String = self.label.iter().map(|run| run.text.as_str()).collect();
-        painter.button(self.button, &label, state);
+        let text = |runs: &[Run]| runs.iter().map(|run| run.text.as_str()).collect::<String>();
+        let back_focused = self.focused && !self.yes_focused;
+        painter.button(
+            self.button,
+            &text(&self.label),
+            lit(self.button, back_focused),
+        );
+        if let Some((label, rect)) = &self.yes {
+            painter.button(*rect, &text(label), lit(*rect, self.yes_focused));
+        }
     }
 
     /// A press of the primary button: whether it was on the button.
@@ -191,5 +260,42 @@ mod tests {
             assert!(inside(notice.panel, middle(notice.button)));
             assert!(notice.button.width <= notice.panel.width);
         }
+    }
+
+    fn question() -> NoticeScreen {
+        let (font, lang) = (Font::default(), Lang::default());
+        NoticeScreen::asking(
+            &font,
+            &lang,
+            (427, 240),
+            (
+                &Component::literal("Sign in?"),
+                &Component::literal("As Miner"),
+                &Component::literal("Cancel"),
+                &Component::literal("Sign in"),
+            ),
+        )
+    }
+
+    #[test]
+    fn a_question_answers_by_the_button_clicked() {
+        let ask = question();
+        let yes = ask.yes.as_ref().expect("yes").1;
+        assert_eq!(ask.answer_clicked(middle(yes)), Some(Answer::Yes));
+        assert_eq!(ask.answer_clicked(middle(ask.button)), Some(Answer::Back));
+        assert_eq!(ask.answer_clicked((0, 0)), None);
+        assert!(yes.x >= ask.button.x + ask.button.width);
+        assert!(yes.x + yes.width <= ask.panel.x + ask.panel.width);
+    }
+
+    #[test]
+    fn a_stray_enter_on_a_question_says_no_and_only_tab_then_enter_says_yes() {
+        let mut ask = question();
+        assert_eq!(ask.answer_pressed(), Some(Answer::Back));
+        assert!(ask.escape());
+        ask.cycle();
+        assert_eq!(ask.answer_pressed(), Some(Answer::Yes));
+        ask.cycle();
+        assert_eq!(ask.answer_pressed(), Some(Answer::Back));
     }
 }

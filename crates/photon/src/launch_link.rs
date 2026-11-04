@@ -8,27 +8,60 @@ use std::sync::mpsc::{Receiver, channel};
 use photon_core::binary::Uuid;
 use photon_net::backend::{Backend, BackendError, Launch, is_same_profile};
 
-/// The code of the link the game was started with, until the menu takes it.
-static PENDING: Mutex<Option<String>> = Mutex::new(None);
+/// The link the game was started with, until the menu takes it.
+static PENDING: Mutex<Option<Link>> = Mutex::new(None);
 
-/// The length of the codes the backend issues: 16 random bytes in hex.
+/// The length of the codes and states: 16 random bytes in hex.
 const CODE_LENGTH: usize = 32;
 
-/// The launch code of a link, or nothing when the link is anything else: another scheme or host,
-/// more or fewer parameters, a malformed code. A `token` parameter is never accepted.
-pub(crate) fn parse(link: &str) -> Option<String> {
-    let query = link.strip_prefix("photon://launch?")?;
-    let code = query.strip_prefix("code=")?;
+/// What a link asks of the game. Neither form carries a token; the sign-in one carries only the
+/// state a browser started with.
+#[derive(PartialEq, Eq, Clone)]
+pub(crate) enum Link {
+    /// Spend this launch code and join.
+    Launch(String),
+    /// Sign the website's browser in; the state is the browser's.
+    SignIn(String),
+}
+
+// The code and the state are kept out of `Debug` output, and so out of logs.
+impl std::fmt::Debug for Link {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::Launch(_) => "Link::Launch(..)",
+            Self::SignIn(_) => "Link::SignIn(..)",
+        })
+    }
+}
+
+/// The link's one parameter, when it is `<name>=` and 32 hex digits and nothing else.
+fn hex_parameter(query: &str, name: &str) -> Option<String> {
+    let value = query.strip_prefix(name)?.strip_prefix('=')?;
     let well_formed =
-        code.len() == CODE_LENGTH && code.bytes().all(|byte| byte.is_ascii_hexdigit());
-    well_formed.then(|| code.to_ascii_lowercase())
+        value.len() == CODE_LENGTH && value.bytes().all(|byte| byte.is_ascii_hexdigit());
+    well_formed.then(|| value.to_ascii_lowercase())
+}
+
+/// The link, or nothing when it is anything else: another scheme or host, more or fewer
+/// parameters, a malformed value. A `token` parameter is never accepted.
+pub(crate) fn parse(link: &str) -> Option<Link> {
+    if let Some(query) = link.strip_prefix("photon://launch?") {
+        return hex_parameter(query, "code").map(Link::Launch);
+    }
+    let query = link.strip_prefix("photon://signin?")?;
+    hex_parameter(query, "state").map(Link::SignIn)
 }
 
 /// Remembers the link the game was started with; a link that is not one is an error.
 pub(crate) fn remember(link: &str) -> Result<(), String> {
-    let code = parse(link).ok_or("that is not a Photon launch link")?;
-    *PENDING.lock().map_err(|_| "the link could not be kept")? = Some(code);
+    let link = parse(link).ok_or("that is not a Photon link")?;
+    *PENDING.lock().map_err(|_| "the link could not be kept")? = Some(link);
     Ok(())
+}
+
+/// The link the game was started with, once: the menu takes it and nothing else sees it again.
+pub(crate) fn take_pending() -> Option<Link> {
+    PENDING.lock().ok()?.take()
 }
 
 /// What the answer to a link makes the menu do.
@@ -63,10 +96,8 @@ pub(crate) struct LinkTask {
 }
 
 impl LinkTask {
-    /// Takes the remembered link and starts spending its code; nothing when there is none. The
-    /// code is single-use, so it leaves the process with this call.
-    pub(crate) fn start() -> Option<Self> {
-        let code = PENDING.lock().ok()?.take()?;
+    /// Starts spending a launch code. The code is single-use.
+    pub(crate) fn start(code: String) -> Self {
         let (sender, receiver) = channel();
         let _ = std::thread::Builder::new()
             .name("Launch Link".to_owned())
@@ -80,7 +111,7 @@ impl LinkTask {
                     .map(|account| account.profile_id);
                 let _ = sender.send(decide(answer, signed_in));
             });
-        Some(Self { receiver })
+        Self { receiver }
     }
 
     /// The decision, when it has come.
@@ -103,28 +134,45 @@ mod tests {
     }
 
     #[test]
-    fn only_a_launch_link_with_a_well_formed_code_parses() {
+    fn only_a_launch_or_sign_in_link_with_one_well_formed_value_parses() {
         assert_eq!(
             parse(&format!("photon://launch?code={CODE}")),
-            Some(CODE.to_owned())
+            Some(Link::Launch(CODE.to_owned()))
         );
         let upper = CODE.to_ascii_uppercase();
         assert_eq!(
             parse(&format!("photon://launch?code={upper}")),
-            Some(CODE.to_owned())
+            Some(Link::Launch(CODE.to_owned()))
+        );
+        assert_eq!(
+            parse(&format!("photon://signin?state={CODE}")),
+            Some(Link::SignIn(CODE.to_owned()))
         );
         for link in [
             "".to_owned(),
             "https://launch?code=".to_owned() + CODE,
             "photon://other?code=".to_owned() + CODE,
             "photon://launch?token=".to_owned() + CODE,
+            "photon://signin?token=".to_owned() + CODE,
+            // A name belongs to its own host: a state cannot launch, a code cannot sign in.
+            "photon://launch?state=".to_owned() + CODE,
+            "photon://signin?code=".to_owned() + CODE,
             format!("photon://launch?code={CODE}&token=abc"),
             format!("photon://launch?token=abc&code={CODE}"),
+            format!("photon://signin?state={CODE}&code={CODE}"),
+            format!("photon://signin?code={CODE}&state={CODE}"),
             "photon://launch?code=abc".to_owned(),
-            format!("photon://launch?code={}g", &CODE[..31]),
+            "photon://signin?state=abc".to_owned(),
+            format!("photon://signin?state={}g", &CODE[..31]),
         ] {
             assert_eq!(parse(&link), None, "{link}");
         }
+    }
+
+    #[test]
+    fn a_link_does_not_show_its_value_in_debug_output() {
+        let shown = format!("{:?}", Link::SignIn(CODE.to_owned()));
+        assert!(!shown.contains(&CODE[..8]), "{shown}");
     }
 
     #[test]

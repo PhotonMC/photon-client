@@ -1,6 +1,7 @@
 //! The events the title, the failed join and the question take.
 
 use super::*;
+use photon_gui::screen::notice::Answer;
 
 /// An event for the home screen: what the press chose.
 pub(super) fn title_event(
@@ -47,6 +48,29 @@ pub(super) fn failed_event(
         }
         WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
         _ => false,
+    }
+}
+
+/// An event for a website sign-in's question: the answer, if one was given. Escape and a stray
+/// Enter say no.
+pub(super) fn ask_event(
+    screen: &mut NoticeScreen,
+    event: WindowEvent,
+    mouse: (i32, i32),
+) -> Option<Answer> {
+    match event {
+        WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => {
+            screen.answer_clicked(mouse)
+        }
+        WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, _) => {
+            screen.cycle();
+            None
+        }
+        WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
+            screen.answer_pressed()
+        }
+        WindowEvent::Key(Key::Escape, _, Action::Press, _) => Some(Answer::Back),
+        _ => None,
     }
 }
 

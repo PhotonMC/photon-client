@@ -20,7 +20,7 @@ use photon_gui::screen::servers::{JoinMultiplayerScreen, ServersAction};
 use photon_net::connection::PlaySession;
 
 use self::draw::draw_screen;
-use self::input::{confirm_event, failed_event};
+use self::input::confirm_event;
 use crate::gui::Gui;
 use crate::play::{self, Client, Exit, JoinTask, Target};
 
@@ -36,6 +36,7 @@ mod pings;
 pub(crate) use pings::resolve_named;
 mod servers;
 mod settings;
+mod signin;
 mod startup;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -64,6 +65,8 @@ enum Screen {
     Connecting(LoadingScreen, JoinTask, Option<ConfirmScreen>),
     /// A join that failed, and whether the way back is the home screen, not the server list.
     Failed(NoticeScreen, bool),
+    /// The question of a website sign-in link, with the browser's state.
+    Ask(NoticeScreen, String),
     /// The credits of the title screen (`WinScreen` without the poem), and when it last drew.
     Credits(CreditsScreen, Instant),
     /// The options, language or accessibility screens of the title, which the host draws.
@@ -173,6 +176,8 @@ struct Menu {
     directory: directory::Directory,
     /// The launch link the game was started with, while its code is being spent.
     link: Option<crate::launch_link::LinkTask>,
+    /// The website sign-in link the game was started with, as far as it has got.
+    signin: Option<signin::SignInFlow>,
     /// Whether the join going on began on the home screen, which a failure returns to.
     joined_from_home: bool,
     /// What those screens are made with.
@@ -216,6 +221,7 @@ impl Menu {
                     &root.to_string_lossy(),
                 )?))?;
         }
+        let (link, signin) = signin::pending_link();
         let game_directory = crate::controls::game_directory();
         let screen = home_screen(gui.text_assets().0, gui.lang(), gui_size(client));
         let (sound, music) = audio::take(client, root, &options);
@@ -239,7 +245,8 @@ impl Menu {
             loading: None,
             friends_title: friends::TitleFriends::look_up(),
             directory: directory::Directory::look_up(),
-            link: crate::launch_link::LinkTask::start(),
+            link,
+            signin,
             joined_from_home: false,
             options,
         })
@@ -343,25 +350,27 @@ impl Menu {
     /// A join that failed: the notice screen, back to the home screen for a join that did not
     /// start in the server list.
     fn join_failed(&mut self, reason: &Component, size: (i32, i32), home: bool) {
+        let heading = Component::translatable("photon.notice.join_failed");
+        self.notice_screen(&heading, reason, size, home);
+    }
+
+    /// The notice screen with a way back to the home screen or the server list.
+    fn notice_screen(
+        &mut self,
+        heading: &Component,
+        reason: &Component,
+        size: (i32, i32),
+        home: bool,
+    ) {
         let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
         let back = if home {
             "photon.notice.back_home"
         } else {
             "photon.notice.back_servers"
         };
-        self.screen = Screen::Failed(
-            NoticeScreen::new(
-                font,
-                lang,
-                size,
-                (
-                    &Component::translatable("photon.notice.join_failed"),
-                    reason,
-                    &Component::translatable(back),
-                ),
-            ),
-            home,
-        );
+        let back = Component::translatable(back);
+        let screen = NoticeScreen::new(font, lang, size, (heading, reason, &back));
+        self.screen = Screen::Failed(screen, home);
     }
 
     fn run(&mut self, client: &mut Client) -> Result<Choice> {
@@ -396,6 +405,7 @@ impl Menu {
             self.friends_account_polled();
             self.directory_polled();
             self.link_polled(size);
+            self.signin_polled(size);
             self.friends_ticked(client);
             self.fit_screen(size);
             self.spin_panorama(client);
@@ -457,14 +467,8 @@ impl Menu {
                 self.settings_event(event, client);
                 return Ok(None);
             }
-            Screen::Failed(screen, home) => {
-                if failed_event(screen, event, mouse) {
-                    self.screen = if *home {
-                        self.title(size)
-                    } else {
-                        self.server_list(size)
-                    };
-                }
+            Screen::Failed(..) | Screen::Ask(..) => {
+                self.notice_event(event, size);
                 return Ok(None);
             }
             Screen::Confirm(screen, index) => {

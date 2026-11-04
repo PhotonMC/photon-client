@@ -155,6 +155,14 @@ impl Backend {
         field(&answer, "code")
     }
 
+    /// A web code for the browser that started with `state` (ADR 0023): the player's own session
+    /// asks for it, and it is opened in the browser, never the session itself.
+    pub fn web_code(&self, session: &Session, state: &str) -> Result<String, BackendError> {
+        let body = format!("{{\"state\":{}}}", quoted(state));
+        let answer = object(&self.call("/v1/web/code", Some(session), Some(&body))?)?;
+        field(&answer, "code")
+    }
+
     /// Spends a launch code: the address to join and the profile the code belongs to.
     pub fn exchange(&self, code: &str) -> Result<Launch, BackendError> {
         let body = format!("{{\"code\":{}}}", quoted(code));
@@ -164,6 +172,17 @@ impl Backend {
             uuid: field(&answer, "uuid")?,
         })
     }
+}
+
+/// The address of the website's sign-in page for a web code: `https` (or this machine, for
+/// development), and the code its only parameter. The base comes from the player's own
+/// configuration, never from a link.
+pub fn signin_url(website: &str, code: &str) -> Result<String, BackendError> {
+    if !website.starts_with("https://") && !is_this_machine(website) {
+        return Err(BackendError::Insecure);
+    }
+    let base = website.trim_end_matches('/');
+    Ok(format!("{base}/signin?code={code}"))
 }
 
 /// Whether the profile a launch code was issued for is the one signed in. Anything else must be
@@ -254,5 +273,21 @@ mod tests {
             "b28053e5-d731-4bc5-90cc-1f526ca1fc81",
             signed_in
         ));
+    }
+
+    #[test]
+    fn the_sign_in_address_is_secure_and_carries_only_the_code() {
+        assert_eq!(
+            signin_url("https://photon.example/", "abc"),
+            Ok("https://photon.example/signin?code=abc".to_owned())
+        );
+        assert_eq!(
+            signin_url("http://127.0.0.1:3000", "abc"),
+            Ok("http://127.0.0.1:3000/signin?code=abc".to_owned())
+        );
+        assert_eq!(
+            signin_url("http://photon.example", "abc"),
+            Err(BackendError::Insecure)
+        );
     }
 }

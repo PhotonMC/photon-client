@@ -20,5 +20,13 @@
   "photon.notice.back_home": "Back to Home",
   "photon.notice.back_servers": "Back to servers",
   "photon.home.games.unavailable": "Directory unavailable",
+  "photon.signin.heading": "Website sign-in",
+  "photon.signin.ask": "Sign the Photon website in as %s?",
+  "photon.signin.cancel": "Cancel",
+  "photon.signin.confirm": "Sign in",
+  "photon.signin.opened": "Continue in your browser.",
+  "photon.signin.not_signed_in": "Sign in to Photon to use the website.",
+  "photon.signin.no_website": "No secure website address is set.",
+  "photon.signin.unavailable": "Photon's servers could not be reached.",
   "photon.loading.server": "Server"
 }

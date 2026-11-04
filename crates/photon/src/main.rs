@@ -32,6 +32,7 @@ mod script;
 mod self_update;
 mod settings;
 mod sign_in;
+mod signin_link;
 mod skins;
 mod social;
 mod sound;

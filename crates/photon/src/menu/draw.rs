@@ -32,7 +32,9 @@ pub(super) fn draw_screen(
             screen.draw(frame, atlas, font, mouse);
             draw_pack_question(question.as_mut(), frame, (atlas, font), mouse);
         }
-        Screen::Failed(screen, _) => screen.draw(frame, atlas, font, mouse),
+        Screen::Failed(screen, _) | Screen::Ask(screen, _) => {
+            screen.draw(frame, atlas, font, mouse);
+        }
         Screen::Settings => draw_settings(host, (frame, atlas, font), (lang, size)),
         Screen::Credits(screen, drawn) => {
             // The time since the last frame, in ticks.
