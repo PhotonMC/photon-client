@@ -31,7 +31,7 @@ impl Controls {
             self.death.is_some(),
             self.disconnected.is_some(),
             self.confirm.is_some(),
-            self.link_confirm.is_some(),
+            self.question_open(),
             self.dialog.is_some(),
             self.dialog_warning.is_some(),
             self.pack_prompt.is_some(),

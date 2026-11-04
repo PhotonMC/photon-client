@@ -30,7 +30,7 @@ impl Play {
             held.task = None;
             held.ready = Some(outcome);
         }
-        if self.controls.link_confirm.is_some() || self.controls.screen_open_besides_pause() {
+        if self.controls.question_open() || self.controls.screen_open_besides_pause() {
             return;
         }
         if let Some(outcome) = self.controls.game_link.ready.take() {
@@ -40,8 +40,7 @@ impl Play {
 
     /// A sign-in link: looked up, asked about, signed in and opened in the browser.
     fn signin_link_frame(&mut self) {
-        let idle =
-            self.controls.link_confirm.is_none() && !self.controls.screen_open_besides_pause();
+        let idle = !self.controls.question_open() && !self.controls.screen_open_besides_pause();
         let held = &mut self.controls.game_link;
         if held.signin.is_none() && held.signin_ready.is_none() && idle {
             held.signin = launch_link::take_pending_signin().map(Self::look_up_name);
@@ -58,7 +57,7 @@ impl Play {
         }
         // Like a spent launch code, the answer waits until nothing else is up, and that is checked
         // again here: the launch question may have just opened.
-        if self.controls.link_confirm.is_none()
+        if !self.controls.question_open()
             && !self.controls.screen_open_besides_pause()
             && let Some(prompt) = self.controls.game_link.signin_ready.take()
         {

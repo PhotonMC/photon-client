@@ -110,7 +110,7 @@ impl Controls {
             }
             return;
         }
-        if self.pause.is_some() && !self.link_confirm.is_some() {
+        if self.pause.is_some() && !self.question_open() {
             // `toggleFriendsScreen` takes the pause screen too: it stays under the overlay.
             self.open_friends_from_pause(surface, assets);
             return;

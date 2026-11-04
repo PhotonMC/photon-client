@@ -31,9 +31,7 @@ impl Controls {
 
     /// Whether an options screen, or the link question one asked, is open.
     pub(crate) fn host_open(&self) -> bool {
-        self.topmost_option_screen().is_some()
-            || self.link_confirm.is_some()
-            || self.friends.is_some()
+        self.topmost_option_screen().is_some() || self.question_open() || self.friends.is_some()
     }
 
     /// The screen that takes the events: the topmost of the options screens that are open.
@@ -148,7 +146,7 @@ impl Controls {
         if let glfw::WindowEvent::Key(key, _, action, _) = event {
             self.track_modifiers(key, action, false);
         }
-        if self.link_confirm.is_some() {
+        if self.question_open() {
             if let Some((action, target)) = self.link_answer(event, surface) {
                 self.answer_link(action, target, surface, assets);
             }

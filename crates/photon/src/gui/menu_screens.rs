@@ -44,7 +44,7 @@ impl Gui {
         // A link to confirm takes the screen's place (`ConfirmLinkScreen` is not drawn over its
         // parent), and so does a dialog (`setScreen` replaces the menu it was opened from); the
         // restrictions are drawn with them, over the settings that opened them.
-        if controls.link_confirm.is_some()
+        if controls.question_open()
             || controls.dialog.is_some()
             || controls.has_world_overlay()
             // The social interactions screen opened from the pause menu replaces it.

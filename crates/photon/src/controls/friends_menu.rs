@@ -8,7 +8,7 @@ use super::Controls;
 impl Controls {
     /// The list did not turn on: back to the menu the question came from.
     pub(super) fn menu_back_after_failure(&mut self, failed: bool) {
-        if failed && self.friends_from_pause && self.link_confirm.is_none() {
+        if failed && self.friends_from_pause && !self.question_open() {
             self.restore_pause();
         }
     }

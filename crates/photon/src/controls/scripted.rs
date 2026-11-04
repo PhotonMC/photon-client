@@ -254,7 +254,7 @@ impl Controls {
             self.link_confirm,
             Some((_, ConfirmTarget::Pack(_) | ConfirmTarget::Drop(_)))
         );
-        if !asking && (self.link_confirm.is_some() || self.pack_screen.is_none()) {
+        if !asking && (self.question_open() || self.pack_screen.is_none()) {
             return false;
         }
         let press = glfw::WindowEvent::MouseButton(

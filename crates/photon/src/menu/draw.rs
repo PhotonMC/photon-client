@@ -70,7 +70,7 @@ fn draw_title(
         host.link_confirm,
         Some((_, crate::controls::ConfirmTarget::RemoveFriend(_)))
     );
-    let background = host.friends.is_some() && (host.link_confirm.is_none() || popup);
+    let background = host.friends.is_some() && (!host.question_open() || popup);
     if !host.host_open() {
         screen.draw(frame, atlas, font, mouse);
     } else if background {
@@ -101,11 +101,8 @@ fn draw_settings(
         host.link_confirm,
         Some((_, crate::controls::ConfirmTarget::RemoveFriend(_)))
     );
-    if let Some(friends) = host
-        .friends
-        .as_mut()
-        .filter(|_| host.link_confirm.is_none() || popup)
-    {
+    let shown = !host.question_open() || popup;
+    if let Some(friends) = host.friends.as_mut().filter(|_| shown) {
         if friends.size() != size {
             friends.resize(size);
         }

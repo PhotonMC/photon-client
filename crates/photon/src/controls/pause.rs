@@ -135,7 +135,7 @@ impl Controls {
         self.friends_from_pause = true;
         self.toggle_friends(surface, assets);
         // Neither the overlay nor its question opened: the menu stays.
-        if self.friends.is_none() && self.link_confirm.is_none() {
+        if self.friends.is_none() && !self.question_open() {
             self.restore_pause();
         }
     }

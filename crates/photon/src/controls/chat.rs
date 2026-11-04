@@ -50,6 +50,11 @@ impl Controls {
         self.social.is_some() || self.friends.is_some() || self.debug_options.is_some()
     }
 
+    /// Whether a question about a link or about removing a friend is up.
+    pub(crate) fn question_open(&self) -> bool {
+        self.link_confirm.is_some()
+    }
+
     /// Whether a screen other than the pause menu is up: the pause menu may be what a question
     /// opens over, nothing else may.
     pub(crate) fn screen_open_besides_pause(&mut self) -> bool {
@@ -81,7 +86,7 @@ impl Controls {
             self.test_instance_block.is_some(),
             self.book_edit.is_some(),
             self.confirm.is_some(),
-            self.link_confirm.is_some(),
+            self.question_open(),
             self.dialog.is_some(),
             self.dialog_warning.is_some(),
             self.pack_prompt.is_some(),
