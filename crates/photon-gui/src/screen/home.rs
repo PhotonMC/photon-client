@@ -1,4 +1,5 @@
-//! Photon's home screen: a sidebar of destinations and a page of game cards over the panorama.
+//! Photon's home screen: a bar of destinations along the top and a page of game cards under it,
+//! over the panorama.
 //! It replaces the title screen; what a press chooses is a [`HomeAction`] the menu acts on.
 
 use crate::kit::{Painter, State, grid, inside};
@@ -19,8 +20,9 @@ pub enum HomeAction {
     Credits,
 }
 
-const SIDEBAR_WIDTH: i32 = 96;
-const ROW_HEIGHT: i32 = 16;
+const BAR_HEIGHT: i32 = 26;
+const TAB_HEIGHT: i32 = 18;
+const LOGO_WIDTH: i32 = 64;
 const CARD_SIZE: (i32, i32) = (148, 88);
 const MARGIN: i32 = 12;
 
@@ -34,7 +36,7 @@ struct Target {
     enabled: bool,
 }
 
-/// The sidebar rows: label and action (none for the page that is open, or not available yet).
+/// The top bar's tabs: label and action (none for the page that is open, or not available yet).
 const DESTINATIONS: [(&str, Option<HomeAction>); 6] = [
     ("Home", None),
     ("Servers", Some(HomeAction::Servers)),
@@ -48,7 +50,7 @@ pub struct HomeScreen {
     size: (i32, i32),
     skin: Skin,
     version: String,
-    sidebar: Vec<Target>,
+    nav: Vec<Target>,
     cards: Vec<Target>,
     quit: Target,
     friends_ready: bool,
@@ -56,37 +58,37 @@ pub struct HomeScreen {
 }
 
 impl HomeScreen {
-    /// The home screen of a window `size` units big.
-    pub fn new(size: (i32, i32), version: &str) -> Self {
-        let rows = grid::column(
-            Rect {
-                x: 6,
-                y: 44,
-                width: SIDEBAR_WIDTH - 12,
-                height: size.1,
-            },
-            DESTINATIONS.len(),
-            (ROW_HEIGHT, 2),
-        );
-        let sidebar = rows
-            .into_iter()
-            .zip(DESTINATIONS)
-            .map(|(rect, (label, action))| Target {
-                rect,
-                label,
-                detail: "",
-                action,
-                enabled: action.is_some(),
+    /// The home screen of a window `size` units big, its tabs as wide as their labels in `font`.
+    pub fn new(size: (i32, i32), version: &str, font: &Font) -> Self {
+        let mut x = LOGO_WIDTH;
+        let nav = DESTINATIONS
+            .iter()
+            .map(|&(label, action)| {
+                let width = font.width(label) + 14;
+                let rect = Rect {
+                    x,
+                    y: (BAR_HEIGHT - TAB_HEIGHT) / 2,
+                    width,
+                    height: TAB_HEIGHT,
+                };
+                x += width + 2;
+                Target {
+                    rect,
+                    label,
+                    detail: "",
+                    action,
+                    enabled: action.is_some(),
+                }
             })
             .collect();
-        let quit_rect = Rect {
-            x: 6,
-            y: size.1 - 24,
-            width: SIDEBAR_WIDTH - 12,
-            height: 18,
-        };
+        let quit_width = font.width("Quit") + 14;
         let quit = Target {
-            rect: quit_rect,
+            rect: Rect {
+                x: size.0 - quit_width - 6,
+                y: (BAR_HEIGHT - TAB_HEIGHT) / 2,
+                width: quit_width,
+                height: TAB_HEIGHT,
+            },
             label: "Quit",
             detail: "",
             action: Some(HomeAction::Quit),
@@ -96,7 +98,7 @@ impl HomeScreen {
             size,
             skin: CLASSIC,
             version: version.to_owned(),
-            sidebar,
+            nav,
             cards: Vec::new(),
             quit,
             friends_ready: false,
@@ -111,10 +113,10 @@ impl HomeScreen {
     /// address and the second says what is coming.
     fn card_targets(&self) -> Vec<Target> {
         let area = Rect {
-            x: SIDEBAR_WIDTH + MARGIN,
-            y: 52,
-            width: self.size.0 - SIDEBAR_WIDTH - 2 * MARGIN,
-            height: self.size.1 - 64,
+            x: MARGIN,
+            y: BAR_HEIGHT + 40,
+            width: self.size.0 - 2 * MARGIN,
+            height: self.size.1 - BAR_HEIGHT - 52,
         };
         let content = [
             (
@@ -139,7 +141,7 @@ impl HomeScreen {
 
     fn sync_friends(&mut self) {
         let ready = self.friends_ready;
-        for target in &mut self.sidebar {
+        for target in &mut self.nav {
             if target.action == Some(HomeAction::Friends) {
                 target.enabled = ready;
             }
@@ -159,7 +161,7 @@ impl HomeScreen {
 
     /// Everything that can be pressed, in the order Tab walks through it.
     fn targets(&self) -> impl Iterator<Item = &Target> {
-        self.sidebar
+        self.nav
             .iter()
             .chain(self.cards.iter())
             .chain(std::iter::once(&self.quit))
@@ -212,7 +214,7 @@ impl HomeScreen {
             .and_then(|target| target.action)
     }
 
-    /// The panorama's dimming, the sidebar, the page and the version line.
+    /// The panorama's dimming, the top bar, the page and the version.
     pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
         let (width, height) = self.size;
         let mut painter = Painter {
@@ -223,43 +225,41 @@ impl HomeScreen {
         };
         let dim = (self.skin.bg & 0x00FF_FFFF) | 0x3300_0000;
         painter.frame.fill(atlas, (0, 0, width, height), dim);
-        let bar = Rect {
+        painter.panel(Rect {
             x: 0,
             y: 0,
-            width: SIDEBAR_WIDTH,
-            height,
-        };
-        painter.panel(bar);
-        let ink = painter.skin.ink;
-        painter.label("PHOTON", (10, 12), ink);
-        let muted = painter.skin.muted;
-        painter.label(&self.version, (10, 24), muted);
+            width,
+            height: BAR_HEIGHT,
+        });
+        let (ink, muted) = (painter.skin.ink, painter.skin.muted);
+        painter.label("PHOTON", (8, 4), ink);
+        painter.label(&self.version, (8, 14), muted);
         let hovered = self.target_at(mouse);
         for (index, target) in self.targets().enumerate() {
             let focused = self.focus == Some(index) || hovered == Some(index);
-            Self::draw_target(&mut painter, target, index < self.sidebar.len(), focused);
+            Self::draw_target(&mut painter, target, index < self.nav.len(), focused);
         }
-        painter.label("Home", (SIDEBAR_WIDTH + MARGIN, 14), ink);
-        painter.label("Pick a game to play", (SIDEBAR_WIDTH + MARGIN, 28), muted);
+        painter.label("Home", (MARGIN, BAR_HEIGHT + 10), ink);
+        painter.label("Pick a game to play", (MARGIN, BAR_HEIGHT + 24), muted);
     }
 
-    fn draw_target(painter: &mut Painter, target: &Target, in_sidebar: bool, focused: bool) {
+    fn draw_target(painter: &mut Painter, target: &Target, in_bar: bool, focused: bool) {
         let state = match (target.enabled, focused) {
             (false, _) => State::Disabled,
             (true, true) => State::Hover,
             (true, false) => State::Normal,
         };
-        if !in_sidebar && target.label != "Quit" {
-            painter.card(target.rect, (target.label, target.detail), state);
-        } else if target.label == "Quit" {
+        if target.label == "Quit" {
             painter.button(target.rect, target.label, state);
-        } else {
+        } else if in_bar {
             let state = if target.label == "Home" {
                 State::Selected
             } else {
                 state
             };
             painter.row(target.rect, target.label, state);
+        } else {
+            painter.card(target.rect, (target.label, target.detail), state);
         }
     }
 }
@@ -269,7 +269,7 @@ mod tests {
     use super::*;
 
     fn screen() -> HomeScreen {
-        HomeScreen::new((427, 240), "Photon 0.4.0")
+        HomeScreen::new((427, 240), "v0.1.0", &Font::default())
     }
 
     fn centre(rect: Rect) -> (i32, i32) {
@@ -279,17 +279,17 @@ mod tests {
     #[test]
     fn pressing_the_servers_row_asks_for_the_server_list() {
         let mut home = screen();
-        let at = centre(home.sidebar[1].rect);
+        let at = centre(home.nav[1].rect);
         assert_eq!(home.clicked(at), Some(HomeAction::Servers));
     }
 
     #[test]
     fn a_row_that_is_not_available_does_nothing() {
         let mut home = screen();
-        let avatar = centre(home.sidebar[3].rect);
+        let avatar = centre(home.nav[3].rect);
         assert_eq!(home.clicked(avatar), None);
         // Friends waits for an account.
-        let friends = centre(home.sidebar[2].rect);
+        let friends = centre(home.nav[2].rect);
         assert_eq!(home.clicked(friends), None);
         home.friends_available();
         assert_eq!(home.clicked(friends), Some(HomeAction::Friends));
@@ -298,7 +298,7 @@ mod tests {
     #[test]
     fn quit_and_settings_are_pressable() {
         let mut home = screen();
-        let settings = centre(home.sidebar[5].rect);
+        let settings = centre(home.nav[5].rect);
         assert_eq!(home.clicked(settings), Some(HomeAction::Options));
         let quit = centre(home.quit.rect);
         assert_eq!(home.clicked(quit), Some(HomeAction::Quit));
