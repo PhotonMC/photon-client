@@ -20,6 +20,7 @@
   "photon.link.unavailable": "Photon's servers could not be reached.",
   "photon.notice.join_failed": "Couldn't join",
   "photon.notice.back_home": "Back to Home",
+  "photon.notice.join_next": "Join the other game",
   "photon.notice.back_servers": "Back to servers",
   "photon.home.games.unavailable": "Directory unavailable",
   "photon.signin.heading": "Website sign-in",

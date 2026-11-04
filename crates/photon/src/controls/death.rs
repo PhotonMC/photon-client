@@ -15,6 +15,9 @@ impl Controls {
         if self.disconnected.is_some() {
             return;
         }
+        // A launch link's question about leaving is moot once the game is gone: its spent code
+        // is joined after the disconnected screen instead of being lost.
+        self.keep_link_join();
         let size = surface.scale();
         let size = (size.gui_scaled_width(), size.gui_scaled_height());
         // `ConnectScreen.connectFailedTitle` of a transfer.
@@ -30,13 +33,10 @@ impl Controls {
             (
                 &heading,
                 reason,
-                &photon_game::text::Component::translatable("gui.toMenu"),
+                &photon_game::text::Component::translatable(back_key(self.join_after.is_some())),
             ),
         ));
         self.chat = None;
-        // A launch link's question about leaving is moot once the game is gone: its spent code
-        // is joined after the disconnected screen instead of being lost.
-        self.keep_link_join();
         self.pause = None;
         self.options_screen = None;
         self.video_screen = None;
@@ -76,6 +76,9 @@ impl Controls {
         };
         match event {
             WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, _) => screen.tab(),
+            WindowEvent::Key(Key::Escape, _, Action::Press, _) if screen.escape() => {
+                self.leave = true;
+            }
             WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _)
                 if screen.pressed() =>
             {
@@ -220,6 +223,15 @@ impl Controls {
     }
 }
 
+/// The label of the disconnected screen's button: the join it leads to, or Home.
+fn back_key(joining: bool) -> &'static str {
+    if joining {
+        "photon.notice.join_next"
+    } else {
+        "photon.notice.back_home"
+    }
+}
+
 /// The join a pending question stands for: only a launch question's, any other is dropped.
 fn kept_join(target: ConfirmTarget) -> Option<(String, String)> {
     match target {
@@ -237,6 +249,7 @@ mod tests {
         let join = kept_join(ConfirmTarget::Game("h:1".to_owned(), "G".to_owned()));
         assert_eq!(join, Some(("h:1".to_owned(), "G".to_owned())));
         assert_eq!(kept_join(ConfirmTarget::Notice), None);
+        assert_ne!(back_key(true), back_key(false));
         assert_eq!(kept_join(ConfirmTarget::Link("u".to_owned())), None);
     }
 }
