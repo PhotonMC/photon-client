@@ -105,6 +105,8 @@ impl Backend {
             .map_err(|_| BackendError::Unavailable)?;
         match status {
             200..=299 => Ok(text),
+            // A throttled player is not refused: the same call works a little later.
+            429 => Err(BackendError::Unavailable),
             400..=499 => Err(BackendError::Refused),
             _ => Err(BackendError::Unavailable),
         }
@@ -279,6 +281,13 @@ mod tests {
 
     /// A backend on this machine that answers one request with `body`, and the request it got.
     fn answering_once(body: &'static str) -> (Backend, std::thread::JoinHandle<String>) {
+        answering_with("200 OK", body)
+    }
+
+    fn answering_with(
+        status: &'static str,
+        body: &'static str,
+    ) -> (Backend, std::thread::JoinHandle<String>) {
         use std::io::{Read, Write};
         let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
         let base = format!("http://{}", listener.local_addr().expect("address"));
@@ -307,7 +316,7 @@ mod tests {
                 }
             }
             let reply = format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
                 body.len()
             );
             stream.write_all(reply.as_bytes()).expect("write");
@@ -330,6 +339,19 @@ mod tests {
                 .contains("authorization: bearer s3ss10n")
         );
         assert!(request.ends_with(r#"{"state":"state1"}"#));
+    }
+
+    #[test]
+    fn a_throttled_call_is_unavailable_and_a_bad_code_is_refused() {
+        let (backend, served) = answering_with("429 Too Many Requests", r#"{"error":"slow down"}"#);
+        assert_eq!(
+            backend.exchange("code1").err(),
+            Some(BackendError::Unavailable)
+        );
+        served.join().expect("served");
+        let (backend, served) = answering_with("401 Unauthorized", r#"{"error":"refused"}"#);
+        assert_eq!(backend.exchange("code1").err(), Some(BackendError::Refused));
+        served.join().expect("served");
     }
 
     #[test]
