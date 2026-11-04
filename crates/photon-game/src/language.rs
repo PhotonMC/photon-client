@@ -149,7 +149,7 @@ impl LanguageSource {
 }
 
 /// Photon's own strings, `photon.*`: English, with the texts of `code` over them.
-fn photon_texts(code: &str) -> Vec<(String, String)> {
+pub fn photon_texts(code: &str) -> Vec<(String, String)> {
     let mut texts = Lang::parse_texts(include_str!("lang/en_us.json"));
     if code == "tr_tr" {
         texts.extend(Lang::parse_texts(include_str!("lang/tr_tr.json")));

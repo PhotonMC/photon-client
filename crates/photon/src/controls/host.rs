@@ -169,18 +169,14 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) {
-        match (action, target) {
-            (LinkAction::Yes, ConfirmTarget::Link(url)) => open_uri(&url),
-            (LinkAction::Copy, ConfirmTarget::Link(url)) => surface.set_clipboard(&url),
-            (LinkAction::Yes, ConfirmTarget::Game(address, name)) => {
-                self.join_after = Some((address, name));
-                self.leave = true;
-            }
-            (LinkAction::Yes, ConfirmTarget::Pack(id)) => self.select_confirmed_pack(&id),
-            (LinkAction::Yes, ConfirmTarget::Drop(paths)) => {
-                self.copy_confirmed_packs(&paths, assets);
-            }
-            (action, target @ (ConfirmTarget::FriendsList | ConfirmTarget::RemoveFriend(_))) => {
+        match (action, &target) {
+            (LinkAction::Yes, ConfirmTarget::Link(url)) => open_uri(url),
+            (LinkAction::Copy, ConfirmTarget::Link(url)) => surface.set_clipboard(url),
+            (
+                LinkAction::Yes,
+                ConfirmTarget::Pack(_) | ConfirmTarget::Drop(_) | ConfirmTarget::Game(..),
+            ) => self.agreed(&target, assets),
+            (action, ConfirmTarget::FriendsList | ConfirmTarget::RemoveFriend(_)) => {
                 self.answer_friends_confirm(action, &target, surface);
             }
             _ => {}

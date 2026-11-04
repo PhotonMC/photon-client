@@ -149,15 +149,28 @@ impl Controls {
                     chat.insert_text(command, false);
                 }
             }
-            (LinkAction::Yes, ConfirmTarget::Pack(id)) => self.select_confirmed_pack(id),
-            (LinkAction::Yes, ConfirmTarget::Drop(paths)) => {
-                self.copy_confirmed_packs(paths, assets);
-            }
+            (
+                LinkAction::Yes,
+                ConfirmTarget::Pack(_) | ConfirmTarget::Drop(_) | ConfirmTarget::Game(..),
+            ) => self.agreed(target, assets),
             (action, ConfirmTarget::FriendsList | ConfirmTarget::RemoveFriend(_)) => {
                 self.answer_friends_confirm(action, target, surface);
             }
             _ => {}
         }
         Ok(())
+    }
+
+    /// What a Yes does that needs no session: a pack selected or copied, or a game left for another.
+    pub(super) fn agreed(&mut self, target: &ConfirmTarget, assets: &ScreenAssets) {
+        match target {
+            ConfirmTarget::Pack(id) => self.select_confirmed_pack(id),
+            ConfirmTarget::Drop(paths) => self.copy_confirmed_packs(paths, assets),
+            ConfirmTarget::Game(address, name) => {
+                self.join_after = Some((address.clone(), name.clone()));
+                self.leave = true;
+            }
+            _ => {}
+        }
     }
 }

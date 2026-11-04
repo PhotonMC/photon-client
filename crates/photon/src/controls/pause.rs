@@ -31,31 +31,23 @@ impl Controls {
         if self.pause.is_none() {
             self.open_pause(surface, assets);
         }
+        let lang = &assets.lang;
+        let text = |key: &str| Component::literal(lang.text(key));
         let (message, labels, target) = match prompt {
             InPlay::Ask(address, name) => (
-                Component::translatable_with(
-                    "photon.link.leave_ask",
-                    vec![Component::literal(&name)],
-                ),
+                Component::literal(lang.text("photon.link.leave_ask").replace("%s", &name)),
                 ("gui.yes", "gui.no"),
                 ConfirmTarget::Game(address, name),
             ),
-            InPlay::Say(key) => (
-                Component::translatable(key),
-                ("gui.back", "gui.back"),
-                ConfirmTarget::Notice,
-            ),
+            InPlay::Say(key) => (text(key), ("gui.back", "gui.back"), ConfirmTarget::Notice),
         };
         let screen = ConfirmScreen::new(
             &assets.creative.font,
-            &assets.lang,
+            lang,
             Self::gui_size(surface),
-            &Component::translatable("photon.link.leave_title"),
+            &text("photon.link.leave_title"),
             &message,
-            (
-                &Component::translatable(labels.0),
-                &Component::translatable(labels.1),
-            ),
+            (&text(labels.0), &text(labels.1)),
         )
         .with_background(ConfirmBackground::Menu { in_world: true });
         self.link_confirm = Some((screen, target));

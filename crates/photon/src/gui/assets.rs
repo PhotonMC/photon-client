@@ -25,7 +25,7 @@ impl Gui {
         } else {
             backend.load_gui_texture(&texture)?;
         }
-        let lang = Arc::new(Lang::load_from(&*resources, root));
+        let lang = loaded_lang(&*resources, root);
         let languages = photon_game::language::LanguageSource::open(root).map(Arc::new);
         Ok(Self::assembled(
             ((font, alt_font), (atlas, texture)),
@@ -143,7 +143,7 @@ impl Gui {
             Arc::new(Font::load_alt_from(&*resources).ok_or("the alt font could not be read")?);
         let (atlas, texture) = GuiAtlas::load_from(&*resources, &[&font, &alt_font])
             .ok_or("the HUD sprites could not be read")?;
-        let lang = Arc::new(Lang::load_from(&*resources, root));
+        let lang = loaded_lang(&*resources, root);
         Ok(ReadAssets {
             resources,
             font,
@@ -246,4 +246,15 @@ pub struct ReadAssets {
     atlas: GuiAtlas,
     texture: photon_render::DecodedImage,
     lang: Arc<Lang>,
+}
+
+/// The texts of the resources, with Photon's own over them: a game without the language index
+/// (which names the other languages) still words its own screens.
+fn loaded_lang(
+    resources: &dyn photon_core::resources::Resources,
+    root: &std::path::Path,
+) -> Arc<Lang> {
+    let mut texts = Lang::load_from(resources, root).into_texts();
+    texts.extend(photon_game::language::photon_texts("en_us"));
+    Arc::new(Lang::new(texts))
 }
