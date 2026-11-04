@@ -5,6 +5,7 @@ pub mod chat;
 pub mod entity_name;
 pub mod favicon;
 pub mod hud;
+pub mod kit;
 pub mod layout;
 pub mod loading_overlay;
 pub mod options;

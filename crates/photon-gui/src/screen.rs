@@ -20,6 +20,7 @@ mod faces;
 pub mod friends;
 pub mod game_mode;
 pub mod game_rules;
+pub mod home;
 pub mod jigsaw;
 pub mod pause;
 pub mod restrictions;
