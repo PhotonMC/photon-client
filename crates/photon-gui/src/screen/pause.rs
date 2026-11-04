@@ -6,7 +6,9 @@ use std::cell::Cell;
 
 use photon_game::text::{Component, Lang, Run, Style};
 
-use crate::layout::{Arena, Grid, Item, Settings, horizontal};
+use crate::kit::{Painter, State};
+use crate::layout::{Arena, Grid, Item, Rect, Settings, horizontal};
+use crate::tokens::CLASSIC;
 use crate::tooltip::{Holder, Pending};
 use crate::widgets::navigation::{Candidate, Direction, Rectangle, next_in_direction};
 use crate::widgets::slider::InputType;
@@ -237,13 +239,46 @@ impl PauseScreen {
         self.size
     }
 
-    /// The texture the background is tiled with; over a game, the frame is blurred first.
-    fn background(frame: &mut GuiFrame, world: Option<i32>) -> &'static str {
-        let Some(blurriness) = world else {
-            return "menu_background";
+    /// The alpha of the background colour: see-through over a game.
+    fn veil(world: Option<i32>) -> u32 {
+        if world.is_some() {
+            0x8000_0000
+        } else {
+            0xFF00_0000
+        }
+    }
+
+    /// One widget in the Photon skin: buttons through the kit, the rest as they are.
+    fn draw_widget(&self, painter: &mut Painter, widget: &Widget, highlighted: bool) {
+        let rect = self.arena.0[widget.rect];
+        let state = match (widget.active, highlighted) {
+            (false, _) => State::Disabled,
+            (true, true) => State::Hover,
+            (true, false) => State::Normal,
         };
-        frame.blur_before_this_stratum(blurriness);
-        "inworld_menu_background"
+        match &widget.kind {
+            Kind::Button { label } => {
+                let text: String = label.iter().map(|run| run.text.as_str()).collect();
+                painter.button(rect, &text, state);
+            }
+            Kind::Icon { sprite, size } => {
+                painter.button(rect, "", state);
+                let (x, y) = (
+                    rect.x + (rect.width - size.0) / 2,
+                    rect.y + (rect.height - size.1) / 2,
+                );
+                painter
+                    .frame
+                    .sprite(painter.atlas, sprite, x, y, size.0, size.1);
+            }
+            _ => widget.draw(
+                painter.frame,
+                painter.atlas,
+                painter.font,
+                &self.arena,
+                highlighted,
+            ),
+        }
     }
 
     /// The menu: the background texture, the buttons (the highlighted one under the mouse or with
@@ -258,14 +293,44 @@ impl PauseScreen {
         (width, height): (i32, i32),
         world: Option<i32>,
     ) {
-        let background = Self::background(frame, world);
-        frame.tile_texture(atlas, background, (32, 32), (0, 0, width, height));
+        if let Some(blurriness) = world {
+            frame.blur_before_this_stratum(blurriness);
+        }
+        let skin = CLASSIC;
+        let mut painter = Painter {
+            frame,
+            atlas,
+            font,
+            skin: &skin,
+        };
+        let dim = (skin.bg & 0x00FF_FFFF) | Self::veil(world);
+        painter.fill_rect(
+            Rect {
+                x: 0,
+                y: 0,
+                width,
+                height,
+            },
+            dim,
+        );
         for (index, (widget, _)) in self.widgets.iter().enumerate() {
             let highlighted = widget.contains(&self.arena, mouse) || self.focus == Some(index);
-            widget.draw(frame, atlas, font, &self.arena, highlighted);
+            self.draw_widget(&mut painter, widget, highlighted);
         }
-        self.title.draw(frame, atlas, font, &self.arena, false);
-        // `extractDeferredElements`: the tooltip of the widget over the rest
+        self.title
+            .draw(painter.frame, atlas, font, &self.arena, false);
+        self.draw_tooltip(painter.frame, atlas, font, mouse, (width, height));
+    }
+
+    /// `extractDeferredElements`: the tooltip of the widget over the rest.
+    fn draw_tooltip(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        font: &Font,
+        mouse: (i32, i32),
+        (width, height): (i32, i32),
+    ) {
         // (the first asked for, but the focused one's replaces it).
         let mut pending: Option<Pending> = None;
         for (index, (widget, _)) in self.widgets.iter().enumerate() {
