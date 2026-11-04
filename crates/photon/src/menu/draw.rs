@@ -17,7 +17,7 @@ pub(super) fn draw_screen(
     (lang, mouse, size): (&Lang, (i32, i32), (i32, i32)),
 ) {
     match screen {
-        Screen::Title(screen) => {
+        Screen::Home(screen) => {
             draw_title(screen, host, (frame, atlas, font), (lang, size, mouse));
         }
         Screen::Servers(screen) => screen.draw(frame, atlas, font, mouse),
@@ -57,7 +57,7 @@ fn draw_pack_question(
 
 /// The title, and what opens over it: the friends overlay and its question.
 fn draw_title(
-    screen: &photon_gui::screen::title::TitleScreen,
+    screen: &photon_gui::screen::home::HomeScreen,
     host: &mut crate::controls::Controls,
     (frame, atlas, font): (&mut GuiFrame, &GuiAtlas, &Font),
     (lang, size, mouse): (&Lang, (i32, i32), (i32, i32)),

@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use glfw::{Action, Key, WindowEvent};
 use photon_gui::screen::credits::CreditsScreen;
-use photon_gui::screen::title::TitleAction;
+use photon_gui::screen::home::HomeAction;
 
 use super::{Choice, Menu, Screen};
 
@@ -25,12 +25,12 @@ impl Menu {
     /// What a press on the title screen chose.
     pub(super) fn title_chosen(
         &mut self,
-        chosen: Option<TitleAction>,
+        chosen: Option<HomeAction>,
         size: (i32, i32),
     ) -> Option<Choice> {
         match chosen {
-            Some(TitleAction::Multiplayer) => self.screen = self.server_list(size),
-            Some(TitleAction::Quit) => return Some(Choice::Quit),
+            Some(HomeAction::Servers) => self.screen = self.server_list(size),
+            Some(HomeAction::Quit) => return Some(Choice::Quit),
             // The other screens are not here yet.
             _ => {}
         }

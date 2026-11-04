@@ -16,9 +16,8 @@ impl Menu {
         let speed = self.live_options().play.panorama_speed;
         self.spin = photon_render::panorama::spin_after(self.spin, ticks, speed);
         let extent = client.backend.description().extent;
-        // `Screen.extractBackground` blurs behind every screen but the title's, which draws no
-        // background of its own.
-        let title = matches!(self.screen, Screen::Title(_)) && !self.host.host_open();
+        // The home screen draws no background of its own, so the panorama stays sharp behind it.
+        let title = matches!(self.screen, Screen::Home(_)) && !self.host.host_open();
         let blur = if title {
             0
         } else {

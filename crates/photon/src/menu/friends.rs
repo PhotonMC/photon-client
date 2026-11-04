@@ -3,7 +3,7 @@
 
 use std::sync::mpsc::{Receiver, channel};
 
-use photon_gui::screen::title::TitleAction;
+use photon_gui::screen::home::HomeAction;
 use photon_net::account::Account;
 
 use super::{Choice, Client, Menu, Screen};
@@ -44,8 +44,8 @@ impl Menu {
         self.friends_title.account = None;
         self.host.start_friends_for(&account);
         self.friends_title.ready = true;
-        if let Screen::Title(screen) = &mut self.screen {
-            screen.friends_available(self.gui.lang());
+        if let Screen::Home(screen) = &mut self.screen {
+            screen.friends_available();
         }
     }
 
@@ -83,7 +83,7 @@ impl Menu {
             self.settings_event(event, client);
             return None;
         }
-        let Screen::Title(screen) = &mut self.screen else {
+        let Screen::Home(screen) = &mut self.screen else {
             return None;
         };
         let chosen = super::input::title_event(screen, event, self.mouse);
@@ -93,14 +93,14 @@ impl Menu {
     /// A press on the title: an options screen, the friends, or what the title chose.
     pub(super) fn title_pressed(
         &mut self,
-        chosen: Option<TitleAction>,
+        chosen: Option<HomeAction>,
         client: &mut Client,
         size: (i32, i32),
     ) -> Option<Choice> {
         if self.open_settings(chosen.as_ref(), client) {
             return None;
         }
-        if matches!(chosen, Some(TitleAction::Friends)) {
+        if matches!(chosen, Some(HomeAction::Friends)) {
             self.open_friends(client);
             return None;
         }

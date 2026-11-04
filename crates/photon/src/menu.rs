@@ -14,10 +14,9 @@ use photon_gui::screen::confirm::{ConfirmAction, ConfirmScreen};
 use photon_gui::screen::connect::ConnectScreen;
 use photon_gui::screen::credits::CreditsScreen;
 use photon_gui::screen::disconnected::DisconnectedScreen;
+use photon_gui::screen::home::{HomeAction, HomeScreen};
 use photon_gui::screen::server_form::{FormKind, FormResult, ServerFormScreen};
 use photon_gui::screen::servers::{JoinMultiplayerScreen, ServersAction};
-use photon_gui::screen::title::{TitleAction, TitleScreen};
-use photon_gui::widgets::navigation::Direction;
 use photon_net::connection::PlaySession;
 
 use self::draw::draw_screen;
@@ -54,7 +53,7 @@ enum Choice {
 
 /// The menu open.
 enum Screen {
-    Title(TitleScreen),
+    Home(HomeScreen),
     Servers(JoinMultiplayerScreen),
     /// A form of the server list, with the place of the server it edits.
     Form(ServerFormScreen, Option<usize>),
@@ -147,7 +146,6 @@ fn play_game(mut client: Client, session: PlaySession) -> Result<(Client, Exit)>
 /// The menus' state between frames.
 struct Menu {
     gui: Gui,
-    splash: Option<String>,
     game_directory: PathBuf,
     servers: ServerList,
     screen: Screen,
@@ -211,14 +209,8 @@ impl Menu {
                     &root.to_string_lossy(),
                 )?))?;
         }
-        let splash = pick_splash(root).filter(|_| !options.play.hide_splash_texts);
         let game_directory = crate::controls::game_directory();
-        let screen = title_screen(
-            gui.text_assets().0,
-            gui.lang(),
-            gui_size(client),
-            splash.as_deref(),
-        );
+        let screen = home_screen(gui_size(client));
         let (sound, music) = audio::take(client, root, &options);
         let assets = gui.screen_assets();
         Ok(Self {
@@ -227,7 +219,6 @@ impl Menu {
             gui,
             sound,
             music,
-            splash,
             servers: ServerList::load(&game_directory),
             game_directory,
             screen,
@@ -245,13 +236,11 @@ impl Menu {
     }
 
     fn title(&self, size: (i32, i32)) -> Screen {
-        let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
-        let mut screen =
-            TitleScreen::new(font, lang, size, self.splash.as_deref()).multiplayer_only(lang);
+        let mut screen = HomeScreen::new(size, &version_line());
         if self.friends_title.ready {
-            screen.friends_available(lang);
+            screen.friends_available();
         }
-        Screen::Title(screen)
+        Screen::Home(screen)
     }
 
     /// `ConnectScreen.startConnecting`: the join starts on its own thread.
@@ -305,7 +294,7 @@ impl Menu {
     /// the size they were opened in.
     fn fit_screen(&mut self, size: (i32, i32)) {
         let current = match &self.screen {
-            Screen::Title(screen) => Some(screen.size()),
+            Screen::Home(screen) => Some(screen.size()),
             Screen::Servers(screen) => Some(screen.size()),
             Screen::Credits(screen, _) => Some(screen.size()),
             _ => None,
@@ -409,7 +398,7 @@ impl Menu {
         let size = gui_size(client);
         let mouse = self.mouse;
         let action = match &mut self.screen {
-            Screen::Title(_) => return Ok(self.title_input(event, client, size)),
+            Screen::Home(_) => return Ok(self.title_input(event, client, size)),
             Screen::Servers(_) => self.servers_event(event),
             Screen::Form(..) => {
                 let result = self.form_event(event, &mut client.surface);
@@ -440,28 +429,14 @@ impl Menu {
     }
 }
 
-/// `SplashManager.getSplash`: the splash of the title screen for today.
-/// The title screen of this client: multiplayer-only (ADR 0014).
-fn title_screen(
-    font: &photon_render::gui::font::Font,
-    lang: &photon_game::text::Lang,
-    size: (i32, i32),
-    splash: Option<&str>,
-) -> Screen {
-    Screen::Title(TitleScreen::new(font, lang, size, splash).multiplayer_only(lang))
+/// The home screen a client starts into.
+fn home_screen(size: (i32, i32)) -> Screen {
+    Screen::Home(HomeScreen::new(size, &version_line()))
 }
 
-fn pick_splash(root: &Path) -> Option<String> {
-    let user = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
-    let seed = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |since| since.as_nanos() as i64);
-    photon_game::splash::pick(
-        &photon_game::splash::read_splashes_from(&*crate::resources::shared(root)),
-        photon_game::splash::today(),
-        &user,
-        &mut photon_core::random::RandomSource::create(seed),
-    )
+/// The line under the name in the sidebar.
+fn version_line() -> String {
+    format!("v{}", env!("CARGO_PKG_VERSION"))
 }
 
 fn gui_size(client: &Client) -> (i32, i32) {

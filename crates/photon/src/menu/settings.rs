@@ -1,7 +1,7 @@
 //! The title screen's Options, Language and Accessibility buttons: the screens are the ones of a
 //! level, kept in a `Controls` that the menu feeds the window's events.
 
-use photon_gui::screen::title::TitleAction;
+use photon_gui::screen::home::HomeAction;
 
 use super::{Menu, Screen};
 use crate::play::Client;
@@ -28,24 +28,24 @@ impl Menu {
                 self.show_credits(super::gui_size(client));
                 return;
             }
-            "options" => TitleAction::Options,
-            "language" => TitleAction::Language,
-            "credits" => TitleAction::Credits,
-            "accessibility" => TitleAction::Accessibility,
+            "options" => HomeAction::Options,
+            "language" => HomeAction::Language,
+            "credits" => HomeAction::Credits,
+            "accessibility" => HomeAction::Accessibility,
             _ => return,
         };
         self.open_settings(Some(&action), client);
     }
 
     /// A press on one of the title's buttons that opens an options screen: whether it did.
-    pub(super) fn open_settings(&mut self, chosen: Option<&TitleAction>, client: &Client) -> bool {
+    pub(super) fn open_settings(&mut self, chosen: Option<&HomeAction>, client: &Client) -> bool {
         if !matches!(
             chosen,
             Some(
-                TitleAction::Options
-                    | TitleAction::Language
-                    | TitleAction::Accessibility
-                    | TitleAction::Credits
+                HomeAction::Options
+                    | HomeAction::Language
+                    | HomeAction::Accessibility
+                    | HomeAction::Credits
             )
         ) {
             return false;
@@ -54,13 +54,13 @@ impl Menu {
         self.host.options = crate::controls::load_options();
         self.host.gui_mouse = (f64::from(self.mouse.0), f64::from(self.mouse.1));
         match chosen {
-            Some(TitleAction::Options) => {
+            Some(HomeAction::Options) => {
                 self.host.open_title_options(&client.surface, &self.assets);
             }
-            Some(TitleAction::Language) => {
+            Some(HomeAction::Language) => {
                 self.host.open_title_language(&client.surface, &self.assets);
             }
-            Some(TitleAction::Credits) => {
+            Some(HomeAction::Credits) => {
                 self.host
                     .open_title_credits_attribution(&client.surface, &self.assets);
             }
