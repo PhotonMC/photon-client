@@ -4,9 +4,9 @@ These rules apply to every agent (Claude, Codex, Gemini, Copilot and others) and
 
 ## Goal and scope
 
-- **Goal.** Photon reimplements the Minecraft: Java Edition client in Rust with exact behavioural parity, on a faster engine. It is one product; features beyond the Java client are opt-in and change nothing when off ([ADR 0010](docs/adr/0010-one-product.md)).
-- **Parity is observable behaviour.** Parity covers packets, state, draw output, timing and sound selection. Internal structure is ours to design well; do not port Java's poor structure or wrong assumptions. Do not "improve" observable behaviour either.
-- **No server.** Do not write a server; test against vanilla or Pumpkin. Do not hide server differences with client workarounds.
+- **Goal.** Photon is a game platform built on a Rust reimplementation of the Minecraft: Java Edition client. Below the UI (packets, world state, movement, drawing, sound selection and the screens a server opens) it matches the Java client. The menu flow, social features and website integration are Photon's own design ([ADR 0018](docs/adr/0018-photon-platform.md)).
+- **Parity is observable behaviour.** Where parity applies, it covers packets, state, draw output, timing and sound selection. Internal structure is ours to design well; do not port Java's poor structure or wrong assumptions. Do not "improve" observable behaviour either.
+- **No server here.** This repository contains no server. Server work lives in `photon-server` on an unmodified Pumpkin ([ADR 0019](docs/adr/0019-photon-server.md)). Test against vanilla or Pumpkin, and do not hide server differences with client workarounds.
 - **Architecture.** Follow the [architecture](docs/architecture/overview.md) and the accepted [ADRs](docs/adr/). New technology choices need an ADR.
 
 ## Legal and data

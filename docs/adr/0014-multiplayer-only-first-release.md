@@ -1,6 +1,6 @@
 # ADR 0014: Multiplayer-only first release
 
-- Status: accepted (2026-10-28)
+- Status: superseded by [ADR 0018](0018-photon-platform.md) (2026-11-04)
 
 ## Context
 

@@ -21,7 +21,7 @@
 
 Photon reimplements the Java client's behaviour exactly: packets, physics, timing, camera, animation, UI and sound. Every behaviour is proven against the real Java client by a headless oracle, never by eye. Internally it is a new engine: Vulkan rendering, multi-threaded meshing and a Rust codebase with a strict quality gate.
 
-Photon is one client. Out of the box it behaves as the Java client does; planned extras (mods, joining servers of other versions, social features) are opt-in and change nothing when off ([ADR 0010](docs/adr/0010-one-product.md)).
+Photon is a game platform on a Rust Minecraft: Java Edition client. Below the UI it behaves as the Java client does; the menu flow, social features and website integration are its own ([ADR 0018](docs/adr/0018-photon-platform.md)).
 
 > Photon is **not affiliated with, endorsed by, or connected to Mojang or Microsoft**. "Minecraft" is a trademark of Mojang Synergies AB.
 
@@ -45,7 +45,7 @@ Photon is one client. Out of the box it behaves as the Java client does; planned
 - **Screens.** HUD, chat, every container and inventory with click prediction, recipe book, advancements, statistics, the F3 debug overlay, options screens, toasts, tutorial, dialogs, and the command, structure and jigsaw block screens.
 - **Sound.** Positioned sound, music, subtitles, block, entity and UI sounds.
 
-Not there yet, in the order of the first release ([R1](https://github.com/PhotonMC/photon-client/milestone/16)): Microsoft account sign-in inside the client, secure chat, downloading the game's assets after sign-in, first run and updates inside the client, and packaged releases. Version 1.0 is multiplayer-only: Singleplayer and Realms are out of scope for it and stay inactive on the title screen ([ADR 0014](docs/adr/0014-multiplayer-only-first-release.md)). Later: other protocol versions, mods, fallback fonts (unifont, bidi, IME) and the leftovers in the [parity milestone](https://github.com/PhotonMC/photon-client/milestone/15). Each one has an issue.
+Not there yet, in the order of the first release ([R1](https://github.com/PhotonMC/photon-client/milestone/16)): Microsoft account sign-in inside the client, secure chat, downloading the game's assets after sign-in, first run and updates inside the client, and packaged releases. Photon is multiplayer-only: there is no Singleplayer or Realms ([ADR 0018](docs/adr/0018-photon-platform.md)). Later: other protocol versions, mods, fallback fonts (unifont, bidi, IME) and the leftovers in the [parity milestone](https://github.com/PhotonMC/photon-client/milestone/15). Each one has an issue.
 
 ## Progress
 

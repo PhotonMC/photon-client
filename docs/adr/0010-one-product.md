@@ -1,6 +1,6 @@
 # ADR 0010: One product
 
-- Status: accepted (2026-10-22); supersedes [ADR 0008](0008-vanilla-and-enhanced.md)
+- Status: superseded by [ADR 0018](0018-photon-platform.md) (2026-11-04); it superseded [ADR 0008](0008-vanilla-and-enhanced.md)
 
 ## Context
 
