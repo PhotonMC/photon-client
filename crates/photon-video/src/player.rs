@@ -49,7 +49,7 @@ impl Player {
         let _ = std::thread::Builder::new()
             .name("photon-video".to_owned())
             .spawn(move || {
-                let result = fetch(&url).and_then(|file| play(&worker, &file));
+                let result = fetch(&url, &worker.stop).and_then(|file| play(&worker, &file));
                 if let Err(error) = result {
                     log::warn!("video {url}: {error:?}");
                     worker.state.store(FAILED, Ordering::Relaxed);
