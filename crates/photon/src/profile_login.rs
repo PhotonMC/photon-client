@@ -160,4 +160,11 @@ mod tests {
         assert_eq!(choose(None, || Ok(None)).unwrap(), None);
         assert_eq!(choose(None, || Err("no keyring".to_owned())).unwrap(), None);
     }
+
+    #[test]
+    fn a_player_who_just_signed_in_is_the_one_the_next_look_up_finds() {
+        // A look-up that found nobody is never cached, and a kept account is read back at once.
+        keep(account("Fresh"));
+        assert_eq!(stored().unwrap().unwrap().name, "Fresh");
+    }
 }
