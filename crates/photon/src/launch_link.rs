@@ -139,6 +139,8 @@ pub(crate) struct GameLink {
     pub(crate) task: Option<LinkTask>,
     pub(crate) ready: Option<Outcome>,
     pub(crate) signin: Option<SignInStep>,
+    /// What a sign-in link has to ask or say, until nothing else is open to be asked over.
+    pub(crate) signin_ready: Option<InPlay>,
     /// The state the player agreed to sign in, to be started.
     pub(crate) signin_agreed: Option<String>,
 }

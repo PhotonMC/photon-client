@@ -44,34 +44,49 @@ impl Play {
         let idle =
             self.controls.link_confirm.is_none() && !self.controls.screen_open_besides_pause();
         let held = &mut self.controls.game_link;
-        if held.signin.is_none()
-            && idle
-            && let Some(state) = launch_link::take_pending_signin()
-        {
-            let (sender, receiver) = channel();
-            let _ = std::thread::Builder::new()
-                .name("Sign-in Link".to_owned())
-                .spawn(move || {
-                    let _ = sender.send(signin_link::signed_in_name());
-                });
-            held.signin = Some(SignInStep::Looking(receiver, state));
+        if held.signin.is_none() && held.signin_ready.is_none() && idle {
+            held.signin = launch_link::take_pending_signin().map(Self::look_up_name);
         }
         if let Some(state) = held.signin_agreed.take() {
-            let (sender, receiver) = channel();
-            let _ = std::thread::Builder::new()
-                .name("Sign-in".to_owned())
-                .spawn(move || {
-                    let _ = sender.send(signin_link::run(&state));
-                });
-            held.signin = Some(SignInStep::Working(receiver));
+            held.signin = Some(Self::sign_in(state));
         }
         if let Some(prompt) = held
             .signin
             .take()
             .and_then(|step| Self::signin_step(step, held))
         {
+            held.signin_ready = Some(prompt);
+        }
+        // Like a spent launch code, the answer waits until nothing else is up, and that is checked
+        // again here: the launch question may have just opened.
+        if self.controls.link_confirm.is_none()
+            && !self.controls.screen_open_besides_pause()
+            && let Some(prompt) = self.controls.game_link.signin_ready.take()
+        {
             self.ask(prompt);
         }
+    }
+
+    /// Who is signed in, looked up off the thread, for the question about the browser's `state`.
+    fn look_up_name(state: String) -> SignInStep {
+        let (sender, receiver) = channel();
+        let _ = std::thread::Builder::new()
+            .name("Sign-in Link".to_owned())
+            .spawn(move || {
+                let _ = sender.send(signin_link::signed_in_name());
+            });
+        SignInStep::Looking(receiver, state)
+    }
+
+    /// The agreed sign-in of the browser's `state`, off the thread.
+    fn sign_in(state: String) -> SignInStep {
+        let (sender, receiver) = channel();
+        let _ = std::thread::Builder::new()
+            .name("Sign-in".to_owned())
+            .spawn(move || {
+                let _ = sender.send(signin_link::run(&state));
+            });
+        SignInStep::Working(receiver)
     }
 
     /// The next of a sign-in link's steps: what to ask or say, or none while a thread works.
