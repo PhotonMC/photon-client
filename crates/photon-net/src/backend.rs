@@ -277,6 +277,76 @@ mod tests {
         ));
     }
 
+    /// A backend on this machine that answers one request with `body`, and the request it got.
+    fn answering_once(body: &'static str) -> (Backend, std::thread::JoinHandle<String>) {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        let base = format!("http://{}", listener.local_addr().expect("address"));
+        let served = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            let mut request = Vec::new();
+            let mut chunk = [0u8; 1024];
+            // Read until the headers and as much body as they promise have come.
+            loop {
+                let read = stream.read(&mut chunk).expect("read");
+                request.extend_from_slice(&chunk[..read]);
+                if read == 0 {
+                    break;
+                }
+                let text = String::from_utf8_lossy(&request).into_owned();
+                let Some((head, rest)) = text.split_once("\r\n\r\n") else {
+                    continue;
+                };
+                let promised = head
+                    .to_ascii_lowercase()
+                    .lines()
+                    .find_map(|line| line.strip_prefix("content-length: ")?.parse::<usize>().ok())
+                    .unwrap_or(0);
+                if rest.len() >= promised {
+                    break;
+                }
+            }
+            let reply = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            stream.write_all(reply.as_bytes()).expect("write");
+            String::from_utf8_lossy(&request).into_owned()
+        });
+        (Backend::new(&base).expect("backend"), served)
+    }
+
+    #[test]
+    fn a_web_code_is_asked_for_with_the_session_and_the_browsers_state_only() {
+        let (backend, served) = answering_once(r#"{"code":"c0de"}"#);
+        let session = Session("s3ss10n".to_owned());
+        let code = backend.web_code(&session, "state1").expect("code");
+        assert_eq!(code, "c0de");
+        let request = served.join().expect("served");
+        assert!(request.starts_with("POST /v1/web/code "));
+        assert!(
+            request
+                .to_ascii_lowercase()
+                .contains("authorization: bearer s3ss10n")
+        );
+        assert!(request.ends_with(r#"{"state":"state1"}"#));
+    }
+
+    #[test]
+    fn a_launch_code_is_spent_with_no_session() {
+        let body = r#"{"address":"h:1","uuid":"00000000000000000000000000000001","name":"G"}"#;
+        let (backend, served) = answering_once(body);
+        let launch = backend.exchange("code1").expect("launch");
+        assert_eq!(
+            (launch.address.as_str(), launch.name.as_str()),
+            ("h:1", "G")
+        );
+        let request = served.join().expect("served");
+        assert!(request.starts_with("POST /v1/launch/exchange "));
+        assert!(!request.to_ascii_lowercase().contains("authorization"));
+        assert!(request.ends_with(r#"{"code":"code1"}"#));
+    }
+
     #[test]
     fn the_sign_in_address_is_secure_and_carries_only_the_code() {
         assert_eq!(
