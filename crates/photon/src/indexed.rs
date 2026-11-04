@@ -42,9 +42,15 @@ fn is_digest(text: &str) -> bool {
 }
 
 impl IndexedAssets {
-    /// The index of the assets that sit above the jar's folder (`<assets>/jar/assets`).
+    /// The index of the assets that sit above the jar's folder: two folders up in the development
+    /// layout (`<assets>/jar/assets`), three in an installed game (`<cache>/jar/<hash>/assets`).
     pub(crate) fn open(jar_assets: &Path) -> Option<Self> {
-        let root = jar_assets.parent()?.parent()?.to_path_buf();
+        let root = jar_assets
+            .ancestors()
+            .skip(2)
+            .take(2)
+            .find(|folder| folder.join("indexes").is_dir())?
+            .to_path_buf();
         let index = photon_core::json::read_object(&index_file(&root)?)?;
         let hashes = index
             .object("objects")?
@@ -89,6 +95,19 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("indexes")).unwrap();
         dir
+    }
+
+    #[test]
+    fn both_layouts_find_the_index_above_the_jar() {
+        for (name, jar) in [("dev", "jar/assets"), ("installed", "jar/abc/assets")] {
+            let root = scratch(name);
+            std::fs::write(root.join("indexes/32.json"), r#"{"objects":{}}"#).unwrap();
+            let jar_assets = root.join(jar);
+            std::fs::create_dir_all(&jar_assets).unwrap();
+            let found = super::IndexedAssets::open(&jar_assets);
+            assert!(found.is_some_and(|found| found.root == root), "{name}");
+            std::fs::remove_dir_all(&root).unwrap();
+        }
     }
 
     #[test]
