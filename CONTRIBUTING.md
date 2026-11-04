@@ -1,12 +1,12 @@
 # Contributing
 
-Thanks for looking. Photon is a parity project: the target is the Java client's exact behaviour, so the workflow is stricter than usual. [`AGENTS.md`](AGENTS.md) holds the same rules for AI coding agents.
+Thanks for looking. Photon is a game platform on a parity client: below the UI the target is the Java client's exact behaviour, so the workflow is stricter than usual; the menu flow and platform features are our own design ([ADR 0018](docs/adr/0018-photon-platform.md)). [`AGENTS.md`](AGENTS.md) holds the same rules for AI coding agents.
 
 ## Ground rules
 
 - **Never commit Mojang's code or assets**, or anything derived from them: images, sounds, dumps, traces or golden captures. Everything under `.data/` stays local. Do not use `git add -f` to get around `.gitignore`.
 - **Expected values come from the Java oracle**, never from Rust output. See [parity](docs/parity/README.md).
-- **Parity first.** Do not "fix" quirks of the Java reference, and do not hide server differences with client-side workarounds. Internal structure is free; observable behaviour is not.
+- **Parity first below the UI.** Do not "fix" quirks of the Java reference, and do not hide server differences with client-side workarounds. Internal structure is free; observable behaviour is not.
 - **Small, reviewable changes.** One behaviour slice per commit, with its parity cases.
 - **English everywhere:** code, comments, documents and commit messages.
 

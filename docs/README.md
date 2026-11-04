@@ -23,11 +23,15 @@ Decisions:
 - [0007 Assets and accounts](adr/0007-assets-and-accounts.md)
 - [0008 Vanilla and Enhanced](adr/0008-vanilla-and-enhanced.md) (superseded by 0010)
 - [0009 Downloads and archives in xtask](adr/0009-xtask-downloads.md)
-- [0010 One product](adr/0010-one-product.md)
+- [0010 One product](adr/0010-one-product.md) (superseded by 0018)
 - [0013 Multi-version content model](adr/0013-multi-version-content-model.md)
-- [0014 Multiplayer-only first release](adr/0014-multiplayer-only-first-release.md)
+- [0014 Multiplayer-only first release](adr/0014-multiplayer-only-first-release.md) (superseded by 0018)
 - [0015 Signed updates](adr/0015-signed-updates.md)
 - [0016 Instanced entity drawing](adr/0016-instanced-entity-drawing.md)
 - [0017 Packed terrain vertices](adr/0017-packed-terrain-vertices.md)
+- [0018 Photon platform](adr/0018-photon-platform.md)
+- [0019 photon-server on an unmodified Pumpkin](adr/0019-photon-server.md)
+- [0020 Accounts and launch links](adr/0020-accounts-and-launch-links.md) (proposed)
+- [0021 Client UI technology and design tokens](adr/0021-client-ui-technology.md) (proposed)
 
 `records/` holds legacy per-slice parity records that are being converted into case metadata ([ADR 0005](adr/0005-parity-v2.md)).
