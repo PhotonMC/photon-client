@@ -60,10 +60,11 @@ pub struct HomeScreen {
 impl HomeScreen {
     /// The home screen of a window `size` units big, its tabs as wide as their labels in `font`.
     pub fn new(size: (i32, i32), version: &str, font: &Font) -> Self {
+        let quit_width = font.width("Quit") + 14;
         let mut x = LOGO_WIDTH;
-        let nav = DESTINATIONS
-            .iter()
-            .map(|&(label, action)| {
+        let nav = Self::visible_tabs(font, size.0 - quit_width - 12)
+            .into_iter()
+            .map(|(label, action)| {
                 let width = font.width(label) + 14;
                 let rect = Rect {
                     x,
@@ -81,7 +82,6 @@ impl HomeScreen {
                 }
             })
             .collect();
-        let quit_width = font.width("Quit") + 14;
         let quit = Target {
             rect: Rect {
                 x: size.0 - quit_width - 6,
@@ -107,6 +107,25 @@ impl HomeScreen {
         screen.cards = screen.card_targets();
         screen.sync_friends();
         screen
+    }
+
+    /// The tabs that fit between the logo and `right`: pages that are not available yet drop out
+    /// from the end first on a narrow window.
+    fn visible_tabs(font: &Font, right: i32) -> Vec<(&'static str, Option<HomeAction>)> {
+        let mut tabs = DESTINATIONS.to_vec();
+        let used = |tabs: &[(&str, Option<HomeAction>)]| {
+            tabs.iter()
+                .map(|(label, _)| font.width(label) + 16)
+                .sum::<i32>()
+                + LOGO_WIDTH
+        };
+        while used(&tabs) > right {
+            match tabs.iter().rposition(|(_, action)| action.is_none()) {
+                Some(index) if index > 0 => tabs.remove(index),
+                _ => break,
+            };
+        }
+        tabs
     }
 
     /// The page's cards. The directory is not connected yet, so the first one adds a server by
@@ -278,6 +297,14 @@ mod tests {
 
     fn centre(rect: Rect) -> (i32, i32) {
         (rect.x + rect.width / 2, rect.y + rect.height / 2)
+    }
+
+    #[test]
+    fn a_narrow_window_drops_unavailable_tabs_before_it_overlaps_quit() {
+        let home = HomeScreen::new((320, 240), "v0.1.0", &Font::default());
+        let last = home.nav.last().expect("tabs");
+        assert!(last.rect.x + last.rect.width <= home.quit.rect.x);
+        assert!(home.nav.iter().any(|tab| tab.label == "Settings"));
     }
 
     #[test]
