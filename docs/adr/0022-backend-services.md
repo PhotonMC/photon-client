@@ -1,6 +1,6 @@
 # ADR 0022: Backend services
 
-- Status: accepted (2026-11-04); website sign-in is an open question
+- Status: accepted (2026-11-04); website sign-in is [ADR 0023](0023-website-sign-in.md)
 
 ## Context
 
