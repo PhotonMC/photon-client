@@ -192,7 +192,7 @@ impl Menu {
             self.servers.add(ServerData::new(name, ip), true);
             self.servers.save(&self.game_directory)?;
         }
-        self.connect(Target::Name(ip.to_owned()), Some(ip), size);
+        self.connect(Target::Name(ip.to_owned()), Some(ip), (name, ip), size);
         Ok(())
     }
 
@@ -243,8 +243,8 @@ impl Menu {
         let Some(server) = self.servers.servers.get(index) else {
             return;
         };
-        let ip = server.ip.clone();
-        self.connect(Target::Name(ip.clone()), Some(&ip), size);
+        let (name, ip) = (server.name.clone(), server.ip.clone());
+        self.connect(Target::Name(ip.clone()), Some(&ip), (&name, &ip), size);
     }
 
     /// The question about deleting a server, shown.

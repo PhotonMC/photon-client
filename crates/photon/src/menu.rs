@@ -11,10 +11,10 @@ use photon_game::server_status::Pinged;
 use photon_game::servers::{PackStatus, ServerData, ServerList};
 use photon_game::text::Component;
 use photon_gui::screen::confirm::{ConfirmAction, ConfirmScreen};
-use photon_gui::screen::connect::ConnectScreen;
 use photon_gui::screen::credits::CreditsScreen;
 use photon_gui::screen::disconnected::DisconnectedScreen;
 use photon_gui::screen::home::{HomeAction, HomeScreen};
+use photon_gui::screen::loading::LoadingScreen;
 use photon_gui::screen::server_form::{FormKind, FormResult, ServerFormScreen};
 use photon_gui::screen::servers::{JoinMultiplayerScreen, ServersAction};
 use photon_net::connection::PlaySession;
@@ -60,13 +60,21 @@ enum Screen {
     /// Whether to delete the saved server at this place.
     Confirm(ConfirmScreen, usize),
     /// A join going on, and the question about the server's resource packs while one is up.
-    Connecting(ConnectScreen, JoinTask, Option<ConfirmScreen>),
+    Connecting(LoadingScreen, JoinTask, Option<ConfirmScreen>),
     /// A join that failed (`DisconnectedScreen` with `connect.failed`).
     Failed(DisconnectedScreen),
     /// The credits of the title screen (`WinScreen` without the poem), and when it last drew.
     Credits(CreditsScreen, Instant),
     /// The options, language or accessibility screens of the title, which the host draws.
     Settings,
+}
+
+/// A window size argument, or `default` when it is absent.
+fn size_arg(value: Option<String>, default: i32) -> Result<i32> {
+    Ok(value
+        .map(|text| text.parse())
+        .transpose()?
+        .unwrap_or(default))
 }
 
 /// `photon` or `photon menu [server [width height]]`: the title screen, the server list from its
@@ -77,16 +85,8 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
         .next()
         .unwrap_or_else(|| play::DEFAULT_SERVER.to_owned())
         .parse()?;
-    let width: i32 = args
-        .next()
-        .map(|value| value.parse())
-        .transpose()?
-        .unwrap_or(1280);
-    let height: i32 = args
-        .next()
-        .map(|value| value.parse())
-        .transpose()?
-        .unwrap_or(720);
+    let width = size_arg(args.next(), 1280)?;
+    let height = size_arg(args.next(), 720)?;
     let mut client = Client::open((width, height))?;
     // The first start shows the loading overlay over the load; a return from a game does not.
     let mut splash = startup::begin(&mut client);
@@ -112,7 +112,7 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
             menu.screen = menu.server_list(gui_size(&client));
         }
         if std::mem::take(&mut scripted_join) {
-            menu.connect(Target::Address(server), None, gui_size(&client));
+            menu.connect_scripted(server, gui_size(&client));
         }
         let choice = menu.run(&mut client)?;
         client.audio = Some(menu.into_audio());
@@ -244,14 +244,27 @@ impl Menu {
     }
 
     /// `ConnectScreen.startConnecting`: the join starts on its own thread.
-    fn connect(&mut self, target: Target, ip: Option<&str>, size: (i32, i32)) {
+    fn connect(&mut self, target: Target, ip: Option<&str>, about: (&str, &str), size: (i32, i32)) {
         let packs = crate::packs::shared();
         crate::packs::prepare(&packs, ip);
         self.screen = Screen::Connecting(
-            ConnectScreen::new(self.gui.lang(), size),
+            LoadingScreen::new(self.gui.lang(), size, about.0, about.1),
             JoinTask::start(target, packs),
             None,
         );
+    }
+
+    /// A scripted run's join of `server`, named by its address.
+    fn connect_scripted(&mut self, server: SocketAddr, size: (i32, i32)) {
+        let shown = server.to_string();
+        self.connect(Target::Address(server), None, ("Server", &shown), size);
+    }
+
+    /// Whether this frame counts towards a capture: a join's screens do not, unless the capture is
+    /// for them (dev only).
+    fn counts_for_capture(&self, joining_too: bool) -> bool {
+        let joining = matches!(self.screen, Screen::Connecting(..));
+        self.loading.is_none() && (!joining || joining_too)
     }
 
     /// The connect screen's status, and the session once the join has finished (or the screen
@@ -328,6 +341,7 @@ impl Menu {
             .ok()
             .and_then(|value| value.parse().ok())
             .unwrap_or(10);
+        let capture_joining = env::var_os("PHOTON_CAPTURE_JOINING").is_some();
         let mut frames = 0;
         while !client.surface.should_close() && !crate::updates::restart_requested() {
             let frame_start = Instant::now();
@@ -357,8 +371,7 @@ impl Menu {
             let clear = self.draw_frame(client, size)?;
             self.show_cursor(client);
             self.gui.sync_glyphs(&mut client.backend)?;
-            // A join's screens are not what a capture waits for.
-            if self.loading.is_none() && !matches!(self.screen, Screen::Connecting(..)) {
+            if self.counts_for_capture(capture_joining) {
                 frames += 1;
             }
             if let Some(path) = capture.as_deref().filter(|_| frames == capture_at) {

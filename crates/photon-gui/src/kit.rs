@@ -47,7 +47,8 @@ pub fn shrink(rect: Rect, by: i32) -> Rect {
 }
 
 impl Painter<'_> {
-    fn fill(&mut self, rect: Rect, colour: u32) {
+    /// A flat rectangle in one colour.
+    pub fn fill_rect(&mut self, rect: Rect, colour: u32) {
         let (x1, y1) = (rect.x + rect.width, rect.y + rect.height);
         self.frame
             .fill(self.atlas, (rect.x, rect.y, x1, y1), colour);
@@ -78,8 +79,8 @@ impl Painter<'_> {
     /// A surface with a one-unit edge in the skin's line colour.
     pub fn panel(&mut self, rect: Rect) {
         let edge = unit(self.skin.border);
-        self.fill(rect, self.skin.line);
-        self.fill(shrink(rect, edge), self.skin.card);
+        self.fill_rect(rect, self.skin.line);
+        self.fill_rect(shrink(rect, edge), self.skin.card);
     }
 
     /// The button body: its border, face and bevel.
@@ -89,9 +90,9 @@ impl Painter<'_> {
             State::Hover | State::Selected => skin.button_border_hover,
             _ => skin.button_border,
         };
-        self.fill(rect, border);
+        self.fill_rect(rect, border);
         let face = shrink(rect, edge);
-        self.fill(face, skin.button);
+        self.fill_rect(face, skin.button);
         let light = Rect {
             height: edge,
             ..face
@@ -100,8 +101,8 @@ impl Painter<'_> {
             width: edge,
             ..face
         };
-        self.fill(light, skin.bevel_light);
-        self.fill(left, skin.bevel_light);
+        self.fill_rect(light, skin.bevel_light);
+        self.fill_rect(left, skin.bevel_light);
         let foot = Rect {
             y: face.y + face.height - 2 * edge,
             height: 2 * edge,
@@ -112,10 +113,10 @@ impl Painter<'_> {
             width: edge,
             ..face
         };
-        self.fill(foot, skin.bevel_dark);
-        self.fill(side, skin.bevel_dark);
+        self.fill_rect(foot, skin.bevel_dark);
+        self.fill_rect(side, skin.bevel_dark);
         if state == State::Hover {
-            self.fill(face, skin.hover);
+            self.fill_rect(face, skin.hover);
         }
     }
 
@@ -139,9 +140,9 @@ impl Painter<'_> {
             _ => (0, skin.ink),
         };
         if face != 0 {
-            self.fill(rect, face);
+            self.fill_rect(rect, face);
         } else if state == State::Hover {
-            self.fill(rect, skin.hover);
+            self.fill_rect(rect, skin.hover);
         }
         self.label(label, (rect.x + 6, rect.y + (rect.height - 8) / 2), ink);
     }
@@ -155,7 +156,7 @@ impl Painter<'_> {
             height: inner.height * 3 / 5,
             ..inner
         };
-        self.fill(banner, skin.bg | 0xFF00_0000);
+        self.fill_rect(banner, skin.bg | 0xFF00_0000);
         let text_y = banner.y + banner.height + 3;
         self.label(title, (inner.x + 2, text_y), skin.button_ink);
         self.label(detail, (inner.x + 2, text_y + 10), skin.muted);
