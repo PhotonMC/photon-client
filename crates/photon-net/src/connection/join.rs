@@ -8,6 +8,16 @@ use photon_protocol::play::{ConnectionError, LoginFailure};
 
 use crate::account::{Account, is_this_machine, json_string, undashed};
 
+/// Posts a join for a server id the caller names, as a backend's identity challenge asks (ADR 0022):
+/// the account proves itself to Mojang for that id, and the backend asks Mojang who joined.
+pub fn prove_identity(
+    account: &Account,
+    server_id: &str,
+    timeout: Duration,
+) -> Result<(), ConnectionError> {
+    join_server(account, server_id, timeout)
+}
+
 /// Post the join. Everything that goes wrong comes back as the failure vanilla words it.
 pub(super) fn join_server(
     account: &Account,

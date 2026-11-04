@@ -16,6 +16,7 @@ mod transport;
 mod version;
 mod writer;
 
+pub use join::prove_identity;
 pub use legacy_status::{LegacyStatus, query_legacy_status};
 pub use open::{configure_connection, open_play_connection};
 pub use photon_protocol::play::*;

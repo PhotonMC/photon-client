@@ -3,6 +3,17 @@
 
 use photon_net::signin::{self, ClientId, Hosts};
 
+/// The commands about the signed-in account: `sign-in`, `sign-out` and `identity-proof`. `None`
+/// when `command` is not one of them.
+pub(crate) fn run_account_command(command: &str) -> Option<Result<(), Box<dyn std::error::Error>>> {
+    match command {
+        "sign-in" => Some(run_sign_in()),
+        "sign-out" => Some(run_sign_out()),
+        "identity-proof" => Some(crate::identity_proof::run(std::env::args().nth(2))),
+        _ => None,
+    }
+}
+
 /// Sign in with a device code shown in the terminal, and keep the refresh token in the
 /// operating system's credential store.
 pub(crate) fn run_sign_in() -> Result<(), Box<dyn std::error::Error>> {

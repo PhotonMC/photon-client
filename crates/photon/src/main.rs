@@ -9,6 +9,7 @@ mod frame_limiter;
 mod gpu_meter;
 mod gui;
 mod hud_input;
+mod identity_proof;
 mod indexed;
 mod keyring_store;
 mod logger;
@@ -53,6 +54,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let result = play::run_play(env::args().skip(2));
         return self_update::restart_if_requested(result);
     }
+    if let Some(command) = env::args().nth(1)
+        && let Some(result) = sign_in::run_account_command(&command)
+    {
+        return result;
+    }
     match env::args().nth(1).as_deref() {
         None => {
             updates::start();
@@ -63,8 +69,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return self_update::restart_if_requested(menu::run_menu(env::args().skip(2)));
         }
         Some("update") => return updates::run_update(),
-        Some("sign-in") => return sign_in::run_sign_in(),
-        Some("sign-out") => return sign_in::run_sign_out(),
         Some("install") => return content::run_install(),
         Some("--version") => {
             println!("photon {}", env!("CARGO_PKG_VERSION"));
@@ -73,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => {}
     }
     Err(format!(
-        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out`, `install`, `update`, `window` or `--version`",
+        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out`, `identity-proof`, `install`, `update`, `window` or `--version`",
         env::args().nth(1)
     )
     .into())
