@@ -148,6 +148,7 @@ impl Menu {
         client: &mut Client,
         size: (i32, i32),
     ) -> Result<[f32; 4], Box<dyn std::error::Error>> {
+        self.video.update(&mut self.screen, &mut client.backend);
         let mouse = self.mouse;
         let screen = &mut self.screen;
         let lang = self.gui.lang();

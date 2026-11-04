@@ -11,6 +11,9 @@ ignore = [
     # Marvin leaks a private key through the timing of RSA decryption. The client only encrypts
     # with the server's public key (login key exchange) and never holds a private key.
     "RUSTSEC-2023-0071",
+    # `paste` is unmaintained, not vulnerable, and only a build-time macro of the AV1 decoder
+    # (`rav1d`, ADR 0025).
+    "RUSTSEC-2024-0436",
 ]
 
 [licenses]
@@ -27,6 +30,8 @@ allow = [
     "0BSD",
     "Unicode-3.0",
     "CDLA-Permissive-2.0",
+    # A public-domain dedication (`to_method`, a dependency of the AV1 decoder, ADR 0025).
+    "CC0-1.0",
 ]
 # The workspace crates carry no license field yet (open decision in the
 # quality review); third-party crates are still checked.

@@ -102,12 +102,15 @@ impl Directory {
 /// the client plays the newest.
 fn card(server: &DirectoryServer) -> GameInfo {
     let detail = format!("{} online", server.players);
+    // A developer hook for captures: the backend only lists `https` videos, a local file is not.
+    let local_video = std::env::var("PHOTON_VIDEO_OVERRIDE").ok();
     GameInfo {
         id: server.id.clone(),
         name: server.name.clone(),
         detail,
         description: server.description.clone(),
-        videos: server.videos.len(),
+        videos: server.videos.len().max(usize::from(local_video.is_some())),
+        video: local_video.or_else(|| server.videos.first().cloned()),
         images: server.images.len(),
     }
 }
@@ -137,6 +140,14 @@ impl Menu {
         let lang = self.gui.lang();
         if let Screen::Home(screen) = &mut self.screen {
             self.directory.apply(screen, lang);
+            // A developer hook for captures: `PHOTON_OPEN_GAME=<id>` opens that game's page once.
+            static OPENED: std::sync::atomic::AtomicBool =
+                std::sync::atomic::AtomicBool::new(false);
+            if let Some(id) = std::env::var_os("PHOTON_OPEN_GAME")
+                && !OPENED.swap(true, std::sync::atomic::Ordering::Relaxed)
+            {
+                screen.open_game_by_id(&id.to_string_lossy());
+            }
         }
     }
 

@@ -1,6 +1,6 @@
 # ADR 0024: Server-delivered mods
 
-- Status: accepted (2026-11-05); built in the client, server side open
+- Status: accepted (2026-11-05); built in the client, server side open; a live check showed `item_model` on a stock item does not yet change its look in the client
 
 ## Context
 

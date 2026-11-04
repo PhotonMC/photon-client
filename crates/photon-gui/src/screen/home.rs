@@ -294,9 +294,30 @@ impl HomeScreen {
         self.page.as_ref().map(|page| page.game.id.as_str())
     }
 
+    /// The video of the open game page, which the app plays into the surface texture.
+    pub fn wanted_video(&self) -> Option<&str> {
+        self.page.as_ref()?.game.video.as_deref()
+    }
+
+    /// Says whether the surface texture holds a picture of that video, to be drawn on the page.
+    pub fn set_video_live(&mut self, live: bool) {
+        if let Some(page) = self.page.as_mut() {
+            page.live = live;
+        }
+    }
+
     /// Escape: an open game page closes. Whether there was one.
     pub fn escape(&mut self) -> bool {
         self.page.take().is_some()
+    }
+
+    /// Opens the page of the game with this id. Whether the home screen has one.
+    pub fn open_game_by_id(&mut self, id: &str) -> bool {
+        let Some(index) = self.games.iter().position(|game| game.id == id) else {
+            return false;
+        };
+        self.open_game(index);
+        true
     }
 
     fn open_game(&mut self, index: usize) {
@@ -593,6 +614,7 @@ mod tests {
             detail: "0 online".to_owned(),
             description: String::new(),
             videos: 0,
+            video: None,
             images: 0,
         }
     }

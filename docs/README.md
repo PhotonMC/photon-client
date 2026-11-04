@@ -36,5 +36,6 @@ Decisions:
 - [0022 Backend services](adr/0022-backend-services.md)
 - [0023 Website sign-in](adr/0023-website-sign-in.md)
 - [0024 Server-delivered mods](adr/0024-server-delivered-mods.md)
+- [0025 Native video on game pages](adr/0025-native-video.md)
 
 `records/` holds legacy per-slice parity records that are being converted into case metadata ([ADR 0005](adr/0005-parity-v2.md)).

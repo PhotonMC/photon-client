@@ -20,6 +20,8 @@ pub struct GameInfo {
     pub detail: String,
     pub description: String,
     pub videos: usize,
+    /// The first video's address, when the game has one.
+    pub video: Option<String>,
     pub images: usize,
 }
 
@@ -66,6 +68,8 @@ pub(super) struct Page {
     info: Rect,
     hits: Vec<(Rect, Hit)>,
     focus: Option<usize>,
+    /// Whether a video picture is on the surface texture, to be drawn over the media box.
+    pub(super) live: bool,
 }
 
 impl Page {
@@ -101,6 +105,7 @@ impl Page {
             info,
             hits,
             focus: None,
+            live: false,
         }
     }
 
@@ -179,6 +184,11 @@ impl Page {
     /// and, when the game has a video, a line saying so.
     fn draw_media(&self, painter: &mut Painter) {
         let skin = *painter.skin;
+        if self.live {
+            let m = self.media;
+            painter.frame.surface_quad((m.x, m.y, m.width, m.height));
+            return;
+        }
         painter.fill_rect(self.media, skin.bg | 0xFF00_0000);
         let initial: String = self.game.name.chars().take(1).collect();
         painter.centred(&initial, self.media, skin.ink);
@@ -295,6 +305,7 @@ mod tests {
             detail: String::new(),
             description: String::new(),
             videos: 0,
+            video: None,
             images: 0,
         }
     }

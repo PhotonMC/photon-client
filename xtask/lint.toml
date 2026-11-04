@@ -4,7 +4,7 @@
 binary_crates = ["photon", "photon-oracle", "xtask"]
 
 # The Vulkan backend is the one place raw FFI is expected.
-unsafe_allowed = ["crates/photon-render/src/vulkan"]
+unsafe_allowed = ["crates/photon-render/src/vulkan", "crates/photon-video/src/decode.rs"]
 
 # Translations and text-handling test data.
 non_ascii_allowed = []
@@ -56,6 +56,7 @@ photon-content = ["photon-core", "photon-net"]
 photon-api = []
 photon-update = ["photon-api"]
 photon-mods = ["photon-api"]
+photon-video = []
 photon-render = ["photon-core", "photon-data", "photon-world", "photon-assets"]
 photon-gui = [
     "photon-core",
@@ -78,6 +79,7 @@ photon = [
     "photon-update",
     "photon-api",
     "photon-mods",
+    "photon-video",
     "photon-render",
     "photon-gui",
     "photon-audio",

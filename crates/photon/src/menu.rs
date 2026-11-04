@@ -34,6 +34,7 @@ mod input;
 pub(crate) mod panorama;
 mod pings;
 mod resume;
+mod video;
 pub(crate) use pings::resolve_named;
 mod servers;
 mod settings;
@@ -221,6 +222,8 @@ struct Menu {
     /// `Panorama.spin`, in degrees, and when it last advanced.
     spin: f32,
     last_spin: Instant,
+    /// The video of the open game page.
+    video: video::Slot,
 }
 
 impl Menu {
@@ -259,10 +262,9 @@ impl Menu {
         let game_directory = crate::controls::game_directory();
         let screen = home_screen(gui.text_assets().0, gui.lang(), gui_size(client));
         let (sound, music) = audio::take(client, root, &options);
-        let assets = gui.screen_assets();
         let mut menu = Self {
             host: crate::controls::Controls::for_title(),
-            assets,
+            assets: gui.screen_assets(),
             gui,
             sound,
             music,
@@ -276,6 +278,7 @@ impl Menu {
             icons_dirty: false,
             spin: 0.0,
             last_spin: Instant::now(),
+            video: video::Slot::default(),
             friends_title: friends::TitleFriends::look_up(),
             directory: directory::Directory::look_up(),
             link,
