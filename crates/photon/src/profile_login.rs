@@ -73,9 +73,10 @@ fn choose(
 /// (seconds), and the access token it yields outlives this.
 const RESUMED_FOR: std::time::Duration = std::time::Duration::from_secs(30 * 60);
 
-/// The signed-in player, resumed once and kept for a while: the title looks it up as the game
-/// opens, so a join that follows does not wait for the services (the reference joins with the
-/// session it already holds). Callers that arrive during a resume wait for it.
+/// The signed-in player, resumed once and kept for a while: a client opened by a link starts the
+/// resume as it starts, so the join or sign-in that follows does not wait for the services (the
+/// reference joins with the session it already holds). Callers that arrive during a resume wait
+/// for it.
 fn stored() -> Result<Option<Account>, String> {
     type Resumed = (std::time::Instant, Option<Account>);
     static KEPT: std::sync::Mutex<Option<Resumed>> = std::sync::Mutex::new(None);

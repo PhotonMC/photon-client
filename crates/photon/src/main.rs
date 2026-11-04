@@ -86,6 +86,11 @@ fn open_link() -> Result<(), Box<dyn std::error::Error>> {
         link_socket::Sent::NoPrimary => {}
     }
     launch_link::remember(&link)?;
+    // A link always needs to know who is signed in: the resume (seconds of account requests) runs
+    // while the window opens, and the lookups that follow wait on it instead of resuming again.
+    std::thread::spawn(|| {
+        let _ = profile_login::identity();
+    });
     open_menu(std::iter::empty())
 }
 
