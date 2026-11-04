@@ -650,6 +650,7 @@ fn translucent_set(
 ) -> vk::DescriptorSet {
     match blend {
         crate::gui::GuiBlend::BlockSprite => scene.descriptor_set,
+        crate::gui::GuiBlend::Surface => scene.surface_set.unwrap_or(gui),
         crate::gui::GuiBlend::TranslucentBlur
         | crate::gui::GuiBlend::VignetteBlur
         | crate::gui::GuiBlend::LogoAdd => scene.gui_blur.as_ref().map_or(gui, |(set, _)| *set),

@@ -404,7 +404,7 @@ impl VulkanBackend {
     /// Upload `image` and make the descriptor `set` point at it with `sampler`; the image it
     /// pointed at is left to the caller to drop. The device is made idle first, so nothing in
     /// flight still reads the old one.
-    fn replace_image(
+    pub(super) fn replace_image(
         &mut self,
         image: &DecodedImage,
         set: vk::DescriptorSet,

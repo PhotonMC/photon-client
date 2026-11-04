@@ -108,6 +108,25 @@ impl VulkanBackend {
         self.set_section((0, 0, 0), mesh, [0.0; 3], SectionFade::none())
     }
 
+    /// The pipelines of the sky: its translucent layer, its overlay and the clouds.
+    ///
+    /// # Safety
+    ///
+    /// `layout` is live; this only creates objects, which the caller stores.
+    unsafe fn create_sky_pipelines(
+        &self,
+        layout: vk::DescriptorSetLayout,
+    ) -> Result<(Pipeline, Pipeline, Pipeline), VulkanError> {
+        // SAFETY: see `# Safety`.
+        unsafe {
+            Ok((
+                self.create_pipeline(layout, PipelineKind::SkyTranslucent)?,
+                self.create_pipeline(layout, PipelineKind::SkyOverlay)?,
+                self.create_pipeline(layout, PipelineKind::Clouds)?,
+            ))
+        }
+    }
+
     /// Upload the atlas and build the pipelines, dropping every section.
     pub fn load_atlas(&mut self, texture_levels: &[DecodedImage]) -> Result<(), VulkanError> {
         // SAFETY: live handles; `destroy_scene` makes the device idle before it frees the old
@@ -125,11 +144,8 @@ impl VulkanBackend {
             let pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Terrain)?;
             let translucent_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::Translucent)?;
-            let sky_pipeline =
-                self.create_pipeline(descriptors.layout, PipelineKind::SkyTranslucent)?;
-            let sky_overlay_pipeline =
-                self.create_pipeline(descriptors.layout, PipelineKind::SkyOverlay)?;
-            let cloud_pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Clouds)?;
+            let (sky_pipeline, sky_overlay_pipeline, cloud_pipeline) =
+                self.create_sky_pipelines(descriptors.layout)?;
             let weather_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::Weather)?;
             let entity_pipelines = self.create_entity_pipelines(descriptors.layout)?;
@@ -205,6 +221,8 @@ impl VulkanBackend {
                 gui_blur: None,
                 map_texture: None,
                 map_set: None,
+                surface_texture: None,
+                surface_set: None,
             });
             Ok(())
         }

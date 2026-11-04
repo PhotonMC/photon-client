@@ -156,6 +156,27 @@ impl GuiFrame {
         );
     }
 
+    /// A video's current frame, whole, stretched over `rect` in GUI units. Photon's own element:
+    /// nothing in the Java client draws one, so there is no draw log entry.
+    pub fn surface_quad(&mut self, (x, y, w, h): (i32, i32, i32, i32)) {
+        let corner = |px: i32, py: i32, uv: [f32; 2]| GuiVertex {
+            position: [px as f32, py as f32],
+            uv,
+            colour: [1.0, 1.0, 1.0, 1.0],
+        };
+        let corners = [
+            corner(x, y, [0.0, 0.0]),
+            corner(x, y + h, [0.0, 1.0]),
+            corner(x + w, y + h, [1.0, 1.0]),
+            corner(x + w, y, [1.0, 0.0]),
+        ];
+        let first = self.vertices.len() as u32;
+        for index in [0, 1, 2, 0, 2, 3] {
+            self.vertices.push(corners[index]);
+        }
+        self.batches.push((GuiBlend::Surface, first, 6));
+    }
+
     /// `Hud.extractPortalOverlay`'s blit: a sprite of the block atlas, as `[u0, v0, u1, v1]`
     /// there, stretched over `rect` and white at `alpha`.
     pub fn block_sprite_overlay(

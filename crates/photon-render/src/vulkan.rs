@@ -66,6 +66,7 @@ mod regions;
 mod scene;
 mod sections;
 mod shaders;
+mod surface;
 mod swapchain;
 mod terrain_filter;
 mod texture;

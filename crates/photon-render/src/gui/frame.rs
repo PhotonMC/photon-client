@@ -42,6 +42,8 @@ pub enum GuiBlend {
     LogoAdd,
     /// A sprite of the block atlas, which the portal overlay is.
     BlockSprite,
+    /// A video's current frame, drawn whole over a rectangle.
+    Surface,
     /// Items in slots, whose run counts in `GuiFrame::items`.
     Items,
     /// The glints of the items before it, over the depth they wrote; its run counts in

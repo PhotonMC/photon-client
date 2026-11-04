@@ -808,7 +808,7 @@
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::create_plain_pipeline" = 92
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::upload_cube" = 95
 "crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 210
-"crates/photon-render/src/vulkan/scene.rs::VulkanBackend::load_atlas" = 95
+"crates/photon-render/src/vulkan/scene.rs::VulkanBackend::load_atlas" = 94
 "crates/photon-render/src/vulkan/texture.rs::VulkanBackend::upload_texture" = 105
 "crates/photon-world/src/block/shape_rules/singles/outline/furniture.rs::outline" = 216
 "crates/photon-world/src/block/shape_rules/singles/outline/mounts.rs::outline" = 186
