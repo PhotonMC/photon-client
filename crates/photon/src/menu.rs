@@ -19,7 +19,6 @@ use photon_gui::screen::server_form::{FormKind, FormResult, ServerFormScreen};
 use photon_gui::screen::servers::{JoinMultiplayerScreen, ServersAction};
 use photon_net::connection::PlaySession;
 
-use self::draw::draw_screen;
 use self::input::confirm_event;
 use crate::gui::Gui;
 use crate::play::{self, Client, Exit, JoinTask, Target};
@@ -37,7 +36,6 @@ pub(crate) use pings::resolve_named;
 mod servers;
 mod settings;
 mod signin;
-mod startup;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -95,8 +93,8 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
     let width = size_arg(args.next(), 1280)?;
     let height = size_arg(args.next(), 720)?;
     let mut client = Client::open((width, height))?;
-    // The first start shows the loading overlay over the load; a return from a game does not.
-    let mut splash = startup::begin(&mut client);
+    // The window's first frame, before the interface loads: plain, not a logo.
+    let _ = client.backend.draw_scene([0.0, 0.0, 0.0, 1.0], IDENTITY);
     let mut scripted_join = env::var_os("PHOTON_SCRIPT").is_some();
     // Dev only: the addresses a scripted run joins after each `leave`, in turn.
     let mut hops: std::collections::VecDeque<SocketAddr> = env::var("PHOTON_HOPS")
@@ -116,7 +114,6 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
     loop {
         // A game about to be joined leaves a waiting link for that game, not this menu.
         let mut menu = Menu::open(&mut client, join_next.is_none())?;
-        menu.loading = splash.take().map(startup::Splash::into_overlay);
         menu.open_requested_screen(&client);
         // A link's joining screen stays: the home screen would show first, for a moment.
         let left = std::mem::take(&mut left_server);
@@ -215,8 +212,6 @@ struct Menu {
     /// `Panorama.spin`, in degrees, and when it last advanced.
     spin: f32,
     last_spin: Instant,
-    /// The loading overlay of the first start, and the clock it fades by, until it is gone.
-    loading: Option<(photon_gui::loading_overlay::LoadingOverlay, Instant)>,
 }
 
 impl Menu {
@@ -272,7 +267,6 @@ impl Menu {
             icons_dirty: false,
             spin: 0.0,
             last_spin: Instant::now(),
-            loading: None,
             friends_title: friends::TitleFriends::look_up(),
             directory: directory::Directory::look_up(),
             link,
@@ -331,7 +325,7 @@ impl Menu {
     /// for them (dev only).
     fn counts_for_capture(&self, joining_too: bool) -> bool {
         let joining = matches!(self.screen, Screen::Connecting(..));
-        self.loading.is_none() && (!joining || joining_too)
+        !joining || joining_too
     }
 
     /// The connect screen's status, and the session once the join has finished (or the screen
@@ -486,10 +480,6 @@ impl Menu {
     /// One window event for the open menu; what it chose, if anything.
     fn handle(&mut self, event: WindowEvent, client: &mut Client) -> Result<Option<Choice>> {
         self.track_mouse(&event, &client.surface);
-        // The overlay is in the way of the mouse and the keys (`Gui.overlay() != null`).
-        if self.loading.is_some() {
-            return Ok(None);
-        }
         self.handle_open(event, client)
     }
 

@@ -433,31 +433,6 @@ impl GuiAtlas {
         ))
     }
 
-    /// The atlas of the loading overlay before the real one exists: the logo and the white pixel.
-    /// The logo is read from `resources` as the vanilla pack's, which a resource pack cannot change.
-    pub fn load_splash(resources: &dyn Resources) -> Option<(Self, DecodedImage)> {
-        let logo = with_edge_border(&read_png(
-            resources,
-            &format!("textures/gui/{LOGO_TEXTURE}"),
-        )?);
-        let key = whole_key(LOGO_TEXTURE);
-        // The logo may be a high-resolution one: the atlas grows with it.
-        let (stitcher, images) = [1024, 2048, 4096, 8192].into_iter().find_map(|side| {
-            let mut stitcher = Stitcher::new(side, side, 0, 0);
-            let mut images = BTreeMap::new();
-            stitcher.register_sprite(SpriteEntry {
-                width: logo.width as i32,
-                height: logo.height as i32,
-                name: Identifier::parse(&key).ok()?,
-            });
-            images.insert(key.clone(), logo.clone());
-            register_white(&mut stitcher, &mut images)?;
-            stitcher.stitch().ok()?;
-            Some((stitcher, images))
-        })?;
-        Self::assemble(stitcher, &images, BTreeSet::from([key]))
-    }
-
     /// Every icon texture released (`FaviconTexture.close` of the entries of a list that is gone).
     pub fn clear_favicons(&mut self) {
         for slot in &mut self.favicons {

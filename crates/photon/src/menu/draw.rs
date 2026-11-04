@@ -7,7 +7,8 @@ use photon_gui::screen::connect::draw_level_loading;
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
-use super::Screen;
+use super::{Menu, Screen};
+use crate::play::Client;
 
 /// The open screen drawn into `frame`.
 pub(super) fn draw_screen(
@@ -134,5 +135,27 @@ fn draw_settings(
         if !crate::gui::Gui::draw_packs(at, host, frame, (size, mouse)) {
             crate::gui::Gui::draw_option_screens(at, host, frame, (size, mouse));
         }
+    }
+}
+
+impl Menu {
+    /// One frame of the screen. The colour the frame is cleared to.
+    pub(super) fn draw_frame(
+        &mut self,
+        client: &mut Client,
+        size: (i32, i32),
+    ) -> Result<[f32; 4], Box<dyn std::error::Error>> {
+        let mouse = self.mouse;
+        let screen = &mut self.screen;
+        let lang = self.gui.lang();
+        let host = &mut self.host;
+        self.gui.draw_menu_screen(
+            &mut client.backend,
+            &client.surface,
+            |frame, atlas, font| {
+                draw_screen(screen, host, (frame, atlas, font), (lang, mouse, size));
+            },
+        )?;
+        Ok([0.0, 0.0, 0.0, 1.0])
     }
 }
