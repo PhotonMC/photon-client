@@ -246,6 +246,13 @@ mod tests {
     }
 
     #[test]
+    fn a_directory_entry_with_videos_still_reads() {
+        let text = r#"{"id":"a","name":"A","address":"h:1","videos":["dQw4w9WgXcQ"],"players":1}"#;
+        let server = directory_server(&object(text).expect("object")).expect("entry");
+        assert_eq!((server.id.as_str(), server.players), ("a", 1));
+    }
+
+    #[test]
     fn the_profile_of_a_code_must_be_the_signed_in_one() {
         let signed_in = Uuid::new(0xb280_53e5_d731_4bc5, 0x90cc_1f52_6ca1_fc81);
         assert!(is_same_profile(
