@@ -262,7 +262,8 @@ impl Menu {
     /// A scripted run's join of `server`, named by its address.
     fn connect_scripted(&mut self, server: SocketAddr, size: (i32, i32)) {
         let shown = server.to_string();
-        self.connect(Target::Address(server), None, ("Server", &shown), size);
+        let name = self.gui.lang().text("photon.loading.server");
+        self.connect(Target::Address(server), None, (&name, &shown), size);
     }
 
     /// Whether this frame counts towards a capture: a join's screens do not, unless the capture is
