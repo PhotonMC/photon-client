@@ -22,6 +22,8 @@ pub enum HomeAction {
     Options,
     Quit,
     Credits,
+    /// The card of the directory's server at this index.
+    Join(usize),
 }
 
 const BAR_HEIGHT: i32 = 26;
@@ -73,6 +75,8 @@ pub struct HomeScreen {
     focus: Option<usize>,
     /// The page's title and the line under it.
     heading: (String, String),
+    /// The cards' title, detail and what they do: the page's own, then the directory's.
+    entries: Vec<(String, String, Option<HomeAction>)>,
 }
 
 impl HomeScreen {
@@ -104,12 +108,18 @@ impl HomeScreen {
             quit,
             friends_ready: false,
             focus: None,
+            entries: Vec::new(),
             heading: (
                 lang.text("photon.home.heading"),
                 lang.text("photon.home.subtitle"),
             ),
         };
-        screen.cards = screen.card_targets(lang);
+        let text = |key: &str| lang.text(&format!("photon.home.{key}"));
+        screen.entries = vec![
+            (text("join"), text("join.detail"), Some(HomeAction::Servers)),
+            (text("games"), text("games.detail"), None),
+        ];
+        screen.cards = screen.card_targets();
         screen.sync_friends();
         screen
     }
@@ -155,21 +165,16 @@ impl HomeScreen {
 
     /// The page's cards. The directory is not connected yet, so the first one adds a server by
     /// address and the second says what is coming.
-    fn card_targets(&self, lang: &Lang) -> Vec<Target> {
+    fn card_targets(&self) -> Vec<Target> {
         let area = Rect {
             x: MARGIN,
             y: BAR_HEIGHT + 40,
             width: self.size.0 - 2 * MARGIN,
             height: self.size.1 - BAR_HEIGHT - 52,
         };
-        let text = |key: &str| lang.text(&format!("photon.home.{key}"));
-        let content = [
-            (text("join"), text("join.detail"), Some(HomeAction::Servers)),
-            (text("games"), text("games.detail"), None),
-        ];
-        grid::cards(area, content.len(), CARD_SIZE, 8)
+        grid::cards(area, self.entries.len(), CARD_SIZE, 8)
             .into_iter()
-            .zip(content)
+            .zip(self.entries.iter().cloned())
             .map(|(rect, (label, detail, action))| Target {
                 rect,
                 label,
@@ -179,6 +184,23 @@ impl HomeScreen {
                 enabled: action.is_some(),
             })
             .collect()
+    }
+
+    /// The directory's servers, as the cards after the first: title and detail of each. Without
+    /// any the page keeps its placeholder card.
+    pub fn set_directory(&mut self, cards: Vec<(String, String)>) {
+        if cards.is_empty() {
+            return;
+        }
+        self.entries.truncate(1);
+        self.entries.extend(
+            cards
+                .into_iter()
+                .enumerate()
+                .map(|(index, (title, detail))| (title, detail, Some(HomeAction::Join(index)))),
+        );
+        self.cards = self.card_targets();
+        self.focus = None;
     }
 
     fn sync_friends(&mut self) {
@@ -397,5 +419,21 @@ mod tests {
     #[test]
     fn nothing_is_pressed_before_anything_is_focused() {
         assert_eq!(screen().pressed(), None);
+    }
+
+    #[test]
+    fn directory_cards_join_by_their_index_and_an_empty_directory_changes_nothing() {
+        let mut home = screen();
+        home.set_directory(Vec::new());
+        assert_eq!(home.cards.len(), 2);
+        home.set_directory(vec![
+            ("Skyblock".to_owned(), "3 players".to_owned()),
+            ("Arena".to_owned(), "0 players".to_owned()),
+        ]);
+        assert_eq!(home.cards.len(), 3);
+        let second = centre(home.cards[2].rect);
+        assert_eq!(home.clicked(second), Some(HomeAction::Join(1)));
+        let first = centre(home.cards[0].rect);
+        assert_eq!(home.clicked(first), Some(HomeAction::Servers));
     }
 }

@@ -147,6 +147,19 @@ impl Painter<'_> {
         self.centred(label, rect, ink);
     }
 
+    /// `text` cut to `width` units, ending in `...` when it was cut. Server names and descriptions
+    /// come from operators and may be any length.
+    pub fn fitted(&self, text: &str, width: i32) -> String {
+        if self.font.width(text) <= width {
+            return text.to_owned();
+        }
+        let mut cut: String = text.to_owned();
+        while !cut.is_empty() && self.font.width(&format!("{cut}...")) > width {
+            cut.pop();
+        }
+        format!("{cut}...")
+    }
+
     /// A game card: a coloured banner, a title and a detail line.
     pub fn card(&mut self, rect: Rect, (title, detail): (&str, &str), state: State) {
         self.plate(rect, state);
@@ -158,7 +171,9 @@ impl Painter<'_> {
         };
         self.fill_rect(banner, skin.bg | 0xFF00_0000);
         let text_y = banner.y + banner.height + 3;
-        self.label(title, (inner.x + 2, text_y), skin.button_ink);
-        self.label(detail, (inner.x + 2, text_y + 10), skin.muted);
+        let room = inner.width - 4;
+        let (title, detail) = (self.fitted(title, room), self.fitted(detail, room));
+        self.label(&title, (inner.x + 2, text_y), skin.button_ink);
+        self.label(&detail, (inner.x + 2, text_y + 10), skin.muted);
     }
 }

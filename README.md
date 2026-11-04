@@ -96,7 +96,7 @@ Closed and total issues per milestone on GitHub; these are issue counts, not com
 | [M10 Parity closure and distribution](https://github.com/PhotonMC/photon-client/milestone/14) | 0 / 1 |
 | [Parity leftovers](https://github.com/PhotonMC/photon-client/milestone/15) | 12 / 26 |
 | [R1 First release](https://github.com/PhotonMC/photon-client/milestone/16) | 5 / 8 |
-| [Later (post-1.0)](https://github.com/PhotonMC/photon-client/milestone/17) | 0 / 6 |
+| [Later (post-1.0)](https://github.com/PhotonMC/photon-client/milestone/17) | 0 / 5 |
 <!-- milestones:end -->
 
 ## Priorities

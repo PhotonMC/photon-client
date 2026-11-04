@@ -26,6 +26,7 @@ use crate::play::{self, Client, Exit, JoinTask, Target};
 
 mod audio;
 mod credits;
+mod directory;
 mod draw;
 mod friends;
 mod icons;
@@ -168,6 +169,8 @@ struct Menu {
     host: crate::controls::Controls,
     /// The account the title is looking up, until it is found, and whether friends work now.
     friends_title: friends::TitleFriends,
+    /// The servers Photon's backend lists, when one is named.
+    directory: directory::Directory,
     /// What those screens are made with.
     assets: crate::screens::ScreenAssets,
     /// `Panorama.spin`, in degrees, and when it last advanced.
@@ -231,6 +234,7 @@ impl Menu {
             last_spin: Instant::now(),
             loading: None,
             friends_title: friends::TitleFriends::look_up(),
+            directory: directory::Directory::look_up(),
             options,
         })
     }
@@ -245,6 +249,7 @@ impl Menu {
         if self.friends_title.ready {
             screen.friends_available();
         }
+        screen.set_directory(self.directory.cards());
         Screen::Home(screen)
     }
 
@@ -371,6 +376,7 @@ impl Menu {
             }
             self.credits_ticked(size);
             self.friends_account_polled();
+            self.directory_polled();
             self.friends_ticked(client);
             self.fit_screen(size);
             self.spin_panorama(client);

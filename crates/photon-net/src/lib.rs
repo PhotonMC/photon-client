@@ -3,6 +3,7 @@
 //! callers.
 
 pub mod account;
+pub mod backend;
 pub mod connection;
 pub mod friends;
 pub mod resolver;
