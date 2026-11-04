@@ -24,3 +24,13 @@ The website uses light and dark skins, and the client uses the game-like "Classi
 - The first slices (tokens, UI kit, home screen, loading screen, in-game menu) need no browser engine.
 - The web surface is a spike, then a feature. Its cost in memory and start time is measured before it ships.
 - Game pages are authored once, on the website.
+
+## Addendum (proposed): how the web surface runs
+
+Status: proposed; accepting it is the owner's decision. Evidence: the spike in [#224](https://github.com/PhotonMC/photon-client/issues/224).
+
+- **A helper process, not a link.** `libcef.so` is a load-time dependency: a binary linked against it does not start on a machine without CEF. The `cef-dll-sys` build script downloads about 333 MB when `CEF_PATH` is unset, which has no place in the git hooks or in CI. So `photon` does not depend on CEF at build time. CEF runs in a separate helper executable, delivered on demand under [ADR 0015](0015-signed-updates.md); the client starts it only when a page needs it.
+- **Frames.** The first path is CEF's CPU paint buffer (BGRA), handed to the client over shared memory and uploaded to a texture. Measured: a full 1280x720 copy in the paint callback takes about 0.6 ms, and the client's existing upload path (`replace_gui_texture`, which makes a new image with a staging buffer each time) takes about 1.85 ms per 1280x720 upload, so a continuous 60 per second stream would cost roughly 11 percent of one core's frame budget at worst; the number is an upper bound that a reused image would lower. Importing a Linux DMA-BUF into Vulkan is a later optimisation.
+- **Sandbox.** The helper requires the Chromium sandbox and refuses to start without it. It never falls back to `no_sandbox`. On Linux this needs unprivileged user namespaces (verified on one host, with `kernel.unprivileged_userns_clone = 1`; hosts that restrict them are not checked and need a setuid `chrome-sandbox` or an error message).
+- **Origin.** Unchanged: a page that embeds a video loads over `https` from the website. A localhost page with a YouTube iframe played a clip to its end; the bare embed URL as the top-level page did not (reason not read).
+- **Still open.** Audio output, input forwarding, the shared-memory protocol, memory per helper (about 540 MB PSS measured over 11 processes while a clip played).
