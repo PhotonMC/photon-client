@@ -185,6 +185,7 @@ impl HomeScreen {
     pub fn clicked(&mut self, mouse: (i32, i32)) -> Option<HomeAction> {
         let index = self.target_at(mouse)?;
         self.focus = Some(index);
+        crate::ui_sound::play_down_sound();
         self.targets().nth(index).and_then(|target| target.action)
     }
 
@@ -208,10 +209,13 @@ impl HomeScreen {
     /// Enter or Space: what the focused thing chose.
     pub fn pressed(&self) -> Option<HomeAction> {
         let focus = self.focus?;
-        self.targets()
+        let action = self
+            .targets()
             .nth(focus)
             .filter(|target| target.enabled)
-            .and_then(|target| target.action)
+            .and_then(|target| target.action)?;
+        crate::ui_sound::play_down_sound();
+        Some(action)
     }
 
     /// The panorama's dimming, the top bar, the page and the version.
@@ -325,6 +329,20 @@ mod tests {
         );
         home.step_focus(false);
         assert_eq!(home.pressed(), Some(HomeAction::Quit));
+    }
+
+    #[test]
+    fn a_press_clicks_once_and_a_dead_row_stays_silent() {
+        let mut home = screen();
+        crate::ui_sound::take();
+        home.clicked(centre(home.nav[3].rect));
+        assert!(crate::ui_sound::take().is_empty());
+        home.clicked(centre(home.nav[1].rect));
+        let sounds = crate::ui_sound::take();
+        assert_eq!(sounds.len(), 1);
+        home.step_focus(true);
+        home.pressed();
+        assert_eq!(crate::ui_sound::take().len(), 1);
     }
 
     #[test]
