@@ -10,30 +10,37 @@ The only proof of a profile the backend accepts is the client's identity proof
 ([ADR 0022](0022-backend-services.md)), which never leaves the client. The browser has no
 Minecraft token and must not get one.
 
+A first draft had the site create a request that the client approves. It does not hold: an attacker
+can create a request on the real backend, show its pairing code on their own page, and have the
+victim's client approve it, because the code only shows that client and page look at the same
+request, not that the request is the victim's. The attacker then polls and gets the victim's
+session. The design below replaces it.
+
 ## Decision
 
-The browser asks the backend for a **sign-in request** and the client approves it.
+The client opens the browser, and the browser proves it is the one that started the flow.
 
-- The site creates a request: a random id (at least 128 bits) and a short pairing code of six
-  characters, both held by the backend for at most 60 seconds. The site shows the pairing code and
-  opens `photon://signin?request=<id>`; the id is the only thing in the link.
-- The client reads the request, shows a screen that says what is being approved ("Sign in to the
-  Photon website as <name>?") with the pairing code the site shows, and signs in to the backend with
-  its own identity proof only when the player confirms. It then approves the request with that
-  session. Nothing is approved without the player pressing the button, and the code on the screen
-  must be compared with the one on the site.
-- The browser polls its request with a secret only it holds (held in the page, never in a URL) and
-  receives a website session when the request is approved. A request is approved at most once and
-  consumed by one atomic delete.
+- The site sets a short-lived `HttpOnly` cookie holding a random `state` (32 hex digits) and opens
+  `photon://signin?state=<same>`. The state grants nothing by itself.
+- The client asks "Sign in to the Photon website as <name>?". On a yes it signs in to the backend
+  with its identity proof, asks for a **web code** bound to the session's profile and that state
+  (valid 60 seconds, single use), and opens the website address from its own configuration with
+  `?code=<code>` in the default browser. The address is never taken from the link.
+- The site's server exchanges the code together with the cookie's state for a website session, sets
+  its own cookie, removes the code from the URL and answers with `Referrer-Policy: no-referrer`.
+  The client's own backend session is never given to the browser.
+- The backend consumes a code with one atomic delete and compares the state and the expiry after
+  it, so a code burns on any attempt, including one with a wrong state.
 - The link carries no secret, no token and no session. The parser for `photon://signin` is as strict
-  as the launch one: one parameter, a 32-hex id, nothing else.
+  as the launch one: one parameter, 32 hex digits, nothing else.
 
 ## Consequences
 
-- An attacker who sends a victim a `photon://signin` link for the attacker's own request gets a
-  session for the victim only if the victim compares nothing and confirms. The pairing code on the
-  confirmation screen and the 60 second life are the mitigation; the screen says plainly that the
-  code must match the website.
+- An attacker who supplies a state of their own gets a code that lands in the victim's browser,
+  where the cookie's state does not match, and never sees it. The attacker's own code fails the
+  same way in the victim's browser. So neither session theft nor login CSRF works.
+- If the person started the flow in a browser that is not the default, the cookie is missing and
+  the exchange fails; the site says so.
 - No Azure redirect is needed. Server-side Microsoft OAuth on the site stays a later option.
-- Needs: a request table and three calls in the backend (create, approve, poll), the link parser
-  and the confirmation screen in the client, and the site's Play page. None is built yet.
+- Needs: a `web_codes` table with a create and an exchange call in the backend, the link parser and
+  the confirmation screen in the client, and the site's Play page.
