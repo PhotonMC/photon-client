@@ -508,4 +508,62 @@ mod tests {
         let at = centre(&screen, PauseAction::Friends);
         assert_eq!(screen.clicked(at), None);
     }
+
+    #[test]
+    fn each_main_button_asks_for_its_action() {
+        let mut screen = screen(false);
+        for action in [
+            PauseAction::Resume,
+            PauseAction::Advancements,
+            PauseAction::Statistics,
+            PauseAction::Options,
+        ] {
+            let at = centre(&screen, action);
+            assert_eq!(screen.clicked(at), Some(action));
+        }
+    }
+
+    #[test]
+    fn a_click_on_nothing_asks_for_nothing() {
+        assert_eq!(screen(false).clicked((1, 1)), None);
+    }
+
+    #[test]
+    fn disconnect_asks_once_whether_clicked_or_pressed() {
+        let mut screen = screen(false);
+        let at = centre(&screen, PauseAction::Disconnect);
+        assert_eq!(screen.clicked(at), Some(PauseAction::Disconnect));
+        assert_eq!(screen.clicked(at), None);
+        let mut keyed = self::screen(false);
+        for _ in 0..keyed.widgets.len() {
+            keyed.tab(false);
+            if keyed.focus
+                == keyed
+                    .widgets
+                    .iter()
+                    .position(|(_, a)| *a == Some(PauseAction::Disconnect))
+            {
+                break;
+            }
+        }
+        assert_eq!(keyed.pressed(), Some(PauseAction::Disconnect));
+        assert_eq!(keyed.pressed(), None);
+    }
+
+    #[test]
+    fn tab_walks_every_button_and_wraps() {
+        let mut screen = screen(false);
+        let count = screen.widgets.len();
+        assert_eq!(screen.pressed(), None);
+        let mut seen = Vec::new();
+        for _ in 0..count {
+            screen.tab(true);
+            seen.push(screen.focus.expect("focused"));
+        }
+        assert_eq!(seen, (0..count).collect::<Vec<_>>());
+        screen.tab(true);
+        assert_eq!(screen.focus, Some(0));
+        screen.tab(false);
+        assert_eq!(screen.focus, Some(count - 1));
+    }
 }
