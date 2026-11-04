@@ -92,7 +92,7 @@ impl Controls {
             self.any_screen_open(),
         )
         .with_background(ConfirmBackground::Menu { in_world: true });
-        self.link_confirm = Some((screen, target));
+        self.link_confirm = Some((screen.into(), target));
     }
 
     /// `openSignedCommandSendConfirmationWindow`: with no screen to go back to and a player who

@@ -177,7 +177,7 @@ impl Controls {
         .with_background(ConfirmBackground::Menu {
             in_world: !self.title_host,
         });
-        self.link_confirm = Some((screen, ConfirmTarget::FriendsList));
+        self.link_confirm = Some((screen.into(), ConfirmTarget::FriendsList));
     }
 
     /// The answer of a confirmation of the friends: Turn ON asks the service, Remove removes the
@@ -357,7 +357,7 @@ impl Controls {
         .with_background(ConfirmBackground::Menu {
             in_world: !self.title_host,
         });
-        self.link_confirm = Some((screen, ConfirmTarget::Link(url.to_owned())));
+        self.link_confirm = Some((screen.into(), ConfirmTarget::Link(url.to_owned())));
     }
 
     fn act_friend(&mut self, action: Action) {
@@ -392,7 +392,7 @@ impl Controls {
             ),
             (&text("gui.remove"), &text("gui.cancel")),
         );
-        self.link_confirm = Some((screen, ConfirmTarget::RemoveFriend(id)));
+        self.link_confirm = Some((screen.into(), ConfirmTarget::RemoveFriend(id)));
     }
 }
 

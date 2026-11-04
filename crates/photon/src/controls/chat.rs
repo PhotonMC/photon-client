@@ -457,7 +457,7 @@ impl Controls {
             .with_background(photon_gui::screen::confirm::ConfirmBackground::Menu {
                 in_world: true,
             });
-        self.link_confirm = Some((screen, ConfirmTarget::Link(url.to_owned())));
+        self.link_confirm = Some((screen.into(), ConfirmTarget::Link(url.to_owned())));
     }
 
     /// An event for the open link confirmation: Yes opens the link, Copy

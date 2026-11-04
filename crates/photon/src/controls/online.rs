@@ -108,7 +108,7 @@ impl Controls {
                 in_world: !self.title_host,
             });
             self.link_confirm = Some((
-                screen,
+                screen.into(),
                 ConfirmTarget::Link(PRIVACY_AND_ONLINE_SETTINGS.to_owned()),
             ));
         }

@@ -15,7 +15,7 @@ impl Controls {
             true,
         )
         .with_background(ConfirmBackground::Menu { in_world: true });
-        self.link_confirm = Some((screen, ConfirmTarget::Link(url.to_owned())));
+        self.link_confirm = Some((screen.into(), ConfirmTarget::Link(url.to_owned())));
     }
 
     /// A link handed over during the game (over the pause menu, which opens for it): the question
@@ -50,17 +50,26 @@ impl Controls {
             InPlay::Say(title, key) => (text(title), text(key), None, ConfirmTarget::Notice),
         };
         let (font, size) = (&assets.creative.font, Self::gui_size(surface));
-        let screen = match buttons {
+        // The questions Photon's links ask are Photon's own screen, over the dimmed game; a notice
+        // keeps the confirmation screen's one button.
+        let screen: Question = match buttons {
             Some((yes, no)) => {
-                ConfirmScreen::new(font, lang, size, &title, &message, (&text(yes), &text(no)))
+                let mut question = NoticeScreen::asking(
+                    font,
+                    lang,
+                    size,
+                    (&title, &message, &text(no), &text(yes)),
+                )
+                .over_game();
+                // A question that opens by itself, over whatever the player was doing, wakes
+                // after a second.
+                question.set_delay(20);
+                question.into()
             }
-            None => ConfirmScreen::notice(font, lang, size, (&title, &message), &text("gui.back")),
+            None => ConfirmScreen::notice(font, lang, size, (&title, &message), &text("gui.back"))
+                .with_background(ConfirmBackground::Menu { in_world: true })
+                .into(),
         };
-        let mut screen = screen.with_background(ConfirmBackground::Menu { in_world: true });
-        // A question that opens by itself, over whatever the player was doing, wakes after a second.
-        if buttons.is_some() {
-            screen.set_delay(20);
-        }
         self.link_confirm = Some((screen, target));
     }
 

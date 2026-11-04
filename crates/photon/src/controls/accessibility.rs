@@ -171,6 +171,9 @@ impl Controls {
         .with_background(ConfirmBackground::Menu {
             in_world: !self.title_host,
         });
-        self.link_confirm = Some((screen, ConfirmTarget::Link(ACCESSIBILITY_HELP.to_owned())));
+        self.link_confirm = Some((
+            screen.into(),
+            ConfirmTarget::Link(ACCESSIBILITY_HELP.to_owned()),
+        ));
     }
 }

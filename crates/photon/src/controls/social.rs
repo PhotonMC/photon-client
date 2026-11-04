@@ -147,11 +147,11 @@ impl Controls {
                 self.set_hidden(id, &name, hidden, assets);
             }
             Some(SocialEvent::BlockingHelp) => {
-                let size = surface.scale();
-                let gui = (size.gui_scaled_width(), size.gui_scaled_height());
+                let gui = Self::gui_size(surface);
                 let screen = ConfirmScreen::link(font, &assets.lang, gui, BLOCKING_HELP, false)
                     .with_background(ConfirmBackground::Menu { in_world: true });
-                self.link_confirm = Some((screen, ConfirmTarget::Link(BLOCKING_HELP.to_owned())));
+                let target = ConfirmTarget::Link(BLOCKING_HELP.to_owned());
+                self.link_confirm = Some((screen.into(), target));
             }
             // The report screen needs the online services.
             Some(SocialEvent::Report(_)) | None => {}

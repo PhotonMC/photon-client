@@ -215,7 +215,7 @@ impl Controls {
             .with_background(ConfirmBackground::Menu {
                 in_world: !self.title_host,
             });
-            self.link_confirm = Some((screen, ConfirmTarget::Pack(id)));
+            self.link_confirm = Some((screen.into(), ConfirmTarget::Pack(id)));
         }
         if input.done {
             self.close_packs();

@@ -38,8 +38,10 @@ impl Controls {
                     true,
                 )
                 .with_background(ConfirmBackground::Menu { in_world: true });
-                self.link_confirm =
-                    Some((screen, ConfirmTarget::Link(ACCOUNT_SETTINGS.to_owned())));
+                self.link_confirm = Some((
+                    screen.into(),
+                    ConfirmTarget::Link(ACCOUNT_SETTINGS.to_owned()),
+                ));
             }
         }
     }

@@ -35,6 +35,12 @@ pub struct NoticeScreen {
     yes_focused: bool,
     /// What a plain notice was made for, to make it again for another size.
     made_for: (Component, Component, Component),
+    /// The label of a question's second button, to make the question again for another size.
+    yes_label: Option<Component>,
+    /// `delayTicker`: a question that opens by itself answers nothing until this runs out.
+    delay: i32,
+    /// How opaque the wall behind the screen is: a game or the panorama can show through.
+    veil: u32,
 }
 
 impl NoticeScreen {
@@ -76,13 +82,52 @@ impl NoticeScreen {
             yes: None,
             yes_focused: false,
             made_for: (heading.clone(), reason.clone(), back.clone()),
+            yes_label: None,
+            delay: 0,
+            veil: 0xFF00_0000,
         }
     }
 
     /// A plain notice again for a screen of another size.
     pub fn resized(&self, font: &Font, lang: &Lang, size: (i32, i32)) -> Self {
         let (heading, reason, back) = &self.made_for;
-        Self::new(font, lang, size, (heading, reason, back))
+        let mut screen = match &self.yes_label {
+            Some(yes) => Self::asking(font, lang, size, (heading, reason, back, yes)),
+            None => Self::new(font, lang, size, (heading, reason, back)),
+        };
+        // A question made again for another size is as asleep as it was.
+        screen.delay = self.delay;
+        screen.veil = self.veil;
+        screen
+    }
+
+    /// The buttons sleep, and Escape is shut, for `ticks`: a question that opens over a game
+    /// must not be answered by a click the player was already making.
+    pub fn set_delay(&mut self, ticks: i32) {
+        self.delay = ticks;
+    }
+
+    /// The screen shows the game through a dim, not a plain wall.
+    #[must_use]
+    pub fn over_game(mut self) -> Self {
+        self.veil = 0xC000_0000;
+        self
+    }
+
+    /// The screen shows the title panorama through the same dim the loading screen has.
+    #[must_use]
+    pub fn over_panorama(mut self) -> Self {
+        self.veil = 0x8000_0000;
+        self
+    }
+
+    /// A tick: the delay runs down.
+    pub fn tick(&mut self) {
+        self.delay = (self.delay - 1).max(0);
+    }
+
+    fn awake(&self) -> bool {
+        self.delay == 0
     }
 
     /// A question: the same screen with a second button. The first button, which Escape and a
@@ -108,12 +153,16 @@ impl NoticeScreen {
             height: BUTTON.1,
         };
         screen.yes = Some((lang.runs(yes, &Style::default()), rect));
+        screen.yes_label = Some(yes.clone());
         screen.focused = true;
         screen
     }
 
     /// A press at the mouse of a question: which button it was on.
     pub fn answer_clicked(&self, mouse: (i32, i32)) -> Option<Answer> {
+        if !self.awake() {
+            return None;
+        }
         let answer = match &self.yes {
             Some((_, rect)) if inside(*rect, mouse) => Answer::Yes,
             _ if inside(self.button, mouse) => Answer::Back,
@@ -125,6 +174,9 @@ impl NoticeScreen {
 
     /// Enter or Space on a question: the focused button, which starts as the "no".
     pub fn answer_pressed(&self) -> Option<Answer> {
+        if !self.awake() {
+            return None;
+        }
         crate::ui_sound::play_down_sound();
         Some(if self.yes_focused {
             Answer::Yes
@@ -160,7 +212,7 @@ impl NoticeScreen {
             width,
             height,
         };
-        painter.fill_rect(veil, skin.bg | 0xFF00_0000);
+        painter.fill_rect(veil, (skin.bg & 0x00FF_FFFF) | self.veil);
         painter.panel(self.panel);
         let middle = self.panel.x + self.panel.width / 2;
         let centred = |runs: &[Run]| middle - font.width_of_runs(runs) / 2;
@@ -180,8 +232,16 @@ impl NoticeScreen {
                 .styled_text(atlas, font, line, (centred(line), y), skin.muted, false);
             y += 9;
         }
+        self.draw_buttons(&mut painter, mouse);
+    }
+
+    /// The button, and a question's second one; asleep they are greyed.
+    fn draw_buttons(&self, painter: &mut Painter, mouse: (i32, i32)) {
+        let awake = self.awake();
         let lit = |rect: Rect, focused: bool| {
-            if inside(rect, mouse) || focused {
+            if !awake {
+                State::Disabled
+            } else if inside(rect, mouse) || focused {
                 State::Hover
             } else {
                 State::Normal
@@ -223,7 +283,7 @@ impl NoticeScreen {
 
     /// Escape goes where the button goes.
     pub fn escape(&self) -> bool {
-        true
+        self.awake()
     }
 }
 
@@ -304,6 +364,25 @@ mod tests {
         assert_eq!(ask.answer_clicked((0, 0)), None);
         assert!(yes.x >= ask.button.x + ask.button.width);
         assert!(yes.x + yes.width <= ask.panel.x + ask.panel.width);
+    }
+
+    #[test]
+    fn a_question_over_a_game_answers_nothing_until_its_delay_runs_out() {
+        let (font, lang) = (Font::default(), Lang::default());
+        let mut ask = question();
+        ask.set_delay(2);
+        let yes = ask.yes.as_ref().expect("yes").1;
+        assert_eq!(ask.answer_clicked(middle(yes)), None);
+        assert_eq!(ask.answer_pressed(), None);
+        assert!(!ask.escape());
+        // Made again for another size, it is still asleep, and still a question.
+        let mut again = ask.resized(&font, &lang, (300, 200));
+        assert_eq!(again.answer_pressed(), None);
+        again.tick();
+        again.tick();
+        let yes = again.yes.as_ref().expect("still a question").1;
+        assert_eq!(again.answer_clicked(middle(yes)), Some(Answer::Yes));
+        assert!(again.escape());
     }
 
     #[test]

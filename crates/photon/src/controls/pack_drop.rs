@@ -104,7 +104,7 @@ impl Controls {
         .with_background(ConfirmBackground::Menu {
             in_world: !self.title_host,
         });
-        self.link_confirm = Some((screen, ConfirmTarget::Drop(paths)));
+        self.link_confirm = Some((screen.into(), ConfirmTarget::Drop(paths)));
     }
 
     /// The player agreed: the packs are copied and the screen lists the folder again.
