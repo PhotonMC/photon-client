@@ -42,6 +42,16 @@ pub(super) fn pending_link() -> (Option<LinkTask>, Option<SignInFlow>) {
 }
 
 impl Menu {
+    /// A link handed over by a second start (`photon open-link` while this client runs), taken on
+    /// the home screen or a notice and when nothing else is going on.
+    pub(super) fn link_arrived(&mut self) {
+        let idle = matches!(self.screen, Screen::Home(_) | Screen::Failed(..));
+        if !idle || self.link.is_some() || self.signin.is_some() {
+            return;
+        }
+        (self.link, self.signin) = pending_link();
+    }
+
     /// One window event for a notice or a question: a button leaves it, or answers it.
     pub(super) fn notice_event(&mut self, event: glfw::WindowEvent, size: (i32, i32)) {
         let mouse = self.mouse;

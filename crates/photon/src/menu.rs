@@ -404,6 +404,7 @@ impl Menu {
             self.credits_ticked(size);
             self.friends_account_polled();
             self.directory_polled();
+            self.link_arrived();
             self.link_polled(size);
             self.signin_polled(size);
             self.friends_ticked(client);

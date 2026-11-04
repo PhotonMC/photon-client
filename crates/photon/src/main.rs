@@ -13,6 +13,7 @@ mod identity_proof;
 mod indexed;
 mod keyring_store;
 mod launch_link;
+mod link_socket;
 mod links_config;
 mod logger;
 mod menu;
@@ -78,6 +79,11 @@ fn open_link() -> Result<(), Box<dyn std::error::Error>> {
     let link = env::args()
         .nth(2)
         .ok_or("open-link needs a photon:// link")?;
+    match link_socket::send(&link) {
+        link_socket::Sent::Delivered => return Ok(()),
+        link_socket::Sent::Refused => return Err("the running client did not take the link".into()),
+        link_socket::Sent::NoPrimary => {}
+    }
     launch_link::remember(&link)?;
     open_menu(std::iter::empty())
 }
@@ -103,5 +109,6 @@ fn run_menu_command(command: Option<&str>) -> Option<Result<(), Box<dyn std::err
 /// The menu, with the update check running beside it.
 fn open_menu(args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::error::Error>> {
     updates::start();
+    let _links = link_socket::serve();
     self_update::restart_if_requested(menu::run_menu(args))
 }

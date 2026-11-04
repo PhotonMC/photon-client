@@ -9,7 +9,10 @@ use photon_core::binary::Uuid;
 use photon_net::backend::{BackendError, Launch, is_same_profile};
 
 /// The link the game was started with, until the menu takes it.
-static PENDING: Mutex<Option<Link>> = Mutex::new(None);
+/// How long a link is worth keeping: its launch code lasts a minute at the backend.
+const FRESH: std::time::Duration = std::time::Duration::from_secs(60);
+
+static PENDING: Mutex<Option<(Link, std::time::Instant)>> = Mutex::new(None);
 
 /// The length of the codes and states: 16 random bytes in hex.
 const CODE_LENGTH: usize = 32;
@@ -55,13 +58,19 @@ pub(crate) fn parse(link: &str) -> Option<Link> {
 /// Remembers the link the game was started with; a link that is not one is an error.
 pub(crate) fn remember(link: &str) -> Result<(), String> {
     let link = parse(link).ok_or("that is not a Photon link")?;
-    *PENDING.lock().map_err(|_| "the link could not be kept")? = Some(link);
+    *PENDING.lock().map_err(|_| "the link could not be kept")? =
+        Some((link, std::time::Instant::now()));
     Ok(())
 }
 
 /// The link the game was started with, once: the menu takes it and nothing else sees it again.
 pub(crate) fn take_pending() -> Option<Link> {
-    PENDING.lock().ok()?.take()
+    let (link, arrived) = PENDING.lock().ok()?.take()?;
+    if arrived.elapsed() > FRESH {
+        log::info!("a link that waited too long was dropped");
+        return None;
+    }
+    Some(link)
 }
 
 /// What the answer to a link makes the menu do.
