@@ -98,13 +98,14 @@ impl Directory {
     }
 }
 
-/// What a card of the directory says: the name over the players and the version.
+/// What a card of the directory says: the name over the players. Photon games name no version:
+/// the client plays the newest.
 fn card(server: &DirectoryServer) -> GameInfo {
-    let detail = format!("{} online  {}", server.players, server.version);
+    let detail = format!("{} online", server.players);
     GameInfo {
         id: server.id.clone(),
         name: server.name.clone(),
-        detail: detail.trim_end().to_owned(),
+        detail,
         description: server.description.clone(),
         videos: server.videos.len(),
         images: server.images.len(),

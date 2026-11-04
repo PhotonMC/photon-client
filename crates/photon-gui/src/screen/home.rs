@@ -311,7 +311,16 @@ impl HomeScreen {
         match hit {
             Hit::Play => return Some(HomeAction::PlayOpen),
             Hit::Back => self.page = None,
-            Hit::Other(index) => self.open_game(index),
+            Hit::Other(slot) => {
+                let other = self
+                    .page
+                    .as_ref()
+                    .and_then(|page| page.other(slot))
+                    .cloned();
+                if let Some(game) = other {
+                    self.page = Some(Page::new(self.size, game, &self.games, self.words.clone()));
+                }
+            }
         }
         None
     }

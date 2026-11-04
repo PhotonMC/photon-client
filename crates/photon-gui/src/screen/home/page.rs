@@ -53,14 +53,14 @@ impl Words {
 pub(super) enum Hit {
     Back,
     Play,
-    /// Another game, by its place in the home screen's list.
+    /// Another game, by its place among the page's others.
     Other(usize),
 }
 
 pub(super) struct Page {
     pub(super) game: GameInfo,
-    /// Up to three other games, each with its place in the home screen's list.
-    others: Vec<(usize, GameInfo)>,
+    /// Up to three other games, as they were when the page opened.
+    others: Vec<GameInfo>,
     words: Words,
     media: Rect,
     info: Rect,
@@ -71,12 +71,11 @@ pub(super) struct Page {
 impl Page {
     /// The page of `game` in a window `size` units big, with up to three of `all`'s other games.
     pub(super) fn new(size: (i32, i32), game: GameInfo, all: &[GameInfo], words: Words) -> Self {
-        let others: Vec<(usize, GameInfo)> = all
+        let others: Vec<GameInfo> = all
             .iter()
-            .cloned()
-            .enumerate()
-            .filter(|(_, other)| other.id != game.id)
+            .filter(|other| other.id != game.id)
             .take(OTHERS)
+            .cloned()
             .collect();
         let top = BAR_HEIGHT + 8;
         let media_width = (size.0 - 2 * MARGIN) * 11 / 20;
@@ -93,7 +92,7 @@ impl Page {
             width: size.0 - MARGIN - info_x,
             height: media.height,
         };
-        let hits = hit_rects(size.0, (media, info), &others);
+        let hits = hit_rects(size.0, (media, info), others.len());
         Self {
             game,
             others,
@@ -103,6 +102,11 @@ impl Page {
             hits,
             focus: None,
         }
+    }
+
+    /// The game in `slot` among the page's others.
+    pub(super) fn other(&self, slot: usize) -> Option<&GameInfo> {
+        self.others.get(slot)
     }
 
     /// The thing under the mouse.
@@ -157,8 +161,8 @@ impl Page {
             match hit {
                 Hit::Play => painter.button(*rect, &self.words.play, state),
                 Hit::Back => painter.button(*rect, &self.words.back, state),
-                Hit::Other(index) => {
-                    if let Some((_, other)) = self.others.iter().find(|(at, _)| at == index) {
+                Hit::Other(slot) => {
+                    if let Some(other) = self.others.get(*slot) {
                         painter.card(*rect, (&other.name, &other.detail), state);
                     }
                 }
@@ -207,11 +211,7 @@ impl Page {
 }
 
 /// Where each thing on the page can be pressed: Play and Back under the facts, then the others.
-fn hit_rects(
-    width: i32,
-    (media, info): (Rect, Rect),
-    others: &[(usize, GameInfo)],
-) -> Vec<(Rect, Hit)> {
+fn hit_rects(width: i32, (media, info): (Rect, Rect), others: usize) -> Vec<(Rect, Hit)> {
     let button = |x: i32, width: i32| Rect {
         x,
         y: info.y + 36,
@@ -223,14 +223,14 @@ fn hit_rects(
         (button(info.x + 74, 50), Hit::Back),
     ];
     let cell = (width - 2 * MARGIN - GAP * (OTHERS as i32 - 1)) / OTHERS as i32;
-    for (slot, (index, _)) in others.iter().enumerate() {
+    for slot in 0..others {
         let rect = Rect {
             x: MARGIN + slot as i32 * (cell + GAP),
             y: media.y + media.height + 20,
             width: cell,
             height: 32,
         };
-        hits.push((rect, Hit::Other(*index)));
+        hits.push((rect, Hit::Other(slot)));
     }
     hits
 }
@@ -312,10 +312,9 @@ mod tests {
     #[test]
     fn the_other_games_leave_out_the_open_one_and_stop_at_three() {
         let page = page("a", &["a", "b", "c", "d", "e"]);
-        let ids: Vec<&str> = page.others.iter().map(|(_, g)| g.id.as_str()).collect();
+        let ids: Vec<&str> = page.others.iter().map(|g| g.id.as_str()).collect();
         assert_eq!(ids, ["b", "c", "d"]);
-        // They keep their place in the list, which is what a press on them opens.
-        assert_eq!(page.others[0].0, 1);
+        assert_eq!(page.other(0).map(|g| g.id.as_str()), Some("b"));
     }
 
     #[test]
@@ -324,7 +323,7 @@ mod tests {
         let rects: Vec<Rect> = page.hits.iter().map(|(rect, _)| *rect).collect();
         assert_eq!(page.hit_at(centre(rects[0])), Some(Hit::Play));
         assert_eq!(page.hit_at(centre(rects[1])), Some(Hit::Back));
-        assert_eq!(page.hit_at(centre(rects[2])), Some(Hit::Other(1)));
+        assert_eq!(page.hit_at(centre(rects[2])), Some(Hit::Other(0)));
         assert_eq!(page.hit_at((0, 0)), None);
         for (at, a) in rects.iter().enumerate() {
             for b in &rects[at + 1..] {
@@ -352,7 +351,7 @@ mod tests {
         assert_eq!(page.pressed(), Hit::Back);
         page.step(false);
         page.step(false);
-        assert_eq!(page.pressed(), Hit::Other(1));
+        assert_eq!(page.pressed(), Hit::Other(0));
     }
 
     #[test]
