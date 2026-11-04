@@ -20,7 +20,7 @@ pub(super) enum SignInFlow {
     /// The browser's state, signed in and opened on a thread.
     Working(Receiver<Outcome>),
     /// The browser's state, waiting for the player to sign in to Photon first.
-    Waiting(String),
+    Waiting(super::resume::Resume),
 }
 
 impl SignInFlow {
@@ -100,7 +100,7 @@ impl Menu {
             Some(SignInFlow::Looking(receiver, state)) => match receiver.try_recv() {
                 Ok(Some(name)) => self.ask_to_sign_in(&name, state, size),
                 Ok(None) => {
-                    self.signin = Some(SignInFlow::Waiting(state));
+                    self.signin = Some(SignInFlow::Waiting(super::resume::Resume::Website(state)));
                     self.offer_sign_in("photon.signin.not_signed_in", size);
                 }
                 Err(_) => self.signin = Some(SignInFlow::Looking(receiver, state)),
@@ -141,6 +141,11 @@ impl Menu {
             (None, Some(SignInFlow::Working(_))) => "photon.loading.signing_in",
             (None, Some(SignInFlow::Waiting(_)) | None) => return,
         };
+        self.show_loading(key, size);
+    }
+
+    /// The loading screen of a link or a sign-in, with `key` as what it is waiting for.
+    pub(super) fn show_loading(&mut self, key: &str, size: (i32, i32)) {
         let lang = self.gui.lang();
         let mut screen = LoadingScreen::new(lang, size, &lang.text("photon.loading.link"), "");
         screen.set_status(lang, key);
@@ -161,7 +166,12 @@ impl Menu {
             }
             _ => false,
         };
-        if leave {
+        // Once the player has approved, the account is set up whatever Escape says.
+        let finishing = self
+            .account
+            .as_ref()
+            .is_some_and(super::account::AccountSignIn::finishing);
+        if leave && !finishing {
             self.link = None;
             self.signin = None;
             self.cancel_account();

@@ -29,7 +29,7 @@
   "photon.account.cancel": "Vazge\u00e7",
   "photon.account.not_now": "\u015eimdi de\u011fil",
   "photon.account.sign_in": "Giri\u015f yap",
-  "photon.account.done": "%s olarak giri\u015f yap\u0131ld\u0131. Sitede tekrar Oyna'ya bas.",
+  "photon.account.done": "%s olarak giri\u015f yap\u0131ld\u0131.",
   "photon.account.declined": "Giri\u015f reddedildi.",
   "photon.account.expired": "Kodun s\u00fcresi doldu. Tekrar dene.",
   "photon.account.not_owned": "Bu hesap Minecraft: Java Edition'a sahip de\u011fil.",

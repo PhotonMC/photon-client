@@ -9,6 +9,8 @@ use photon_game::text::Lang;
 use photon_gui::screen::home::HomeScreen;
 use photon_net::backend::{BackendError, DirectoryServer};
 
+use super::resume::Resume;
+use super::signin::SignInFlow;
 use super::{Choice, Menu, Screen};
 use crate::launch_link::Outcome;
 use crate::play::Target;
@@ -151,6 +153,11 @@ impl Menu {
             return;
         };
         self.link = None;
+        self.link_outcome(outcome, size);
+    }
+
+    /// What a launch link's decision shows: the join, or why there is none.
+    pub(super) fn link_outcome(&mut self, outcome: Outcome, size: (i32, i32)) {
         let key = match outcome {
             Outcome::Join(address, name) => {
                 self.joined_from_home = true;
@@ -163,7 +170,10 @@ impl Menu {
                 return;
             }
             Outcome::OtherProfile => "photon.link.other_profile",
-            Outcome::NotSignedIn => return self.offer_sign_in("photon.link.not_signed_in", size),
+            Outcome::NotSignedIn(launch) => {
+                self.signin = Some(SignInFlow::Waiting(Resume::Launch(launch)));
+                return self.offer_sign_in("photon.link.not_signed_in", size);
+            }
             Outcome::Refused => "photon.link.refused",
             Outcome::Unavailable => "photon.link.unavailable",
         };

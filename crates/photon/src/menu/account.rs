@@ -11,6 +11,7 @@ use photon_gui::screen::notice::{Answer, NoticeScreen};
 use photon_net::signin::{self, ClientId, Hosts, SignInError};
 
 use super::input::{ask_event, failed_event};
+use super::resume::{After, Resume, after_sign_in};
 use super::signin::SignInFlow;
 use super::{Client, Menu, Screen};
 
@@ -18,11 +19,15 @@ use super::{Client, Menu, Screen};
 pub(super) struct AccountSignIn {
     steps: Receiver<Step>,
     cancelled: Arc<AtomicBool>,
+    /// The player has approved and the session is being made: there is nothing left to cancel.
+    finishing: bool,
 }
 
 enum Step {
     /// The code to type and where to type it.
     Code { user_code: String, address: String },
+    /// The player approved; the account behind the approval is being set up.
+    Finishing,
     /// How it ended: the player's name, or why not.
     Done(Result<String, SignInError>),
 }
@@ -38,7 +43,16 @@ impl AccountSignIn {
                 let done = work(&sender, &flag);
                 let _ = sender.send(Step::Done(done));
             });
-        Self { steps, cancelled }
+        Self {
+            steps,
+            cancelled,
+            finishing: false,
+        }
+    }
+
+    /// Whether the player's approval is in and only the set-up is left.
+    pub(super) fn finishing(&self) -> bool {
+        self.finishing
     }
 
     /// The player gave up: whatever the thread gets is dropped, not stored.
@@ -60,14 +74,22 @@ fn work(sender: &Sender<Step>, cancelled: &AtomicBool) -> Result<String, SignInE
     if address.starts_with("https://") {
         crate::signin_link::open(&address);
     }
+    let asked = std::time::Instant::now();
     let tokens = signin::poll_for_token(&hosts, &client, &code, &mut std::thread::sleep)?;
+    log::info!("microsoft sign-in: approved after {:?}", asked.elapsed());
     // The token is kept only for a player who is still waiting for it.
     if cancelled.load(Ordering::SeqCst) {
         return Err(SignInError::Declined);
     }
+    let _ = sender.send(Step::Finishing);
+    let finishing = std::time::Instant::now();
     let host = crate::profile_login::session_host();
     let store = crate::keyring_store::os_store();
     let session = signin::finish_sign_in(&hosts, &tokens, (&host, store.as_ref()))?;
+    log::info!(
+        "microsoft sign-in: account set up in {:?}",
+        finishing.elapsed()
+    );
     let name = session.account.name.clone();
     crate::signin_hint::write(&name);
     crate::profile_login::keep(session.account);
@@ -171,12 +193,18 @@ impl Menu {
                 client.surface.set_clipboard(&user_code);
                 self.show_code(&user_code, &address, size);
             }
+            Ok(Step::Finishing) => {
+                if let Some(account) = self.account.as_mut() {
+                    account.finishing = true;
+                }
+                self.show_loading("photon.loading.signing_in", size);
+            }
             Ok(Step::Done(result)) => {
                 self.account = None;
-                // A website sign-in that was waiting goes on, now that the player is signed in.
-                let resume = self.signin.take();
-                if let (Ok(name), Some(SignInFlow::Waiting(state))) = (&result, resume) {
-                    return self.ask_to_sign_in(name, state, size);
+                // A link that was waiting goes on, now that the player is signed in.
+                if let (Ok(name), Some(SignInFlow::Waiting(resume))) = (&result, self.signin.take())
+                {
+                    return self.resume_after_sign_in(name, resume, size);
                 }
                 let heading = Component::translatable("photon.account.heading");
                 let lang = self.gui.lang();
@@ -188,6 +216,18 @@ impl Menu {
                 self.notice_screen(&heading, &Component::literal(reason), size, true);
             }
             Err(_) => {}
+        }
+    }
+
+    /// The link that waited for the sign-in goes on as it would have if the player had been signed in.
+    fn resume_after_sign_in(&mut self, name: &str, resume: Resume, size: (i32, i32)) {
+        let signed = crate::profile_login::identity()
+            .ok()
+            .and_then(|(_, account)| account)
+            .map(|account| account.profile_id);
+        match after_sign_in(resume, signed) {
+            After::Ask(state) => self.ask_to_sign_in(name, state, size),
+            After::Link(outcome) => self.link_outcome(outcome, size),
         }
     }
 

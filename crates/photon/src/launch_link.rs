@@ -150,7 +150,7 @@ pub(crate) fn in_play(outcome: Outcome) -> InPlay {
     match outcome {
         Outcome::Join(address, name) => InPlay::Ask(address, name),
         Outcome::OtherProfile => InPlay::Say(JOIN_FAILED, "photon.link.other_profile"),
-        Outcome::NotSignedIn => InPlay::Say(JOIN_FAILED, "photon.link.not_signed_in"),
+        Outcome::NotSignedIn(_) => InPlay::Say(JOIN_FAILED, "photon.link.not_signed_in"),
         Outcome::Refused => InPlay::Say(JOIN_FAILED, "photon.link.refused"),
         Outcome::Unavailable => InPlay::Say(JOIN_FAILED, "photon.link.unavailable"),
     }
@@ -222,7 +222,8 @@ pub(crate) enum Outcome {
     Join(String, String),
     /// The code was issued for another profile than the signed-in one.
     OtherProfile,
-    NotSignedIn,
+    /// Nobody is signed in; the code is spent, so what it named is kept for after a sign-in.
+    NotSignedIn(Launch),
     Refused,
     Unavailable,
 }
@@ -233,7 +234,7 @@ pub(crate) fn decide(answer: Result<Launch, BackendError>, signed_in: Option<Uui
         Err(BackendError::Refused) => Outcome::Refused,
         Err(_) => Outcome::Unavailable,
         Ok(launch) => match signed_in {
-            None => Outcome::NotSignedIn,
+            None => Outcome::NotSignedIn(launch),
             Some(profile) if is_same_profile(&launch.uuid, profile) => {
                 let name = if launch.name.is_empty() {
                     launch.address.clone()
@@ -327,7 +328,9 @@ mod tests {
         assert_eq!(task.poll(), Some(Outcome::Refused));
         assert!(held.ready.is_none());
         held.task = Some(LinkTask::decided(Outcome::Unavailable));
-        held.ready = Some(Outcome::NotSignedIn);
+        held.ready = Some(Outcome::NotSignedIn(launch(
+            "0123456789abcdef0123456789abcdef",
+        )));
         let task = held.take_launch_task().expect("task");
         assert_eq!(task.poll(), Some(Outcome::Unavailable));
     }
@@ -462,7 +465,10 @@ mod tests {
             decide(Ok(launch(other)), Some(profile)),
             Outcome::OtherProfile
         );
-        assert_eq!(decide(Ok(launch(own)), None), Outcome::NotSignedIn);
+        assert_eq!(
+            decide(Ok(launch(own)), None),
+            Outcome::NotSignedIn(launch(own))
+        );
         assert_eq!(decide(Err(BackendError::Refused), None), Outcome::Refused);
         assert_eq!(
             decide(Err(BackendError::Insecure), None),
