@@ -31,7 +31,7 @@ Decisions:
 - [0017 Packed terrain vertices](adr/0017-packed-terrain-vertices.md)
 - [0018 Photon platform](adr/0018-photon-platform.md)
 - [0019 photon-server on an unmodified Pumpkin](adr/0019-photon-server.md)
-- [0020 Accounts and launch links](adr/0020-accounts-and-launch-links.md) (proposed)
-- [0021 Client UI technology and design tokens](adr/0021-client-ui-technology.md) (proposed)
+- [0020 Accounts and launch links](adr/0020-accounts-and-launch-links.md)
+- [0021 Client UI technology and design tokens](adr/0021-client-ui-technology.md)
 
 `records/` holds legacy per-slice parity records that are being converted into case metadata ([ADR 0005](adr/0005-parity-v2.md)).

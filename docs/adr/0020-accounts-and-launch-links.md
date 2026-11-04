@@ -1,25 +1,29 @@
 # ADR 0020: Accounts and launch links
 
-- Status: proposed (2026-11-04); the token handoff below waits on a check of the Azure and Minecraft services rules
+- Status: accepted (2026-11-04); the silent sign-in detail ("Minecraft token") is verified in its own slice
 
 ## Context
 
-Players sign in on the website and press Play on a server page. The client must open, already signed in, and join that server, as the Roblox launch flow does. A Microsoft account that owns Minecraft stays required ([ADR 0007](0007-assets-and-accounts.md)). If the player opens the client directly without having come from the website, the client shows its own Microsoft sign-in.
+Players sign in on the website and press Play on a game page. The client must open, already signed in, and join that server, as the Roblox launch flow does. A Microsoft account that owns Minecraft stays required ([ADR 0007](0007-assets-and-accounts.md)). If the player opens the client directly, the client shows its own Microsoft sign-in.
 
-Joining an online-mode server needs a Minecraft access token for the session join. A Microsoft refresh token is bound to the application and flow that issued it, so a token from the website's sign-in may not be usable by the client's public device-code application. Minecraft services also accept only application registrations that Mojang approved.
+The backend must not keep users' Microsoft tokens: that is a liability, and players would rightly distrust it. A raw token in the `photon://` link is no answer either:
+
+- Other local processes can read a link from the handler's command line (`/proc/<pid>/cmdline` on Linux, the process list on Windows), and it can end up in browser history and logs.
+- Any web page can open a `photon://` link. A link that carries a token would let a hostile page sign the client into an attacker's account.
+- The website would still need an approved application to obtain a Minecraft token in the first place.
 
 ## Decision
 
-- **Photon account.** The backend keeps a Photon account per Microsoft account. The Photon account holds friends, cosmetics and settings. The website signs in with Microsoft, and the backend creates or finds the Photon account.
-- **Launch link.** Play on the website asks the backend for a one-time launch code (valid 60 s, single use) and opens `photon://launch?code=<code>&server=<id>`. The OS hands the link to the client. If the client is already running, the running instance takes the link. If no client is installed, the page shows the download.
-- **Code exchange.** The client sends the code to the backend over TLS. The backend returns the Photon session and the target server. It never puts a token into the link itself.
-- **Minecraft token: recommended option (a).** The website's sign-in uses the same Azure application as the client, with a web platform added. The backend keeps the Microsoft refresh token encrypted and returns a short-lived Minecraft access token in the code exchange. The client stores nothing it did not get from its own sign-in.
-- **Alternatives kept open:**
-  - **(b)** The client signs in once with its own device-code flow and keeps the token in the keyring. After that, the website login only carries the Photon session.
-  - **(c)** Photon servers trust a backend ticket instead of Mojang's session server. Vanilla servers would still need (a) or (b).
-- **Link registration.** `photon://` is registered per platform: a `.desktop` entry with `x-scheme-handler/photon` on Linux, and registry keys under `HKCU\Software\Classes\photon` on Windows. The installer or first run does this. macOS comes later.
+- **Photon account.** The backend keeps a Photon account per Minecraft profile UUID. It holds friends, cosmetics and settings. It stores no Microsoft or Minecraft tokens, only the Photon session.
+- **The link carries an opaque code.** Play on a game page asks the backend for a launch code (single use, valid 60 s) and opens `photon://launch?code=<code>`. The code names the Photon session and the directory id of the game server. It is not a Microsoft or Minecraft token. If no client is installed, the page shows the download.
+- **Server is a directory id.** The backend resolves the address after the code exchange. A link can never name a host, so a crafted link cannot send the client to an arbitrary address.
+- **Code exchange.** The client sends the code to the backend over TLS and gets the game server's address and the UUID the code is bound to.
+- **UUID binding.** The client compares that UUID with its signed-in profile. If they differ, it asks before switching accounts and never joins silently as someone else.
+- **The Minecraft token comes from the client's own sign-in.** It signs in once and keeps the refresh token in the OS keyring (works today). To make this feel automatic, the client tries an authorization-code flow with PKCE through the system browser and a `localhost` redirect: the player is usually already signed in to Microsoft there, so it is one click. Device code stays as the fallback. Whether the Azure application allows this redirect is checked in its platform settings before the slice is built.
+- **Link registration.** `photon://` is registered per platform: a `.desktop` entry with `x-scheme-handler/photon` on Linux, and keys under `HKCU\Software\Classes\photon` on Windows. A running client takes the link (single instance). macOS comes later.
 
-## Open before acceptance
+## Consequences
 
-- Check that one Azure application can serve both the public device-code flow and a web redirect flow, and that the Minecraft services approval covers the web flow.
-- Decide whether the backend may hold Microsoft refresh tokens (security and privacy review), or fall back to (b).
+- No Microsoft token ever leaves the player's machine.
+- The "auto sign-in" is one browser click, not zero, until Microsoft allows more for this application.
+- Photon servers may later trust a backend ticket instead of the session server; vanilla servers keep using the Mojang session join.
