@@ -33,6 +33,8 @@ pub struct NoticeScreen {
     /// The second button of a question, and whether it has the focus (the first is the "no").
     yes: Option<(Vec<Run>, Rect)>,
     yes_focused: bool,
+    /// What a plain notice was made for, to make it again for another size.
+    made_for: (Component, Component, Component),
 }
 
 impl NoticeScreen {
@@ -73,7 +75,14 @@ impl NoticeScreen {
             focused: false,
             yes: None,
             yes_focused: false,
+            made_for: (heading.clone(), reason.clone(), back.clone()),
         }
+    }
+
+    /// A plain notice again for a screen of another size.
+    pub fn resized(&self, font: &Font, lang: &Lang, size: (i32, i32)) -> Self {
+        let (heading, reason, back) = &self.made_for;
+        Self::new(font, lang, size, (heading, reason, back))
     }
 
     /// A question: the same screen with a second button. The first button, which Escape and a
@@ -249,6 +258,15 @@ mod tests {
         notice.tab();
         assert!(notice.pressed());
         assert!(notice.escape());
+    }
+
+    #[test]
+    fn a_notice_made_again_for_another_size_keeps_its_words_in_the_new_size() {
+        let (font, lang) = (Font::default(), Lang::default());
+        let notice = screen((427, 240), "A reason").resized(&font, &lang, (200, 120));
+        assert_eq!(notice.size(), (200, 120));
+        assert!(inside(notice.panel, middle(notice.button)));
+        assert_eq!(notice.made_for.1, Component::literal("A reason"));
     }
 
     #[test]

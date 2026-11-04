@@ -23,12 +23,15 @@ impl Controls {
         } else {
             "disconnect.lost"
         });
-        self.disconnected = Some(DisconnectedScreen::titled(
+        self.disconnected = Some(NoticeScreen::new(
             &assets.creative.font,
             &assets.lang,
             size,
-            &heading,
-            reason,
+            (
+                &heading,
+                reason,
+                &photon_game::text::Component::translatable("gui.toMenu"),
+            ),
         ));
         self.chat = None;
         // A launch link's question about leaving is moot once the game is gone: its spent code

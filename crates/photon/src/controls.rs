@@ -41,7 +41,7 @@ use photon_gui::screen::debug_options::DebugOptionsScreen;
 use photon_gui::screen::game_mode::GameModeSwitcherScreen;
 use photon_gui::screen::social::SocialInteractionsScreen;
 
-use photon_gui::screen::disconnected::DisconnectedScreen;
+use photon_gui::screen::notice::NoticeScreen;
 
 use photon_gui::screen::pause::{PauseAction, PauseScreen};
 
@@ -227,7 +227,7 @@ pub struct Controls {
     /// The panorama behind the reconfiguring, transfer and disconnected screens (no level).
     pub(crate) backdrop: Option<crate::play::LoadingView>,
     /// The screen a lost connection leaves, which nothing replaces.
-    pub disconnected: Option<DisconnectedScreen>,
+    pub disconnected: Option<NoticeScreen>,
     /// The player asked to leave the server (the pause menu's Disconnect, or the button of the
     /// disconnected screen).
     pub leave: bool,
