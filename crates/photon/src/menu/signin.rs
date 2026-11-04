@@ -19,6 +19,8 @@ pub(super) enum SignInFlow {
     Looking(Receiver<Option<String>>, String),
     /// The browser's state, signed in and opened on a thread.
     Working(Receiver<Outcome>),
+    /// The browser's state, waiting for the player to sign in to Photon first.
+    Waiting(String),
 }
 
 impl SignInFlow {
@@ -97,19 +99,23 @@ impl Menu {
         match self.signin.take() {
             Some(SignInFlow::Looking(receiver, state)) => match receiver.try_recv() {
                 Ok(Some(name)) => self.ask_to_sign_in(&name, state, size),
-                Ok(None) => self.offer_sign_in("photon.signin.not_signed_in", size),
+                Ok(None) => {
+                    self.signin = Some(SignInFlow::Waiting(state));
+                    self.offer_sign_in("photon.signin.not_signed_in", size);
+                }
                 Err(_) => self.signin = Some(SignInFlow::Looking(receiver, state)),
             },
             Some(SignInFlow::Working(receiver)) => match receiver.try_recv() {
                 Ok(outcome) => self.signin_done(outcome, size),
                 Err(_) => self.signin = Some(SignInFlow::Working(receiver)),
             },
+            Some(waiting @ SignInFlow::Waiting(_)) => self.signin = Some(waiting),
             None => {}
         }
     }
 
     /// The question: sign the website's browser in as this player?
-    fn ask_to_sign_in(&mut self, name: &str, state: String, size: (i32, i32)) {
+    pub(super) fn ask_to_sign_in(&mut self, name: &str, state: String, size: (i32, i32)) {
         let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
         let question = NoticeScreen::asking(
             font,
@@ -132,7 +138,7 @@ impl Menu {
             (Some(_), _) => "photon.loading.joining",
             (None, Some(SignInFlow::Looking(..))) => "photon.loading.checking_signin",
             (None, Some(SignInFlow::Working(_))) => "photon.loading.signing_in",
-            (None, None) => return,
+            (None, Some(SignInFlow::Waiting(_)) | None) => return,
         };
         let lang = self.gui.lang();
         let mut screen = LoadingScreen::new(lang, size, &lang.text("photon.loading.link"), "");

@@ -29,7 +29,7 @@
   "photon.account.cancel": "Cancel",
   "photon.account.not_now": "Not now",
   "photon.account.sign_in": "Sign in",
-  "photon.account.done": "Signed in as %s.",
+  "photon.account.done": "Signed in as %s. Press Play on the website again.",
   "photon.account.declined": "The sign-in was declined.",
   "photon.account.expired": "The code ran out. Try again.",
   "photon.account.not_owned": "This account does not own Minecraft: Java Edition.",

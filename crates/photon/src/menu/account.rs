@@ -11,6 +11,7 @@ use photon_gui::screen::notice::{Answer, NoticeScreen};
 use photon_net::signin::{self, ClientId, Hosts, SignInError};
 
 use super::input::{ask_event, failed_event};
+use super::signin::SignInFlow;
 use super::{Client, Menu, Screen};
 
 /// A sign-in under way: what its thread says, and the flag that stops it saving.
@@ -126,7 +127,10 @@ impl Menu {
             return;
         };
         match ask_event(screen, event, mouse) {
-            Some(Answer::Back) => self.screen = self.title(size),
+            Some(Answer::Back) => {
+                self.signin = None;
+                self.screen = self.title(size);
+            }
             Some(Answer::Yes) => {
                 self.account = Some(AccountSignIn::start());
                 self.show_linking(size);
@@ -149,6 +153,7 @@ impl Menu {
 
     /// Stops a sign-in that is under way, so nothing it gets is kept.
     pub(super) fn cancel_account(&mut self) {
+        self.signin = None;
         if let Some(account) = self.account.take() {
             account.cancel();
         }
@@ -167,6 +172,11 @@ impl Menu {
             }
             Ok(Step::Done(result)) => {
                 self.account = None;
+                // A website sign-in that was waiting goes on, now that the player is signed in.
+                let resume = self.signin.take();
+                if let (Ok(name), Some(SignInFlow::Waiting(state))) = (&result, resume) {
+                    return self.ask_to_sign_in(name, state, size);
+                }
                 let heading = Component::translatable("photon.account.heading");
                 let lang = self.gui.lang();
                 let reason = match result {
