@@ -2,7 +2,6 @@
 
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use crate::VideoError;
@@ -35,7 +34,6 @@ struct Shared {
 /// A clip playing on its own thread until this is dropped.
 pub struct Player {
     shared: Arc<Shared>,
-    thread: Option<JoinHandle<()>>,
 }
 
 impl Player {
@@ -47,7 +45,8 @@ impl Player {
             newest: Mutex::new(None),
         });
         let worker = Arc::clone(&shared);
-        let thread = std::thread::Builder::new()
+        // The thread is detached: it ends by itself once `stop` is set.
+        let _ = std::thread::Builder::new()
             .name("photon-video".to_owned())
             .spawn(move || {
                 let result = fetch(&url).and_then(|file| play(&worker, &file));
@@ -57,7 +56,7 @@ impl Player {
                 }
             })
             .ok();
-        Self { shared, thread }
+        Self { shared }
     }
 
     /// Whether the clip failed to load or play.
@@ -82,10 +81,9 @@ impl Player {
 
 impl Drop for Player {
     fn drop(&mut self) {
+        // Not joined: the thread may be in the middle of a fetch, which can take a minute, and
+        // the page closing must not wait for that.
         self.shared.stop.store(true, Ordering::Relaxed);
-        if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
-        }
     }
 }
 
@@ -193,6 +191,17 @@ mod tests {
         assert!(thread.join().unwrap().is_ok());
         assert!(seen >= 5, "saw {seen} pictures");
         assert_eq!(shared.state.load(Ordering::Relaxed), PLAYING);
+    }
+
+    #[test]
+    fn dropping_a_player_does_not_wait_for_a_fetch_that_never_answers() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/a.webm", listener.local_addr().unwrap());
+        let player = Player::start(url);
+        let (_held, _) = listener.accept().unwrap();
+        let started = Instant::now();
+        drop(player);
+        assert!(started.elapsed() < Duration::from_secs(1));
     }
 
     #[test]

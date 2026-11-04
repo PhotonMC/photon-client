@@ -8,7 +8,7 @@
 
 ## Decision
 
-- **Format.** A WebM file with one 8-bit 4:2:0 AV1 video track. Browsers play it natively, AV1 has no royalties, and the container is simple to read. Other codecs, 10-bit and 4:2:2/4:4:4 streams are refused with a log line; the page keeps its placeholder.
+- **Format.** A WebM file with one 8-bit 4:2:0 AV1 video track. Current Chrome, Edge and Firefox play it natively; Safari plays AV1 only on devices with a hardware decoder (per [caniuse's AV1 table as summarised by Bitmovin](https://bitmovin.com/av1-playback-support/); not checked against Apple's own notes), so on other Safari devices the website shows the poster image instead. AV1 has no royalties, and the container is simple to read. Other codecs, 10-bit and 4:2:2/4:4:4 streams are refused with a log line; the page keeps its placeholder.
 - **Decoder.** `rav1d` (BSD-2-Clause, a Rust port of dav1d) without its assembly feature, so it needs no assembler. `webm-iterable` (MIT) reads the container. The new crate is `photon-video`; its single `unsafe` module is the dav1d-shaped call surface and is listed in the lint's allowed places.
 - **Measured** (1280x720, 30 fps, 10 s synthetic clip, no assembly): 11.7 ms per frame on one thread (worst packet 89 ms), 3.7 ms per frame on four. The player uses two threads, so a clip decodes well inside its 33 ms frame time.
 - **Limits.** The file is at most 32 MiB and each side at most 1920 pixels. The address is `https`, or `http` to this machine; redirects are not followed (an operator names the file itself).
