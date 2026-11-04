@@ -377,7 +377,7 @@ impl ItemLayerCache {
         (renderer, tints): (&BlockRenderer, &BiomeTints),
     ) -> &[ItemLayer] {
         let context = self.context;
-        let item = stack.item_registry_id();
+        let item = model_item(stack);
         let mut state = self.item_state(stack, ticks);
         self.work_out_needles(renderer, (item, stack), &mut state);
         let mut branches = renderer.item_branches(item, context, &state);
@@ -398,7 +398,7 @@ impl ItemLayerCache {
         {
             index
         } else {
-            let own = photon_gui::stack_tints(item, stack);
+            let own = photon_gui::stack_tints(stack.item_registry_id(), stack);
             let nested = selected
                 .as_ref()
                 .map(|inner| photon_gui::stack_tints(inner.item_registry_id(), inner));
@@ -424,6 +424,17 @@ impl ItemLayerCache {
         .filter(|corners| !corners.is_empty());
         layers
     }
+}
+
+/// The item whose client item definition draws `stack`: the one its `item_model` component names
+/// when that is a registry item (`ItemModelResolver.appendItemLayers` reads the component), else
+/// the stack's own. Definitions of other ids (a pack's own models) are not loaded yet.
+fn model_item(stack: &ClientItemStackState) -> photon_core::ids::ItemId {
+    photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+        .item_model()
+        .and_then(|name| photon_data::item::registry::index(&name))
+        .and_then(|index| i32::try_from(index).ok())
+        .map_or_else(|| stack.item_registry_id(), photon_core::ids::ItemId)
 }
 
 /// The keys the draw read from the registries and the level, which the patch alone does not name.

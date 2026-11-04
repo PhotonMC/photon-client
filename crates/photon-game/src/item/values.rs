@@ -401,6 +401,14 @@ impl Values {
         (material > 0).then_some(material - 1)
     }
 
+    /// `item_model`: the identifier of the client item definition that draws the stack, when the
+    /// patch sets one (an item's own default is its registry name).
+    pub fn item_model(&self) -> Option<String> {
+        let mut cursor = Cursor::new(self.raw(ids::ITEM_MODEL)?);
+        let length = cursor.count().ok()?;
+        String::from_utf8(cursor.data.get(..length)?.to_vec()).ok()
+    }
+
     /// `lodestone_tracker`'s target: the dimension and block it points at, if it has one.
     pub fn lodestone_target(&self) -> Option<(String, [i32; 3])> {
         let mut cursor = Cursor::new(self.raw(ids::LODESTONE_TRACKER)?);
