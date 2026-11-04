@@ -94,8 +94,9 @@ impl Controls {
 
     /// What a game still holds of a link when it ends, handed on instead of lost: a launch
     /// question or a spent code's join is joined after (the question to leave is moot once the
-    /// game is gone; the one open at the screen wins over one still waiting), and a sign-in
-    /// state goes back to the menu, which asks about it there.
+    /// game is gone). An answer the player already gave wins over the question open at the
+    /// screen, and that over a code still waiting to be asked about. A sign-in state goes back
+    /// to the menu, which asks about it there.
     pub(crate) fn hand_over_links(&mut self) {
         let asked = self.link_confirm.take().map(|(_, target)| target);
         if let Some(state) = self.game_link.take_signin_state(asked.as_ref()) {
@@ -103,7 +104,7 @@ impl Controls {
         }
         let waiting = self.game_link.take_ready_join();
         let kept = asked.and_then(kept_join).or(waiting);
-        self.join_after = kept.or(self.join_after.take());
+        self.join_after = self.join_after.take().or(kept);
     }
 
     /// `handlePlayerCombatKill`: a death the server told of opens the death
@@ -248,6 +249,41 @@ fn kept_join(target: ConfirmTarget) -> Option<(String, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::launch_link::{GameLink, Outcome};
+
+    fn joining(address: &str) -> Option<(String, String)> {
+        Some((address.to_owned(), "G".to_owned()))
+    }
+
+    #[test]
+    fn an_agreed_join_beats_a_code_still_waiting_to_be_asked_about() {
+        let waiting = GameLink {
+            ready: Some(Outcome::Join("b:1".to_owned(), "G".to_owned())),
+            ..GameLink::default()
+        };
+        let mut controls = Controls {
+            join_after: joining("a:1"),
+            game_link: waiting,
+            ..Controls::default()
+        };
+        controls.hand_over_links();
+        assert_eq!(controls.join_after, joining("a:1"));
+        assert!(controls.game_link.ready.is_none());
+    }
+
+    #[test]
+    fn a_waiting_join_is_kept_when_nothing_was_agreed() {
+        let waiting = GameLink {
+            ready: Some(Outcome::Join("b:1".to_owned(), "G".to_owned())),
+            ..GameLink::default()
+        };
+        let mut controls = Controls {
+            game_link: waiting,
+            ..Controls::default()
+        };
+        controls.hand_over_links();
+        assert_eq!(controls.join_after, joining("b:1"));
+    }
 
     #[test]
     fn only_a_launch_question_leaves_a_join_behind() {

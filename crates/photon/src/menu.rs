@@ -111,7 +111,8 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
     let mut join_next: Option<(String, String)> = None;
     let scripted_run = env::var_os("PHOTON_SCRIPT").is_some();
     loop {
-        let mut menu = Menu::open(&mut client)?;
+        // A game about to be joined leaves a waiting link for that game, not this menu.
+        let mut menu = Menu::open(&mut client, join_next.is_none())?;
         menu.loading = splash.take().map(startup::Splash::into_overlay);
         menu.open_requested_screen(&client);
         if std::mem::take(&mut left_server) {
@@ -215,7 +216,7 @@ struct Menu {
 
 impl Menu {
     /// The title screen, with the language and the GUI scale of the options.
-    fn open(client: &mut Client) -> Result<Self> {
+    fn open(client: &mut Client, take_link: bool) -> Result<Self> {
         let root = photon_core::content_root::assets()
             .map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
         let root = Path::new(&root);
@@ -245,7 +246,7 @@ impl Menu {
                     &root.to_string_lossy(),
                 )?))?;
         }
-        let (link, signin) = signin::pending_link();
+        let (link, signin) = signin::pending_link_if(take_link);
         let game_directory = crate::controls::game_directory();
         let screen = home_screen(gui.text_assets().0, gui.lang(), gui_size(client));
         let (sound, music) = audio::take(client, root, &options);

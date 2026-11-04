@@ -42,6 +42,11 @@ pub(super) fn pending_link() -> (Option<LinkTask>, Option<SignInFlow>) {
     }
 }
 
+/// The same when `take` is set; a link left alone stays pending for whoever takes it next.
+pub(super) fn pending_link_if(take: bool) -> (Option<LinkTask>, Option<SignInFlow>) {
+    if take { pending_link() } else { (None, None) }
+}
+
 impl Menu {
     /// A link handed over by a second start (`photon open-link` while this client runs) raises the
     /// window once, and is taken on
