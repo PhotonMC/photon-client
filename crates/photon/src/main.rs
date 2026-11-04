@@ -25,6 +25,7 @@ mod play;
 mod ppm;
 mod profile;
 mod profile_login;
+mod register_links;
 mod resources;
 mod screens;
 mod screenshot;
@@ -65,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return result;
     }
     Err(format!(
-        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out`, `identity-proof`, `open-link`, `install`, `update`, `window` or `--version`",
+        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out`, `identity-proof`, `open-link`, `register-links`, `install`, `update`, `window` or `--version`",
         env::args().nth(1)
     )
     .into())
@@ -86,6 +87,7 @@ fn run_menu_command(command: Option<&str>) -> Option<Result<(), Box<dyn std::err
         None => open_menu(std::iter::empty()),
         Some("menu") => open_menu(env::args().skip(2)),
         Some("open-link") => open_link(),
+        Some("register-links") => register_links::run_register(),
         Some("update") => updates::run_update(),
         Some("install") => content::run_install(),
         Some("--version") => {
