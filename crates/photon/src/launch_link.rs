@@ -264,9 +264,10 @@ impl LinkTask {
                 let answer = crate::links_config::backend()
                     .unwrap_or(Err(BackendError::Unavailable))
                     .and_then(|backend| backend.exchange(&code));
-                let signed_in = identity
-                    .join()
-                    .ok()
+                // A failed exchange does not need to know who is signed in.
+                let signed_in = Some(&answer)
+                    .filter(|answer| answer.is_ok())
+                    .and_then(|_| identity.join().ok())
                     .and_then(Result::ok)
                     .and_then(|(_, account)| account)
                     .map(|account| account.profile_id);
