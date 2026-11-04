@@ -7,7 +7,6 @@ pub const INFERRED: &[(&str, &str, &str)] = &[
     ("gui", "online_options_screen", "network/chat/Component, server/packs/repository/Pack"),
     ("gui", "options_screen", "client/InputType, client/input/MouseButtonEvent"),
     ("gui", "pack_selection_screen", "network/chat/Component, server/packs/repository/Pack"),
-    ("gui", "pause_screen", "server/RegistryLayer, client/InputType"),
     ("gui", "restrictions_screen", "client/InputType, client/input/MouseButtonEvent"),
     ("gui", "server_form", "client/multiplayer/ServerData, client/InputType"),
     ("gui", "sidebar", "network/chat/Component, world/scores/criteria/ObjectiveCriteria"),
