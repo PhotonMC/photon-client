@@ -31,7 +31,11 @@ impl Controls {
             reason,
         ));
         self.chat = None;
-        self.link_confirm = None;
+        // A launch link's question about leaving is moot once the game is gone: its spent code
+        // is joined after the disconnected screen instead of being lost.
+        if let Some((_, ConfirmTarget::Game(address, name))) = self.link_confirm.take() {
+            self.join_after = Some((address, name));
+        }
         self.pause = None;
         self.options_screen = None;
         self.video_screen = None;
