@@ -1,0 +1,16 @@
+{
+  "photon.home.tab.home": "Home",
+  "photon.home.tab.servers": "Servers",
+  "photon.home.tab.friends": "Friends",
+  "photon.home.tab.avatar": "Avatar",
+  "photon.home.tab.marketplace": "Marketplace",
+  "photon.home.tab.settings": "Settings",
+  "photon.home.quit": "Quit",
+  "photon.home.heading": "Home",
+  "photon.home.subtitle": "Pick a game to play",
+  "photon.home.join": "Join a server",
+  "photon.home.join.detail": "Add one by address",
+  "photon.home.games": "Photon games",
+  "photon.home.games.detail": "Directory coming soon",
+  "photon.loading.server": "Server"
+}

@@ -126,7 +126,9 @@ impl LanguageSource {
         } else {
             vec!["en_us", code]
         };
-        Lang::load_stack_from(resources, &codes, &self.jar_assets)
+        let mut texts = Lang::load_stack_from(resources, &codes, &self.jar_assets).into_texts();
+        texts.extend(photon_texts(code));
+        Lang::new(texts)
     }
 
     /// A language of a code: `en_us`, with the texts of the code over it
@@ -141,8 +143,18 @@ impl LanguageSource {
         }
         // `ClientLanguage.loadFrom`: over every file, once.
         crate::text::apply_deprecated(&self.jar_assets, &mut texts);
+        texts.extend(photon_texts(code));
         Lang::new(texts)
     }
+}
+
+/// Photon's own strings, `photon.*`: English, with the texts of `code` over them.
+fn photon_texts(code: &str) -> Vec<(String, String)> {
+    let mut texts = Lang::parse_texts(include_str!("lang/en_us.json"));
+    if code == "tr_tr" {
+        texts.extend(Lang::parse_texts(include_str!("lang/tr_tr.json")));
+    }
+    texts
 }
 
 #[cfg(test)]

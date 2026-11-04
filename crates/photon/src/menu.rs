@@ -210,7 +210,7 @@ impl Menu {
                 )?))?;
         }
         let game_directory = crate::controls::game_directory();
-        let screen = home_screen(gui.text_assets().0, gui_size(client));
+        let screen = home_screen(gui.text_assets().0, gui.lang(), gui_size(client));
         let (sound, music) = audio::take(client, root, &options);
         let assets = gui.screen_assets();
         Ok(Self {
@@ -236,7 +236,12 @@ impl Menu {
     }
 
     fn title(&self, size: (i32, i32)) -> Screen {
-        let mut screen = HomeScreen::new(size, &version_line(), self.gui.text_assets().0);
+        let mut screen = HomeScreen::new(
+            size,
+            &version_line(),
+            self.gui.text_assets().0,
+            self.gui.lang(),
+        );
         if self.friends_title.ready {
             screen.friends_available();
         }
@@ -443,8 +448,12 @@ impl Menu {
 }
 
 /// The home screen a client starts into.
-fn home_screen(font: &photon_render::gui::font::Font, size: (i32, i32)) -> Screen {
-    Screen::Home(HomeScreen::new(size, &version_line(), font))
+fn home_screen(
+    font: &photon_render::gui::font::Font,
+    lang: &photon_game::text::Lang,
+    size: (i32, i32),
+) -> Screen {
+    Screen::Home(HomeScreen::new(size, &version_line(), font, lang))
 }
 
 /// The line under the name in the sidebar.

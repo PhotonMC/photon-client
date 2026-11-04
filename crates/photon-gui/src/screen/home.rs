@@ -2,11 +2,15 @@
 //! over the panorama.
 //! It replaces the title screen; what a press chooses is a [`HomeAction`] the menu acts on.
 
+mod tabs;
+
 use crate::kit::{Painter, State, grid, inside};
 use crate::layout::Rect;
 use crate::tokens::{CLASSIC, Skin};
+use photon_game::text::Lang;
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
+use tabs::{GAP, Tab};
 
 /// What pressing something on the home screen asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,24 +30,36 @@ const LOGO_WIDTH: i32 = 64;
 const CARD_SIZE: (i32, i32) = (148, 88);
 const MARGIN: i32 = 12;
 
+/// How a target is drawn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Look {
+    Tab,
+    /// The tab of the page that is open.
+    Current,
+    Quit,
+    Card,
+}
+
 /// Something the player can point at: its place, what it does, and whether it can be pressed.
 #[derive(Debug, Clone)]
 struct Target {
     rect: Rect,
-    label: &'static str,
-    detail: &'static str,
+    label: String,
+    detail: String,
+    look: Look,
     action: Option<HomeAction>,
     enabled: bool,
 }
 
-/// The top bar's tabs: label and action (none for the page that is open, or not available yet).
+/// The top bar's tabs: translation key and action (none for the page that is open, or not
+/// available yet).
 const DESTINATIONS: [(&str, Option<HomeAction>); 6] = [
-    ("Home", None),
-    ("Servers", Some(HomeAction::Servers)),
-    ("Friends", Some(HomeAction::Friends)),
-    ("Avatar", None),
-    ("Marketplace", None),
-    ("Settings", Some(HomeAction::Options)),
+    ("home", None),
+    ("servers", Some(HomeAction::Servers)),
+    ("friends", Some(HomeAction::Friends)),
+    ("avatar", None),
+    ("marketplace", None),
+    ("settings", Some(HomeAction::Options)),
 ];
 
 pub struct HomeScreen {
@@ -55,33 +71,17 @@ pub struct HomeScreen {
     quit: Target,
     friends_ready: bool,
     focus: Option<usize>,
+    /// The page's title and the line under it.
+    heading: (String, String),
 }
 
 impl HomeScreen {
-    /// The home screen of a window `size` units big, its tabs as wide as their labels in `font`.
-    pub fn new(size: (i32, i32), version: &str, font: &Font) -> Self {
-        let quit_width = font.width("Quit") + 14;
-        let mut x = LOGO_WIDTH;
-        let nav = Self::visible_tabs(font, size.0 - quit_width - 12)
-            .into_iter()
-            .map(|(label, action)| {
-                let width = font.width(label) + 14;
-                let rect = Rect {
-                    x,
-                    y: (BAR_HEIGHT - TAB_HEIGHT) / 2,
-                    width,
-                    height: TAB_HEIGHT,
-                };
-                x += width + 2;
-                Target {
-                    rect,
-                    label,
-                    detail: "",
-                    action,
-                    enabled: action.is_some(),
-                }
-            })
-            .collect();
+    /// The home screen of a window `size` units big in `lang`, its tabs as wide as their labels in
+    /// `font`.
+    pub fn new(size: (i32, i32), version: &str, font: &Font, lang: &Lang) -> Self {
+        let quit_label = lang.text("photon.home.quit");
+        let quit_width = font.width(&quit_label) + 14;
+        let nav = Self::nav_targets(font, lang, size.0 - quit_width - 12 - LOGO_WIDTH);
         let quit = Target {
             rect: Rect {
                 x: size.0 - quit_width - 6,
@@ -89,8 +89,9 @@ impl HomeScreen {
                 width: quit_width,
                 height: TAB_HEIGHT,
             },
-            label: "Quit",
-            detail: "",
+            label: quit_label,
+            detail: String::new(),
+            look: Look::Quit,
             action: Some(HomeAction::Quit),
             enabled: true,
         };
@@ -103,47 +104,68 @@ impl HomeScreen {
             quit,
             friends_ready: false,
             focus: None,
+            heading: (
+                lang.text("photon.home.heading"),
+                lang.text("photon.home.subtitle"),
+            ),
         };
-        screen.cards = screen.card_targets();
+        screen.cards = screen.card_targets(lang);
         screen.sync_friends();
         screen
     }
 
-    /// The tabs that fit between the logo and `right`: pages that are not available yet drop out
-    /// from the end first on a narrow window.
-    fn visible_tabs(font: &Font, right: i32) -> Vec<(&'static str, Option<HomeAction>)> {
-        let mut tabs = DESTINATIONS.to_vec();
-        let used = |tabs: &[(&str, Option<HomeAction>)]| {
-            tabs.iter()
-                .map(|(label, _)| font.width(label) + 16)
-                .sum::<i32>()
-                + LOGO_WIDTH
-        };
-        while used(&tabs) > right {
-            match tabs.iter().rposition(|(_, action)| action.is_none()) {
-                Some(index) if index > 0 => tabs.remove(index),
-                _ => break,
-            };
-        }
-        tabs
+    /// The tabs of the top bar that fit in `room`, side by side after the logo.
+    fn nav_targets(font: &Font, lang: &Lang, room: i32) -> Vec<Target> {
+        let tabs = DESTINATIONS
+            .iter()
+            .map(|&(key, action)| Tab {
+                key,
+                label: lang.text(&format!("photon.home.tab.{key}")),
+                action,
+            })
+            .collect();
+        let fit = tabs::fit(tabs, &|text| font.width(text), room);
+        let mut x = LOGO_WIDTH;
+        fit.tabs
+            .into_iter()
+            .map(|tab| {
+                let width = font.width(&tab.label) + fit.padding;
+                let rect = Rect {
+                    x,
+                    y: (BAR_HEIGHT - TAB_HEIGHT) / 2,
+                    width,
+                    height: TAB_HEIGHT,
+                };
+                x += width + GAP;
+                Target {
+                    rect,
+                    look: if tab.key == "home" {
+                        Look::Current
+                    } else {
+                        Look::Tab
+                    },
+                    label: tab.label,
+                    detail: String::new(),
+                    action: tab.action,
+                    enabled: tab.action.is_some(),
+                }
+            })
+            .collect()
     }
 
     /// The page's cards. The directory is not connected yet, so the first one adds a server by
     /// address and the second says what is coming.
-    fn card_targets(&self) -> Vec<Target> {
+    fn card_targets(&self, lang: &Lang) -> Vec<Target> {
         let area = Rect {
             x: MARGIN,
             y: BAR_HEIGHT + 40,
             width: self.size.0 - 2 * MARGIN,
             height: self.size.1 - BAR_HEIGHT - 52,
         };
+        let text = |key: &str| lang.text(&format!("photon.home.{key}"));
         let content = [
-            (
-                "Join a server",
-                "Add one by address",
-                Some(HomeAction::Servers),
-            ),
-            ("Photon games", "Directory coming soon", None),
+            (text("join"), text("join.detail"), Some(HomeAction::Servers)),
+            (text("games"), text("games.detail"), None),
         ];
         grid::cards(area, content.len(), CARD_SIZE, 8)
             .into_iter()
@@ -152,6 +174,7 @@ impl HomeScreen {
                 rect,
                 label,
                 detail,
+                look: Look::Card,
                 action,
                 enabled: action.is_some(),
             })
@@ -260,29 +283,23 @@ impl HomeScreen {
         let hovered = self.target_at(mouse);
         for (index, target) in self.targets().enumerate() {
             let focused = self.focus == Some(index) || hovered == Some(index);
-            Self::draw_target(&mut painter, target, index < self.nav.len(), focused);
+            Self::draw_target(&mut painter, target, focused);
         }
-        painter.label("Home", (MARGIN, BAR_HEIGHT + 10), ink);
-        painter.label("Pick a game to play", (MARGIN, BAR_HEIGHT + 24), muted);
+        painter.label(&self.heading.0, (MARGIN, BAR_HEIGHT + 10), ink);
+        painter.label(&self.heading.1, (MARGIN, BAR_HEIGHT + 24), muted);
     }
 
-    fn draw_target(painter: &mut Painter, target: &Target, in_bar: bool, focused: bool) {
+    fn draw_target(painter: &mut Painter, target: &Target, focused: bool) {
         let state = match (target.enabled, focused) {
             (false, _) => State::Disabled,
             (true, true) => State::Hover,
             (true, false) => State::Normal,
         };
-        if target.label == "Quit" {
-            painter.button(target.rect, target.label, state);
-        } else if in_bar {
-            let state = if target.label == "Home" {
-                State::Selected
-            } else {
-                state
-            };
-            painter.row(target.rect, target.label, state);
-        } else {
-            painter.card(target.rect, (target.label, target.detail), state);
+        match target.look {
+            Look::Quit => painter.button(target.rect, &target.label, state),
+            Look::Current => painter.row(target.rect, &target.label, State::Selected),
+            Look::Tab => painter.row(target.rect, &target.label, state),
+            Look::Card => painter.card(target.rect, (&target.label, &target.detail), state),
         }
     }
 }
@@ -292,7 +309,7 @@ mod tests {
     use super::*;
 
     fn screen() -> HomeScreen {
-        HomeScreen::new((427, 240), "v0.1.0", &Font::default())
+        HomeScreen::new((427, 240), "v0.1.0", &Font::default(), &Lang::default())
     }
 
     fn centre(rect: Rect) -> (i32, i32) {
@@ -301,11 +318,15 @@ mod tests {
 
     #[test]
     fn a_narrow_window_drops_unavailable_tabs_before_it_overlaps_quit() {
-        let home = HomeScreen::new((180, 240), "v0.1.0", &Font::default());
+        let home = HomeScreen::new((180, 240), "v0.1.0", &Font::default(), &Lang::default());
         let last = home.nav.last().expect("tabs");
         assert!(last.rect.x + last.rect.width <= home.quit.rect.x);
-        assert!(home.nav.iter().any(|tab| tab.label == "Settings"));
-        assert!(home.nav.iter().all(|tab| tab.label != "Marketplace"));
+        assert!(
+            home.nav
+                .iter()
+                .any(|tab| tab.action == Some(HomeAction::Options))
+        );
+        assert!(home.nav.len() < DESTINATIONS.len());
     }
 
     #[test]

@@ -1,0 +1,16 @@
+{
+  "photon.home.tab.home": "Ana Sayfa",
+  "photon.home.tab.servers": "Sunucular",
+  "photon.home.tab.friends": "Arkadaşlar",
+  "photon.home.tab.avatar": "Karakter",
+  "photon.home.tab.marketplace": "Pazar",
+  "photon.home.tab.settings": "Ayarlar",
+  "photon.home.quit": "Çık",
+  "photon.home.heading": "Ana Sayfa",
+  "photon.home.subtitle": "Oynamak için bir oyun seç",
+  "photon.home.join": "Sunucuya katıl",
+  "photon.home.join.detail": "Adresle bir tane ekle",
+  "photon.home.games": "Photon oyunları",
+  "photon.home.games.detail": "Dizin yakında",
+  "photon.loading.server": "Sunucu"
+}

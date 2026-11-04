@@ -131,7 +131,7 @@ impl Painter<'_> {
         self.centred(label, rect, ink);
     }
 
-    /// One row of the sidebar: the selected row has the accent as its face.
+    /// One row of the top bar, its label in the middle: the selected row has the accent as its face.
     pub fn row(&mut self, rect: Rect, label: &str, state: State) {
         let skin = self.skin;
         let (face, ink) = match state {
@@ -144,7 +144,7 @@ impl Painter<'_> {
         } else if state == State::Hover {
             self.fill_rect(rect, skin.hover);
         }
-        self.label(label, (rect.x + 6, rect.y + (rect.height - 8) / 2), ink);
+        self.centred(label, rect, ink);
     }
 
     /// A game card: a coloured banner, a title and a detail line.
