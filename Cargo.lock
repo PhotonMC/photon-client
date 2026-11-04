@@ -1967,6 +1967,7 @@ dependencies = [
  "photon-data",
  "photon-game",
  "photon-gui",
+ "photon-mods",
  "photon-net",
  "photon-protocol",
  "photon-render",

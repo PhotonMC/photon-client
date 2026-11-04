@@ -1,4 +1,8 @@
 use super::*;
+use photon_render::window::scale::WindowScale;
+
+/// A scoreboard sidebar: its title and its lines, in the language's runs.
+type Sidebar = (Vec<photon_game::text::Run>, Vec<SidebarLine>);
 use crate::hud_input::world_partial;
 use photon_core::ids::EntityId;
 use photon_gui::FrameRuns;
@@ -185,6 +189,26 @@ impl Gui {
         }
     }
 
+    /// The scoreboard sidebar, then the text the server's mods draw; neither shows with the
+    /// interface hidden (F1).
+    fn draw_sidebar_and_mods(
+        frame: &mut photon_render::gui::GuiFrame,
+        (atlas, font, mods): (&GuiAtlas, &Font, &crate::delivered_mods::ModRuntime),
+        (hidden, sidebar, size): (bool, Option<&Sidebar>, WindowScale),
+    ) {
+        if hidden {
+            return;
+        }
+        let gui_size = (size.gui_scaled_width(), size.gui_scaled_height());
+        if let Some((title, lines)) = sidebar {
+            sidebar::draw(frame, atlas, font, gui_size, title, lines);
+        }
+        for line in &mods.runtime.hud {
+            let colour = 0xFF00_0000 | line.colour;
+            frame.text_with_shadow(atlas, font, &line.text, line.x, line.y, colour);
+        }
+    }
+
     /// The HUD, then the open screen over it, with the player in the screen
     /// posed as the entity stands now.
     pub fn draw(
@@ -235,16 +259,11 @@ impl Gui {
             (self.started_at, hidden, &self.hud),
             (session, &size, &hud_input, controls),
         );
-        if let Some((title, lines)) = sidebar.as_ref().filter(|_| !hidden) {
-            sidebar::draw(
-                &mut frame,
-                &self.atlas,
-                &self.font,
-                (size.gui_scaled_width(), size.gui_scaled_height()),
-                title,
-                lines,
-            );
-        }
+        Self::draw_sidebar_and_mods(
+            &mut frame,
+            (&self.atlas, &self.font, &self.mods),
+            (hidden, sidebar.as_ref(), size),
+        );
         // `Hud.extractRenderState`: the overlay message and the titles come before the chat.
         let gui_size = (size.gui_scaled_width(), size.gui_scaled_height());
         Self::draw_announcements(

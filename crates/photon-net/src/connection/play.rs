@@ -58,6 +58,8 @@ mod movement;
 #[cfg(test)]
 mod pack_tests;
 #[cfg(test)]
+mod photon_payload_tests;
+#[cfg(test)]
 mod profile_tests;
 mod recipes;
 mod reconfigure;

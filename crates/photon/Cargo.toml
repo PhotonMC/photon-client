@@ -22,6 +22,7 @@ photon-render.workspace = true
 photon-gui.workspace = true
 bevy_ecs.workspace = true
 photon-api.workspace = true
+photon-mods.workspace = true
 flate2.workspace = true
 glfw.workspace = true
 

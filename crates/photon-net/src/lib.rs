@@ -6,6 +6,7 @@ pub mod account;
 pub mod backend;
 pub mod connection;
 pub mod friends;
+pub mod mods;
 pub mod resolver;
 pub mod server_packs;
 pub mod signin;

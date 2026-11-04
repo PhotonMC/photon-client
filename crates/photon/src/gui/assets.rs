@@ -105,6 +105,7 @@ impl Gui {
             tab_header: Vec::new(),
             tab_footer: Vec::new(),
             last_tick: std::time::Instant::now(),
+            mods: Default::default(),
             items: ItemLayerCache::new(photon_render::model::DisplayContext::Gui),
             started_at,
             chat_queue: Default::default(),

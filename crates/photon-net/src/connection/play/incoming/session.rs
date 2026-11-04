@@ -116,11 +116,21 @@ impl ClientboundPacket for StoreCookie {
     }
 }
 
-/// `handleCustomPayload`: the brand is kept, other payloads are not acted on.
+/// How many `photon:` payloads may wait for the app; more are dropped.
+const MAX_WAITING_PHOTON_PAYLOADS: usize = 64;
+
+/// `handleCustomPayload`: the brand is kept, `photon:` payloads wait for the app, and other
+/// payloads are not acted on.
 impl ClientboundPacket for CustomPayload {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         if let Some(brand) = self.0.brand() {
             session.state.server_brand = Some(brand);
+        }
+        if self.0.id.namespace() == "photon" {
+            let queue = &mut session.state.photon_payloads;
+            if queue.len() < MAX_WAITING_PHOTON_PAYLOADS {
+                queue.push((self.0.id.as_string(), self.0.data));
+            }
         }
         Ok(())
     }

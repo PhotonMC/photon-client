@@ -77,6 +77,7 @@ photon = [
     "photon-content",
     "photon-update",
     "photon-api",
+    "photon-mods",
     "photon-render",
     "photon-gui",
     "photon-audio",

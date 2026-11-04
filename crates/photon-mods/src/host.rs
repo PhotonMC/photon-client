@@ -4,6 +4,7 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 use photon_api::Owner;
+use wasmtime::StoreContextMut;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine, InstanceAllocationStrategy, PoolingAllocationConfig, Store};
 
@@ -35,6 +36,56 @@ impl std::fmt::Display for HostError {
 }
 
 impl std::error::Error for HostError {}
+
+/// What a mod asked the client to do during a tick. The client applies these on its own thread;
+/// the mod never touches the screen or the sound engine.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Effect {
+    /// Text at a place on the screen, in GUI units, with an `0xRRGGBB` colour.
+    HudText {
+        x: i32,
+        y: i32,
+        colour: u32,
+        text: String,
+    },
+    /// A sound by its identifier.
+    Sound {
+        name: String,
+        volume: f32,
+        pitch: f32,
+    },
+}
+
+/// Most effects one tick may leave; the rest are counted and dropped.
+pub const MAX_EFFECTS: usize = 64;
+/// Longest text or sound name, in bytes.
+pub const MAX_TEXT: usize = 256;
+
+/// The imports a mod may be given beyond its tick, one per capability of ADR 0006.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Caps {
+    /// `hud.text`: draw text on the screen.
+    pub hud_text: bool,
+    /// `sound.play`: play a sound.
+    pub sound: bool,
+}
+
+/// What a mod's store holds: the effects of the tick that is running.
+#[derive(Default)]
+pub struct ModState {
+    effects: Vec<Effect>,
+    dropped: u32,
+}
+
+impl ModState {
+    fn push(&mut self, effect: Effect) {
+        if self.effects.len() < MAX_EFFECTS {
+            self.effects.push(effect);
+        } else {
+            self.dropped += 1;
+        }
+    }
+}
 
 /// The engine every mod runs in, and the thread that keeps its clock.
 pub struct Host {
@@ -101,18 +152,30 @@ impl Host {
         grants: &[(&str, u32)],
         allowance: Duration,
     ) -> Result<Mod, HostError> {
+        self.load_with(owner, wasm, (grants, Caps::default()), allowance)
+    }
+
+    /// [`Host::load`] with the capabilities of [`Caps`] granted as well.
+    pub fn load_with(
+        &self,
+        owner: Owner,
+        wasm: &[u8],
+        (grants, caps): (&[(&str, u32)], Caps),
+        allowance: Duration,
+    ) -> Result<Mod, HostError> {
         self.ensure_clock()?;
         let ticks_allowed = (allowance.as_millis() as u64).max(1);
         let load = |e: wasmtime::Error| HostError::Load(e.to_string());
         let component = Component::new(&self.engine, wasm).map_err(load)?;
-        let mut linker: Linker<()> = Linker::new(&self.engine);
+        let mut linker: Linker<ModState> = Linker::new(&self.engine);
         for &(name, answer) in grants {
             linker
                 .root()
                 .func_wrap(name, move |_, ()| Ok((answer,)))
                 .map_err(load)?;
         }
-        let mut store = Store::new(&self.engine, ());
+        grant_caps(&mut linker, caps).map_err(load)?;
+        let mut store = Store::new(&self.engine, ModState::default());
         // The clock is already running: a start function gets the same allowance as a tick.
         store.set_epoch_deadline(ticks_allowed);
         let instance = linker.instantiate(&mut store, &component).map_err(load)?;
@@ -145,7 +208,7 @@ impl Drop for Host {
 /// One loaded mod: its own store, so nothing it holds outlives it.
 pub struct Mod {
     owner: Owner,
-    store: Store<()>,
+    store: Store<ModState>,
     tick: wasmtime::component::TypedFunc<(), ()>,
     ticks_allowed: u64,
 }
@@ -155,6 +218,16 @@ impl Mod {
         self.owner
     }
 
+    /// What the last tick asked for, taken: the next tick starts empty. The number is how many
+    /// effects went over [`MAX_EFFECTS`] and were dropped.
+    pub fn take_effects(&mut self) -> (Vec<Effect>, u32) {
+        let state = self.store.data_mut();
+        (
+            std::mem::take(&mut state.effects),
+            std::mem::take(&mut state.dropped),
+        )
+    }
+
     /// Runs the mod's `tick`; a call that outlasts its allowance is stopped.
     pub fn tick(&mut self) -> Result<(), HostError> {
         self.store.set_epoch_deadline(self.ticks_allowed);
@@ -162,6 +235,50 @@ impl Mod {
             .call(&mut self.store, ())
             .map_err(|e| HostError::Call(trap_name(&e)))
     }
+}
+
+/// `text` cut at a character boundary to at most [`MAX_TEXT`] bytes.
+fn clipped(mut text: String) -> String {
+    if text.len() > MAX_TEXT {
+        let mut end = MAX_TEXT;
+        while !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        text.truncate(end);
+    }
+    text
+}
+
+/// The imports of the granted capabilities. A capability that is not granted is not defined, so
+/// a mod that imports it fails to load.
+fn grant_caps(linker: &mut Linker<ModState>, caps: Caps) -> wasmtime::Result<()> {
+    if caps.hud_text {
+        linker.root().func_wrap(
+            "hud-text",
+            |mut cx: StoreContextMut<'_, ModState>,
+             (x, y, colour, text): (i32, i32, u32, String)| {
+                let text = clipped(text);
+                cx.data_mut().push(Effect::HudText { x, y, colour, text });
+                Ok(())
+            },
+        )?;
+    }
+    if caps.sound {
+        linker.root().func_wrap(
+            "play-sound",
+            |mut cx: StoreContextMut<'_, ModState>, (name, volume, pitch): (String, f32, f32)| {
+                let name = clipped(name);
+                let (volume, pitch) = (volume.clamp(0.0, 1.0), pitch.clamp(0.5, 2.0));
+                cx.data_mut().push(Effect::Sound {
+                    name,
+                    volume,
+                    pitch,
+                });
+                Ok(())
+            },
+        )?;
+    }
+    Ok(())
 }
 
 /// `interrupt` for a call the clock stopped, else the error's own words.

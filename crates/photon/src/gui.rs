@@ -55,6 +55,8 @@ pub struct Gui {
     pub(super) tab_header: Vec<photon_game::text::Run>,
     pub(super) tab_footer: Vec<photon_game::text::Run>,
     pub(super) last_tick: std::time::Instant,
+    /// The server's mods and the text they draw.
+    pub(crate) mods: crate::delivered_mods::ModRuntime,
     pub(super) items: ItemLayerCache,
     pub(super) started_at: std::time::Instant,
     /// `ChatListener`'s delayed messages.

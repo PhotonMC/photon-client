@@ -173,6 +173,27 @@ impl PlaySession {
         (rate.frozen_ticks_to_run() > 0, rate.is_frozen())
     }
 
+    /// The `photon:` payloads that arrived since the last call, as channel and bytes.
+    pub fn take_photon_payloads(&mut self) -> Vec<(String, Vec<u8>)> {
+        std::mem::take(&mut self.state.photon_payloads)
+    }
+
+    /// Says `data` to the server on `channel` (`ServerboundCustomPayloadPacket`).
+    pub fn send_photon_payload(
+        &mut self,
+        channel: &str,
+        data: &[u8],
+    ) -> Result<(), ConnectionError> {
+        let id = photon_core::identifier::Identifier::parse(channel)
+            .map_err(|_| ConnectionError::Codec("payload channel"))?;
+        self.send(PLAY_SERVERBOUND_CUSTOM_PAYLOAD_PACKET_ID, |output| {
+            photon_core::identifier::write_identifier(&id, output)
+                .map_err(|_| ConnectionError::Codec("payload channel"))?;
+            output.extend_from_slice(data);
+            Ok(())
+        })
+    }
+
     /// `ClientPacketListener.serverBrand`.
     pub fn server_brand(&self) -> Option<&str> {
         self.state.server_brand.as_deref()

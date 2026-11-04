@@ -30,7 +30,7 @@ How it works:
 - **Capabilities.** A mod's manifest declares capabilities (`world.read`, `world.write`, `network.server`, `fs.mod_data`, `ui.overlay`, ...). A host function cannot be imported without its capability, and WASI is limited to what was granted.
 - **Signing.** Packages carry an ed25519 signature and a content hash.
 - **Unloading.** Every entity, component, system and resource a mod creates is tagged with its owner, so disabling a mod removes all of it and drops the instance.
-- **Server delivery.** The Photon fork of Pumpkin sends a manifest of mod ids, hashes and capabilities on a custom channel during configuration. The client fetches missing content into a content-addressed cache, asks for permissions, and loads the mods. The next join only checks hashes.
+- **Server delivery.** The Photon fork of Pumpkin sends a manifest of mod ids, hashes and capabilities on a custom channel (in the play phase, see [ADR 0024](0024-server-delivered-mods.md)). The client fetches missing content into a content-addressed cache, asks for permissions, and loads the mods. The next join only checks hashes.
 - **Vanilla servers.** Only client-side mods allowed by the server's policy run.
 
 ## Consequences

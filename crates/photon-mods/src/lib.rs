@@ -2,7 +2,9 @@
 //! manifest was granted, a fixed memory budget, and a deadline that a clock thread enforces.
 
 mod host;
+mod runtime;
 mod tick;
 
-pub use host::{Host, HostError, Mod};
+pub use host::{Caps, Effect, Host, HostError, MAX_EFFECTS, MAX_TEXT, Mod};
+pub use runtime::{GRANTED, HudLine, Runtime, grant};
 pub use tick::TickMods;

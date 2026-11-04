@@ -2,6 +2,8 @@
 //! tick always had.
 
 use super::*;
+use photon_mods::Effect;
+use photon_net::mods::{self, MODS_CHANNEL, Manifest};
 
 impl Play {
     /// The tick's first part: the sound engine, and the open screen with what it asked for.
@@ -65,6 +67,7 @@ impl Play {
     /// What the tick leaves in the world to see and hear: animated textures, the level's own
     /// events, breaking and block particles.
     pub(super) fn tick_effects(&mut self) {
+        self.tick_mods();
         let session = &mut self.session;
         // `Minecraft.runTick`: the textures animate only while the level runs normally.
         if session.runs_normally() {
@@ -98,5 +101,56 @@ impl Play {
         self.sky.tick(&self.session, &self.controls.options);
         self.ticks += 1;
         Ok(())
+    }
+}
+
+impl Play {
+    /// The mods' part of a tick: the server's manifest, mods that finished loading, their tick.
+    pub(super) fn tick_mods(&mut self) {
+        let mut tell = !self.gui.mods.said_hello;
+        for (channel, data) in self.session.take_photon_payloads() {
+            if channel != MODS_CHANNEL {
+                continue;
+            }
+            match Manifest::parse(&data) {
+                Ok(manifest) => {
+                    let dir = crate::controls::game_directory().join("cache").join("mods");
+                    self.gui.mods.on_manifest(manifest, dir);
+                    tell = self.gui.mods.waiting == 0;
+                }
+                Err(error) => log::warn!("the server's mod list is wrong: {error:?}"),
+            }
+        }
+        tell |= self.gui.mods.load_fetched();
+        if tell {
+            self.say_hello();
+        }
+        let sounds = self.gui.mods.runtime.tick();
+        for effect in sounds {
+            if let (
+                Effect::Sound {
+                    name,
+                    volume,
+                    pitch,
+                },
+                Some(sound),
+            ) = (effect, self.sound.as_mut())
+            {
+                sound.play_ui(&name, pitch, volume);
+            }
+        }
+    }
+
+    /// Tells the server this is Photon and which mods are loaded.
+    fn say_hello(&mut self) {
+        let client = format!("Photon {}", env!("CARGO_PKG_VERSION"));
+        let payload = mods::hello(&client, &self.gui.mods.runtime.ids());
+        if let Err(error) = self
+            .session
+            .send_photon_payload(mods::HELLO_CHANNEL, &payload)
+        {
+            log::warn!("hello not sent: {error:?}");
+        }
+        self.gui.mods.said_hello = true;
     }
 }

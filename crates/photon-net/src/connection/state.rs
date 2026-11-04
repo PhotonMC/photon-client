@@ -31,6 +31,9 @@ pub struct ConnectionState {
     /// connection is one a server sent the client on to (`ClientIntent::Transfer`).
     pub handshake_host: Option<String>,
     pub transferring: bool,
+    /// The `photon:` payloads the server sent that the app has not taken yet (ADR 0024), oldest
+    /// first, each as its channel and bytes.
+    pub photon_payloads: Vec<(String, Vec<u8>)>,
     /// The server's brand (`minecraft:brand`).
     pub server_brand: Option<String>,
     /// `ClientboundCustomReportDetailsPacket`: what the server wants a crash report to carry.
