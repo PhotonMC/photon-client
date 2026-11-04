@@ -65,6 +65,11 @@ pub fn run_register() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(&dir)?;
     let file = dir.join("photon.desktop");
     std::fs::write(&file, desktop_entry(&exe))?;
+    // Browsers list the apps that handle a scheme from this cache (`gio mime` reads it); without
+    // it Chrome says "No apps installed". A missing tool only leaves the cache as it was.
+    let _ = std::process::Command::new("update-desktop-database")
+        .arg(&dir)
+        .status();
     let status = std::process::Command::new("xdg-mime")
         .args(["default", "photon.desktop", "x-scheme-handler/photon"])
         .status()?;
