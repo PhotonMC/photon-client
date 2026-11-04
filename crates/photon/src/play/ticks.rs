@@ -283,11 +283,11 @@ impl Play {
     }
 
     /// The window and what was loaded for it, back from an ended game, with whether to quit.
-    fn into_client(self) -> Result<(Client, Exit)> {
-        let exit = if self.surface.should_close() {
-            Exit::Quit
-        } else {
-            Exit::Title
+    fn into_client(mut self) -> Result<(Client, Exit)> {
+        let exit = match self.controls.join_after.take() {
+            _ if self.surface.should_close() => Exit::Quit,
+            Some((address, name)) => Exit::Join(address, name),
+            None => Exit::Title,
         };
         let Self {
             surface,

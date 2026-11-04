@@ -231,6 +231,8 @@ pub struct Controls {
     /// The player asked to leave the server (the pause menu's Disconnect, or the button of the
     /// disconnected screen).
     pub leave: bool,
+    /// The game to join (address and name) after leaving, from a link answered Yes.
+    pub join_after: Option<(String, String)>,
     /// The options were saved since the session last looked (`Options.save` then
     /// `broadcastOptions`).
     pub options_saved: bool,

@@ -156,6 +156,8 @@ pub(crate) enum Exit {
     Quit,
     /// The player left the server: back to the title screen.
     Title,
+    /// The player left to join another game: its address and the name shown while joining.
+    Join(String, String),
 }
 
 /// Play the joined `session` in `client`'s window until the player leaves or the window closes.

@@ -108,12 +108,17 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
     let mut server = server;
     // Leaving a server comes back to the home screen, which also takes a link handed over meanwhile.
     let mut left_server = false;
+    let mut join_next: Option<(String, String)> = None;
+    let scripted_run = env::var_os("PHOTON_SCRIPT").is_some();
     loop {
         let mut menu = Menu::open(&mut client)?;
         menu.loading = splash.take().map(startup::Splash::into_overlay);
         menu.open_requested_screen(&client);
         if std::mem::take(&mut left_server) {
             menu.screen = menu.title(gui_size(&client));
+        }
+        if let Some(game) = join_next.take() {
+            menu.connect_linked(game, gui_size(&client));
         }
         if std::mem::take(&mut scripted_join) {
             menu.connect_scripted(server, gui_size(&client));
@@ -125,16 +130,35 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
             Choice::Play(session) => {
                 let (back, exit) = play_game(client, *session)?;
                 client = back;
-                if let Exit::Quit = exit {
-                    return Ok(());
+                match after_game(exit, scripted_run) {
+                    AfterGame::Quit => return Ok(()),
+                    AfterGame::Join(address, name) => join_next = Some((address, name)),
+                    AfterGame::Home => left_server = !scripted_run,
                 }
-                left_server = env::var_os("PHOTON_SCRIPT").is_none();
                 if let Some(next) = hops.pop_front() {
                     server = next;
                     scripted_join = true;
                 }
             }
         }
+    }
+}
+
+/// What the menu does once a game has ended.
+#[derive(Debug, PartialEq, Eq)]
+enum AfterGame {
+    Quit,
+    /// Back to the home screen.
+    Home,
+    /// Straight into another game, by address and shown name.
+    Join(String, String),
+}
+
+fn after_game(exit: Exit, scripted: bool) -> AfterGame {
+    match exit {
+        Exit::Quit => AfterGame::Quit,
+        Exit::Join(address, name) if !scripted => AfterGame::Join(address, name),
+        Exit::Join(..) | Exit::Title => AfterGame::Home,
     }
 }
 
@@ -274,6 +298,17 @@ impl Menu {
             LoadingScreen::new(self.gui.lang(), size, about.0, about.1),
             JoinTask::start(target, packs),
             None,
+        );
+    }
+
+    /// A game a link asked for while another was played, joined from the home screen.
+    fn connect_linked(&mut self, (address, name): (String, String), size: (i32, i32)) {
+        self.joined_from_home = true;
+        self.connect(
+            Target::Name(address.clone()),
+            Some(&address),
+            (&name, &address),
+            size,
         );
     }
 
@@ -526,4 +561,24 @@ fn menu_registries(
         photon_game::registries::Registries::load(data_root, |_| Vec::new()),
         menu_versions(),
     )
+}
+
+#[cfg(test)]
+mod after_game_tests {
+    use super::*;
+
+    #[test]
+    fn a_game_ends_in_quit_home_or_the_next_join() {
+        assert_eq!(after_game(Exit::Quit, false), AfterGame::Quit);
+        assert_eq!(after_game(Exit::Title, false), AfterGame::Home);
+        assert_eq!(
+            after_game(Exit::Join("a:1".into(), "A".into()), false),
+            AfterGame::Join("a:1".into(), "A".into())
+        );
+        // A scripted run never follows a link.
+        assert_eq!(
+            after_game(Exit::Join("a:1".into(), "A".into()), true),
+            AfterGame::Home
+        );
+    }
 }
