@@ -76,7 +76,8 @@ pub(crate) fn take_pending() -> Option<Link> {
 /// What the answer to a link makes the menu do.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Outcome {
-    Join(String),
+    /// The address to join and the name to show while joining.
+    Join(String, String),
     /// The code was issued for another profile than the signed-in one.
     OtherProfile,
     NotSignedIn,
@@ -92,7 +93,12 @@ pub(crate) fn decide(answer: Result<Launch, BackendError>, signed_in: Option<Uui
         Ok(launch) => match signed_in {
             None => Outcome::NotSignedIn,
             Some(profile) if is_same_profile(&launch.uuid, profile) => {
-                Outcome::Join(launch.address)
+                let name = if launch.name.is_empty() {
+                    launch.address.clone()
+                } else {
+                    launch.name
+                };
+                Outcome::Join(launch.address, name)
             }
             Some(_) => Outcome::OtherProfile,
         },
@@ -139,6 +145,7 @@ mod tests {
         Launch {
             address: "play.example.com:25565".to_owned(),
             uuid: uuid.to_owned(),
+            name: "Example".to_owned(),
         }
     }
 
@@ -185,13 +192,27 @@ mod tests {
     }
 
     #[test]
+    fn a_backend_without_a_name_falls_back_to_the_address() {
+        let profile = Uuid::new(0x0123_4567_89ab_cdef, 0x0123_4567_89ab_cdef);
+        let mut unnamed = launch("0123456789abcdef0123456789abcdef");
+        unnamed.name.clear();
+        assert_eq!(
+            decide(Ok(unnamed), Some(profile)),
+            Outcome::Join(
+                "play.example.com:25565".to_owned(),
+                "play.example.com:25565".to_owned()
+            )
+        );
+    }
+
+    #[test]
     fn a_code_joins_only_for_the_profile_it_was_issued_for() {
         let profile = Uuid::new(0x0123_4567_89ab_cdef, 0x0123_4567_89ab_cdef);
         let own = "0123456789abcdef0123456789abcdef";
         let other = "ffffffffffffffffffffffffffffffff";
         assert_eq!(
             decide(Ok(launch(own)), Some(profile)),
-            Outcome::Join("play.example.com:25565".to_owned())
+            Outcome::Join("play.example.com:25565".to_owned(), "Example".to_owned())
         );
         assert_eq!(
             decide(Ok(launch(other)), Some(profile)),

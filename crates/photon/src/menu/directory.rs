@@ -113,12 +113,12 @@ impl Menu {
         };
         self.link = None;
         let key = match outcome {
-            Outcome::Join(address) => {
+            Outcome::Join(address, name) => {
                 self.joined_from_home = true;
                 self.connect(
                     Target::Name(address.clone()),
                     Some(&address),
-                    (&address, &address),
+                    (&name, &address),
                     size,
                 );
                 return;

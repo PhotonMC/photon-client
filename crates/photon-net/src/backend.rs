@@ -45,6 +45,8 @@ pub struct Launch {
     pub address: String,
     /// The profile the code was issued for, as 32 hex digits.
     pub uuid: String,
+    /// The server's name for the loading screen; empty from a backend that does not say.
+    pub name: String,
 }
 
 /// A Photon session. It lives in memory only and is proven again on each start.
@@ -162,6 +164,7 @@ impl Backend {
         Ok(Launch {
             address: field(&answer, "address")?,
             uuid: field(&answer, "uuid")?,
+            name: answer.text("name").unwrap_or_default(),
         })
     }
 }
