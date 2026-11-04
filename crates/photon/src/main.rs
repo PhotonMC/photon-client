@@ -12,6 +12,7 @@ mod hud_input;
 mod identity_proof;
 mod indexed;
 mod keyring_store;
+mod launch_link;
 mod logger;
 mod menu;
 mod mobs;
@@ -59,26 +60,44 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         return result;
     }
-    match env::args().nth(1).as_deref() {
-        None => {
-            updates::start();
-            return self_update::restart_if_requested(menu::run_menu(std::iter::empty()));
-        }
-        Some("menu") => {
-            updates::start();
-            return self_update::restart_if_requested(menu::run_menu(env::args().skip(2)));
-        }
-        Some("update") => return updates::run_update(),
-        Some("install") => return content::run_install(),
-        Some("--version") => {
-            println!("photon {}", env!("CARGO_PKG_VERSION"));
-            return Ok(());
-        }
-        _ => {}
+    if let Some(result) = run_menu_command(env::args().nth(1).as_deref()) {
+        return result;
     }
     Err(format!(
-        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out`, `identity-proof`, `install`, `update`, `window` or `--version`",
+        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out`, `identity-proof`, `open-link`, `install`, `update`, `window` or `--version`",
         env::args().nth(1)
     )
     .into())
+}
+
+/// `photon open-link <link>`: the menu opens with the website's launch link to spend.
+fn open_link() -> Result<(), Box<dyn std::error::Error>> {
+    let link = env::args()
+        .nth(2)
+        .ok_or("open-link needs a photon:// link")?;
+    launch_link::remember(&link)?;
+    open_menu(std::iter::empty())
+}
+
+/// The commands that open the menu or work without a window; nothing for any other command.
+fn run_menu_command(command: Option<&str>) -> Option<Result<(), Box<dyn std::error::Error>>> {
+    let result = match command {
+        None => open_menu(std::iter::empty()),
+        Some("menu") => open_menu(env::args().skip(2)),
+        Some("open-link") => open_link(),
+        Some("update") => updates::run_update(),
+        Some("install") => content::run_install(),
+        Some("--version") => {
+            println!("photon {}", env!("CARGO_PKG_VERSION"));
+            Ok(())
+        }
+        _ => return None,
+    };
+    Some(result)
+}
+
+/// The menu, with the update check running beside it.
+fn open_menu(args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::error::Error>> {
+    updates::start();
+    self_update::restart_if_requested(menu::run_menu(args))
 }

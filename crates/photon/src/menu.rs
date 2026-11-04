@@ -171,6 +171,8 @@ struct Menu {
     friends_title: friends::TitleFriends,
     /// The servers Photon's backend lists, when one is named.
     directory: directory::Directory,
+    /// The launch link the game was started with, while its code is being spent.
+    link: Option<crate::launch_link::LinkTask>,
     /// What those screens are made with.
     assets: crate::screens::ScreenAssets,
     /// `Panorama.spin`, in degrees, and when it last advanced.
@@ -235,6 +237,7 @@ impl Menu {
             loading: None,
             friends_title: friends::TitleFriends::look_up(),
             directory: directory::Directory::look_up(),
+            link: crate::launch_link::LinkTask::start(),
             options,
         })
     }
@@ -377,6 +380,7 @@ impl Menu {
             self.credits_ticked(size);
             self.friends_account_polled();
             self.directory_polled();
+            self.link_polled(size);
             self.friends_ticked(client);
             self.fit_screen(size);
             self.spin_panorama(client);

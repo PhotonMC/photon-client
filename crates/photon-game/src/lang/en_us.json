@@ -12,5 +12,9 @@
   "photon.home.join.detail": "Add one by address",
   "photon.home.games": "Photon games",
   "photon.home.games.detail": "Directory coming soon",
+  "photon.link.other_profile": "That link was issued for another account. Sign in to that account and try again.",
+  "photon.link.not_signed_in": "Sign in to Photon to use that link.",
+  "photon.link.refused": "That link has expired or was already used.",
+  "photon.link.unavailable": "Photon's servers could not be reached.",
   "photon.loading.server": "Server"
 }

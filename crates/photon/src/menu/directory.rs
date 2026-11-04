@@ -7,7 +7,9 @@ use std::sync::mpsc::{Receiver, channel};
 use photon_net::backend::{Backend, BackendError, DirectoryServer};
 
 use super::{Choice, Menu, Screen};
+use crate::launch_link::Outcome;
 use crate::play::Target;
+use photon_game::text::Component;
 
 /// The directory being fetched, and what it said.
 pub(super) struct Directory {
@@ -81,5 +83,31 @@ impl Menu {
             size,
         );
         None
+    }
+}
+
+impl Menu {
+    /// The decision about the launch link, when it has come: the join, or why there is none.
+    pub(super) fn link_polled(&mut self, size: (i32, i32)) {
+        let Some(outcome) = self.link.as_ref().and_then(|task| task.poll()) else {
+            return;
+        };
+        self.link = None;
+        let key = match outcome {
+            Outcome::Join(address) => {
+                self.connect(
+                    Target::Name(address.clone()),
+                    Some(&address),
+                    (&address, &address),
+                    size,
+                );
+                return;
+            }
+            Outcome::OtherProfile => "photon.link.other_profile",
+            Outcome::NotSignedIn => "photon.link.not_signed_in",
+            Outcome::Refused => "photon.link.refused",
+            Outcome::Unavailable => "photon.link.unavailable",
+        };
+        self.join_failed(&Component::translatable(key), size);
     }
 }

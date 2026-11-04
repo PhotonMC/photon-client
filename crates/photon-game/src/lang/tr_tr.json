@@ -12,5 +12,9 @@
   "photon.home.join.detail": "Adresle bir tane ekle",
   "photon.home.games": "Photon oyunları",
   "photon.home.games.detail": "Dizin yakında",
+  "photon.link.other_profile": "Bu link farkl\u0131 bir hesap i\u00e7in verildi. O hesapla giri\u015f yap\u0131p tekrar dene.",
+  "photon.link.not_signed_in": "Bu linki kullanmak i\u00e7in Photon'a giri\u015f yap.",
+  "photon.link.refused": "Bu linkin s\u00fcresi doldu ya da zaten kullan\u0131ld\u0131.",
+  "photon.link.unavailable": "Photon sunucular\u0131na ula\u015f\u0131lamad\u0131.",
   "photon.loading.server": "Sunucu"
 }
