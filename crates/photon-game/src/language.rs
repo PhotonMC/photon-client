@@ -37,9 +37,16 @@ pub struct LanguageSource {
 }
 
 impl LanguageSource {
-    /// The asset folder around the jar's `assets`, if it has an index.
+    /// The asset folder around the jar's `assets` (development or installed), if it has an index.
     pub fn open(jar_assets: &Path) -> Option<Self> {
-        let assets = jar_assets.parent()?.parent()?.to_path_buf();
+        // The development layout keeps the index two folders above the jar's `assets`; an installed
+        // game keeps it in the cache root, three above (`jar/<hash>/assets`).
+        let assets = jar_assets
+            .ancestors()
+            .skip(2)
+            .take(2)
+            .find(|folder| folder.join("indexes").is_dir())?
+            .to_path_buf();
         let mut indexes: Vec<PathBuf> = std::fs::read_dir(assets.join("indexes"))
             .ok()?
             .flatten()
@@ -160,6 +167,19 @@ pub fn photon_texts(code: &str) -> Vec<(String, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_installed_game_keeps_its_index_in_the_cache_root() {
+        let root = std::env::temp_dir().join(format!("photon-lang-{}", std::process::id()));
+        let jar_assets = root.join("jar/abc/assets");
+        std::fs::create_dir_all(&jar_assets).expect("jar assets");
+        std::fs::create_dir_all(root.join("indexes")).expect("indexes");
+        std::fs::write(root.join("indexes/32.json"), r#"{"objects":{}}"#).expect("index");
+        let source = LanguageSource::open(&jar_assets).expect("the cache root's index is found");
+        assert_eq!(source.assets, root);
+        std::fs::remove_dir_all(&root).expect("clean up");
+        assert!(LanguageSource::open(&jar_assets).is_none());
+    }
 
     fn source() -> Option<LanguageSource> {
         LanguageSource::open(Path::new(&photon_core::content_root::assets().ok()?))
