@@ -106,14 +106,14 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
         })
         .collect();
     let mut server = server;
-    // `Minecraft.disconnectFromWorld`: a remote server's player comes back to the server list.
+    // Leaving a server comes back to the home screen, which also takes a link handed over meanwhile.
     let mut left_server = false;
     loop {
         let mut menu = Menu::open(&mut client)?;
         menu.loading = splash.take().map(startup::Splash::into_overlay);
         menu.open_requested_screen(&client);
         if std::mem::take(&mut left_server) {
-            menu.screen = menu.server_list(gui_size(&client));
+            menu.screen = menu.title(gui_size(&client));
         }
         if std::mem::take(&mut scripted_join) {
             menu.connect_scripted(server, gui_size(&client));
