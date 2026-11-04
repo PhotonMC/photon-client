@@ -146,8 +146,10 @@ impl LoadingScreen {
         .into_iter()
         .enumerate()
         {
-            let x = inner.x + (inner.width - painter.font.width(text)) / 2;
-            painter.label(text, (x, text_y + 11 * index as i32), colour);
+            // Names and addresses come from operators: cut to the panel, not past it.
+            let text = painter.fitted(text, inner.width - 8);
+            let x = inner.x + (inner.width - painter.font.width(&text)) / 2;
+            painter.label(&text, (x, text_y + 11 * index as i32), colour);
         }
     }
 }
