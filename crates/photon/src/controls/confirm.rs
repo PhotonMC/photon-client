@@ -22,6 +22,16 @@ impl Controls {
         self.confirm = Some(confirm);
     }
 
+    /// A tick of the open confirmations: the buttons wake when a delay runs out.
+    pub(crate) fn tick_confirms(&mut self) {
+        if let Some(confirm) = self.confirm.as_mut() {
+            confirm.tick();
+        }
+        if let Some((confirm, _)) = self.link_confirm.as_mut() {
+            confirm.tick();
+        }
+    }
+
     /// What the confirmation's callback does: yes leaves; no respawns and
     /// closes the screens.
     pub(super) fn confirm_action(

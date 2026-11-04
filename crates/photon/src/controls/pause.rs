@@ -56,7 +56,11 @@ impl Controls {
             }
             None => ConfirmScreen::notice(font, lang, size, (&title, &message), &text("gui.back")),
         };
-        let screen = screen.with_background(ConfirmBackground::Menu { in_world: true });
+        let mut screen = screen.with_background(ConfirmBackground::Menu { in_world: true });
+        // A question that opens by itself, over whatever the player was doing, wakes after a second.
+        if buttons.is_some() {
+            screen.set_delay(20);
+        }
         self.link_confirm = Some((screen, target));
     }
 

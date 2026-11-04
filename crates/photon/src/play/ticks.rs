@@ -417,9 +417,7 @@ impl Play {
             death.tick();
         }
         self.controls.credits_tick(session, &mut self.surface)?;
-        if let Some(confirm) = self.controls.confirm.as_mut() {
-            confirm.tick();
-        }
+        self.controls.tick_confirms();
         if let Some(crate::controls::DialogLayer::Waiting(waiting)) = self.controls.dialog.as_mut()
         {
             waiting.tick(&self.screen_assets.lang);
