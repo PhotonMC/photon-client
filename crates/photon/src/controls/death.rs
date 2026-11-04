@@ -15,9 +15,7 @@ impl Controls {
         if self.disconnected.is_some() {
             return;
         }
-        // A launch link's question about leaving is moot once the game is gone: its spent code
-        // is joined after the disconnected screen instead of being lost.
-        self.keep_link_join();
+        self.hand_over_links();
         let size = surface.scale();
         let size = (size.gui_scaled_width(), size.gui_scaled_height());
         // `ConnectScreen.connectFailedTitle` of a transfer.
@@ -94,11 +92,18 @@ impl Controls {
         }
     }
 
-    /// The join a launch question asked about, kept when the game ends before it is answered.
-    fn keep_link_join(&mut self) {
-        if let Some((_, target)) = self.link_confirm.take() {
-            self.join_after = kept_join(target).or(self.join_after.take());
+    /// What a game still holds of a link when it ends, handed on instead of lost: a launch
+    /// question or a spent code's join is joined after (the question to leave is moot once the
+    /// game is gone; the one open at the screen wins over one still waiting), and a sign-in
+    /// state goes back to the menu, which asks about it there.
+    pub(crate) fn hand_over_links(&mut self) {
+        let asked = self.link_confirm.take().map(|(_, target)| target);
+        if let Some(state) = self.game_link.take_signin_state(asked.as_ref()) {
+            crate::launch_link::requeue_signin(state);
         }
+        let waiting = self.game_link.take_ready_join();
+        let kept = asked.and_then(kept_join).or(waiting);
+        self.join_after = kept.or(self.join_after.take());
     }
 
     /// `handlePlayerCombatKill`: a death the server told of opens the death

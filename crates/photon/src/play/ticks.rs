@@ -279,6 +279,7 @@ impl Play {
 
     /// The window and what was loaded for it, back from an ended game, with whether to quit.
     fn into_client(mut self) -> Result<(Client, Exit)> {
+        self.controls.hand_over_links();
         let exit = match self.controls.join_after.take() {
             _ if self.surface.should_close() => Exit::Quit,
             Some((address, name)) => Exit::Join(address, name),

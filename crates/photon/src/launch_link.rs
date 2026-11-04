@@ -5,6 +5,7 @@
 use std::sync::Mutex;
 use std::sync::mpsc::{Receiver, channel};
 
+use crate::controls::ConfirmTarget;
 use photon_core::binary::Uuid;
 use photon_net::backend::{BackendError, Launch, is_same_profile};
 
@@ -87,6 +88,15 @@ pub(crate) fn take_pending_signin() -> Option<String> {
     }
 }
 
+/// Puts a sign-in state back for the menu to take, unless a newer link already waits there.
+pub(crate) fn requeue_signin(state: String) {
+    if let Ok(mut pending) = PENDING.lock()
+        && pending.is_none()
+    {
+        *pending = Some((Link::SignIn(state), std::time::Instant::now()));
+    }
+}
+
 /// The launch code of the pending link, once; a sign-in link stays pending for the menu.
 pub(crate) fn take_pending_launch() -> Option<String> {
     let mut pending = PENDING.lock().ok()?;
@@ -143,6 +153,36 @@ pub(crate) struct GameLink {
     pub(crate) signin_ready: Option<InPlay>,
     /// The state the player agreed to sign in, to be started.
     pub(crate) signin_agreed: Option<String>,
+}
+
+impl GameLink {
+    /// The sign-in state a game ends holding, asked about or not yet answered, taken out of it.
+    /// One the player already answered but that no thread has started on counts too; a running
+    /// sign-in does not (its thread still opens the browser).
+    pub(crate) fn take_signin_state(&mut self, asked: Option<&ConfirmTarget>) -> Option<String> {
+        let held = self.signin_agreed.take();
+        let ready = match self.signin_ready.take() {
+            Some(InPlay::AskSignIn(state, _)) => Some(state),
+            _ => None,
+        };
+        let looking = match self.signin.take() {
+            Some(SignInStep::Looking(_, state)) => Some(state),
+            _ => None,
+        };
+        let asked = match asked {
+            Some(ConfirmTarget::SignIn(state)) => Some(state.clone()),
+            _ => None,
+        };
+        asked.or(held).or(ready).or(looking)
+    }
+
+    /// The join a spent code was waiting to ask about, taken out of it.
+    pub(crate) fn take_ready_join(&mut self) -> Option<(String, String)> {
+        match self.ready.take() {
+            Some(Outcome::Join(address, name)) => Some((address, name)),
+            _ => None,
+        }
+    }
 }
 
 /// What the answer to a link makes the menu do.
@@ -212,6 +252,41 @@ mod tests {
     use super::*;
 
     const CODE: &str = "00112233445566778899aabbccddeeff";
+
+    #[test]
+    fn a_game_hands_on_the_sign_in_state_nearest_to_the_player() {
+        let mut held = GameLink::default();
+        assert_eq!(held.take_signin_state(None), None);
+        held.signin = Some(SignInStep::Looking(channel().1, "looking".to_owned()));
+        held.signin_ready = Some(InPlay::AskSignIn("ready".to_owned(), "N".to_owned()));
+        let asked = ConfirmTarget::SignIn("asked".to_owned());
+        assert_eq!(
+            held.take_signin_state(Some(&asked)).as_deref(),
+            Some("asked")
+        );
+        // Everything it held is taken with it, so a second hand-over finds nothing.
+        assert_eq!(held.take_signin_state(None), None);
+        held.signin_ready = Some(InPlay::AskSignIn("ready".to_owned(), "N".to_owned()));
+        assert_eq!(held.take_signin_state(None).as_deref(), Some("ready"));
+        // A running sign-in finishes on its thread; only a notice would be lost.
+        held.signin = Some(SignInStep::Working(channel().1));
+        assert_eq!(held.take_signin_state(None), None);
+    }
+
+    #[test]
+    fn only_a_spent_codes_join_is_taken_as_a_join() {
+        let mut held = GameLink {
+            ready: Some(Outcome::Refused),
+            ..GameLink::default()
+        };
+        assert_eq!(held.take_ready_join(), None);
+        held.ready = Some(Outcome::Join("h:1".to_owned(), "G".to_owned()));
+        assert_eq!(
+            held.take_ready_join(),
+            Some(("h:1".to_owned(), "G".to_owned()))
+        );
+        assert!(held.ready.is_none());
+    }
 
     fn launch(uuid: &str) -> Launch {
         Launch {
