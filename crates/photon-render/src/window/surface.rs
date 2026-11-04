@@ -367,6 +367,16 @@ impl WindowSurface {
         self.refresh_drawn_size();
     }
 
+    /// Brings the window forward: restored when minimised, then focused, and a request for the
+    /// user's attention for the platforms that refuse to let a window take focus by itself.
+    pub fn raise(&mut self) {
+        if self.window.is_iconified() {
+            self.window.restore();
+        }
+        self.window.focus();
+        self.window.request_attention();
+    }
+
     /// Hide and hold the cursor for mouse look, or give it back.
     ///
     /// The reference grabs the mouse with GLFW's disabled cursor mode and

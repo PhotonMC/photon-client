@@ -9,6 +9,7 @@ use photon_gui::screen::notice::{Answer, NoticeScreen};
 use super::input::{ask_event, failed_event};
 use super::{Menu, Screen};
 use crate::launch_link::{self, Link, LinkTask};
+use crate::play::Client;
 use crate::signin_link::{self, Outcome};
 
 /// Where a sign-in link has got to.
@@ -42,9 +43,13 @@ pub(super) fn pending_link() -> (Option<LinkTask>, Option<SignInFlow>) {
 }
 
 impl Menu {
-    /// A link handed over by a second start (`photon open-link` while this client runs), taken on
+    /// A link handed over by a second start (`photon open-link` while this client runs) raises the
+    /// window once, and is taken on
     /// the home screen or a notice and when nothing else is going on.
-    pub(super) fn link_arrived(&mut self) {
+    pub(super) fn link_arrived(&mut self, client: &mut Client) {
+        if crate::link_socket::arrived() {
+            client.surface.raise();
+        }
         let idle = matches!(self.screen, Screen::Home(_) | Screen::Failed(..));
         if !idle || self.link.is_some() || self.signin.is_some() {
             return;

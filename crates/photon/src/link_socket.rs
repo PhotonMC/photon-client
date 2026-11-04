@@ -9,6 +9,7 @@ mod imp {
     use std::os::unix::fs::DirBuilderExt;
     use std::os::unix::net::{UnixListener, UnixStream};
     use std::path::PathBuf;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::Duration;
 
     /// The longest line taken; a real link is under a hundred bytes.
@@ -22,6 +23,14 @@ mod imp {
         Refused,
         /// Nobody is listening: this start is the client.
         NoPrimary,
+    }
+
+    /// A link was taken since the window was last raised.
+    static ARRIVED: AtomicBool = AtomicBool::new(false);
+
+    /// Whether a link came in since the last call: once per link, so the window is raised once.
+    pub fn arrived() -> bool {
+        ARRIVED.swap(false, Ordering::Relaxed)
     }
 
     fn socket_path() -> Option<PathBuf> {
@@ -41,6 +50,9 @@ mod imp {
             && line.last() == Some(&b'\n')
             && std::str::from_utf8(&line[..line.len() - 1])
                 .is_ok_and(|text| crate::launch_link::remember(text.trim()).is_ok());
+        if accepted {
+            ARRIVED.store(true, Ordering::Relaxed);
+        }
         let _ = stream.write_all(if accepted { b"ok\n" } else { b"refused\n" });
     }
 
@@ -135,6 +147,10 @@ mod imp {
                 "ok\n"
             );
             assert!(crate::launch_link::take_pending().is_some());
+            assert!(arrived());
+            assert!(!arrived());
+            asked(format!("photon://launch?token={zeros}\n").as_bytes());
+            assert!(!arrived());
         }
 
         #[test]
@@ -187,9 +203,13 @@ mod imp {
         Sent::NoPrimary
     }
 
+    pub fn arrived() -> bool {
+        false
+    }
+
     pub fn serve() -> Option<Guard> {
         None
     }
 }
 
-pub use imp::{Sent, send, serve};
+pub use imp::{Sent, arrived, send, serve};
