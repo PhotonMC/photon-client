@@ -455,7 +455,7 @@ impl Menu {
             self.link_arrived(client);
             self.link_polled(size);
             self.signin_polled(size);
-            self.account_polled(size);
+            self.account_polled(size, client);
             self.friends_ticked(client);
             self.fit_screen(size);
             self.spin_panorama(client);

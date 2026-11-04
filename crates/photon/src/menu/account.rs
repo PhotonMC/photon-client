@@ -11,7 +11,7 @@ use photon_gui::screen::notice::{Answer, NoticeScreen};
 use photon_net::signin::{self, ClientId, Hosts, SignInError};
 
 use super::input::{ask_event, failed_event};
-use super::{Menu, Screen};
+use super::{Client, Menu, Screen};
 
 /// A sign-in under way: what its thread says, and the flag that stops it saving.
 pub(super) struct AccountSignIn {
@@ -155,12 +155,16 @@ impl Menu {
     }
 
     /// The next step of a Microsoft sign-in, when its thread has one.
-    pub(super) fn account_polled(&mut self, size: (i32, i32)) {
+    pub(super) fn account_polled(&mut self, size: (i32, i32), client: &mut Client) {
         let Some(account) = self.account.as_ref() else {
             return;
         };
         match account.steps.try_recv() {
-            Ok(Step::Code { user_code, address }) => self.show_code(&user_code, &address, size),
+            Ok(Step::Code { user_code, address }) => {
+                // The player types it on another page, so it is already on the clipboard.
+                client.surface.set_clipboard(&user_code);
+                self.show_code(&user_code, &address, size);
+            }
             Ok(Step::Done(result)) => {
                 self.account = None;
                 let heading = Component::translatable("photon.account.heading");

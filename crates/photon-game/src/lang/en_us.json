@@ -25,7 +25,7 @@
   "photon.home.games.unavailable": "Directory unavailable",
   "photon.loading.contacting": "Contacting Microsoft...",
   "photon.account.heading": "Microsoft sign-in",
-  "photon.account.enter": "Open %s and enter the code %s",
+  "photon.account.enter": "Open %s and enter the code %s. The code is copied.",
   "photon.account.cancel": "Cancel",
   "photon.account.not_now": "Not now",
   "photon.account.sign_in": "Sign in",
