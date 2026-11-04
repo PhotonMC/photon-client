@@ -107,7 +107,8 @@ impl Menu {
                 &Component::translatable("photon.account.not_now"),
                 &Component::translatable("photon.account.sign_in"),
             ),
-        );
+        )
+        .over_panorama();
         self.screen = Screen::Offer(question);
     }
 
@@ -193,7 +194,7 @@ impl Menu {
     fn show_code(&mut self, user_code: &str, address: &str, size: (i32, i32)) {
         let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
         let reason = filled(&lang.text("photon.account.enter"), &[address, user_code]);
-        self.screen = Screen::Code(NoticeScreen::new(
+        let screen = NoticeScreen::new(
             font,
             lang,
             size,
@@ -202,7 +203,8 @@ impl Menu {
                 &Component::literal(reason),
                 &Component::translatable("photon.account.cancel"),
             ),
-        ));
+        );
+        self.screen = Screen::Code(screen.over_panorama());
     }
 }
 

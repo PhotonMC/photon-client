@@ -127,7 +127,8 @@ impl Menu {
                 &Component::translatable("photon.signin.cancel"),
                 &Component::translatable("photon.signin.confirm"),
             ),
-        );
+        )
+        .over_panorama();
         self.screen = Screen::Ask(question, (state, name.to_owned()));
     }
 

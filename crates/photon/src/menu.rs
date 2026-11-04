@@ -417,7 +417,7 @@ impl Menu {
             "photon.notice.back_servers"
         };
         let back = Component::translatable(back);
-        let screen = NoticeScreen::new(font, lang, size, (heading, reason, &back));
+        let screen = NoticeScreen::new(font, lang, size, (heading, reason, &back)).over_panorama();
         self.screen = Screen::Failed(screen, home);
     }
 
