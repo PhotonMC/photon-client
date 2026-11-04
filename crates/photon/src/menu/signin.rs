@@ -4,6 +4,7 @@
 use std::sync::mpsc::{Receiver, channel};
 
 use photon_game::text::Component;
+use photon_gui::screen::loading::LoadingScreen;
 use photon_gui::screen::notice::{Answer, NoticeScreen};
 
 use super::input::{ask_event, failed_event};
@@ -63,6 +64,7 @@ impl Menu {
             return;
         }
         (self.link, self.signin) = pending_link();
+        self.show_linking(super::gui_size(client));
     }
 
     /// One window event for a notice or a question: a button leaves it, or answers it.
@@ -121,6 +123,41 @@ impl Menu {
         self.screen = Screen::Ask(question, state);
     }
 
+    /// The joining screen while a link's task is out, so the home screen never shows first.
+    pub(super) fn show_linking(&mut self, size: (i32, i32)) {
+        let key = match (&self.link, &self.signin) {
+            (Some(_), _) => "photon.loading.joining",
+            (None, Some(SignInFlow::Looking(..))) => "photon.loading.checking_signin",
+            (None, Some(SignInFlow::Working(_))) => "photon.loading.signing_in",
+            (None, None) => return,
+        };
+        let lang = self.gui.lang();
+        let mut screen = LoadingScreen::new(lang, size, &lang.text("photon.loading.link"), "");
+        screen.set_status(lang, key);
+        self.screen = Screen::Linking(screen);
+    }
+
+    /// Cancel or Escape on the joining screen goes home. The code is spent already, so dropping
+    /// the task's answer is harmless.
+    pub(super) fn linking_event(&mut self, event: glfw::WindowEvent, size: (i32, i32)) {
+        use glfw::{Action, Key, MouseButton, WindowEvent};
+        let Screen::Linking(screen) = &self.screen else {
+            return;
+        };
+        let leave = match event {
+            WindowEvent::Key(Key::Escape, _, Action::Press, _) => true,
+            WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => {
+                screen.cancelled(self.mouse)
+            }
+            _ => false,
+        };
+        if leave {
+            self.link = None;
+            self.signin = None;
+            self.screen = self.title(size);
+        }
+    }
+
     /// The answer to the question: a no goes home; a yes starts the sign-in.
     pub(super) fn signin_answered(&mut self, answer: Answer, state: &str, size: (i32, i32)) {
         match answer {
@@ -134,7 +171,7 @@ impl Menu {
                         let _ = sender.send(signin_link::run(&state));
                     });
                 self.signin = Some(SignInFlow::Working(receiver));
-                self.screen = self.title(size);
+                self.show_linking(size);
             }
         }
     }

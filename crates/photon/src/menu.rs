@@ -63,6 +63,9 @@ enum Screen {
     Confirm(ConfirmScreen, usize),
     /// A join going on, and the question about the server's resource packs while one is up.
     Connecting(LoadingScreen, JoinTask, Option<ConfirmScreen>),
+    /// A link's task is out (a game to join, a sign-in to check); the home screen does not show
+    /// first.
+    Linking(LoadingScreen),
     /// A join that failed, and whether the way back is the home screen, not the server list.
     Failed(NoticeScreen, bool),
     /// The question of a website sign-in link, with the browser's state.
@@ -115,7 +118,9 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
         let mut menu = Menu::open(&mut client, join_next.is_none())?;
         menu.loading = splash.take().map(startup::Splash::into_overlay);
         menu.open_requested_screen(&client);
-        if std::mem::take(&mut left_server) {
+        // A link's joining screen stays: the home screen would show first, for a moment.
+        let left = std::mem::take(&mut left_server);
+        if left && !matches!(menu.screen, Screen::Linking(_)) {
             menu.screen = menu.title(gui_size(&client));
         }
         if let Some(game) = join_next.take() {
@@ -251,7 +256,7 @@ impl Menu {
         let screen = home_screen(gui.text_assets().0, gui.lang(), gui_size(client));
         let (sound, music) = audio::take(client, root, &options);
         let assets = gui.screen_assets();
-        Ok(Self {
+        let mut menu = Self {
             host: crate::controls::Controls::for_title(),
             assets,
             gui,
@@ -274,7 +279,9 @@ impl Menu {
             signin,
             joined_from_home: false,
             options,
-        })
+        };
+        menu.show_linking(gui_size(client));
+        Ok(menu)
     }
 
     fn title(&self, size: (i32, i32)) -> Screen {
@@ -370,6 +377,7 @@ impl Menu {
             Screen::Home(screen) => Some(screen.size()),
             Screen::Servers(screen) => Some(screen.size()),
             Screen::Credits(screen, _) => Some(screen.size()),
+            Screen::Linking(screen) => Some(screen.size()),
             _ => None,
         };
         if self.refit_credits(size) {
@@ -377,6 +385,7 @@ impl Menu {
         }
         if current.is_some_and(|current| current != size) {
             self.screen = match self.screen {
+                Screen::Linking(_) => return self.show_linking(size),
                 Screen::Servers(_) => self.server_list(size),
                 _ => self.title(size),
             };
@@ -497,6 +506,10 @@ impl Menu {
             }
             Screen::Connecting(..) => {
                 self.connecting_event(event, size);
+                return Ok(None);
+            }
+            Screen::Linking(..) => {
+                self.linking_event(event, size);
                 return Ok(None);
             }
             Screen::Credits(..) => return Ok(self.credits_event(event, size)),

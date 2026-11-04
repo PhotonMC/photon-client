@@ -24,14 +24,10 @@ pub(super) fn draw_screen(
         Screen::Form(screen, _) => screen.draw(frame, atlas, font, mouse),
         // Not over a level, so the panorama is what blurs, not this screen.
         Screen::Confirm(screen, _) => screen.draw(frame, (atlas, font), mouse, 0),
-        // In the level: `LevelLoadingScreen` until it has loaded.
-        Screen::Connecting(screen, task, _) if task.status.loading() => {
-            draw_level_loading(frame, atlas, font, lang, screen.size());
+        Screen::Connecting(screen, task, question) => {
+            draw_connecting(screen, task, question, (frame, atlas, font), (lang, mouse));
         }
-        Screen::Connecting(screen, _, question) => {
-            screen.draw(frame, atlas, font, mouse);
-            draw_pack_question(question.as_mut(), frame, (atlas, font), mouse);
-        }
+        Screen::Linking(screen) => screen.draw(frame, atlas, font, mouse),
         Screen::Failed(screen, _) | Screen::Ask(screen, _) => {
             screen.draw(frame, atlas, font, mouse);
         }
@@ -43,6 +39,23 @@ pub(super) fn draw_screen(
             screen.draw(frame, atlas, font, delta);
         }
     }
+}
+
+/// The connect screen: `LevelLoadingScreen` in the level until it has loaded, else the connect
+/// screen with the question about the server's packs when one is up.
+fn draw_connecting(
+    screen: &photon_gui::screen::loading::LoadingScreen,
+    task: &super::JoinTask,
+    question: &mut Option<photon_gui::screen::confirm::ConfirmScreen>,
+    (frame, atlas, font): (&mut GuiFrame, &GuiAtlas, &Font),
+    (lang, mouse): (&Lang, (i32, i32)),
+) {
+    if task.status.loading() {
+        draw_level_loading(frame, atlas, font, lang, screen.size());
+        return;
+    }
+    screen.draw(frame, atlas, font, mouse);
+    draw_pack_question(question.as_mut(), frame, (atlas, font), mouse);
 }
 
 /// The question about the server's packs, over the connect screen when one is up.

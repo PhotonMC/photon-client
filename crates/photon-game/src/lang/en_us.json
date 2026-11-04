@@ -31,5 +31,9 @@
   "photon.signin.not_signed_in": "Sign in to Photon to use the website.",
   "photon.signin.no_website": "No secure website address is set.",
   "photon.signin.unavailable": "Photon's servers could not be reached.",
-  "photon.loading.server": "Server"
+  "photon.loading.server": "Server",
+  "photon.loading.link": "Game link",
+  "photon.loading.joining": "Joining the game...",
+  "photon.loading.checking_signin": "Checking your sign-in...",
+  "photon.loading.signing_in": "Signing in..."
 }
