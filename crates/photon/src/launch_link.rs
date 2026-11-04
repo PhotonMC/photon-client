@@ -259,11 +259,15 @@ impl LinkTask {
         let _ = std::thread::Builder::new()
             .name("Launch Link".to_owned())
             .spawn(move || {
+                // The sign-in resume (seconds of account requests) runs beside the exchange.
+                let identity = std::thread::spawn(crate::profile_login::identity);
                 let answer = crate::links_config::backend()
                     .unwrap_or(Err(BackendError::Unavailable))
                     .and_then(|backend| backend.exchange(&code));
-                let signed_in = crate::profile_login::identity()
+                let signed_in = identity
+                    .join()
                     .ok()
+                    .and_then(Result::ok)
                     .and_then(|(_, account)| account)
                     .map(|account| account.profile_id);
                 let _ = sender.send(decide(answer, signed_in));
