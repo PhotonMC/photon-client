@@ -1,6 +1,6 @@
 # ADR 0024: Server-delivered mods
 
-- Status: accepted (2026-11-05); built in the client, server side open; `item_model` naming a registry item works live, definition ids that exist only in a pack (`items/<namespace>/<name>.json`) work live too; an id nothing defines draws the missing model (a full cube with the missing texture on every face), not yet checked against Java or live
+- Status: accepted (2026-11-05); built in the client, server side open; `item_model` naming a registry item works live, definition ids that exist only in a pack (`items/<namespace>/<name>.json`) work live too; an id nothing defines draws the missing model (a full cube with the missing texture on every face), checked live (a cube in the hand, the missing texture in the hotbar), not yet against Java
 
 ## Context
 
