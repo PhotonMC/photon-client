@@ -116,7 +116,7 @@ jobs:
       # The decompiled source stays on the runner like the rest of .data/; the progress check
       # reads it and prints numbers only.
       - name: Fetch the pinned game from Mojang
-        run: cargo xtask setup --named --decompile
+        run: cargo xtask setup --named --decompile --version ${{ matrix.version }}
       - run: cargo xtask parity --version ${{ matrix.version }}
       # Each supported release's own server writes its registry reports; the jars come from
       # Mojang's manifest and are hash-checked like the pinned one, kept on the runner, and

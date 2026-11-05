@@ -6,7 +6,6 @@ use std::process::{Command, Stdio};
 use super::download::fetch;
 use super::java;
 use super::layout::{minecraft, runtime};
-use crate::parity::pins::Pins;
 
 const VINEFLOWER_VERSION: &str = "1.12.0";
 
@@ -16,15 +15,30 @@ fn vineflower_url() -> String {
     )
 }
 
-/// The client jar to `.data/minecraft/source`, libraries resolved, as the
-/// reference sources were made; JOML gets its own tree.
-pub fn run(pins: &Pins, java_path: Option<&str>) -> Result<(), String> {
-    let java = java::find(java_path, pins.java_major)?;
+/// Where the decompiled source of a version lives.
+fn source_dir(version: &str, pinned: bool) -> std::path::PathBuf {
+    minecraft().join(if pinned {
+        "source".to_owned()
+    } else {
+        format!("source-{version}")
+    })
+}
+
+/// The client jar of `version` to `.data/minecraft/source` (the pinned version) or
+/// `source-<version>` (any other), libraries resolved, as the reference sources were made; the
+/// pinned version also gets JOML's own tree.
+pub fn run(
+    version: &str,
+    java_major: u32,
+    pinned: bool,
+    java_path: Option<&str>,
+) -> Result<(), String> {
+    let java = java::find(java_path, java_major)?;
     let tool = runtime()
         .join("tools")
         .join(format!("vineflower-{VINEFLOWER_VERSION}.jar"));
     fetch(&vineflower_url(), &tool, None)?;
-    let source = minecraft().join("source");
+    let source = source_dir(version, pinned);
     if source.exists() {
         fs::remove_dir_all(&source).map_err(|error| format!("{}: {error}", source.display()))?;
     }
@@ -53,7 +67,7 @@ pub fn run(pins: &Pins, java_path: Option<&str>) -> Result<(), String> {
                 .iter()
                 .map(|library| format!("-e={}", library.display())),
         )
-        .arg(runtime().join(format!("client-{}.jar", pins.version)))
+        .arg(runtime().join(format!("client-{version}.jar")))
         .arg(&source)
         .stdout(log.try_clone().map_err(|error| error.to_string())?)
         .stderr(log)
@@ -64,7 +78,11 @@ pub fn run(pins: &Pins, java_path: Option<&str>) -> Result<(), String> {
             "Vineflower failed ({status}); see .data/minecraft/decompile.log"
         ));
     }
-    decompile_joml(&java, &tool, &libraries)
+    if pinned {
+        decompile_joml(&java, &tool, &libraries)
+    } else {
+        Ok(())
+    }
 }
 
 fn decompile_joml(

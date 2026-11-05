@@ -112,41 +112,42 @@ fn say(message: &str) {
     println!("{message}");
 }
 
-/// The version file of the pinned release.
-fn fetch_version(pins: &Pins) -> Result<Version, String> {
-    say(&format!("Minecraft {}: version file", pins.version));
+/// The version file of a release.
+fn fetch_version(id: &str) -> Result<Version, String> {
+    say(&format!("Minecraft {id}: version file"));
     let manifest: Manifest = fetch_json(VERSION_MANIFEST)?;
     let entry = manifest
         .versions
         .into_iter()
-        .find(|entry| entry.id == pins.version)
-        .ok_or(format!(
-            "version {} is not in Mojang's manifest",
-            pins.version
-        ))?;
-    let path = runtime().join(format!("{}.json", pins.version));
+        .find(|entry| entry.id == id)
+        .ok_or(format!("version {id} is not in Mojang's manifest"))?;
+    let path = runtime().join(format!("{id}.json"));
     fetch(&entry.url, &path, entry.sha1.as_deref())?;
     let text = fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?;
     serde_json::from_str(&text).map_err(|error| format!("{}: {error}", path.display()))
 }
 
-fn fetch_jars(pins: &Pins, version: &Version) -> Result<(), String> {
+/// The client and server jars of a release; the client is checked against the pinned file name
+/// and hash when the release has a reference.
+fn fetch_jars(id: &str, version: &Version, pins: Option<&Pins>) -> Result<(), String> {
     say("client and server jars");
-    let client = runtime().join(format!("client-{}.jar", pins.version));
+    let client = runtime().join(format!("client-{id}.jar"));
     fetch(
         &version.downloads.client.url,
         &client,
         Some(&version.downloads.client.sha1),
     )?;
-    let named = client
-        .file_name()
-        .is_some_and(|name| name.to_string_lossy() == pins.client_file);
-    if !named || sha1_of(&client)? != pins.client_sha1 {
-        return Err(
-            "the client jar does not match the newest tests/behavior/reference file".to_owned(),
-        );
+    if let Some(pins) = pins {
+        let named = client
+            .file_name()
+            .is_some_and(|name| name.to_string_lossy() == pins.client_file);
+        if !named || sha1_of(&client)? != pins.client_sha1 {
+            return Err(format!(
+                "the client jar does not match tests/behavior/reference/{id}.json"
+            ));
+        }
     }
-    let server = runtime().join(format!("server-{}.jar", pins.version));
+    let server = runtime().join(format!("server-{id}.jar"));
     fetch(
         &version.downloads.server.url,
         &server,
@@ -294,25 +295,43 @@ fn build_named(index: &AssetIndex) -> Result<(), String> {
 
 const SPEC: Spec = Spec {
     flags: &["--skip-objects", "--named", "--decompile"],
-    options: &[("--java", 1)],
+    options: &[("--java", 1), ("--version", 1)],
 };
 
+/// `setup [--version <id>]`: the newest version that has a reference (the pin) is set up whole;
+/// another release only gets its version file, jars, libraries and, with `--decompile`, its
+/// source in `source-<id>`, so that the pinned version's resources and source stay as they are.
 pub fn setup(args: &[String]) -> Result<(), String> {
     let parsed = parse(args, &SPEC)?;
-    let pins = Pins::load_newest()?;
+    let newest = Pins::load_newest()?;
+    let id = parsed.value("--version").unwrap_or(&newest.version);
+    let pinned = id == newest.version;
+    let own_pins = if pinned { None } else { Pins::load(id).ok() };
+    let pins = if pinned {
+        Some(&newest)
+    } else {
+        own_pins.as_ref()
+    };
+    if pins.is_none() {
+        say(&format!(
+            "{id} has no reference yet: its jars are not checked against a pinned hash"
+        ));
+    }
     fs::create_dir_all(runtime()).map_err(|error| error.to_string())?;
-    let version = fetch_version(&pins)?;
-    fetch_jars(&pins, &version)?;
+    let version = fetch_version(id)?;
+    fetch_jars(id, &version, pins)?;
     fetch_libraries(&version)?;
-    extract_jar(&pins)?;
-    if !parsed.flag("--skip-objects") {
-        let index = fetch_objects(&version)?;
-        if parsed.flag("--named") {
-            build_named(&index)?;
+    if pinned {
+        extract_jar(&newest)?;
+        if !parsed.flag("--skip-objects") {
+            let index = fetch_objects(&version)?;
+            if parsed.flag("--named") {
+                build_named(&index)?;
+            }
         }
     }
     if parsed.flag("--decompile") {
-        decompile::run(&pins, parsed.value("--java"))?;
+        decompile::run(id, newest.java_major, pinned, parsed.value("--java"))?;
     }
     say("done");
     Ok(())
