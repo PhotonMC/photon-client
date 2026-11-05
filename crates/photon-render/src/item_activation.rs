@@ -1,7 +1,7 @@
 //! `ScreenEffectRenderer`'s item activation: the totem that spins up to the screen, hangs there
 //! and falls away over forty ticks.
 
-use crate::joml::{Axis, Pose, Quaternion};
+use crate::joml::{Axis, Pose};
 use photon_core::math::{mth_cos_f64, mth_sin_f64};
 use photon_world::ClientItemStackState;
 
@@ -61,7 +61,6 @@ pub fn activation_pose(
 ) -> Pose {
     let sin = |value: f32| mth_sin_f64(f64::from(value));
     let cos = |value: f32| mth_cos_f64(f64::from(value));
-    let rad = Quaternion::degrees_to_radians;
     let tick = DURATION - ticks_left;
     let scale = (tick as f32 + partial_tick) / 40.0;
     let ts = scale * scale;
@@ -77,8 +76,8 @@ pub fn activation_pose(
         -10.0 + 9.0 * sin(pi_scale),
     );
     pose.scale(0.8, 0.8, 0.8);
-    pose.rotate_axis(Axis::YP, rad(900.0 * sin(pi_scale).abs()));
-    pose.rotate_axis(Axis::XP, rad(6.0 * cos(scale * 8.0)));
-    pose.rotate_axis(Axis::ZP, rad(6.0 * cos(scale * 8.0)));
+    pose.rotate_degrees(Axis::YP, 900.0 * sin(pi_scale).abs());
+    pose.rotate_degrees(Axis::XP, 6.0 * cos(scale * 8.0));
+    pose.rotate_degrees(Axis::ZP, 6.0 * cos(scale * 8.0));
     pose
 }

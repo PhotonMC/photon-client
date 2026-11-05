@@ -163,26 +163,23 @@ pub(super) fn text_display_submit_result(request: &Value) -> Result<Value, Strin
             .flatten()
             .map(|value| format!("{:08x}", value.to_bits()))
             .collect::<String>();
-        let order = i32::from(submit.background.is_some());
-        let mut described = json!({"label": row["label"], "pose": matrix, "text_order": order});
-        let mut background = Vec::new();
-        if let Some((corners, color)) = submit.background {
-            for [x, y, z] in corners {
-                let [px, py, pz] = submit.pose.transform_position(x, y, z);
-                background.push(json!(format!(
-                    "{:08x}{:08x}{:08x},{color},{light}",
-                    px.to_bits(),
-                    py.to_bits(),
-                    pz.to_bits()
-                )));
-            }
-            described["see_through"] = json!(submit.see_through);
-        }
+        // The reference submits the background and the lines as plain text parts: no ordering.
+        let mut described = json!({"label": row["label"], "pose": matrix, "text_order": -1});
         let mode = if submit.see_through {
             "SEE_THROUGH"
         } else {
             "POLYGON_OFFSET"
         };
+        let mut background = Vec::new();
+        if let Some(([[x0, y0, _], _, [x1, y1, _], _], color)) = submit.background {
+            background.push(json!(format!(
+                "{:08x},{:08x},{:08x},{:08x},{color},{mode},{light}",
+                x0.to_bits(),
+                y0.to_bits(),
+                x1.to_bits(),
+                y1.to_bits()
+            )));
+        }
         let texts: Vec<Value> = submit
             .lines
             .iter()
@@ -318,7 +315,7 @@ fn item_foil_result(request: &Value) -> Result<Value, String> {
             out.push(tag_stack_result(row, tag, item)?);
             continue;
         }
-        let patch = hex_bytes(string(row, "patch")?)?;
+        let patch = canonical_patch(string(row, "patch")?)?;
         out.push(json!({
             "label": row["label"],
             "foil": Values::new(photon_core::ids::ItemId(item as i32), &patch).has_foil(),
@@ -333,7 +330,7 @@ pub(super) fn item_equippable_result(request: &Value) -> Result<Value, String> {
     for row in request["rows"].as_array().ok_or("rows")? {
         let item =
             photon_data::item::registry::index(string(row, "item")?).ok_or("unknown item")?;
-        let patch = hex_bytes(string(row, "patch")?)?;
+        let patch = canonical_patch(string(row, "patch")?)?;
         let found =
             photon_game::item::values::equippable_of(photon_core::ids::ItemId(item as i32), &patch);
         out.push(json!({
@@ -345,41 +342,6 @@ pub(super) fn item_equippable_result(request: &Value) -> Result<Value, String> {
         }));
     }
     Ok(json!({"rows": out}))
-}
-
-/// `glint_layers`: the pipeline the armor's glint is drawn with, its texture, and the matrix that
-/// moves the texture.
-pub(super) fn glint_layers_result(request: &Value) -> Result<Value, String> {
-    use photon_render::render_types::{
-        ARMOR_GLINT_SCALE, ARMOR_GLINT_TEXTURE, GLINT, ITEM_GLINT_SCALE, ITEM_GLINT_TEXTURE,
-        glint_texture_matrix,
-    };
-    let (texture, scale) = if request["render_type"].as_str() == Some("item") {
-        (ITEM_GLINT_TEXTURE, ITEM_GLINT_SCALE)
-    } else {
-        (ARMOR_GLINT_TEXTURE, ARMOR_GLINT_SCALE)
-    };
-    let mut rows = Vec::new();
-    for row in request["rows"].as_array().ok_or("rows")? {
-        let millis = row["millis"].as_i64().ok_or("millis")?;
-        let speed = row["speed"].as_f64().ok_or("speed")?;
-        let matrix: Vec<String> = glint_texture_matrix(millis, speed, scale)
-            .iter()
-            .map(|value| format!("{:08x}", value.to_bits()))
-            .collect();
-        rows.push(json!({"label": row["label"], "matrix": matrix}));
-    }
-    Ok(json!({
-        "pipeline": GLINT.location,
-        "flags": GLINT.flags,
-        "values": GLINT.values,
-        "blend": GLINT.blend,
-        "depth_test": GLINT.depth_test,
-        "depth_write": GLINT.depth_write,
-        "cull": GLINT.cull,
-        "texture": format!("textures/{texture}.png"),
-        "rows": rows,
-    }))
 }
 
 /// `chest_model`: a chest's model with its lid at an eased opening.

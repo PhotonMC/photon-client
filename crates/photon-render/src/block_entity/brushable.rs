@@ -1,7 +1,7 @@
 //! The item a suspicious block holds (`BrushableBlockRenderer`): it sits against the face that was
 //! brushed and rises out of the dust as the block is brushed away.
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose};
 use photon_core::direction::Direction;
 
 /// `BrushableBlockRenderer.translations`: where the item sits, `completion` being how many of the
@@ -27,10 +27,9 @@ pub fn item_pose(base: &Pose, direction: Direction, dust: i32) -> Pose {
     pose.translate(0.0, 0.5, 0.0);
     let [x, y, z] = translations(direction, dust);
     pose.translate(x, y, z);
-    let turn = |degrees: f32| Quaternion::rotation_y(Quaternion::degrees_to_radians(degrees));
-    pose.rotate(&turn(75.0));
+    pose.rotate_degrees(Axis::YP, 75.0);
     let east_west = matches!(direction, Direction::East | Direction::West);
-    pose.rotate(&turn((if east_west { 90 } else { 0 } + 11) as f32));
+    pose.rotate_degrees(Axis::YP, (if east_west { 90 } else { 0 } + 11) as f32);
     pose.scale(0.5, 0.5, 0.5);
     pose
 }

@@ -12,7 +12,7 @@
 use crate::entity_model::{Face, ModelCube, ModelLayer, ModelPart, PartPose};
 
 #[rustfmt::skip]
-pub static LAYERS: [ModelLayer; 358] = [
+pub static LAYERS: [ModelLayer; 361] = [
     ModelLayer::of("minecraft:allay#main", 32, 32, ModelPart::of("root", PartPose::ZERO, &[], &[
         ModelPart::of("root", PartPose::offset([0.0, 23.5, 0.0]), &[], &[
             ModelPart::of("body", PartPose::offset([0.0, -4.0, 0.0]), &[ModelCube::of([0.0, 10.0], [-1.5, 0.0, -1.0], [3.0, 4.0, 2.0]), ModelCube::of([0.0, 16.0], [-1.5, 0.0, -1.0], [3.0, 5.0, 2.0]).grow([-0.2, -0.2, -0.2])], &[
@@ -343,6 +343,15 @@ pub static LAYERS: [ModelLayer; 358] = [
         ModelPart::of("right_paddle", PartPose::offset_and_rotation([3.0, -5.0, -9.0], [0.0, 3.1415927, 0.19634955]), &[ModelCube::of([62.0, 20.0], [-1.0, 0.0, -5.0], [2.0, 2.0, 18.0]), ModelCube::of([62.0, 20.0], [0.001, -3.0, 8.0], [1.0, 6.0, 7.0])], &[]),
     ])),
     ModelLayer::of("minecraft:boat/pale_oak#main", 128, 64, ModelPart::of("root", PartPose::ZERO, &[], &[
+        ModelPart::of("back", PartPose::offset_and_rotation([-15.0, 4.0, 4.0], [0.0, 4.712389, 0.0]), &[ModelCube::of([0.0, 19.0], [-13.0, -7.0, -1.0], [18.0, 6.0, 2.0])], &[]),
+        ModelPart::of("bottom", PartPose::offset_and_rotation([0.0, 3.0, 1.0], [1.5707964, 0.0, 0.0]), &[ModelCube::of([0.0, 0.0], [-14.0, -9.0, -3.0], [28.0, 16.0, 3.0])], &[]),
+        ModelPart::of("front", PartPose::offset_and_rotation([15.0, 4.0, 0.0], [0.0, 1.5707964, 0.0]), &[ModelCube::of([0.0, 27.0], [-8.0, -7.0, -1.0], [16.0, 6.0, 2.0])], &[]),
+        ModelPart::of("left", PartPose::offset([0.0, 4.0, 9.0]), &[ModelCube::of([0.0, 43.0], [-14.0, -7.0, -1.0], [28.0, 6.0, 2.0])], &[]),
+        ModelPart::of("left_paddle", PartPose::offset_and_rotation([3.0, -5.0, 9.0], [0.0, 0.0, 0.19634955]), &[ModelCube::of([62.0, 0.0], [-1.0, 0.0, -5.0], [2.0, 2.0, 18.0]), ModelCube::of([62.0, 0.0], [-1.001, -3.0, 8.0], [1.0, 6.0, 7.0])], &[]),
+        ModelPart::of("right", PartPose::offset_and_rotation([0.0, 4.0, -9.0], [0.0, 3.1415927, 0.0]), &[ModelCube::of([0.0, 35.0], [-14.0, -7.0, -1.0], [28.0, 6.0, 2.0])], &[]),
+        ModelPart::of("right_paddle", PartPose::offset_and_rotation([3.0, -5.0, -9.0], [0.0, 3.1415927, 0.19634955]), &[ModelCube::of([62.0, 20.0], [-1.0, 0.0, -5.0], [2.0, 2.0, 18.0]), ModelCube::of([62.0, 20.0], [0.001, -3.0, 8.0], [1.0, 6.0, 7.0])], &[]),
+    ])),
+    ModelLayer::of("minecraft:boat/poplar#main", 128, 64, ModelPart::of("root", PartPose::ZERO, &[], &[
         ModelPart::of("back", PartPose::offset_and_rotation([-15.0, 4.0, 4.0], [0.0, 4.712389, 0.0]), &[ModelCube::of([0.0, 19.0], [-13.0, -7.0, -1.0], [18.0, 6.0, 2.0])], &[]),
         ModelPart::of("bottom", PartPose::offset_and_rotation([0.0, 3.0, 1.0], [1.5707964, 0.0, 0.0]), &[ModelCube::of([0.0, 0.0], [-14.0, -9.0, -3.0], [28.0, 16.0, 3.0])], &[]),
         ModelPart::of("front", PartPose::offset_and_rotation([15.0, 4.0, 0.0], [0.0, 1.5707964, 0.0]), &[ModelCube::of([0.0, 27.0], [-8.0, -7.0, -1.0], [16.0, 6.0, 2.0])], &[]),
@@ -717,6 +726,18 @@ pub static LAYERS: [ModelLayer; 358] = [
         ModelPart::of("right", PartPose::offset_and_rotation([0.0, 4.0, -9.0], [0.0, 3.1415927, 0.0]), &[ModelCube::of([0.0, 35.0], [-14.0, -7.0, -1.0], [28.0, 6.0, 2.0])], &[]),
         ModelPart::of("right_paddle", PartPose::offset_and_rotation([3.0, -5.0, -9.0], [0.0, 3.1415927, 0.19634955]), &[ModelCube::of([62.0, 20.0], [-1.0, 0.0, -5.0], [2.0, 2.0, 18.0]), ModelCube::of([62.0, 20.0], [0.001, -3.0, 8.0], [1.0, 6.0, 7.0])], &[]),
     ])),
+    ModelLayer::of("minecraft:chest_boat/poplar#main", 128, 128, ModelPart::of("root", PartPose::ZERO, &[], &[
+        ModelPart::of("back", PartPose::offset_and_rotation([-15.0, 4.0, 4.0], [0.0, 4.712389, 0.0]), &[ModelCube::of([0.0, 19.0], [-13.0, -7.0, -1.0], [18.0, 6.0, 2.0])], &[]),
+        ModelPart::of("bottom", PartPose::offset_and_rotation([0.0, 3.0, 1.0], [1.5707964, 0.0, 0.0]), &[ModelCube::of([0.0, 0.0], [-14.0, -9.0, -3.0], [28.0, 16.0, 3.0])], &[]),
+        ModelPart::of("chest_bottom", PartPose::offset_and_rotation([-2.0, -5.0, -6.0], [0.0, -1.5707964, 0.0]), &[ModelCube::of([0.0, 76.0], [0.0, 0.0, 0.0], [12.0, 8.0, 12.0])], &[]),
+        ModelPart::of("chest_lid", PartPose::offset_and_rotation([-2.0, -9.0, -6.0], [0.0, -1.5707964, 0.0]), &[ModelCube::of([0.0, 59.0], [0.0, 0.0, 0.0], [12.0, 4.0, 12.0])], &[]),
+        ModelPart::of("chest_lock", PartPose::offset_and_rotation([-1.0, -6.0, -1.0], [0.0, -1.5707964, 0.0]), &[ModelCube::of([0.0, 59.0], [0.0, 0.0, 0.0], [2.0, 4.0, 1.0])], &[]),
+        ModelPart::of("front", PartPose::offset_and_rotation([15.0, 4.0, 0.0], [0.0, 1.5707964, 0.0]), &[ModelCube::of([0.0, 27.0], [-8.0, -7.0, -1.0], [16.0, 6.0, 2.0])], &[]),
+        ModelPart::of("left", PartPose::offset([0.0, 4.0, 9.0]), &[ModelCube::of([0.0, 43.0], [-14.0, -7.0, -1.0], [28.0, 6.0, 2.0])], &[]),
+        ModelPart::of("left_paddle", PartPose::offset_and_rotation([3.0, -5.0, 9.0], [0.0, 0.0, 0.19634955]), &[ModelCube::of([62.0, 0.0], [-1.0, 0.0, -5.0], [2.0, 2.0, 18.0]), ModelCube::of([62.0, 0.0], [-1.001, -3.0, 8.0], [1.0, 6.0, 7.0])], &[]),
+        ModelPart::of("right", PartPose::offset_and_rotation([0.0, 4.0, -9.0], [0.0, 3.1415927, 0.0]), &[ModelCube::of([0.0, 35.0], [-14.0, -7.0, -1.0], [28.0, 6.0, 2.0])], &[]),
+        ModelPart::of("right_paddle", PartPose::offset_and_rotation([3.0, -5.0, -9.0], [0.0, 3.1415927, 0.19634955]), &[ModelCube::of([62.0, 20.0], [-1.0, 0.0, -5.0], [2.0, 2.0, 18.0]), ModelCube::of([62.0, 20.0], [0.001, -3.0, 8.0], [1.0, 6.0, 7.0])], &[]),
+    ])),
     ModelLayer::of("minecraft:chest_boat/spruce#main", 128, 128, ModelPart::of("root", PartPose::ZERO, &[], &[
         ModelPart::of("back", PartPose::offset_and_rotation([-15.0, 4.0, 4.0], [0.0, 4.712389, 0.0]), &[ModelCube::of([0.0, 19.0], [-13.0, -7.0, -1.0], [18.0, 6.0, 2.0])], &[]),
         ModelPart::of("bottom", PartPose::offset_and_rotation([0.0, 3.0, 1.0], [1.5707964, 0.0, 0.0]), &[ModelCube::of([0.0, 0.0], [-14.0, -9.0, -3.0], [28.0, 16.0, 3.0])], &[]),
@@ -950,6 +971,9 @@ pub static LAYERS: [ModelLayer; 358] = [
     ])),
     ModelLayer::of("minecraft:creeper_head#main", 64, 32, ModelPart::of("root", PartPose::ZERO, &[], &[
         ModelPart::of("head", PartPose::ZERO, &[ModelCube::of([0.0, 0.0], [-4.0, -8.0, -4.0], [8.0, 8.0, 8.0])], &[]),
+    ])),
+    ModelLayer::of("minecraft:cushion#main", 64, 64, ModelPart::of("root", PartPose::ZERO, &[], &[
+        ModelPart::of("cushion", PartPose::offset([23.0, 4.0, -7.0]), &[ModelCube::of([0.0, 0.0], [-31.0, -4.0, -1.0], [16.0, 4.0, 16.0]).grow([-0.005, -0.005, -0.005])], &[]),
     ])),
     ModelLayer::of("minecraft:decorated_pot_base#main", 32, 32, ModelPart::of("root", PartPose::ZERO, &[], &[
         ModelPart::of("bottom", PartPose::offset([1.0, 0.0, 1.0]), &[ModelCube::of([-14.0, 13.0], [0.0, 0.0, 0.0], [14.0, 0.0, 14.0])], &[]),
@@ -1252,31 +1276,31 @@ pub static LAYERS: [ModelLayer; 358] = [
         ]),
     ])),
     ModelLayer::of("minecraft:ender_dragon#main", 256, 256, ModelPart::of("root", PartPose::ZERO, &[], &[
-        ModelPart::of("body", PartPose::offset([0.0, 3.0, 8.0]), &[ModelCube::of([0.0, 0.0], [-12.0, 1.0, -16.0], [24.0, 24.0, 64.0]), ModelCube::of([220.0, 53.0], [-1.0, -5.0, -10.0], [2.0, 6.0, 12.0]), ModelCube::of([220.0, 53.0], [-1.0, -5.0, 10.0], [2.0, 6.0, 12.0]), ModelCube::of([220.0, 53.0], [-1.0, -5.0, 30.0], [2.0, 6.0, 12.0])], &[
-            ModelPart::of("left_front_leg", PartPose::offset_and_rotation([12.0, 17.0, -6.0], [1.3, 0.0, 0.0]), &[ModelCube::of([112.0, 104.0], [-4.0, -4.0, -4.0], [8.0, 24.0, 8.0])], &[
+        ModelPart::of("body", PartPose::offset([0.0, 20.0, 8.0]), &[ModelCube::of([0.0, 0.0], [-12.0, -16.0, -16.0], [24.0, 24.0, 64.0]), ModelCube::of([220.0, 53.0], [-1.0, -22.0, -10.0], [2.0, 6.0, 12.0]), ModelCube::of([220.0, 53.0], [-1.0, -22.0, 10.0], [2.0, 6.0, 12.0]), ModelCube::of([220.0, 53.0], [-1.0, -22.0, 30.0], [2.0, 6.0, 12.0])], &[
+            ModelPart::of("left_front_leg", PartPose::offset_and_rotation([12.0, 0.0, -6.0], [1.3, 0.0, 0.0]), &[ModelCube::of([112.0, 104.0], [-4.0, -4.0, -4.0], [8.0, 24.0, 8.0])], &[
                 ModelPart::of("left_front_leg_tip", PartPose::offset_and_rotation([0.0, 20.0, -1.0], [-0.5, 0.0, 0.0]), &[ModelCube::of([226.0, 138.0], [-3.0, -1.0, -3.0], [6.0, 24.0, 6.0])], &[
                     ModelPart::of("left_front_foot", PartPose::offset_and_rotation([0.0, 23.0, 0.0], [0.75, 0.0, 0.0]), &[ModelCube::of([144.0, 104.0], [-4.0, 0.0, -12.0], [8.0, 4.0, 16.0])], &[]),
                 ]),
             ]),
-            ModelPart::of("left_hind_leg", PartPose::offset_and_rotation([16.0, 13.0, 34.0], [1.0, 0.0, 0.0]), &[ModelCube::of([0.0, 0.0], [-8.0, -4.0, -8.0], [16.0, 32.0, 16.0])], &[
+            ModelPart::of("left_hind_leg", PartPose::offset_and_rotation([16.0, -4.0, 34.0], [1.0, 0.0, 0.0]), &[ModelCube::of([0.0, 0.0], [-8.0, -4.0, -8.0], [16.0, 32.0, 16.0])], &[
                 ModelPart::of("left_hind_leg_tip", PartPose::offset_and_rotation([0.0, 32.0, -4.0], [0.5, 0.0, 0.0]), &[ModelCube::of([196.0, 0.0], [-6.0, -2.0, 0.0], [12.0, 32.0, 12.0])], &[
                     ModelPart::of("left_hind_foot", PartPose::offset_and_rotation([0.0, 31.0, 4.0], [0.75, 0.0, 0.0]), &[ModelCube::of([112.0, 0.0], [-9.0, 0.0, -20.0], [18.0, 6.0, 24.0])], &[]),
                 ]),
             ]),
-            ModelPart::of("left_wing", PartPose::offset([12.0, 2.0, -6.0]), &[ModelCube::of([112.0, 88.0], [0.0, -4.0, -4.0], [56.0, 8.0, 8.0]).mirror(), ModelCube::of([-56.0, 88.0], [0.0, 0.0, 2.0], [56.0, 0.0, 56.0]).mirror()], &[
+            ModelPart::of("left_wing", PartPose::offset([12.0, -15.0, -6.0]), &[ModelCube::of([112.0, 88.0], [0.0, -4.0, -4.0], [56.0, 8.0, 8.0]).mirror(), ModelCube::of([-56.0, 88.0], [0.0, 0.0, 2.0], [56.0, 0.0, 56.0]).mirror()], &[
                 ModelPart::of("left_wing_tip", PartPose::offset([56.0, 0.0, 0.0]), &[ModelCube::of([112.0, 136.0], [0.0, -2.0, -2.0], [56.0, 4.0, 4.0]).mirror(), ModelCube::of([-56.0, 144.0], [0.0, 0.0, 2.0], [56.0, 0.0, 56.0]).mirror()], &[]),
             ]),
-            ModelPart::of("right_front_leg", PartPose::offset_and_rotation([-12.0, 17.0, -6.0], [1.3, 0.0, 0.0]), &[ModelCube::of([112.0, 104.0], [-4.0, -4.0, -4.0], [8.0, 24.0, 8.0])], &[
+            ModelPart::of("right_front_leg", PartPose::offset_and_rotation([-12.0, 0.0, -6.0], [1.3, 0.0, 0.0]), &[ModelCube::of([112.0, 104.0], [-4.0, -4.0, -4.0], [8.0, 24.0, 8.0])], &[
                 ModelPart::of("right_front_leg_tip", PartPose::offset_and_rotation([0.0, 20.0, -1.0], [-0.5, 0.0, 0.0]), &[ModelCube::of([226.0, 138.0], [-3.0, -1.0, -3.0], [6.0, 24.0, 6.0])], &[
                     ModelPart::of("right_front_foot", PartPose::offset_and_rotation([0.0, 23.0, 0.0], [0.75, 0.0, 0.0]), &[ModelCube::of([144.0, 104.0], [-4.0, 0.0, -12.0], [8.0, 4.0, 16.0])], &[]),
                 ]),
             ]),
-            ModelPart::of("right_hind_leg", PartPose::offset_and_rotation([-16.0, 13.0, 34.0], [1.0, 0.0, 0.0]), &[ModelCube::of([0.0, 0.0], [-8.0, -4.0, -8.0], [16.0, 32.0, 16.0])], &[
+            ModelPart::of("right_hind_leg", PartPose::offset_and_rotation([-16.0, -4.0, 34.0], [1.0, 0.0, 0.0]), &[ModelCube::of([0.0, 0.0], [-8.0, -4.0, -8.0], [16.0, 32.0, 16.0])], &[
                 ModelPart::of("right_hind_leg_tip", PartPose::offset_and_rotation([0.0, 32.0, -4.0], [0.5, 0.0, 0.0]), &[ModelCube::of([196.0, 0.0], [-6.0, -2.0, 0.0], [12.0, 32.0, 12.0])], &[
                     ModelPart::of("right_hind_foot", PartPose::offset_and_rotation([0.0, 31.0, 4.0], [0.75, 0.0, 0.0]), &[ModelCube::of([112.0, 0.0], [-9.0, 0.0, -20.0], [18.0, 6.0, 24.0])], &[]),
                 ]),
             ]),
-            ModelPart::of("right_wing", PartPose::offset([-12.0, 2.0, -6.0]), &[ModelCube::of([112.0, 88.0], [-56.0, -4.0, -4.0], [56.0, 8.0, 8.0]), ModelCube::of([-56.0, 88.0], [-56.0, 0.0, 2.0], [56.0, 0.0, 56.0])], &[
+            ModelPart::of("right_wing", PartPose::offset([-12.0, -15.0, -6.0]), &[ModelCube::of([112.0, 88.0], [-56.0, -4.0, -4.0], [56.0, 8.0, 8.0]), ModelCube::of([-56.0, 88.0], [-56.0, 0.0, 2.0], [56.0, 0.0, 56.0])], &[
                 ModelPart::of("right_wing_tip", PartPose::offset([-56.0, 0.0, 0.0]), &[ModelCube::of([112.0, 136.0], [-56.0, -2.0, -2.0], [56.0, 4.0, 4.0]), ModelCube::of([-56.0, 144.0], [-56.0, 0.0, 2.0], [56.0, 0.0, 56.0])], &[]),
             ]),
         ]),

@@ -480,7 +480,8 @@ class EntityDisplayOracle extends EntityDataOracle {
                         order[0] = (int) args[0];
                         return holder[0];
                     }
-                    if (method.getName().equals("submitCustomGeometry")) {
+                    if (method.getName().equals("submitTextBackground")) {
+                        // The box the background is drawn as: (x0, y0, x1, y1), its colour, mode and light.
                         var stack = (com.mojang.blaze3d.vertex.PoseStack) args[0];
                         var pose = new StringBuilder();
                         var matrix = new float[16];
@@ -489,8 +490,9 @@ class EntityDisplayOracle extends EntityDataOracle {
                             pose.append(Oracle.bits(value));
                         }
                         out.addProperty("pose", pose.toString());
-                        out.addProperty("see_through", String.valueOf(args[1]).contains("see_through"));
-                        background.addAll(describeGeometry(stack.last(), (net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2]));
+                        background.add(Oracle.bits((float) args[1]) + "," + Oracle.bits((float) args[2]) + ","
+                            + Oracle.bits((float) args[3]) + "," + Oracle.bits((float) args[4]) + ","
+                            + args[5] + "," + args[6] + "," + args[7]);
                     }
                     if (method.getName().equals("submitText")) {
                         var stack = (com.mojang.blaze3d.vertex.PoseStack) args[0];
@@ -637,9 +639,9 @@ class EntityDisplayOracle extends EntityDataOracle {
             poseStack.pushPose();
             poseStack.translate(offX * net.minecraft.util.Mth.abs(net.minecraft.util.Mth.sin(piScale * 2.0F)), offY * net.minecraft.util.Mth.abs(net.minecraft.util.Mth.sin(piScale * 2.0F)), -10.0F + 9.0F * net.minecraft.util.Mth.sin(piScale));
             poseStack.scale(0.8F, 0.8F, 0.8F);
-            poseStack.rotate(com.mojang.math.Axis.YP.rotationDegrees(900.0F * net.minecraft.util.Mth.abs(net.minecraft.util.Mth.sin(piScale))));
-            poseStack.rotate(com.mojang.math.Axis.XP.rotationDegrees(6.0F * net.minecraft.util.Mth.cos(scale * 8.0F)));
-            poseStack.rotate(com.mojang.math.Axis.ZP.rotationDegrees(6.0F * net.minecraft.util.Mth.cos(scale * 8.0F)));
+            poseStack.rotateDegrees(com.mojang.math.Axis.YP, 900.0F * net.minecraft.util.Mth.abs(net.minecraft.util.Mth.sin(piScale)));
+            poseStack.rotateDegrees(com.mojang.math.Axis.XP, 6.0F * net.minecraft.util.Mth.cos(scale * 8.0F));
+            poseStack.rotateDegrees(com.mojang.math.Axis.ZP, 6.0F * net.minecraft.util.Mth.cos(scale * 8.0F));
             var matrix = new float[16];
             poseStack.last().pose().get(matrix);
             var described = new JsonArray();
@@ -888,8 +890,8 @@ class EntityDisplayOracle extends EntityDataOracle {
             float xAngle = Oracle.f32(row, "x");
             float yAngle = Oracle.f32(row, "y");
             var poseStack = new com.mojang.blaze3d.vertex.PoseStack();
-            poseStack.rotate(com.mojang.math.Axis.YP.rotationDegrees(180.0F - yAngle));
-            poseStack.rotate(com.mojang.math.Axis.XP.rotationDegrees(-90.0F - xAngle));
+            poseStack.rotateDegrees(com.mojang.math.Axis.YP, 180.0F - yAngle);
+            poseStack.rotateDegrees(com.mojang.math.Axis.XP, -90.0F - xAngle);
             var modelViewStack = new org.joml.Matrix4fStack(4);
             modelViewStack.pushMatrix();
             modelViewStack.mul(poseStack.last().pose());

@@ -9,7 +9,7 @@ pub(super) fn map_data_case() -> Result<Value, String> {
     })];
     for (id, kind) in photon_data::map::decoration_types().iter().enumerate() {
         rows.push(json!({"label": kind.name, "id": id, "asset": kind.asset,
-            "show_on_item_frame": kind.show_on_item_frame, "map_color": kind.map_color,
+            "show_on_item_frame": kind.show_on_item_frame,
             "track_count": kind.track_count}));
     }
     Ok(json!({"rows": rows}))

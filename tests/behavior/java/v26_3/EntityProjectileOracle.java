@@ -364,7 +364,7 @@ class EntityProjectileOracle extends EntityPoseOracle {
             var stack = new com.mojang.blaze3d.vertex.PoseStack();
             stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
             // `PaintingRenderer.submit`: turned to the way it hangs.
-            stack.rotate(com.mojang.math.Axis.YP.rotationDegrees(180 - row.get("direction_2d").getAsInt() * 90));
+            stack.rotateDegrees(com.mojang.math.Axis.YP, 180 - row.get("direction_2d").getAsInt() * 90);
             var lights = row.getAsJsonArray("lights");
             var lightMap = new int[lights.size()];
             for (int i = 0; i < lightMap.length; i++) {

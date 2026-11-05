@@ -10,7 +10,6 @@ pub struct MapDecorationType {
     /// The sprite's path under `textures/` (`map/decorations/player`).
     pub texture: &'static str,
     pub show_on_item_frame: bool,
-    pub map_color: i32,
     pub track_count: bool,
 }
 

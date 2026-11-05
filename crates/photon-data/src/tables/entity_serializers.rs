@@ -3,7 +3,7 @@
 //! This table is maintained by hand; the parity families compare it with the reference.
 
 #[rustfmt::skip]
-pub static ENTITY_DATA_SERIALIZERS: [&str; 43] = [
+pub static ENTITY_DATA_SERIALIZERS: [&str; 44] = [
     "BYTE",
     "INT",
     "LONG",
@@ -47,4 +47,5 @@ pub static ENTITY_DATA_SERIALIZERS: [&str; 43] = [
     "QUATERNION",
     "RESOLVABLE_PROFILE",
     "HUMANOID_ARM",
+    "DYE_COLOR",
 ];

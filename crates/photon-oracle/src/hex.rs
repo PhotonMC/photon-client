@@ -516,3 +516,12 @@ pub(crate) fn without_nulls(value: Value) -> Value {
         other => other,
     }
 }
+
+/// A row's component patch as the reference's wire spells it, in canonical ids.
+pub(super) fn canonical_patch(text: &str) -> Result<Vec<u8>, String> {
+    let bytes = hex_bytes(text)?;
+    let registries = crate::case_ids::registries();
+    let patch = photon_data::item_components::read_wire_patch(&mut &bytes[..], &registries)
+        .map_err(|_| "unreadable component patch".to_string())?;
+    Ok(patch.trusted())
+}

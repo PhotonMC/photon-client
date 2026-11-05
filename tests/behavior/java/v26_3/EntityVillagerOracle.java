@@ -122,7 +122,7 @@ class EntityVillagerOracle extends EntityVehicleOracle {
                     if (method.getName().equals("order")) {
                         return holder[0];
                     }
-                    if (method.getName().equals("submitModel") && args.length == 10) {
+                    if (method.getName().equals("submitModel") && args.length == 9) {
                         var pass = new JsonObject();
                         pass.addProperty("model", args[0] == model ? "main" : args[0] == babyModel ? "main_baby"
                             : args[0] == noHat ? "no_hat" : "no_hat_baby");
