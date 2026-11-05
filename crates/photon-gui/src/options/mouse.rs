@@ -32,6 +32,7 @@ const TOGGLE_USE: u8 = 12;
 const AUTO_JUMP: u8 = 13;
 const SPRINT_WINDOW: u8 = 14;
 const OPERATOR_ITEMS: u8 = 15;
+const QUIT_SHORTCUTS: u8 = 16;
 
 type Wheel = MappedIntRange<f64, fn(i32) -> f64, fn(&f64) -> i32>;
 
@@ -232,6 +233,18 @@ pub struct ControlsInput {
     pub key_binds: bool,
 }
 
+/// The option of the quit shortcut, with its tooltip.
+fn quit_shortcuts(value: bool) -> (u8, Build) {
+    (
+        QUIT_SHORTCUTS,
+        boolean_tip(
+            "options.quitShortcuts",
+            value,
+            "options.quitShortcuts.tooltip",
+        ),
+    )
+}
+
 /// `ControlsScreen`: the mouse settings and the key binds, then how each
 /// key is held.
 pub struct ControlsScreen {
@@ -282,6 +295,7 @@ impl ControlsScreen {
                                 constant_tip("options.sprintWindow.tooltip"),
                             ),
                         ),
+                        quit_shortcuts(play.quit_shortcuts),
                         (
                             OPERATOR_ITEMS,
                             boolean("options.operatorItemsTab", play.operator_items_tab),
@@ -313,6 +327,7 @@ impl ControlsScreen {
             auto_jump: flag(AUTO_JUMP, play.auto_jump),
             sprint_window: window,
             operator_items_tab: flag(OPERATOR_ITEMS, play.operator_items_tab),
+            quit_shortcuts: flag(QUIT_SHORTCUTS, play.quit_shortcuts),
             ..play
         }
     }

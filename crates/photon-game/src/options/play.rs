@@ -15,6 +15,8 @@ pub(super) enum PlayKey {
     OperatorItemsTab,
     DiscreteMouseScroll,
     AllowCursorChanges,
+    QuitShortcuts,
+    CtrlClickEmulatesRightClick,
     ChatLinks,
     ChatLinksPrompt,
     AutoSuggestions,
@@ -43,6 +45,10 @@ pub struct PlayOptions {
     /// `discrete_mouse_scroll`: a notch of the wheel counts as one whatever its size.
     pub discrete_mouse_scroll: bool,
     pub allow_cursor_changes: bool,
+    /// `quitShortcuts`: the platform's quit shortcut closes the game.
+    pub quit_shortcuts: bool,
+    /// `ctrlClickEmulatesRightClick`, which only macOS shows.
+    pub ctrl_click_emulates_right_click: bool,
     pub chat_links: bool,
     pub chat_links_prompt: bool,
     pub auto_suggestions: bool,
@@ -72,6 +78,8 @@ impl Default for PlayOptions {
             operator_items_tab: false,
             discrete_mouse_scroll: false,
             allow_cursor_changes: true,
+            quit_shortcuts: true,
+            ctrl_click_emulates_right_click: false,
             chat_links: true,
             chat_links_prompt: true,
             auto_suggestions: true,
@@ -103,6 +111,8 @@ impl PlayOptions {
     fn screen_flag(&mut self, key: PlayKey) -> Option<&mut bool> {
         match key {
             PlayKey::AllowCursorChanges => Some(&mut self.allow_cursor_changes),
+            PlayKey::QuitShortcuts => Some(&mut self.quit_shortcuts),
+            PlayKey::CtrlClickEmulatesRightClick => Some(&mut self.ctrl_click_emulates_right_click),
             PlayKey::ChatLinks => Some(&mut self.chat_links),
             PlayKey::ChatLinksPrompt => Some(&mut self.chat_links_prompt),
             PlayKey::AutoSuggestions => Some(&mut self.auto_suggestions),

@@ -66,7 +66,7 @@ pub(super) enum Key {
     Play(PlayKey),
 }
 
-pub(super) const KEYS: [(&str, Key); 107] = [
+pub(super) const KEYS: [(&str, Key); 109] = [
     ("ao", Key::AmbientOcclusion),
     (
         "biomeBlendRadius",
@@ -167,6 +167,11 @@ pub(super) const KEYS: [(&str, Key); 107] = [
         Key::Play(PlayKey::DiscreteMouseScroll),
     ),
     ("allowCursorChanges", Key::Play(PlayKey::AllowCursorChanges)),
+    ("quitShortcuts", Key::Play(PlayKey::QuitShortcuts)),
+    (
+        "ctrlClickEmulatesRightClick",
+        Key::Play(PlayKey::CtrlClickEmulatesRightClick),
+    ),
     ("chatLinks", Key::Play(PlayKey::ChatLinks)),
     ("chatLinksPrompt", Key::Play(PlayKey::ChatLinksPrompt)),
     ("autoSuggestions", Key::Play(PlayKey::AutoSuggestions)),
@@ -251,7 +256,7 @@ pub(super) const KEYS: [(&str, Key); 107] = [
 /// The names `Options.processOptions` visits, in the order `save` writes them (the options of
 /// `processDumpedOptions` first). `key_`, `soundCategory_` and `modelPart_` stand for their
 /// groups, and `fullscreenResolution` follows them all.
-pub(super) const WRITE_ORDER: [&str; 113] = [
+pub(super) const WRITE_ORDER: [&str; 115] = [
     "ao",
     "biomeBlendRadius",
     "chunkSectionFadeInTime",
@@ -344,6 +349,8 @@ pub(super) const WRITE_ORDER: [&str; 113] = [
     "mouseWheelSensitivity",
     "rawMouseInput",
     "allowCursorChanges",
+    "quitShortcuts",
+    "ctrlClickEmulatesRightClick",
     "glDebugVerbosity",
     "skipMultiplayerWarning",
     "hideMatchedNames",
