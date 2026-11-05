@@ -98,7 +98,9 @@ final class GuiTooltipOracle {
             var lines = stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.EMPTY, null,
                 net.minecraft.world.item.TooltipFlag.Default.NORMAL);
             var graphics = screen.graphics();
-            graphics.setTooltipForNextFrame(GuiFonts.font, lines, stack.getTooltipImage(), mouseX, mouseY);
+            // As a container screen asks for it: the name is followed by a gap.
+            graphics.setTooltipForNextFrame(GuiFonts.font, lines, stack.getTooltipImage(), mouseX, mouseY,
+                stack.get(net.minecraft.core.component.DataComponents.TOOLTIP_STYLE), true);
             graphics.extractDeferredElements(mouseX, mouseY, 0.0F);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());

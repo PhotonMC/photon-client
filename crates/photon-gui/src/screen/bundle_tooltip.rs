@@ -35,7 +35,7 @@ pub fn stack_tooltip(
 ) {
     match bundle_view(stack) {
         Some(view) => tooltip(draw, lines, &view, (layout.width, layout.height), mouse),
-        None => layout.tooltip(draw, lines, mouse),
+        None => layout.item_tooltip(draw, lines, mouse),
     }
 }
 

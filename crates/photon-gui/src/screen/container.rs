@@ -500,7 +500,7 @@ impl ContainerLayout {
         );
     }
 
-    /// A stack's tooltip beside the mouse.
+    /// A tooltip of text lines beside the mouse.
     pub fn tooltip(
         &self,
         draw: &mut ScreenDraw<'_, '_>,
@@ -511,6 +511,23 @@ impl ContainerLayout {
             draw.atlas,
             draw.font,
             lines,
+            (mouse.0 as i32, mouse.1 as i32),
+            (self.width, self.height),
+        );
+    }
+
+    /// A stack's tooltip beside the mouse: its name has a gap after it.
+    pub fn item_tooltip(
+        &self,
+        draw: &mut ScreenDraw<'_, '_>,
+        lines: &[Vec<photon_game::text::Run>],
+        mouse: (f64, f64),
+    ) {
+        draw.frame.item_tooltip_with(
+            draw.atlas,
+            draw.font,
+            lines,
+            &photon_render::gui::Positioner::Default,
             (mouse.0 as i32, mouse.1 as i32),
             (self.width, self.height),
         );

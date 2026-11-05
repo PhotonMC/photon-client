@@ -140,6 +140,16 @@ pub trait FrameRuns {
         mouse: (i32, i32),
         screen: (i32, i32),
     );
+    /// [`Self::tooltip_with`] for an item's tooltip, whose name has a gap after it.
+    fn item_tooltip_with(
+        &mut self,
+        atlas: &photon_render::gui::GuiAtlas,
+        font: &photon_render::gui::font::Font,
+        lines: &[Vec<photon_game::text::Run>],
+        positioner: &photon_render::gui::Positioner,
+        mouse: (i32, i32),
+        screen: (i32, i32),
+    );
 }
 
 impl FrameRuns for photon_render::gui::GuiFrame {
@@ -176,6 +186,18 @@ impl FrameRuns for photon_render::gui::GuiFrame {
         screen: (i32, i32),
     ) {
         self.tooltip_with_runs(atlas, font, &draw_lines(lines), positioner, mouse, screen);
+    }
+
+    fn item_tooltip_with(
+        &mut self,
+        atlas: &photon_render::gui::GuiAtlas,
+        font: &photon_render::gui::font::Font,
+        lines: &[Vec<photon_game::text::Run>],
+        positioner: &photon_render::gui::Positioner,
+        mouse: (i32, i32),
+        screen: (i32, i32),
+    ) {
+        self.item_tooltip_with_runs(atlas, font, &draw_lines(lines), positioner, mouse, screen);
     }
 }
 

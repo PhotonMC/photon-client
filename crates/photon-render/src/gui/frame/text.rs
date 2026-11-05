@@ -91,10 +91,9 @@ impl GuiFrame {
     }
 
     /// `TooltipRenderUtil` and `GuiGraphics.tooltip`: a box of text lines
-    /// beside the mouse. Lines are runs of styled text, each 10 units tall
-    /// with the first followed by two more; a single line is two units
-    /// shorter. The box goes where the mouse's tooltip position puts it in a
-    /// screen `screen` units big.
+    /// beside the mouse. Lines are runs of styled text, each 10 units tall and
+    /// the box two units shorter than they are together. The box goes where the
+    /// mouse's tooltip position puts it in a screen `screen` units big.
     pub fn tooltip_runs(
         &mut self,
         atlas: &GuiAtlas,
@@ -116,6 +115,32 @@ impl GuiFrame {
         mouse: (i32, i32),
         screen: (i32, i32),
     ) {
+        self.tooltip_lines(atlas, font, lines, (positioner, false), mouse, screen);
+    }
+
+    /// An item's tooltip (`extraSpaceAfterFirstLine`): the name is followed by
+    /// two more units, so the box is as tall as its lines together.
+    pub fn item_tooltip_with_runs(
+        &mut self,
+        atlas: &GuiAtlas,
+        font: &crate::gui::font::Font,
+        lines: &[Vec<TextRun>],
+        positioner: &Positioner,
+        mouse: (i32, i32),
+        screen: (i32, i32),
+    ) {
+        self.tooltip_lines(atlas, font, lines, (positioner, true), mouse, screen);
+    }
+
+    fn tooltip_lines(
+        &mut self,
+        atlas: &GuiAtlas,
+        font: &crate::gui::font::Font,
+        lines: &[Vec<TextRun>],
+        (positioner, name_gap): (&Positioner, bool),
+        mouse: (i32, i32),
+        screen: (i32, i32),
+    ) {
         if lines.is_empty() {
             return;
         }
@@ -124,13 +149,14 @@ impl GuiFrame {
             .map(|line| font.width_of_text_runs(line))
             .max()
             .unwrap_or(0);
-        let height = lines.len() as i32 * 10 - if lines.len() == 1 { 2 } else { 0 };
+        let short = !(name_gap && lines.len() != 1);
+        let height = lines.len() as i32 * 10 - if short { 2 } else { 0 };
         let (x, y) = positioner.position(screen, mouse, (width, height));
         self.tooltip_box(atlas, x, y, width, height);
         let mut line_y = y;
         for (index, line) in lines.iter().enumerate() {
             self.styled_text_runs(atlas, font, line, (x, line_y), 0xFFFF_FFFF, true);
-            line_y += 10 + if index == 0 { 2 } else { 0 };
+            line_y += 10 + if name_gap && index == 0 { 2 } else { 0 };
         }
     }
 
