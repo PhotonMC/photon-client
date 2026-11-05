@@ -200,7 +200,10 @@ fn type_rows() -> Result<Vec<(String, String)>, String> {
 }
 
 fn screen_rows() -> Result<Vec<(String, String)>, String> {
-    let jar = process::root().join(".data/minecraft/runtime/client-26.2.jar");
+    let pins = crate::parity::pins::Pins::load_newest()?;
+    let jar = process::root()
+        .join(".data/minecraft/runtime")
+        .join(pins.client_file);
     let headers = classes::headers(&jar, SCREEN_PACKAGE)?;
     let screens = classes::concrete_subclasses(&headers, SCREEN_ROOT);
     let classes: Vec<&str> = screens

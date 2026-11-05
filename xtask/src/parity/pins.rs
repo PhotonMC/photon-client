@@ -1,4 +1,4 @@
-//! `tests/behavior/reference.json`: the pinned game version, its jars and
+//! `tests/behavior/reference/<version>.json`: a pinned game version, its jars and
 //! the oracle sources of every family.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -41,23 +41,67 @@ pub fn java_dir() -> PathBuf {
     process::root().join("tests/behavior/java")
 }
 
+/// A version's name as oracle files spell it: `26.2` is `26_2`.
+pub fn tag(version: &str) -> String {
+    version.replace('.', "_")
+}
+
 /// Where an oracle source lives: `common/` holds the dispatcher and `Reflect`, which name no
-/// game class, `v26_2/` the classes written against the 26.2 game.
-fn source_path(name: &str) -> PathBuf {
+/// game class, `v<tag>/` the classes written against that game version.
+fn source_path(name: &str, version: &str) -> PathBuf {
     let common = java_dir().join("common").join(name);
     if common.is_file() {
         common
     } else {
-        java_dir().join("v26_2").join(name)
+        java_dir().join(format!("v{}", tag(version))).join(name)
     }
 }
 
+/// The directory of the pinned references.
+fn reference_dir() -> PathBuf {
+    process::root().join("tests/behavior/reference")
+}
+
+/// The versions that have a reference, oldest protocol first.
+pub fn versions() -> Vec<String> {
+    let mut found: Vec<(u32, String)> = fs::read_dir(reference_dir())
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let version = name.strip_suffix(".json")?.to_owned();
+            let pins = Pins::load(&version).ok()?;
+            Some((pins.protocol, version))
+        })
+        .collect();
+    found.sort();
+    found.into_iter().map(|(_, version)| version).collect()
+}
+
+/// The newest version that has a reference: the one parity runs by default.
+pub fn newest_version() -> Result<String, String> {
+    versions()
+        .pop()
+        .ok_or_else(|| "no reference in tests/behavior/reference".to_owned())
+}
+
 impl Pins {
-    pub fn load() -> Result<Self, String> {
-        let path = process::root().join("tests/behavior/reference.json");
-        let text =
-            fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?;
+    /// The pins of `version`; blocked (an error, never a pass) when it has no reference.
+    pub fn load(version: &str) -> Result<Self, String> {
+        let path = reference_dir().join(format!("{version}.json"));
+        let text = fs::read_to_string(&path).map_err(|error| {
+            format!(
+                "blocked, no reference for {version}: {}: {error}",
+                path.display()
+            )
+        })?;
         serde_json::from_str(&text).map_err(|error| format!("{}: {error}", path.display()))
+    }
+
+    /// The pins of the newest version that has a reference.
+    pub fn load_newest() -> Result<Self, String> {
+        Self::load(&newest_version()?)
     }
 
     /// The library keys every family needs, with Linux natives renamed to
@@ -77,10 +121,9 @@ impl Pins {
         verified.check(&client, &self.client_sha1)?;
         let mut classpath = vec![client];
         for key in self.library_keys() {
-            let library = self
-                .libraries
-                .get(&key)
-                .ok_or_else(|| format!("reference.json lists no library `{key}`"))?;
+            let library = self.libraries.get(&key).ok_or_else(|| {
+                format!("the {} reference lists no library `{key}`", self.version)
+            })?;
             let path = runtime.join("libs").join(&library.file);
             verified.check(&path, &library.sha1)?;
             classpath.push(path);
@@ -96,18 +139,26 @@ impl Pins {
             .families
             .get(family)
             .ok_or_else(|| format!("unknown parity family `{family}`"))?;
-        let mut sources: Vec<PathBuf> = [
-            "Oracle.java",
-            "Reflect.java",
-            "Game26_2.java",
-            "Access26_2.java",
-            "ScratchDirectory.java",
-        ]
-        .into_iter()
-        .map(source_path)
-        .collect();
-        sources.push(source_path(&entry.source));
-        sources.extend(entry.extra_sources.iter().map(|extra| source_path(extra)));
+        let tag = tag(&self.version);
+        let always = [
+            "Oracle.java".to_owned(),
+            "Reflect.java".to_owned(),
+            format!("Game{tag}.java"),
+            format!("Access{tag}.java"),
+            "ScratchDirectory.java".to_owned(),
+        ];
+        let version = self.version.as_str();
+        let mut sources: Vec<PathBuf> = always
+            .iter()
+            .map(|name| source_path(name, version))
+            .collect();
+        sources.push(source_path(&entry.source, version));
+        sources.extend(
+            entry
+                .extra_sources
+                .iter()
+                .map(|extra| source_path(extra, version)),
+        );
         Ok(sources)
     }
 

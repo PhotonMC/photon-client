@@ -9,7 +9,7 @@ pub struct Pin {
     pub client_sha1: &'static str,
 }
 
-/// The version `tests/behavior/reference.json` pins; a test keeps the two equal.
+/// The version `tests/behavior/reference/26.2.json` pins; a test keeps the two equal.
 pub const PINNED: Pin = Pin {
     id: "26.2",
     client_sha1: "2dc72797acbc1b63fc16a11c4ac393605f453754",
@@ -22,7 +22,7 @@ mod tests {
     #[test]
     fn the_pin_is_the_one_the_reference_names() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../tests/behavior/reference.json");
+            .join("../../tests/behavior/reference/26.2.json");
         let Some(reference) = photon_core::json::read_object(&path) else {
             println!("missing reference: {}", path.display());
             return;

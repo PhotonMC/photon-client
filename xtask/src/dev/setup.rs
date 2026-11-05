@@ -142,7 +142,9 @@ fn fetch_jars(pins: &Pins, version: &Version) -> Result<(), String> {
         .file_name()
         .is_some_and(|name| name.to_string_lossy() == pins.client_file);
     if !named || sha1_of(&client)? != pins.client_sha1 {
-        return Err("the client jar does not match tests/behavior/reference.json".to_owned());
+        return Err(
+            "the client jar does not match the newest tests/behavior/reference file".to_owned(),
+        );
     }
     let server = runtime().join(format!("server-{}.jar", pins.version));
     fetch(
@@ -297,7 +299,7 @@ const SPEC: Spec = Spec {
 
 pub fn setup(args: &[String]) -> Result<(), String> {
     let parsed = parse(args, &SPEC)?;
-    let pins = Pins::load()?;
+    let pins = Pins::load_newest()?;
     fs::create_dir_all(runtime()).map_err(|error| error.to_string())?;
     let version = fetch_version(&pins)?;
     fetch_jars(&pins, &version)?;

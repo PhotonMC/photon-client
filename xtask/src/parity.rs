@@ -54,7 +54,8 @@ pub fn digest(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 
-/// `cargo xtask parity [--family <name>]... [--recapture]`, or `parity report [--missing]`
+/// `cargo xtask parity [--version <v>] [--family <name>]... [--recapture]`, or
+/// `parity report [--missing]`. The version defaults to the newest that has a reference.
 pub fn run(args: &[String]) -> Result<(), String> {
     if args.first().map(String::as_str) == Some("report") {
         let all: Vec<String> = FAMILIES.iter().map(|family| (*family).to_owned()).collect();
@@ -63,11 +64,13 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mut recapture = false;
     let mut print_cases = false;
     let mut families = Vec::new();
+    let mut version = None;
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match arg.as_str() {
             "--recapture" => recapture = true,
             "--print-cases" => print_cases = true,
+            "--version" => version = Some(rest.next().ok_or("--version needs a name")?.clone()),
             "--family" => families.push(rest.next().ok_or("--family needs a name")?.clone()),
             other => return Err(format!("unknown parity option `{other}`")),
         }
@@ -81,7 +84,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         }
         return Ok(());
     }
-    compare(&families, recapture)
+    compare(&families, recapture, version.as_deref())
 }
 
 /// The families whose cases or oracle sources `changed` touches: a file named for one family
@@ -127,6 +130,25 @@ pub fn families_for(changed: &[String]) -> Vec<String> {
     chosen.into_iter().collect()
 }
 
+/// Every version that has a reference, oldest first.
+pub fn versions() -> Vec<String> {
+    pins::versions()
+}
+
+/// `changed` without the files that belong to an older version's reference (its pins and its
+/// oracle classes), which only CI runs; those files come back second.
+pub fn split_older(changed: Vec<String>) -> (Vec<String>, Vec<String>) {
+    let mut versions = pins::versions();
+    versions.pop();
+    let own = |path: &str, version: &str| {
+        path == format!("tests/behavior/reference/{version}.json")
+            || path.starts_with(&format!("tests/behavior/java/v{}/", pins::tag(version)))
+    };
+    changed
+        .into_iter()
+        .partition(|path| !versions.iter().any(|version| own(path, version)))
+}
+
 /// Whether the local Java reference needed for parity is present.
 pub fn reference_present() -> bool {
     runtime().is_dir()
@@ -141,9 +163,12 @@ fn assets() -> PathBuf {
 }
 
 /// Captures what is missing, then compares the adapter on `families`.
-pub fn compare(families: &[String], recapture: bool) -> Result<(), String> {
+pub fn compare(families: &[String], recapture: bool, version: Option<&str>) -> Result<(), String> {
     let started = Instant::now();
-    let pins = pins::Pins::load()?;
+    let pins = match version {
+        Some(version) => pins::Pins::load(version)?,
+        None => pins::Pins::load_newest()?,
+    };
     let classpath = pins.classpath(&runtime())?;
     let jdk = java::Jdk::find(pins.java_major)?;
     let environment = environment(&pins, &jdk);
@@ -170,7 +195,7 @@ pub fn compare(families: &[String], recapture: bool) -> Result<(), String> {
     }
     store.save(&keys_in_use(&cases))?;
     let stamp = pass_stamp(&cases)?;
-    if !recapture && passed_before(&stamp) {
+    if !recapture && passed_before(&pins.version, &stamp) {
         println!(
             "parity: {} cases unchanged since the last pass, skipped",
             cases.len()
@@ -181,10 +206,10 @@ pub fn compare(families: &[String], recapture: bool) -> Result<(), String> {
     let seconds = started.elapsed().as_secs_f32();
     if failures.is_empty() {
         println!("parity: {} cases passed in {seconds:.1}s", cases.len());
-        remember_pass(&stamp);
+        remember_pass(&pins.version, &stamp);
         return Ok(());
     }
-    let report = write_report(&cases, &failures)?;
+    let report = write_report(&pins.version, &cases, &failures)?;
     for (case, difference) in failures.iter().take(10) {
         eprintln!("  {}: {difference}", case.id);
     }
@@ -277,7 +302,11 @@ fn adapter_failures<'a>(
 
 /// Writes the failing cases with their inputs and differences; keeps the
 /// newest few reports only.
-fn write_report(cases: &[Case], failures: &[(&Case, String)]) -> Result<PathBuf, String> {
+fn write_report(
+    version: &str,
+    cases: &[Case],
+    failures: &[(&Case, String)],
+) -> Result<PathBuf, String> {
     let base = process::root().join(".data/parity/failures");
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -291,7 +320,7 @@ fn write_report(cases: &[Case], failures: &[(&Case, String)]) -> Result<PathBuf,
             json!({"case_id": case.id, "family": case.family, "difference": difference, "input": input})
         })
         .collect();
-    let summary = json!({"cases": cases.len(), "failures": rows});
+    let summary = json!({"version": version, "cases": cases.len(), "failures": rows});
     let text = serde_json::to_string_pretty(&summary).map_err(|error| error.to_string())?;
     std::fs::write(dir.join("failures.json"), text).map_err(|error| error.to_string())?;
     prune(&base);
@@ -332,25 +361,29 @@ fn pass_stamp(cases: &[Case]) -> Result<String, String> {
     Ok(digest(format!("{}\n{keys}", digest(&binary)).as_bytes()))
 }
 
-fn pass_file() -> PathBuf {
-    process::root().join(".data/parity/passed")
+fn pass_file(version: &str) -> PathBuf {
+    process::root()
+        .join(".data/parity")
+        .join(version)
+        .join("passed")
 }
 
 /// Whether this exact stamp passed last time (any other run overwrites the file).
-fn passed_before(stamp: &str) -> bool {
-    std::fs::read_to_string(pass_file()).is_ok_and(|saved| saved.lines().any(|line| line == stamp))
+fn passed_before(version: &str, stamp: &str) -> bool {
+    std::fs::read_to_string(pass_file(version))
+        .is_ok_and(|saved| saved.lines().any(|line| line == stamp))
 }
 
 /// Keeps the stamps of the latest passes, so that a run of one family does not forget the full one.
-fn remember_pass(stamp: &str) {
+fn remember_pass(version: &str, stamp: &str) {
     const KEPT: usize = 8;
-    let mut stamps: Vec<String> = std::fs::read_to_string(pass_file())
+    let mut stamps: Vec<String> = std::fs::read_to_string(pass_file(version))
         .map(|saved| saved.lines().map(str::to_owned).collect())
         .unwrap_or_default();
     stamps.retain(|saved| saved != stamp);
     stamps.push(stamp.to_owned());
     let skip = stamps.len().saturating_sub(KEPT);
-    let _ = std::fs::write(pass_file(), stamps[skip..].join("\n"));
+    let _ = std::fs::write(pass_file(version), stamps[skip..].join("\n"));
 }
 
 #[cfg(test)]
@@ -375,7 +408,7 @@ mod tests {
     fn shared_reference_files_run_every_family() {
         for shared in [
             "tests/behavior/java/common/Oracle.java",
-            "tests/behavior/reference.json",
+            "tests/behavior/reference/26.2.json",
             "parity/cases/src/bits.rs",
         ] {
             assert_eq!(
@@ -384,6 +417,18 @@ mod tests {
                 "{shared}"
             );
         }
+    }
+
+    #[test]
+    fn a_version_is_spelled_with_an_underscore_in_oracle_files() {
+        assert_eq!(super::pins::tag("26.2"), "26_2");
+    }
+
+    #[test]
+    fn the_only_reference_is_never_older() {
+        let changed = files(&["tests/behavior/reference/26.2.json"]);
+        let (own, older) = super::split_older(changed.clone());
+        assert_eq!((own, older.len()), (changed, 0));
     }
 
     #[test]

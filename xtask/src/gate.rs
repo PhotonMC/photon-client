@@ -44,7 +44,12 @@ pub fn check(args: &[String]) -> Result<(), String> {
     }
     if with_parity && parity::reference_present() {
         let families: Vec<String> = parity::FAMILIES.iter().map(|f| (*f).to_owned()).collect();
-        step("parity", parity::compare(&families, false));
+        for version in parity::versions() {
+            step(
+                &format!("parity {version}"),
+                parity::compare(&families, false, Some(&version)),
+            );
+        }
     } else if with_parity {
         println!("parity: no local Java reference (.data/minecraft/runtime), skipped");
     }
@@ -83,6 +88,13 @@ pub fn pre_commit() -> Result<(), String> {
 /// Tests and parity for the commits about to be pushed.
 pub fn pre_push() -> Result<(), String> {
     let changed = git::changed_for_push()?;
+    let (changed, older) = parity::split_older(changed);
+    if !older.is_empty() {
+        println!(
+            "parity: {} changed file(s) belong to an older version; CI runs those versions",
+            older.len()
+        );
+    }
     let crates = affected::crates_for(&workspace::packages()?, &changed);
     if !crates.is_empty() {
         let mut args = vec![
@@ -117,7 +129,7 @@ pub fn pre_push() -> Result<(), String> {
         println!("parity: no local Java reference, skipped");
         return Ok(());
     }
-    parity::compare(&families, false)
+    parity::compare(&families, false, None)
 }
 
 fn clippy(packages: &[String]) -> Result<(), String> {

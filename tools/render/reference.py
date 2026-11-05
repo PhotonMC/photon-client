@@ -26,7 +26,7 @@ DATA = ROOT / ".data"
 RUNTIME = DATA / "minecraft" / "runtime"
 ASSETS = DATA / "minecraft" / "assets"
 WORK = DATA / "render"
-PIN = ROOT / "tests/behavior/reference.json"
+PIN = ROOT / "tests/behavior/reference/26.2.json"
 
 # Written verbatim before every run so the client never inherits a previous
 # session's settings. Values that change what is drawn are pinned here; the

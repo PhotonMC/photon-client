@@ -209,7 +209,7 @@ pub fn server(args: &[String]) -> Result<(), String> {
         println!("{}", rcon::send(&["stop".to_owned()])?.join("\n"));
         return Ok(());
     }
-    let pins = Pins::load()?;
+    let pins = Pins::load_newest()?;
     // Another release runs from its own jar and directory, so the pinned server's world stays.
     let other = parsed.value("--version").filter(|id| *id != pins.version);
     let jar = match other {
