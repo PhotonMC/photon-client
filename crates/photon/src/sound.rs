@@ -50,7 +50,6 @@ type Followed = Arc<Mutex<HashMap<EntityId, Option<(f64, f64, f64)>>>>;
 
 mod devices;
 mod entity_loops;
-mod undefined;
 
 /// The namespace of the vanilla names the sounds keep without it.
 const NAMESPACE: &str = "minecraft:";
@@ -103,7 +102,6 @@ pub struct SoundSystem {
     listener: Mutex<(Vec3, [f64; 3], [f64; 3])>,
     /// The sounds that follow an entity and change with it.
     loops: entity_loops::Loops,
-    warned: undefined::Warned,
 }
 
 impl SoundSystem {
@@ -151,7 +149,6 @@ impl SoundSystem {
             glide: Arc::new(Mutex::new((Vec3::ZERO, [0.0; 3], false))),
             listener: Mutex::new((Vec3::ZERO, [0.0, 0.0, -1.0], [0.0, 1.0, 0.0])),
             loops: entity_loops::Loops::default(),
-            warned: undefined::Warned::default(),
         })
     }
 
@@ -162,7 +159,6 @@ impl SoundSystem {
             match command {
                 SoundCommand::At(packet) => {
                     if let Some(instance) = SoundInstance::at(&packet) {
-                        self.warned.check(&self.engine, &instance.event);
                         let id = self.engine.add(instance);
                         self.engine.play(id);
                     }

@@ -2185,6 +2185,7 @@ dependencies = [
 name = "photon-game"
 version = "0.1.0"
 dependencies = [
+ "log",
  "photon-audio",
  "photon-core",
  "photon-data",

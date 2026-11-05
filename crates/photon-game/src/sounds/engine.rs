@@ -3,7 +3,7 @@
 //! is delayed, ticked, looped, paused, stopped and let go. The channels themselves (what makes the
 //! sound) are the caller's, behind [`Channel`].
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use photon_audio::library::{Channel, ChannelSource, Pool};
 use photon_core::random::RandomSource;
@@ -245,14 +245,11 @@ pub struct SoundEngine<S: ChannelSource> {
     /// and what it has heard since it last took it.
     listening: bool,
     heard: Vec<Heard>,
+    /// `SoundEngine.ONLY_WARN_ONCE`: the events already warned about.
+    warned: HashSet<String>,
 }
 
 impl<S: ChannelSource> SoundEngine<S> {
-    /// Whether the sound definitions have an event of this name.
-    pub fn knows_event(&self, name: &str) -> bool {
-        name == EMPTY_EVENT || self.registry.event(name).is_some()
-    }
-
     /// The channels the engine plays on.
     pub fn channels(&self) -> &S {
         &self.channels

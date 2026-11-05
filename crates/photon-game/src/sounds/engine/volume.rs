@@ -18,6 +18,7 @@ impl<S: ChannelSource> SoundEngine<S> {
             queued_ticking: Vec::new(),
             listening: false,
             heard: Vec::new(),
+            warned: HashSet::new(),
         }
     }
 
@@ -99,24 +100,34 @@ impl<S: ChannelSource> SoundEngine<S> {
         });
     }
 
+    /// The sound an instance is, when it can be played: it may sound, its event is defined and is
+    /// neither the intentionally empty one nor an empty one (the last two warn once).
+    fn resolved_sound(&mut self, id: InstanceId) -> Option<Sound> {
+        let instance = self.instances.get_mut(&id)?;
+        if !instance.may_play() {
+            return None;
+        }
+        let known = instance.resolve(&self.registry);
+        let sound = instance.sound.clone().expect("resolved");
+        let what = if !known {
+            "unknown"
+        } else if sound == Sound::empty() {
+            "empty"
+        } else {
+            return (sound != Sound::intentionally_empty()).then_some(sound);
+        };
+        if self.warned.insert(instance.event.clone()) {
+            log::warn!("Unable to play {what} soundEvent: {}", instance.event);
+        }
+        None
+    }
+
     /// `SoundEngine.play`.
     pub fn play(&mut self, id: InstanceId) -> PlayResult {
-        let Some(instance) = self.instances.get_mut(&id) else {
+        let Some(sound) = self.resolved_sound(id) else {
             return PlayResult::NotStarted;
         };
-        if !instance.may_play() {
-            return PlayResult::NotStarted;
-        }
-        if !instance.resolve(&self.registry) {
-            return PlayResult::NotStarted;
-        }
-        let sound = instance.sound.clone().expect("resolved");
-        if sound == Sound::intentionally_empty() {
-            return PlayResult::NotStarted;
-        }
-        if sound == Sound::empty() {
-            return PlayResult::NotStarted;
-        }
+        let instance = self.instances.get_mut(&id).expect("added");
         let instance_volume = instance.effective_volume();
         let attenuation_distance = instance_volume.max(1.0) * sound.attenuation_distance as f32;
         let source = instance.source;
