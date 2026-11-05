@@ -17,6 +17,9 @@ pub enum Attenuation {
     Linear,
 }
 
+/// The event that is defined to make no sound.
+const EMPTY_EVENT: &str = "minecraft:intentionally_empty";
+
 /// A sound being asked for (`SoundInstance`, `AbstractSoundInstance`).
 pub struct SoundInstance {
     pub event: String,
@@ -94,7 +97,7 @@ impl SoundInstance {
     /// `AbstractSoundInstance.resolve`: the sound this instance is, picked from its event. Returns
     /// whether the registry has the event.
     fn resolve(&mut self, registry: &SoundRegistry) -> bool {
-        if self.event == "minecraft:intentionally_empty" {
+        if self.event == EMPTY_EVENT {
             self.sound = Some(Sound::intentionally_empty());
             return true;
         }
@@ -245,6 +248,11 @@ pub struct SoundEngine<S: ChannelSource> {
 }
 
 impl<S: ChannelSource> SoundEngine<S> {
+    /// Whether the sound definitions have an event of this name.
+    pub fn knows_event(&self, name: &str) -> bool {
+        name == EMPTY_EVENT || self.registry.event(name).is_some()
+    }
+
     /// The channels the engine plays on.
     pub fn channels(&self) -> &S {
         &self.channels

@@ -159,6 +159,9 @@ impl SoundSystem {
             match command {
                 SoundCommand::At(packet) => {
                     if let Some(instance) = SoundInstance::at(&packet) {
+                        if !self.engine.knows_event(&instance.event) {
+                            log::warn!("no sound definition for the event {}", instance.event);
+                        }
                         let id = self.engine.add(instance);
                         self.engine.play(id);
                     }
