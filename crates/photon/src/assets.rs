@@ -203,6 +203,16 @@ impl StackAssets {
 /// The atlases the block renderer's one atlas stands for for model textures: blocks and items.
 const LISTED_ATLASES: [&str; 2] = ["blocks", "items"];
 
+/// The item Photon keeps for `ModelManager.getItemModel`'s answer to an id nothing defines.
+pub const MISSING_ITEM: &str = "photon:missing_item";
+
+/// Its client item file: the missing model, as a plain model item.
+const MISSING_ITEM_DEFINITION: &str =
+    r#"{"model":{"type":"minecraft:model","model":"minecraft:builtin/missing"}}"#;
+
+/// `MissingCuboidModel.missingModel`: a full cube whose six faces show the whole missing texture.
+const MISSING_MODEL: &str = r##"{"textures":{"particle":"#missingno","missingno":"minecraft:missingno"},"elements":[{"from":[0,0,0],"to":[16,16,16],"faces":{"down":{"uv":[0,0,16,16],"texture":"#missingno"},"up":{"uv":[0,0,16,16],"texture":"#missingno"},"north":{"uv":[0,0,16,16],"texture":"#missingno"},"south":{"uv":[0,0,16,16],"texture":"#missingno"},"west":{"uv":[0,0,16,16],"texture":"#missingno"},"east":{"uv":[0,0,16,16],"texture":"#missingno"}}}]}"##;
+
 impl photon_render::AssetSource for StackAssets {
     fn sprite_listed(&self, name: &photon_core::identifier::Identifier) -> bool {
         let listed = self.listed.get_or_init(|| {
@@ -216,10 +226,16 @@ impl photon_render::AssetSource for StackAssets {
     }
 
     fn model(&self, name: &photon_core::identifier::Identifier) -> Option<String> {
+        if name.namespace() == "minecraft" && name.path() == "builtin/missing" {
+            return Some(MISSING_MODEL.to_owned());
+        }
         self.text(name, "models")
     }
 
     fn item(&self, name: &photon_core::identifier::Identifier) -> Option<String> {
+        if name.as_string() == MISSING_ITEM {
+            return Some(MISSING_ITEM_DEFINITION.to_owned());
+        }
         self.text(name, "items")
     }
 
@@ -239,6 +255,7 @@ impl photon_render::AssetSource for StackAssets {
                 .collect();
         found.sort_by_key(photon_core::identifier::Identifier::as_string);
         found.dedup();
+        found.extend(photon_core::identifier::Identifier::parse(MISSING_ITEM));
         found
     }
 
@@ -282,6 +299,21 @@ mod tests {
         std::fs::create_dir_all(dir.join("jar-assets/minecraft/textures/block")).unwrap();
         std::fs::create_dir_all(dir.join("jar-assets/minecraft/models/block")).unwrap();
         dir
+    }
+
+    #[test]
+    fn the_missing_item_is_a_parsed_cube_model_listed_with_the_pack_items() {
+        let model = photon_render::model::parse_model(MISSING_MODEL).expect("a model");
+        assert_eq!(model.elements.as_ref().map(Vec::len), Some(1));
+        assert!(photon_render::item_model::parse_client_item(MISSING_ITEM_DEFINITION).is_some());
+        let dir = scratch();
+        let stack = StackAssets::new(std::sync::Arc::new(vanilla_stack(&dir.join("jar-assets"))));
+        let missing = Identifier::parse(MISSING_ITEM).unwrap();
+        assert!(stack.pack_items().contains(&missing));
+        assert_eq!(
+            stack.item(&missing).as_deref(),
+            Some(MISSING_ITEM_DEFINITION)
+        );
     }
 
     #[test]

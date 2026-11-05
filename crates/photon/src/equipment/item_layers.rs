@@ -434,20 +434,20 @@ impl ItemLayerCache {
     }
 }
 
-/// The item whose client item definition draws `stack`: the one its `item_model` component names
-/// when that is a registry item (`ItemModelResolver.appendItemLayers` reads the component), else
-/// a pack's own item definition, else the stack's own item. Java draws the missing model for an
-/// id nothing defines; that difference is open.
+/// The item whose client item definition draws `stack`: the one its `item_model` names (a registry
+/// or pack item), else the missing model (`ModelManager.getItemModel`); its own with none.
 fn model_item(stack: &ClientItemStackState, renderer: &BlockRenderer) -> photon_core::ids::ItemId {
-    photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
-        .item_model()
-        .and_then(|name| {
-            photon_data::item::registry::index(&name)
-                .and_then(|index| i32::try_from(index).ok())
-                .map(photon_core::ids::ItemId)
-                .or_else(|| renderer.pack_item(&name))
-        })
-        .unwrap_or_else(|| stack.item_registry_id())
+    let own = stack.item_registry_id();
+    let Some(name) = photon_game::item::values::Values::new(own, stack.patch_bytes()).item_model()
+    else {
+        return own;
+    };
+    photon_data::item::registry::index(&name)
+        .and_then(|index| i32::try_from(index).ok())
+        .map(photon_core::ids::ItemId)
+        .or_else(|| renderer.pack_item(&name))
+        .or_else(|| renderer.pack_item(crate::assets::MISSING_ITEM))
+        .unwrap_or(own)
 }
 
 /// The keys the draw read from the registries and the level, which the patch alone does not name.
