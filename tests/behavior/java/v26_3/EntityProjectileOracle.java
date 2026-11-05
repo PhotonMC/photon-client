@@ -277,7 +277,8 @@ class EntityProjectileOracle extends EntityPoseOracle {
         var stackClass = com.mojang.blaze3d.vertex.PoseStack.class;
         var collectorClass = net.minecraft.client.renderer.SubmitNodeCollector.class;
         var fire = Reflect.method(renderer, "submitFire", stackClass, collectorClass, spriteClass);
-        var block = Reflect.method(renderer, "submitBlockSprite", spriteClass, stackClass, collectorClass, int.class);
+        var block = Reflect.method(renderer, "submitBlockSprite", net.minecraft.resources.Identifier.class, float.class, float.class,
+            float.class, float.class, stackClass, collectorClass, int.class);
         var quad = Reflect.method(renderer, "buildQuad", com.mojang.blaze3d.vertex.VertexConsumer.class,
             org.joml.Matrix4f.class, float.class, float.class, float.class, float.class, float.class, float.class,
             float.class, float.class, float.class, int.class);
@@ -308,7 +309,9 @@ class EntityProjectileOracle extends EntityPoseOracle {
             var stack = new com.mojang.blaze3d.vertex.PoseStack();
             switch (row.get("kind").getAsString()) {
                 case "fire" -> fire.invoke(null, stack, collector, sprite);
-                case "block" -> block.invoke(null, sprite, stack, collector, row.get("color").getAsInt());
+                case "block" -> block.invoke(null, net.minecraft.resources.Identifier.withDefaultNamespace("textures/atlas/blocks.png"),
+                    Oracle.f32(row, "u0"), Oracle.f32(row, "v0"), Oracle.f32(row, "u1"), Oracle.f32(row, "v1"),
+                    stack, collector, row.get("color").getAsInt());
                 case "water" -> {
                     // `submitWater`, with the brightness and the look given.
                     float brightness = Oracle.f32(row, "brightness");

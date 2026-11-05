@@ -363,7 +363,8 @@ pub(super) fn window_result(request: &Value) -> Result<Value, String> {
             for row in rows {
                 out.push(json!({
                     "label": string(row, "label")?,
-                    "allowed": window::allowed_window_min_size(i32_field(row, "requested")?),
+                    "allowed": window::allowed_window_min_size(i32_field(row, "requested")?, window::MIN_WINDOW_WIDTH),
+                    "allowed_height": window::allowed_window_min_size(i32_field(row, "requested")?, window::MIN_WINDOW_HEIGHT),
                 }));
             }
             Ok(json!({"rows": out}))

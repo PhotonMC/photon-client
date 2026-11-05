@@ -9,8 +9,8 @@ use photon_core::ids::{BlockStateId, EntityTypeId, ItemId};
 use photon_core::version::Version;
 use photon_data::version_registries::VersionRegistries;
 
-/// The version the oracle's Java is: `tests/behavior/java/v26_2`. It is not the newest version.
-pub(crate) const ORACLE_VERSION: Version = Version::V26_2;
+/// The version the oracle's Java is: the newest version's, `tests/behavior/java/v26_3`.
+pub(crate) const ORACLE_VERSION: Version = Version::NEWEST;
 
 /// The numbering of [`ORACLE_VERSION`].
 pub(crate) fn registries() -> Arc<VersionRegistries> {

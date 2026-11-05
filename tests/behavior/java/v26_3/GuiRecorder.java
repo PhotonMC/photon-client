@@ -277,7 +277,7 @@ class GuiRecorder extends GuiFonts {
         set(minecraft, "gui", gui);
         set(minecraft, "font", font);
         set(minecraft, "narrator", unsafe.allocateInstance(SilentNarrator.class));
-        set(minecraft, "textInputManager", unsafe.allocateInstance(com.mojang.blaze3d.platform.TextInputManager.class));
+        set(minecraft, "textInputManager", unsafe.allocateInstance(GuiSignOracle.NoTextArea.class));
         var state = new GuiRenderState();
         return new Screen(minecraft, hud, state, new GuiGraphicsExtractor(minecraft, state, mouseX, mouseY));
     }

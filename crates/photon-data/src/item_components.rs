@@ -20,6 +20,7 @@ pub use crate::item::component_types as ids;
 mod adventure;
 pub use adventure::*;
 mod components;
+mod components_more;
 pub use components::*;
 mod cursor;
 pub use cursor::*;

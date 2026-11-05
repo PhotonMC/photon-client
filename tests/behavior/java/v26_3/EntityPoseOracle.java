@@ -90,7 +90,7 @@ class EntityPoseOracle extends EntityLayerOracle {
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
-            var owner = Class.forName(row.get("class").getAsString());
+            var owner = Class.forName(row.get("class").getAsString().replace("monster.EnderMan", "monster.Enderman"));
             var accessor = (net.minecraft.network.syncher.EntityDataAccessor<?>) Reflect.get(
                 null, owner, row.get("field").getAsString());
             var out = new JsonObject();

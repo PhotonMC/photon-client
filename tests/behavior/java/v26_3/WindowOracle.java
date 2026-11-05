@@ -32,14 +32,15 @@ public final class WindowOracle {
     }
 
     private static JsonObject minSize(JsonObject request) throws Exception {
-        var method = Reflect.method(Window.class, "allowedWindowMinSize", int.class);
+        var method = Reflect.method(Window.class, "allowedWindowMinSize", int.class, int.class);
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
             int requested = row.get("requested").getAsInt();
             var entry = new JsonObject();
             entry.addProperty("label", row.get("label").getAsString());
-            entry.addProperty("allowed", (Integer)method.invoke(null, requested));
+            entry.addProperty("allowed", (Integer)method.invoke(null, requested, Window.MIN_WINDOW_WIDTH));
+            entry.addProperty("allowed_height", (Integer)method.invoke(null, requested, Window.MIN_WINDOW_HEIGHT));
             rows.add(entry);
         }
         var result = new JsonObject();

@@ -226,10 +226,10 @@ class MathEntityFixtures extends MathCollisionFixtures {
 
         int interpolationSteps() {
             try {
-                var dataField = Reflect.field(net.minecraft.world.entity.InterpolationHandler.class, "interpolationData");
+                var dataField = Reflect.field(net.minecraft.world.entity.SteppedInterpolationHandler.class, "interpolationData");
                 Object data = dataField.get(this.getInterpolation());
-                var stepsField = Reflect.field(data.getClass(), "steps");
-                return stepsField.getInt(data);
+                var ticksField = Reflect.field(data.getClass(), "remainingTicks");
+                return (int) Math.ceil(ticksField.getFloat(data));
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(
                     "Unable to read interpolation step fixture", error);

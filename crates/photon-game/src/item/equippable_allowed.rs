@@ -87,7 +87,9 @@ mod tests {
                 .step_by(2)
                 .map(|at| u8::from_str_radix(&wire[at..at + 2], 16).expect("hex"))
                 .collect();
-            let patch = crate::item_components::read_patch(&mut bytes.as_slice()).expect("a patch");
+            let patch =
+                crate::item_components::read_wire_patch(&mut bytes.as_slice(), &dump_registries)
+                    .expect("a patch");
             let dumped = patch
                 .added
                 .iter()
@@ -115,9 +117,7 @@ mod tests {
                             (1..count)
                                 .map(|_| {
                                     photon_data::entity_type::name(photon_core::ids::EntityTypeId(
-                                        dump_registries
-                                            .entity_types
-                                            .canonical_or_unknown(varint(&mut input)),
+                                        varint(&mut input),
                                     ))
                                     .expect("an entity type")
                                     .to_owned()

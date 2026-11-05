@@ -5,81 +5,127 @@ impl Cursor<'_> {
     pub fn component(&mut self, id: i32) -> R {
         match id {
             // Holder registries, ids, enumerations and plain numbers.
-            1 | 2 | 3 | 8 | 12 | 19 | 31 | 41 | 43 | 46 | 48 | 63 | 73 | 82..=102 | 104..=110 => {
-                self.varint().map(|_| ())
-            }
+            ids::MAX_STACK_SIZE
+            | ids::MAX_DAMAGE
+            | ids::DAMAGE
+            | ids::DAMAGE_TYPE
+            | ids::RARITY
+            | ids::REPAIR_COST
+            | ids::ENCHANTABLE
+            | ids::ADDITIONAL_TRADE_COST
+            | ids::DYE
+            | ids::MAP_ID
+            | ids::MAP_POST_PROCESSING
+            | ids::OMINOUS_BOTTLE_AMPLIFIER
+            | ids::BASE_COLOR
+            | ids::VILLAGER_VARIANT
+            | ids::WOLF_VARIANT
+            | ids::WOLF_SOUND_VARIANT
+            | ids::WOLF_COLLAR
+            | ids::FOX_VARIANT
+            | ids::SALMON_SIZE
+            | ids::PARROT_VARIANT
+            | ids::TROPICAL_FISH_PATTERN
+            | ids::TROPICAL_FISH_BASE_COLOR
+            | ids::TROPICAL_FISH_PATTERN_COLOR
+            | ids::MOOSHROOM_VARIANT
+            | ids::RABBIT_VARIANT
+            | ids::PIG_VARIANT
+            | ids::PIG_SOUND_VARIANT
+            | ids::COW_VARIANT
+            | ids::COW_SOUND_VARIANT
+            | ids::CHICKEN_VARIANT
+            | ids::CHICKEN_SOUND_VARIANT
+            | ids::ZOMBIE_NAUTILUS_VARIANT
+            | ids::FROG_VARIANT
+            | ids::HORSE_VARIANT
+            | ids::LLAMA_VARIANT
+            | ids::AXOLOTL_VARIANT
+            | ids::CAT_VARIANT
+            | ids::CAT_SOUND_VARIANT
+            | ids::CAT_COLLAR
+            | ids::SHEEP_COLOR
+            | ids::SHULKER_COLOR => self.varint().map(|_| ()),
             // Unit components.
-            4 | 20 | 34 => Ok(()),
+            ids::UNBREAKABLE | ids::CREATIVE_SLOT_LOCK | ids::GLIDER => Ok(()),
             // Components with no network codec of their own are sent as the
             // tag their persistent codec makes: `custom_data`,
             // `intangible_projectile`, `map_decorations`, `debug_stick_state`,
             // `recipes`, `lock` and `container_loot`.
-            0 | 22 | 47 | 57 | 66 | 79 | 80 => self.tag(),
+            ids::CUSTOM_DATA
+            | ids::INTANGIBLE_PROJECTILE
+            | ids::MAP_DECORATIONS
+            | ids::DEBUG_STICK_STATE
+            | ids::RECIPES
+            | ids::LOCK
+            | ids::CONTAINER_LOOT => self.tag(),
             // `use_effects`: two flags and a speed.
-            5 => self.skip(6),
+            ids::USE_EFFECTS => self.skip(6),
             // Text components.
-            6 | 9 => self.tag(),
-            7 | 52 => self.float(),
-            10 | 35 | 71 => self.identifier(),
-            11 => self.list(Cursor::tag),
+            ids::CUSTOM_NAME | ids::ITEM_NAME => self.tag(),
+            ids::MINIMUM_ATTACK_CHARGE | ids::POTION_DURATION_SCALE => self.float(),
+            ids::ITEM_MODEL | ids::TOOLTIP_STYLE | ids::NOTE_BLOCK_SOUND => self.identifier(),
+            ids::LORE => self.list(Cursor::tag),
             // Enchantments, the stored ones alike.
-            13 | 42 => self.list(|cursor| {
+            ids::ENCHANTMENTS | ids::STORED_ENCHANTMENTS => self.list(|cursor| {
                 cursor.varint()?;
                 cursor.varint().map(|_| ())
             }),
             // What an item can be placed on or break.
-            14 | 15 => self.list(Cursor::block_predicate),
-            16 => self.list(|cursor| {
+            ids::CAN_PLACE_ON | ids::CAN_BREAK => self.list(Cursor::block_predicate),
+            ids::ATTRIBUTE_MODIFIERS => self.list(|cursor| {
                 cursor.id(Site::Attribute, 0)?;
                 cursor.identifier()?;
                 cursor.double()?;
                 cursor.varint()?;
                 cursor.varint()?;
                 match cursor.varint()? {
-                    0 | 1 => Ok(()),
-                    2 => cursor.tag(),
+                    ids::CUSTOM_DATA | ids::MAX_STACK_SIZE => Ok(()),
+                    ids::MAX_DAMAGE => cursor.tag(),
                     _ => Err(Malformed),
                 }
             }),
             // `custom_model_data`.
-            17 => {
+            ids::CUSTOM_MODEL_DATA => {
                 self.list(Cursor::float)?;
                 self.list(|cursor| cursor.byte().map(|_| ()))?;
                 self.list(Cursor::string)?;
                 self.list(Cursor::int)
             }
-            18 => {
+            ids::TOOLTIP_DISPLAY => {
                 self.boolean()?;
                 self.list(|cursor| cursor.varint().map(|_| ()))
             }
-            21 => self.boolean().map(|_| ()),
-            23 => {
+            ids::ENCHANTMENT_GLINT_OVERRIDE => self.boolean().map(|_| ()),
+            ids::FOOD => {
                 self.varint()?;
                 self.float()?;
                 self.boolean().map(|_| ())
             }
-            24 => {
+            ids::CONSUMABLE => {
                 self.float()?;
                 self.varint()?;
                 self.sound()?;
                 self.boolean()?;
                 self.list(Cursor::consume_effect)
             }
-            25 | 78 => self.template(),
-            26 => {
+            ids::USE_REMAINDER | ids::SULFUR_CUBE_CONTENT => self.template(),
+            ids::USE_COOLDOWN => {
                 self.float()?;
                 self.optional(Cursor::identifier)
             }
-            27 | 33 | 65 => self.component_set(id),
-            28 => self.tool(),
-            29 => {
+            ids::DAMAGE_RESISTANT | ids::REPAIRABLE | ids::PROVIDES_BANNER_PATTERNS => {
+                self.component_set(id)
+            }
+            ids::TOOL => self.tool(),
+            ids::WEAPON => {
                 self.varint()?;
                 self.float()
             }
-            30 => self.skip(24),
-            32 => self.equippable(),
-            36 => self.list(Cursor::consume_effect),
-            37 => {
+            ids::ATTACK_RANGE => self.skip(24),
+            ids::EQUIPPABLE => self.equippable(),
+            ids::DEATH_PROTECTION => self.list(Cursor::consume_effect),
+            ids::BLOCKS_ATTACKS => {
                 self.float()?;
                 self.float()?;
                 self.list(|cursor| {
@@ -93,12 +139,12 @@ impl Cursor<'_> {
                 self.optional(Cursor::sound)?;
                 self.optional(Cursor::sound)
             }
-            38 => {
+            ids::PIERCING_WEAPON => {
                 self.skip(2)?;
                 self.optional(Cursor::sound)?;
                 self.optional(Cursor::sound)
             }
-            39 => {
+            ids::KINETIC_WEAPON => {
                 self.varint()?;
                 self.varint()?;
                 for _ in 0..3 {
@@ -112,132 +158,34 @@ impl Cursor<'_> {
                 self.optional(Cursor::sound)?;
                 self.optional(Cursor::sound)
             }
-            40 => {
+            ids::SWING_ANIMATION | ids::ATTACK_ANIMATION | ids::INTERACT_ANIMATION => {
                 self.varint()?;
                 self.varint().map(|_| ())
             }
-            44 | 45 => self.int(),
-            49 | 50 => self.list(Cursor::template),
-            // `potion_contents`.
-            51 => {
-                self.optional(|cursor| cursor.varint().map(|_| ()))?;
-                self.optional(Cursor::int)?;
-                self.list(Cursor::mob_effect_instance)?;
-                self.optional(Cursor::string)
-            }
-            53 => self.list(|cursor| {
-                cursor.varint()?;
-                cursor.varint().map(|_| ())
-            }),
-            54 => self.list(|cursor| cursor.filterable(Cursor::string)),
-            55 => {
-                self.filterable(Cursor::string)?;
-                self.string()?;
-                self.varint()?;
-                self.list(|cursor| cursor.filterable(Cursor::tag))?;
-                self.boolean().map(|_| ())
-            }
-            // `trim`: the material, then the pattern.
-            56 => {
-                self.holder(|cursor| {
-                    cursor.string()?;
-                    cursor.list(|cursor| {
-                        cursor.identifier()?;
-                        cursor.string()
-                    })?;
-                    cursor.tag()
-                })?;
-                self.holder(|cursor| {
-                    cursor.identifier()?;
-                    cursor.tag()?;
-                    cursor.boolean().map(|_| ())
-                })
-            }
-            // Entity and block entity data: a type and a compound.
-            58 | 60 => self.typed_data(id),
-            59 => self.compound_tag(),
-            61 => self.holder(|cursor| {
-                cursor.sound()?;
-                cursor.float()?;
-                cursor.float()?;
-                cursor.tag()
-            }),
-            62 => self.holder(|cursor| {
-                cursor.string()?;
-                cursor.list(|cursor| {
-                    cursor.identifier()?;
-                    cursor.string()
-                })?;
-                cursor.tag()
-            }),
-            64 => self.holder(|cursor| {
-                cursor.sound()?;
-                cursor.tag()?;
-                cursor.float()?;
-                cursor.varint().map(|_| ())
-            }),
-            // `lodestone_tracker`: a dimension and a position, and a flag.
-            67 => {
-                self.optional(|cursor| {
-                    cursor.identifier()?;
-                    cursor.long()
-                })?;
-                self.boolean().map(|_| ())
-            }
-            68 => self.firework_explosion(),
-            69 => {
-                self.varint()?;
-                self.list(Cursor::firework_explosion)
-            }
-            70 => {
-                if self.boolean()? {
-                    self.uuid()?;
-                    self.string()?;
-                    self.game_profile_properties()?;
-                } else {
-                    self.optional(Cursor::string)?;
-                    self.optional(Cursor::uuid)?;
-                    self.game_profile_properties()?;
-                }
-                self.optional(Cursor::identifier)?;
-                self.optional(Cursor::identifier)?;
-                self.optional(Cursor::identifier)?;
-                self.optional(|cursor| cursor.boolean().map(|_| ()))
-            }
-            72 => self.list(|cursor| {
-                cursor.holder(|cursor| {
-                    cursor.identifier()?;
-                    cursor.string()
-                })?;
-                cursor.varint().map(|_| ())
-            }),
-            74 => self.list(|cursor| cursor.varint().map(|_| ())),
-            75 => self.list(|cursor| cursor.optional(Cursor::template)),
-            76 => self.list(|cursor| {
-                cursor.string()?;
-                cursor.string()
-            }),
-            77 => self.list(|cursor| {
-                cursor.varint()?;
-                cursor.compound_tag()?;
-                cursor.varint()?;
-                cursor.varint().map(|_| ())
-            }),
-            81 => self.sound(),
-            // The painting: a registry id plus one, or the variant itself.
-            103 => self.holder(|cursor| {
-                cursor.varint()?;
-                cursor.varint()?;
-                cursor.identifier()?;
-                cursor.optional(Cursor::tag)?;
-                cursor.optional(Cursor::tag)
-            }),
-            _ => Err(Malformed),
+            _ => self.component_more(id),
+        }
+    }
+
+    /// A number that is a constant (an int) or a reference (a key).
+    pub(super) fn resolvable_int(&mut self) -> R {
+        if self.boolean()? {
+            self.int()
+        } else {
+            self.identifier()
+        }
+    }
+
+    /// A number that is a constant (a float) or a reference (a key).
+    pub(super) fn resolvable_float(&mut self) -> R {
+        if self.boolean()? {
+            self.float()
+        } else {
+            self.identifier()
         }
     }
 
     /// A holder set a component holds: items for `repairable`, a dynamic registry's otherwise.
-    fn component_set(&mut self, id: i32) -> R {
+    pub(super) fn component_set(&mut self, id: i32) -> R {
         if id == ids::REPAIRABLE {
             self.skip_item_set()
         } else {
@@ -247,7 +195,7 @@ impl Cursor<'_> {
 
     /// `tool`: the rules (blocks, speed, drops), the default speed, the damage and whether it
     /// can destroy blocks in creative.
-    fn tool(&mut self) -> R {
+    pub(super) fn tool(&mut self) -> R {
         self.list(|cursor| {
             cursor.skip_block_set()?;
             cursor.optional(Cursor::float)?;
@@ -259,7 +207,7 @@ impl Cursor<'_> {
     }
 
     /// `equippable`: the slot, sounds, models, the entities it may be put on, and flags.
-    fn equippable(&mut self) -> R {
+    pub(super) fn equippable(&mut self) -> R {
         self.varint()?;
         self.sound()?;
         self.optional(Cursor::identifier)?;
@@ -270,7 +218,7 @@ impl Cursor<'_> {
     }
 
     /// `entity_data` and `block_entity_data`: a type and a compound.
-    fn typed_data(&mut self, id: i32) -> R {
+    pub(super) fn typed_data(&mut self, id: i32) -> R {
         let site = if id == ids::ENTITY_DATA {
             Site::EntityType
         } else {
@@ -641,24 +589,45 @@ mod tests {
         let older = VersionRegistries::of(Version::V26_1);
         let newest = VersionRegistries::of(Version::V26_2);
         // max_stack_size 16, then removed: the id before the gap and the one after it.
-        let sulfur = ids::SULFUR_CUBE_CONTENT as u8;
-        let wire = [1, 2, 1, 16, sulfur - 1, sulfur];
+        let before = ids::SULFUR_CUBE_CONTENT - 1;
+        let after = ids::SULFUR_CUBE_CONTENT + 1;
+        let old_wire = |id: i32| older.component_types.to_wire(id as u32).expect("in 26.1") as u8;
+        let new_wire = |id: i32| newest.component_types.to_wire(id as u32).expect("in 26.2") as u8;
+        let max_stack = old_wire(ids::MAX_STACK_SIZE);
+        let wire = [1, 2, max_stack, 16, old_wire(before), old_wire(after)];
         let patch = read_wire_patch(&mut &wire[..], &older).expect("a patch");
-        assert_eq!(patch.added, vec![(1, vec![16])]);
+        assert_eq!(patch.added, vec![(ids::MAX_STACK_SIZE, vec![16])]);
+        assert_eq!(patch.removed, vec![before, after]);
         assert_eq!(
-            patch.removed,
-            vec![i32::from(sulfur) - 1, i32::from(sulfur) + 1]
+            patch.trusted(),
+            [
+                1,
+                2,
+                ids::MAX_STACK_SIZE as u8,
+                16,
+                before as u8,
+                after as u8
+            ]
         );
-        assert_eq!(patch.trusted(), [1, 2, 1, 16, sulfur - 1, sulfur + 1]);
         let back = patch.delimited_for(&Numbering::outgoing(&older));
         assert_eq!(
             back.as_deref(),
-            Some(&[1, 2, 1, 1, 16, sulfur - 1, sulfur][..])
+            Some(&[1, 2, max_stack, 1, 16, old_wire(before), old_wire(after)][..])
         );
         let same = patch.delimited_for(&Numbering::outgoing(&newest));
         assert_eq!(
             same.as_deref(),
-            Some(&[1, 2, 1, 1, 16, sulfur - 1, sulfur + 1][..])
+            Some(
+                &[
+                    1,
+                    2,
+                    new_wire(ids::MAX_STACK_SIZE),
+                    1,
+                    16,
+                    new_wire(before),
+                    new_wire(after)
+                ][..]
+            )
         );
     }
 
@@ -725,7 +694,14 @@ mod tests {
         let item = moved(&older.items);
         let wire_item = older.items.to_wire(item).unwrap();
         // repairable: a holder set of one item.
-        let mut wire = vec![1, 0, ids::REPAIRABLE as u8];
+        let mut wire = vec![
+            1,
+            0,
+            older
+                .component_types
+                .to_wire(ids::REPAIRABLE as u32)
+                .unwrap() as u8,
+        ];
         photon_core::wire::write_varint(2, &mut wire);
         photon_core::wire::write_varint(wire_item as i32, &mut wire);
         let patch = read_wire_patch(&mut &wire[..], &older).expect("a patch");
@@ -739,7 +715,14 @@ mod tests {
         assert_eq!(back[4..], wire[3..]);
         // entity_data: the entity type, then an empty compound.
         let kind = moved(&older.entity_types);
-        let mut wire = vec![1, 0, ids::ENTITY_DATA as u8];
+        let mut wire = vec![
+            1,
+            0,
+            older
+                .component_types
+                .to_wire(ids::ENTITY_DATA as u32)
+                .unwrap() as u8,
+        ];
         photon_core::wire::write_varint(
             older.entity_types.to_wire(kind).unwrap() as i32,
             &mut wire,

@@ -214,8 +214,15 @@ mod tests {
 
     #[test]
     fn only_a_water_potion_is_water() {
-        assert_eq!(potion("0100330100000000"), CauldronStack::WaterPotion);
-        assert_eq!(potion("0100330103000000"), CauldronStack::Potion);
+        let id = photon_data::item::component_types::POTION_CONTENTS;
+        assert_eq!(
+            potion(&format!("0100{id:02x}0100000000")),
+            CauldronStack::WaterPotion
+        );
+        assert_eq!(
+            potion(&format!("0100{id:02x}0103000000")),
+            CauldronStack::Potion
+        );
         assert_eq!(potion(""), CauldronStack::Potion);
     }
 }

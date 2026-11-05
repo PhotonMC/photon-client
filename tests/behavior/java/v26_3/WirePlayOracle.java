@@ -208,6 +208,8 @@ final class WirePlayOracle {
             .allocateInstance(net.minecraft.world.entity.decoration.ArmorStand.class);
         Reflect.set(entity, net.minecraft.world.entity.Entity.class, "position", position);
         Reflect.set(entity, net.minecraft.world.entity.Entity.class, "deltaMovement", Vec3.ZERO);
+        Reflect.set(entity, net.minecraft.world.entity.Entity.class, "interpolationHandler",
+            net.minecraft.world.entity.InterpolationHandler.NO_OP);
         return entity;
     }
 

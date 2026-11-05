@@ -359,5 +359,21 @@ class GuiSignOracle extends GuiTitleOracle {
         @Override
         public void setTextInputArea(int x0, int y0, int x1, int y1) {
         }
+
+        @Override
+        public void startTextInput(Object owner) {
+        }
+
+        @Override
+        public void stopTextInput(Object owner) {
+        }
+
+        @Override
+        public void stopTextInput() {
+        }
+
+        @Override
+        public void onTextInputFocusChange(Object owner, boolean focused) {
+        }
     }
 }

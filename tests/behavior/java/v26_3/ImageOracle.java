@@ -38,11 +38,11 @@ public final class ImageOracle {
     private static JsonObject palettePermutation(JsonObject row) throws Exception {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
-        var mapping = Reflect.method(net.minecraft.client.renderer.texture.atlas.sources.PalettedPermutations.class, "createPaletteMapping", int[].class, int[].class);
         try (var base = NativeImage.read(new ByteArrayInputStream(HexFormat.of().parseHex(row.get("png").getAsString())));
              var keys = NativeImage.read(new ByteArrayInputStream(HexFormat.of().parseHex(row.get("keys").getAsString())));
              var values = NativeImage.read(new ByteArrayInputStream(HexFormat.of().parseHex(row.get("values").getAsString())))) {
-            var operator = (java.util.function.IntUnaryOperator) mapping.invoke(null, keys.getPixels(), values.getPixels());
+            var operator = net.minecraft.client.resources.palette.PaletteMapping.create(
+                net.minecraft.client.resources.palette.Palette.from(keys), net.minecraft.client.resources.palette.Palette.from(values));
             try (var mapped = base.mappedCopy(operator)) {
                 var out = new StringBuilder();
                 for (int y = 0; y < mapped.getHeight(); y++) {

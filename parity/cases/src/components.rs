@@ -19,18 +19,18 @@ pub const CAN_PLACE_ON: i64 = 14;
 pub const CAN_BREAK: i64 = 15;
 pub const REPAIR_COST: i64 = 19;
 pub const GLINT: i64 = 21;
-pub const STORED_ENCHANTMENTS: i64 = 42;
-pub const DYED_COLOR: i64 = 44;
-pub const POTION_CONTENTS: i64 = 51;
-pub const MAP_ID: i64 = 46;
-pub const MAP_POST_PROCESSING: i64 = 48;
-pub const BUNDLE_CONTENTS: i64 = 50;
-pub const WRITTEN_BOOK_CONTENT: i64 = 55;
-pub const INSTRUMENT: i64 = 61;
-pub const OMINOUS_BOTTLE_AMPLIFIER: i64 = 63;
-pub const RECIPES: i64 = 66;
-pub const BANNER_PATTERNS: i64 = 72;
-pub const CONTAINER: i64 = 75;
+pub const STORED_ENCHANTMENTS: i64 = 45;
+pub const DYED_COLOR: i64 = 47;
+pub const POTION_CONTENTS: i64 = 53;
+pub const MAP_ID: i64 = 48;
+pub const MAP_POST_PROCESSING: i64 = 50;
+pub const BUNDLE_CONTENTS: i64 = 52;
+pub const WRITTEN_BOOK_CONTENT: i64 = 57;
+pub const INSTRUMENT: i64 = 63;
+pub const OMINOUS_BOTTLE_AMPLIFIER: i64 = 65;
+pub const RECIPES: i64 = 68;
+pub const BANNER_PATTERNS: i64 = 74;
+pub const CONTAINER: i64 = 77;
 
 // The vanilla enchantments' network ids.
 pub const BINDING_CURSE: i64 = 2;
@@ -48,9 +48,9 @@ pub fn item_id(item: &str) -> i64 {
     match item {
         "stone" => 1,
         "dirt" => 55,
-        "iron_sword" => 959,
-        "bundle" => 1065,
-        "ender_pearl" => 1144,
+        "iron_sword" => 1045,
+        "bundle" => 1153,
+        "ender_pearl" => 1265,
         other => panic!("no registry id for {other}"),
     }
 }
