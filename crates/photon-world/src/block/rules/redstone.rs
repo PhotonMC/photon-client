@@ -1,4 +1,4 @@
-//! `RedStoneWireBlock.updateShape`: the wire reconnects to what changed beside or above it.
+//! `RedstoneWireBlock.updateShape`: the wire reconnects to what changed beside or above it.
 
 use super::growth::{HORIZONTAL, fill_lone_sides, is_conductor, offset, wire_side, wire_stands_on};
 use super::*;
@@ -19,7 +19,7 @@ fn is_dot(state: BlockStateId) -> bool {
         .all(|direction| !connected(property(state, direction.name())))
 }
 
-/// `RedStoneWireBlock.getConnectionState`: every side recomputed, a dot staying a dot and a wire
+/// `RedstoneWireBlock.getConnectionState`: every side recomputed, a dot staying a dot and a wire
 /// with a lone side or axis completed to a line. The power is kept.
 fn connection_state(
     power: &str,
@@ -45,7 +45,7 @@ fn connection_state(
     Some(state)
 }
 
-/// `RedStoneWireBlock.useWithoutItem`: a player who may build turns a dot into a cross and a cross
+/// `RedstoneWireBlock.useWithoutItem`: a player who may build turns a dot into a cross and a cross
 /// into the shape its surroundings make (flags 3). A shape that does not change, a line and a
 /// player who may not build pass. The neighbour updates `updatesOnShapeChange` sends around a
 /// conductor beside a side that changed are not ported.

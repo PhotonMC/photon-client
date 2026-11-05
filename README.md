@@ -56,12 +56,12 @@ The table is computed by `cargo xtask progress` and checked in CI. Counts of thi
 | --- | --- |
 | Clientbound play packets handled | 137 / 141 |
 | Serverbound play packets sent | 67 / 69 |
-| Screens named by the client | 73 / 118 |
+| Screens named by the client | 73 / 117 |
 | Entity types with a renderer, named by the client | 156 / 156 |
 | Block entity types with a renderer, named by the client | 24 / 26 |
 | Particle types named by the client | 120 / 125 |
 | Parity cases | 27,494 in 19 families |
-| Lint baseline entries | 945 (at introduction: 1,234) |
+| Lint baseline entries | 944 (at introduction: 1,234) |
 <!-- progress:end -->
 
 Features finished before the move to GitHub issues (2026-10-10) are summarised in [history](docs/history.md).
@@ -82,7 +82,7 @@ Closed and total issues per milestone on GitHub; these are issue counts, not com
 | --- | --- |
 | [Infra: repository and quality](https://github.com/PhotonMC/photon-client/milestone/1) | 7 / 8 |
 | [Infra: parity v2](https://github.com/PhotonMC/photon-client/milestone/2) | 8 / 8 |
-| [Infra: versions](https://github.com/PhotonMC/photon-client/milestone/3) | 8 / 8 |
+| [Infra: versions](https://github.com/PhotonMC/photon-client/milestone/3) | 8 / 9 |
 | [Infra: ECS and threading](https://github.com/PhotonMC/photon-client/milestone/4) | 7 / 8 |
 | [Infra: rendering](https://github.com/PhotonMC/photon-client/milestone/5) | 1 / 6 |
 | [Infra: mod platform](https://github.com/PhotonMC/photon-client/milestone/6) | 1 / 2 |

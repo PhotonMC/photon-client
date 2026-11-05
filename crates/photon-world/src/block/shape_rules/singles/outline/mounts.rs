@@ -1,18 +1,21 @@
 use super::*;
 
+/// `getShape`: the dragon head's outline is a little taller than its collision.
+fn skull_height(block: &Block) -> f64 {
+    if block.name.contains("dragon") {
+        8.5
+    } else {
+        8.0
+    }
+}
+
 /// `getShape` of blocks fixed to a wall, a ceiling or a post: signs, banners, heads, ladders, torches, chains and hanging things; `None` for any other class.
 pub(super) fn outline(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelShape> {
     use BlockClass as C;
     Some(match class {
         C::SignBlock | C::BannerBlock => cached!(VoxelShape, column_xz(8.0, 0.0, 16.0)).clone(),
         C::CopperGolemStatueBlock => cached!(VoxelShape, column_xz(10.0, 0.0, 14.0)).clone(),
-        C::SkullBlock => {
-            if block.name.contains("piglin") {
-                cached!(VoxelShape, column_xz(10.0, 0.0, 8.0)).clone()
-            } else {
-                cached!(VoxelShape, column_xz(8.0, 0.0, 8.0)).clone()
-            }
-        }
+        C::SkullBlock => skull(block, skull_height(block)),
         C::WallSkullBlock => by_facing(
             block,
             offset,

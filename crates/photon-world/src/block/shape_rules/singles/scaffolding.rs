@@ -128,14 +128,24 @@ pub(super) fn mossy_carpet(block: &Block, offset: u32) -> VoxelShape {
     }
 }
 
+/// A floor head's column: the piglin's is wider.
+pub(super) fn skull(block: &Block, height: f64) -> VoxelShape {
+    let width = if block.name.contains("piglin") {
+        10.0
+    } else {
+        8.0
+    };
+    column_xz(width, 0.0, height)
+}
+
 /// `getCollisionShape` of a class that gives a fixed one; `None` for a
 /// class this does not cover.
 pub fn collision(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelShape> {
     use BlockClass as C;
     Some(match class {
-        C::CactusBlock => cached!(VoxelShape, column_xz(14.0, 0.0, 15.0)).clone(),
+        C::SkullBlock => skull(block, 8.0),
+        C::CactusBlock | C::HoneyBlock => cached!(VoxelShape, column_xz(14.0, 0.0, 15.0)).clone(),
         C::SoulSandBlock | C::MudBlock => cached!(VoxelShape, column_xz(16.0, 0.0, 14.0)).clone(),
-        C::HoneyBlock => cached!(VoxelShape, column_xz(14.0, 0.0, 15.0)).clone(),
         C::LecternBlock => lectern_base(),
         C::SculkShriekerBlock => cached!(VoxelShape, column_xz(16.0, 0.0, 8.0)).clone(),
         C::SnowLayerBlock => column_xz(

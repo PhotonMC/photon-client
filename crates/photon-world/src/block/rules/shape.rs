@@ -45,7 +45,7 @@ const INERT: [BlockClass; 75] = [
     BlockClass::CocoaBlock,
     BlockClass::ConduitBlock,
     BlockClass::DecoratedPotBlock,
-    BlockClass::DirtPathBlock,
+    BlockClass::PathBlock,
     BlockClass::DriedGhastBlock,
     BlockClass::FarmlandBlock,
     BlockClass::FlowerPotBlock,
@@ -166,7 +166,7 @@ const RULES: [(BlockClass, Update); 32] = [
     (BlockClass::FenceGateBlock, |s, p, d, c| {
         Rule::Known(super::connect::gate_update(s, p, d, c))
     }),
-    (BlockClass::RedStoneWireBlock, super::redstone::update),
+    (BlockClass::RedstoneWireBlock, super::redstone::update),
     (BlockClass::FireBlock, |s, p, _, c| {
         Rule::Known(super::fire::update(s, p, c))
     }),

@@ -24,7 +24,7 @@ const HORIZONTAL: [Direction; 4] = [
     Direction::West,
 ];
 
-/// `RedStoneWireBlock.COLORS`: the colour of a power, `ARGB.colorFromFloat(1, r, g, b)`.
+/// `RedstoneWireBlock.COLORS`: the colour of a power, `ARGB.colorFromFloat(1, r, g, b)`.
 fn wire_color(power: i32) -> u32 {
     let power = power as f32 / 15.0;
     let red = power * 0.6 + if power > 0.0 { 0.4 } else { 0.3 };
@@ -286,7 +286,7 @@ impl ParticleEngine {
         }
     }
 
-    /// `RedStoneWireBlock.animateTick`: dust along each of its arms.
+    /// `RedstoneWireBlock.animateTick`: dust along each of its arms.
     fn redstone_wire<F: FnMut() -> RandomSource>(
         &mut self,
         state: BlockStateId,
@@ -342,7 +342,7 @@ impl ParticleEngine {
         }
     }
 
-    /// `RedStoneWireBlock.spawnParticlesAlongLine`.
+    /// `RedstoneWireBlock.spawnParticlesAlongLine`.
     fn wire_particles<F: FnMut() -> RandomSource>(
         &mut self,
         pos: (i32, i32, i32),

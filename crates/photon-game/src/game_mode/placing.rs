@@ -132,7 +132,7 @@ pub(super) fn can_place_beside(ctx: &Context<'_>, hand: u8, aim: Aim) -> Option<
     }
 }
 
-/// `RedStoneWireBlock.useWithoutItem`, which reads the wire's surroundings; `None` for any
+/// `RedstoneWireBlock.useWithoutItem`, which reads the wire's surroundings; `None` for any
 /// other block, and for a wire whose neighbours are not ported.
 pub(super) fn redstone_wire_use(
     ctx: &Context<'_>,

@@ -170,7 +170,7 @@ const PLACEMENTS: &[(BlockClass, Placement)] = &[
     (BlockClass::BaseRailBlock, |_, default, ctx| {
         Rule::Known(super::growth::rail(default, ctx))
     }),
-    (BlockClass::RedStoneWireBlock, |_, default, ctx| {
+    (BlockClass::RedstoneWireBlock, |_, default, ctx| {
         super::growth::wire(default, ctx)
     }),
     (

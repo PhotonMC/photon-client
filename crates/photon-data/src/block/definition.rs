@@ -59,6 +59,9 @@ pub enum Rule {
     Default,
     Never,
     Always,
+    /// `Blocks.NEAR_PLANE_INTERSECTS_OUTLINE`: the box in front of the camera meets the state's
+    /// outline. Without that box (a case that asks the predicate of a unit box) it holds.
+    NearPlane,
     /// One value per state, in state order.
     States(&'static [bool]),
 }
@@ -71,6 +74,7 @@ impl Rule {
             Self::Default => None,
             Self::Never => Some(false),
             Self::Always => Some(true),
+            Self::NearPlane => None,
             Self::States(values) => values.get(offset as usize).copied(),
         }
     }

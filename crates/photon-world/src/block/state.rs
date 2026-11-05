@@ -66,6 +66,9 @@ pub struct StateInfo {
     pub use_shape_for_light_occlusion: bool,
     pub can_occlude: bool,
     pub blocks_motion: bool,
+    /// In the `blocks_motion_in_heightmap` tag, which the newest version's heightmaps count
+    /// instead of `blocks_motion`: the same, but for standing and wall signs.
+    pub in_motion_heightmap: bool,
     /// `BlockStateBase.isSolid`: the deprecated flag `blocksMotion` is built on.
     pub solid: bool,
     /// `isFaceSturdy` with `SupportType.FULL`, bit `d` for each direction.
@@ -75,6 +78,9 @@ pub struct StateInfo {
     pub rigid_faces: u8,
     pub suffocating: bool,
     pub view_blocking: bool,
+    /// `isViewBlocking` is `NEAR_PLANE_INTERSECTS_OUTLINE`: it holds where the box in front of
+    /// the camera meets the outline, which `view_blocking` does not know.
+    pub near_plane_view_blocking: bool,
     pub redstone_conductor: bool,
     /// `getShape` and `getCollisionShape` with no level and no entity, as
     /// places in the shape pool ([`States::outline`], [`States::collision`]).

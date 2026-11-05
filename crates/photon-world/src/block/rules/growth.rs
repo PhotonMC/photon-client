@@ -44,7 +44,7 @@ pub(super) fn survives(
         BlockClass::MultifaceBlock => multiface_survives(pos, state, ctx),
         BlockClass::VineBlock => vine_survives(state, pos, ctx),
         BlockClass::ScaffoldingBlock => scaffolding_distance(pos, ctx) < 7,
-        BlockClass::RedStoneWireBlock => wire_survives(pos, ctx),
+        BlockClass::RedstoneWireBlock => wire_survives(pos, ctx),
         _ => return Rule::Unported,
     })
 }
@@ -411,7 +411,7 @@ fn is_signal_source(state: BlockStateId) -> bool {
         BlockClass::PoweredBlock,
         BlockClass::DaylightDetectorBlock,
         BlockClass::JukeboxBlock,
-        BlockClass::RedStoneWireBlock,
+        BlockClass::RedstoneWireBlock,
         BlockClass::SculkSensorBlock,
         BlockClass::LeverBlock,
         BlockClass::RedstoneTorchBlock,
@@ -424,7 +424,7 @@ fn is_signal_source(state: BlockStateId) -> bool {
     block(state).is_some_and(|block| SOURCES.iter().any(|class| block.class.is(*class)))
 }
 
-/// `RedStoneWireBlock.shouldConnectTo`.
+/// `RedstoneWireBlock.shouldConnectTo`.
 fn wire_connects_to(state: BlockStateId, direction: Option<Direction>) -> bool {
     if is_named(state, "minecraft:redstone_wire") {
         true
@@ -442,18 +442,18 @@ pub(super) fn is_conductor(state: BlockStateId) -> bool {
     crate::block::state_or_air(state).redstone_conductor
 }
 
-/// `RedStoneWireBlock.canSurviveOn`.
+/// `RedstoneWireBlock.canSurviveOn`.
 pub(super) fn wire_stands_on(state: BlockStateId) -> bool {
     crate::block::state_or_air(state).is_face_sturdy(Direction::Up)
         || is_named(state, "minecraft:hopper")
 }
 
-/// `RedStoneWireBlock.canSurvive`.
+/// `RedstoneWireBlock.canSurvive`.
 pub(super) fn wire_survives(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool {
     wire_stands_on(ctx.state(offset(pos, Direction::Down)))
 }
 
-/// `RedStoneWireBlock.getConnectingSide`: `up`, `side` or `none`.
+/// `RedstoneWireBlock.getConnectingSide`: `up`, `side` or `none`.
 pub(super) fn wire_side(
     pos: (i32, i32, i32),
     direction: Direction,
@@ -498,7 +498,7 @@ pub(super) fn fill_lone_sides(mut sides: [&'static str; 4]) -> [&'static str; 4]
     sides
 }
 
-/// `RedStoneWireBlock.getStateForPlacement`: connected to what is beside it, a lone wire a cross
+/// `RedstoneWireBlock.getStateForPlacement`: connected to what is beside it, a lone wire a cross
 /// and a wire with only one side the line through it.
 pub(super) fn wire(default: BlockStateId, ctx: &PlaceContext<'_>) -> Rule<Option<BlockStateId>> {
     let pos = ctx.clicked_pos();

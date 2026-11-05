@@ -17,7 +17,7 @@ fn cake_survives(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool {
     solid_at(ctx, (pos.0, pos.1 - 1, pos.2))
 }
 
-/// `DirtPathBlock.canSurvive`: nothing solid above, or a fence gate.
+/// `PathBlock.canSurvive`: nothing solid above, or a fence gate.
 fn path_survives(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool {
     let over = ctx.state(above(pos));
     !solid_at(ctx, above(pos))
@@ -41,7 +41,7 @@ pub(super) fn survives(
     match class {
         BlockClass::GrindstoneBlock => Rule::Known(true),
         BlockClass::CakeBlock => Rule::Known(cake_survives(pos, ctx)),
-        BlockClass::DirtPathBlock => Rule::Known(path_survives(pos, ctx)),
+        BlockClass::PathBlock => Rule::Known(path_survives(pos, ctx)),
         BlockClass::FarmlandBlock => Rule::Known(farmland_survives(pos, ctx)),
         BlockClass::PitcherCropBlock => pitcher_survives(state, pos, ctx),
         _ => hanging_survives(class, state, pos, ctx),
@@ -281,7 +281,7 @@ pub(super) fn seagrass_survives(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) ->
         })
 }
 
-/// `DirtPathBlock` and `FarmlandBlock.getStateForPlacement`: dirt where the block could not stay.
+/// `PathBlock` and `FarmlandBlock.getStateForPlacement`: dirt where the block could not stay.
 fn soil(survives: bool, default: BlockStateId) -> Rule<Option<BlockStateId>> {
     if survives {
         return Rule::Known(Some(default));
@@ -301,7 +301,7 @@ pub(super) const PLACEMENTS: &[(BlockClass, Placement)] = &[
     (BlockClass::PitcherCropBlock, |_, default, _| {
         Rule::Known(Some(default))
     }),
-    (BlockClass::DirtPathBlock, |_, default, ctx| {
+    (BlockClass::PathBlock, |_, default, ctx| {
         soil(path_survives(ctx.clicked_pos(), ctx), default)
     }),
     (BlockClass::FarmlandBlock, |_, default, ctx| {

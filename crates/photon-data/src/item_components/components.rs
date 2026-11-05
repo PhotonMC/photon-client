@@ -94,7 +94,7 @@ impl Cursor<'_> {
             }
             ids::TOOLTIP_DISPLAY => {
                 self.boolean()?;
-                self.list(|cursor| cursor.varint().map(|_| ()))
+                self.list(|cursor| cursor.id(Site::ComponentType, 0).map(|_| ()))
             }
             ids::ENCHANTMENT_GLINT_OVERRIDE => self.boolean().map(|_| ()),
             ids::FOOD => {

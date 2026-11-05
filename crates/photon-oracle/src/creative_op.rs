@@ -7,6 +7,12 @@ use serde_json::{Value, json};
 
 use crate::tooltip::component_json;
 
+/// Component type ids as the oracle version's server numbers them.
+fn wire_ids(ids: &[i32]) -> Vec<i32> {
+    let map = &crate::case_ids::registries().component_types;
+    ids.iter().map(|&id| map.wire_or_unknown(id)).collect()
+}
+
 /// A table stack: its item, the wire bytes of the stack, the component ids it sets and removes,
 /// and the components by name.
 pub(super) fn stack_json(
@@ -20,7 +26,9 @@ pub(super) fn stack_json(
         crate::case_ids::wire_item(made.item_registry_id()),
         &mut wire,
     );
-    wire.extend(made.patch().trusted());
+    let registries_for_wire = crate::case_ids::registries();
+    let numbering = photon_data::item_components::Numbering::outgoing(&registries_for_wire);
+    wire.extend(made.patch().trusted_for(&numbering).unwrap_or_default());
     let mut components = serde_json::Map::new();
     for component in entry.components {
         if let Some((id, _)) =
@@ -32,8 +40,8 @@ pub(super) fn stack_json(
     json!({
         "item": entry.item,
         "wire": wire.iter().map(|byte| format!("{byte:02x}")).collect::<String>(),
-        "positive": made.positive_component_type_ids(),
-        "negative": made.negative_component_type_ids(),
+        "positive": wire_ids(made.positive_component_type_ids()),
+        "negative": wire_ids(made.negative_component_type_ids()),
         "components": components,
     })
 }

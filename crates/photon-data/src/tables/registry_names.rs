@@ -102,7 +102,7 @@ pub static STAT_TYPES: [&str; 9] = [
 ];
 
 #[rustfmt::skip]
-pub static CUSTOM_STATS: [&str; 77] = [
+pub static CUSTOM_STATS: [&str; 78] = [
     "minecraft:leave_game",
     "minecraft:play_time",
     "minecraft:total_world_time",
@@ -164,6 +164,7 @@ pub static CUSTOM_STATS: [&str; 77] = [
     "minecraft:interact_with_crafting_table",
     "minecraft:open_chest",
     "minecraft:sleep_in_bed",
+    "minecraft:sleep_in_straw_bed",
     "minecraft:open_shulker_box",
     "minecraft:open_barrel",
     "minecraft:interact_with_blast_furnace",
@@ -183,7 +184,7 @@ pub static CUSTOM_STATS: [&str; 77] = [
 ];
 
 #[rustfmt::skip]
-pub static CUSTOM_STAT_FORMATTERS: [&str; 77] = [
+pub static CUSTOM_STAT_FORMATTERS: [&str; 78] = [
     "default",
     "time",
     "time",
@@ -216,6 +217,7 @@ pub static CUSTOM_STAT_FORMATTERS: [&str; 77] = [
     "divide_by_ten",
     "divide_by_ten",
     "divide_by_ten",
+    "default",
     "default",
     "default",
     "default",

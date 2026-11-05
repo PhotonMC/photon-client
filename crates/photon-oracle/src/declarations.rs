@@ -1,12 +1,25 @@
 use super::*;
 
 /// `block_declarations`: the declarations as the oracle describes them.
-pub(super) fn block_declarations(label: &str) -> Value {
+/// Whether each state of a block blocks the view, for the declarations.
+fn view_blocking(
+    block: &photon_data::block::registry::Block,
+    states: &photon_world::block::state::States,
+) -> Vec<bool> {
+    (0..block.state_count())
+        .map(|offset| {
+            let info = states
+                .get(block.state_at(offset))
+                .expect("a registry state");
+            info.view_blocking || info.near_plane_view_blocking
+        })
+        .collect()
+}
+
+/// The block classes with their parent, interfaces and declared methods.
+fn class_declarations() -> Vec<Value> {
     use photon_data::block::classes::BlockClass;
-    use photon_data::block::definition::{Emission, Fluid, Rule};
-    use photon_data::block::properties::FIELDS;
-    use photon_data::block::registry::{self, PropertyKind};
-    let classes: Vec<Value> = BlockClass::ALL
+    BlockClass::ALL
         .iter()
         .map(|class| {
             let parent = class
@@ -32,7 +45,15 @@ pub(super) fn block_declarations(label: &str) -> Value {
                 "declares": declares,
             })
         })
-        .collect();
+        .collect()
+}
+
+pub(super) fn block_declarations(label: &str) -> Value {
+    use photon_data::block::classes::BlockClass;
+    use photon_data::block::definition::{Emission, Fluid, Rule};
+    use photon_data::block::properties::FIELDS;
+    use photon_data::block::registry::{self, PropertyKind};
+    let classes = class_declarations();
     let interfaces: Vec<Value> = photon_data::block::classes::BlockInterface::ALL
         .iter()
         .map(|interface| {
@@ -66,6 +87,7 @@ pub(super) fn block_declarations(label: &str) -> Value {
             .map(|(field, _)| *field)
             .expect("every property is listed")
     };
+    let states = photon_world::block::state::states();
     let blocks: Vec<Value> = crate::case_ids::blocks()
         .map(|block| {
             let count = block.state_count();
@@ -77,7 +99,6 @@ pub(super) fn block_declarations(label: &str) -> Value {
             for (key, rule) in [
                 ("emissiveRendering", block.emissive_rendering),
                 ("isSuffocating", block.suffocating),
-                ("isViewBlocking", block.view_blocking),
                 ("isRedstoneConductor", block.redstone_conductor),
             ] {
                 if rule != Rule::Default {
@@ -87,6 +108,9 @@ pub(super) fn block_declarations(label: &str) -> Value {
                     per_state.insert(key.into(), json!(values));
                 }
             }
+            // The newest version's default view blocking reads the block's own suffocating
+            // rule when asked, so every block lists it.
+            per_state.insert("isViewBlocking".into(), json!(view_blocking(block, states)));
             let mut described = json!({
                 "name": block.name,
                 "class": format!("{:?}", block.class),

@@ -72,6 +72,14 @@ pub(super) fn horizontal_axis(block: &Block, offset: u32) -> Axis {
     }
 }
 
+/// Signs are left out of the `blocks_motion_in_heightmap` tag.
+fn is_sign(block: &Block) -> bool {
+    matches!(
+        block.class,
+        BlockClass::StandingSignBlock | BlockClass::WallSignBlock
+    )
+}
+
 pub(super) fn compute(
     (index, block, offset): (usize, &'static Block, u32),
     (outline, collision): (VoxelShape, VoxelShape),
@@ -96,6 +104,7 @@ pub(super) fn compute(
     let support_facts = facts.of(&support);
     let sturdy_faces = support_facts.full_faces;
     let fallback = blocks_motion && collision_full_block;
+    let suffocating = block.suffocating.value(offset).unwrap_or(fallback);
     StateInfo {
         block: u16::try_from(index).expect("fewer than 65536 blocks"),
         offset: u16::try_from(offset).expect("fewer than 65536 states a block"),
@@ -111,12 +120,15 @@ pub(super) fn compute(
         use_shape_for_light_occlusion: use_shape_for_light_occlusion(block, offset),
         can_occlude: block.can_occlude,
         blocks_motion,
+        in_motion_heightmap: blocks_motion && !is_sign(block),
         solid,
         sturdy_faces,
         center_faces: support_facts.center_faces,
         rigid_faces: support_facts.rigid_faces,
-        suffocating: block.suffocating.value(offset).unwrap_or(fallback),
-        view_blocking: block.view_blocking.value(offset).unwrap_or(fallback),
+        suffocating,
+        view_blocking: block.view_blocking.value(offset).unwrap_or(suffocating),
+        near_plane_view_blocking: block.view_blocking
+            == photon_data::block::definition::Rule::NearPlane,
         redstone_conductor: block
             .redstone_conductor
             .value(offset)
@@ -241,7 +253,7 @@ pub(super) fn use_shape_for_light_occlusion(block: &Block, offset: u32) -> bool 
     for class in block.class.lineage() {
         match class {
             BlockClass::DaylightDetectorBlock
-            | BlockClass::DirtPathBlock
+            | BlockClass::PathBlock
             | BlockClass::EnchantingTableBlock
             | BlockClass::EndPortalFrameBlock
             | BlockClass::FarmlandBlock

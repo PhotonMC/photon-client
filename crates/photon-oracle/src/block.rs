@@ -82,7 +82,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
             }
             "fluid_flow_properties" => {
                 // `FlowingFluid.isSolidFace`'s sturdy faces (never for ice)
-                // and `blocksMotion`, as runs of equal values.
+                // and `isSolid`, as runs of equal values.
                 let count = crate::case_ids::state_count();
                 let value = |id: u32| {
                     let state = photon_world::block::state(crate::case_ids::block_state(id as i32))
@@ -92,7 +92,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                         .class
                         .is(photon_data::block::classes::BlockClass::IceBlock);
                     let sturdy = if ice { 0 } else { state.sturdy_faces };
-                    sturdy | u8::from(state.blocks_motion) << 6
+                    sturdy | u8::from(state.solid) << 6
                 };
                 let mut runs = Vec::new();
                 let mut last = None;
@@ -313,7 +313,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                                     t.light_emission,
                                     t.emissive_rendering,
                                     t.shade_brightness.to_bits(),
-                                    t.view_blocking,
+                                    t.view_blocking || t.near_plane_view_blocking,
                                     t.light_dampening,
                                     t.solid_render,
                                     t.collision_full_block,

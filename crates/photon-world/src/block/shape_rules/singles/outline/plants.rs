@@ -94,9 +94,7 @@ pub(super) fn outline(class: BlockClass, block: &Block, offset: u32) -> Option<V
         C::CactusFlowerBlock => cached!(VoxelShape, column_xz(14.0, 0.0, 12.0)).clone(),
         C::LilyPadBlock => cached!(VoxelShape, column_xz(14.0, 0.0, 1.5)).clone(),
         C::FrogspawnBlock => cached!(VoxelShape, column_xz(16.0, 0.0, 1.5)).clone(),
-        C::DirtPathBlock | C::FarmlandBlock => {
-            cached!(VoxelShape, column_xz(16.0, 0.0, 15.0)).clone()
-        }
+        C::PathBlock | C::FarmlandBlock => cached!(VoxelShape, column_xz(16.0, 0.0, 15.0)).clone(),
         C::NetherSproutsBlock => cached!(VoxelShape, column_xz(12.0, 0.0, 3.0)).clone(),
         C::SporeBlossomBlock => cached!(VoxelShape, column_xz(12.0, 13.0, 16.0)).clone(),
         C::FlowerBedBlock => segments(block, offset, 3.0, "flower_amount"),

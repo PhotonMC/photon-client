@@ -37,7 +37,7 @@ pub(super) fn outline(class: BlockClass, block: &Block, offset: u32) -> Option<V
                 Shapes::or(arm(shapes, direction), &shape)
             })
         }
-        C::RedStoneWireBlock => redstone_wire(block, offset),
+        C::RedstoneWireBlock => redstone_wire(block, offset),
         C::FenceGateBlock => {
             let rings = cached!([[(Axis, VoxelShape); 2]; 2], {
                 let free = Shapes::rotate_horizontal_axis(&block_cube(16.0, 16.0, 4.0));

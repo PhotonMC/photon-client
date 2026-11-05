@@ -98,7 +98,7 @@ fn reads_support_shape(class: BlockClass) -> bool {
             | BlockClass::GrowingPlantBlock
             | BlockClass::MultifaceBlock
             | BlockClass::VineBlock
-            | BlockClass::RedStoneWireBlock
+            | BlockClass::RedstoneWireBlock
     )
 }
 

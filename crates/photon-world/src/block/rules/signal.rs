@@ -60,7 +60,7 @@ fn signal_of(state: BlockStateId, direction: Direction) -> Option<i32> {
             }
         }
         // A powered wire gives to the sides it connects to, which needs its surroundings.
-        Some(BlockClass::RedStoneWireBlock) => match property(state, "power") {
+        Some(BlockClass::RedstoneWireBlock) => match property(state, "power") {
             Some("0") => Some(0),
             _ => None,
         },
@@ -94,7 +94,7 @@ fn direct_signal_of(state: BlockStateId, direction: Direction) -> Option<i32> {
             }
         }
         Some(BlockClass::ObserverBlock | BlockClass::DiodeBlock) => signal_of(state, direction),
-        Some(BlockClass::RedStoneWireBlock) => signal_of(state, direction),
+        Some(BlockClass::RedstoneWireBlock) => signal_of(state, direction),
         Some(_) => None,
     }
 }

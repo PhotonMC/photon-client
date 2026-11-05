@@ -224,7 +224,7 @@ pub(crate) fn bed_position(bed: photon_core::binary::BlockPos) -> (f64, f64, f64
 
 pub fn motion_blocking(state: BlockStateId) -> bool {
     let state = block::state_or_air(state);
-    state.blocks_motion || !state.fluid.is_empty()
+    state.in_motion_heightmap || !state.fluid.is_empty()
 }
 
 /// A light task waiting for a frame.

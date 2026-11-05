@@ -114,7 +114,7 @@ pub fn state_tint(
     }
 }
 
-/// `RedStoneWireBlock`'s colour for a power level: red rises with power,
+/// `RedstoneWireBlock`'s colour for a power level: red rises with power,
 /// green and blue only near the top.
 fn redstone_colour(power: i32) -> u32 {
     let power = power as f32 / 15.0;
