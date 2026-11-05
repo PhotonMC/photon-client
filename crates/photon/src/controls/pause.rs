@@ -117,19 +117,30 @@ impl Controls {
         match action {
             PauseAction::Resume => self.close_pause(surface),
             PauseAction::Disconnect => self.leave = true,
-            PauseAction::Options => self.open_options(surface, assets),
+            PauseAction::Options | PauseAction::WorldOptions => {
+                self.open_settings(action, surface, assets);
+            }
             PauseAction::Statistics => self.open_stats(surface, assets),
             PauseAction::Advancements => self.open_advancements(session, surface, assets),
             PauseAction::PlayerReporting => self.open_social(session, surface, assets),
-            PauseAction::ReportBugs | PauseAction::Feedback => {
-                let url = match action {
-                    PauseAction::ReportBugs => SNAPSHOT_BUGS_FEEDBACK,
-                    _ => RELEASE_FEEDBACK,
-                };
-                self.ask_about_link(url, surface, assets);
-            }
+            PauseAction::ReportBugs => self.ask_about_link(SNAPSHOT_BUGS_FEEDBACK, surface, assets),
+            PauseAction::Feedback => self.ask_about_link(RELEASE_FEEDBACK, surface, assets),
             PauseAction::Friends => self.open_friends_from_pause(surface, assets),
             PauseAction::Custom => self.show_pause_additions(session, surface, assets),
+        }
+    }
+
+    /// The options or the world's options, over the menu.
+    fn open_settings(
+        &mut self,
+        action: PauseAction,
+        surface: &WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        if action == PauseAction::Options {
+            self.open_options(surface, assets);
+        } else {
+            self.open_world(surface, assets);
         }
     }
 

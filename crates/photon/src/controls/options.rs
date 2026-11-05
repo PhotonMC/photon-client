@@ -166,7 +166,6 @@ impl Controls {
         assets: &ScreenAssets,
     ) {
         match action {
-            OptionsAction::WorldOptions => self.open_world(surface, assets),
             OptionsAction::Online => self.open_online(surface, assets),
             OptionsAction::Video => self.open_video(surface, assets),
             OptionsAction::Chat => self.open_chat_options(surface, assets),

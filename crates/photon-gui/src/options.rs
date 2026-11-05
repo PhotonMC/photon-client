@@ -38,10 +38,8 @@ const CONTENT_MARGIN_TOP: i32 = 30;
 pub enum OptionsAction {
     /// "Done", or Escape: back to the screen before.
     Done,
-    /// "Online...", which a game outside a world has.
+    /// "Online...".
     Online,
-    /// "Difficulty..." and the rest of a world's options, in a world.
-    WorldOptions,
     SkinCustomisation,
     Sounds,
     Video,
@@ -123,16 +121,7 @@ impl OptionsScreen {
             ));
             rect
         };
-        let second = if in_world {
-            button(
-                &mut arena,
-                "options.worldOptions.button",
-                OptionsAction::WorldOptions,
-                150,
-            )
-        } else {
-            button(&mut arena, "options.online", OptionsAction::Online, 150)
-        };
+        let second = button(&mut arena, "options.online", OptionsAction::Online, 150);
         let grid_rects: Vec<usize> = [
             (
                 "options.skinCustomisation",

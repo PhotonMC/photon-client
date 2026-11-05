@@ -26,6 +26,8 @@ pub enum PauseAction {
     Advancements,
     Statistics,
     Options,
+    /// "World Options...".
+    WorldOptions,
     ReportBugs,
     Feedback,
     Friends,
@@ -164,13 +166,13 @@ impl PauseScreen {
             let custom = add(&mut arena, 204, Kind::Button { label }, PauseAction::Custom);
             grid.add_in_row(Item::Leaf(custom), 2, 2, grid.defaults);
         }
-        let options = add(
-            &mut arena,
-            204,
-            button("menu.options"),
-            PauseAction::Options,
-        );
-        grid.add_in_row(Item::Leaf(options), 2, 2, grid.defaults);
+        for (key, action) in [
+            ("menu.options", PauseAction::Options),
+            ("options.worldOptions.button", PauseAction::WorldOptions),
+        ] {
+            let rect = add(&mut arena, 98, button(key), action);
+            grid.add_in_row(Item::Leaf(rect), 2, 1, grid.defaults);
+        }
         let disconnect = add(
             &mut arena,
             204,
