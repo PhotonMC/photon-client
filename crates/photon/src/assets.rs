@@ -243,7 +243,6 @@ impl photon_render::AssetSource for StackAssets {
         let mut found: Vec<_> =
             photon_core::resources::Resources::list(&*self.stack, "items", ".json")
                 .into_iter()
-                .filter(|id| id.namespace() != "minecraft")
                 .filter_map(|id| {
                     let name = id.path().strip_prefix("items/")?.strip_suffix(".json")?;
                     photon_core::identifier::Identifier::parse(&format!(
@@ -252,6 +251,7 @@ impl photon_render::AssetSource for StackAssets {
                     ))
                     .ok()
                 })
+                .filter(|id| photon_data::item::registry::index(&id.as_string()).is_none())
                 .collect();
         found.sort_by_key(photon_core::identifier::Identifier::as_string);
         found.dedup();
@@ -379,7 +379,12 @@ mod tests {
             .iter()
             .map(|name| {
                 let root = dir.join(name);
-                for file in ["minecraft/items/stick", "zed/items/gem", "mymod/items/coin"] {
+                for file in [
+                    "minecraft/items/stick",
+                    "minecraft/items/ruby",
+                    "zed/items/gem",
+                    "mymod/items/coin",
+                ] {
                     let path = root.join(format!("assets/{file}.json"));
                     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
                     std::fs::write(path, b"{}").unwrap();
@@ -398,7 +403,10 @@ mod tests {
             .iter()
             .map(Identifier::as_string)
             .collect();
-        assert_eq!(names, ["mymod:coin", "zed:gem", MISSING_ITEM]);
+        assert_eq!(
+            names,
+            ["minecraft:ruby", "mymod:coin", "zed:gem", MISSING_ITEM]
+        );
         std::fs::remove_dir_all(dir).unwrap();
     }
 
