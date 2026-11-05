@@ -398,7 +398,7 @@ mod tests {
             .iter()
             .map(Identifier::as_string)
             .collect();
-        assert_eq!(names, ["mymod:coin", "zed:gem"]);
+        assert_eq!(names, ["mymod:coin", "zed:gem", MISSING_ITEM]);
         std::fs::remove_dir_all(dir).unwrap();
     }
 
