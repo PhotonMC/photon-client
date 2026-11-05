@@ -76,19 +76,6 @@ pub fn swirl_offset(age_in_ticks: f32) -> [f32; 2] {
     [offset, offset]
 }
 
-/// `RenderPipelines.GLINT`: the glint's own shader (the texture moved by the texture matrix, cut
-/// out below a tenth of alpha, faded by fog and the glint strength), added to what is behind by
-/// its own colour, drawn on both faces over exactly the depth the model wrote.
-pub const GLINT: PipelineState = PipelineState {
-    location: "minecraft:pipeline/glint",
-    flags: "",
-    values: "",
-    blend: "GLINT",
-    depth_test: "EQUAL",
-    depth_write: false,
-    cull: false,
-};
-
 /// `ItemFeatureRenderer.ENCHANTED_GLINT_ARMOR`: the texture (under `textures/`) the glint on armor
 /// is drawn in, and the scale of `TextureTransform.ARMOR_ENTITY_GLINT_TEXTURING`.
 pub const ARMOR_GLINT_TEXTURE: &str = "misc/enchanted_glint_armor";

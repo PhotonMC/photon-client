@@ -156,7 +156,7 @@ pub(super) fn banner_pose_result(request: &Value) -> Result<Value, String> {
                 &cloth,
                 PATTERN_BASE_TEXTURE,
                 dye(row["color"].as_str().ok_or("color")?)?,
-                0,
+                1,
             ),
         ];
         for (index, layer) in row["patterns"]
@@ -170,7 +170,7 @@ pub(super) fn banner_pose_result(request: &Value) -> Result<Value, String> {
                 &cloth,
                 &pattern_texture(layer["pattern"].as_str().ok_or("pattern")?),
                 dye(layer["color"].as_str().ok_or("color")?)?,
-                index + 1,
+                index + 2,
             ));
         }
         rows.push(json!({"label": row["label"], "calls": calls}));
