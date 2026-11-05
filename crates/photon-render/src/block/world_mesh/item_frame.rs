@@ -410,3 +410,51 @@ pub struct ItemLayer {
     /// The context's display transform; `None` is no transform.
     pub transform: Option<crate::model::ItemTransform>,
 }
+
+#[cfg(test)]
+mod pack_item_tests {
+    use super::*;
+
+    struct Pack(Vec<(&'static str, &'static str)>);
+
+    impl AssetSource for Pack {
+        fn model(&self, _name: &Identifier) -> Option<String> {
+            None
+        }
+
+        fn texture(&self, _name: &Identifier) -> Option<Vec<u8>> {
+            None
+        }
+
+        fn pack_items(&self) -> Vec<Identifier> {
+            self.0
+                .iter()
+                .map(|(name, _)| Identifier::parse(name).unwrap())
+                .collect()
+        }
+
+        fn item(&self, name: &Identifier) -> Option<String> {
+            let name = name.as_string();
+            self.0
+                .iter()
+                .find(|(listed, _)| *listed == name)
+                .map(|(_, text)| (*text).to_owned())
+        }
+    }
+
+    const COIN: &str = r#"{"model":{"type":"minecraft:model","model":"mymod:item/coin"}}"#;
+
+    #[test]
+    fn a_pack_item_gets_the_next_id_after_the_registry_and_a_broken_one_is_skipped() {
+        let source = Pack(vec![("mymod:broken", "not json"), ("mymod:coin", COIN)]);
+        let mut items = vec![None; photon_data::item::registry::ITEMS.len()];
+        let ids = add_pack_items(&source, &mut items);
+        assert_eq!(
+            ids.get("mymod:coin"),
+            Some(&(photon_data::item::registry::ITEMS.len() as i32))
+        );
+        assert!(!ids.contains_key("mymod:broken"));
+        assert_eq!(items.len(), photon_data::item::registry::ITEMS.len() + 1);
+        assert!(items.last().unwrap().is_some());
+    }
+}

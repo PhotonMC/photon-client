@@ -340,6 +340,36 @@ mod tests {
         std::fs::remove_dir_all(dir).unwrap();
     }
 
+    #[test]
+    fn a_pack_lists_its_own_item_files_sorted_and_without_vanilla_ones() {
+        let dir = scratch();
+        let packs: Vec<photon_assets::Pack> = ["low", "high"]
+            .iter()
+            .map(|name| {
+                let root = dir.join(name);
+                for file in ["minecraft/items/stick", "zed/items/gem", "mymod/items/coin"] {
+                    let path = root.join(format!("assets/{file}.json"));
+                    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+                    std::fs::write(path, b"{}").unwrap();
+                }
+                photon_assets::Pack::built_in(
+                    *name,
+                    Box::new(photon_assets::DirectorySource::new(&root)),
+                )
+            })
+            .collect();
+        let stack = StackAssets::new(std::sync::Arc::new(photon_assets::ResourceStack::new(
+            packs,
+        )));
+        let names: Vec<String> = stack
+            .pack_items()
+            .iter()
+            .map(Identifier::as_string)
+            .collect();
+        assert_eq!(names, ["mymod:coin", "zed:gem"]);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
     fn png(rgb: [u8; 3]) -> Vec<u8> {
         let image = photon_render::DecodedImage {
             width: 1,
