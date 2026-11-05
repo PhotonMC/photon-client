@@ -190,7 +190,7 @@ impl Batcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::joml::Quaternion;
+    use crate::joml::Axis;
 
     fn vertex(position: [f32; 3], normal: [f32; 3]) -> Vertex {
         Vertex {
@@ -205,7 +205,7 @@ mod tests {
     fn pose() -> Pose {
         let mut pose = Pose::default();
         pose.translate(3.5, 64.0, -2.25);
-        pose.rotate(&Quaternion::rotation_y(1.3));
+        pose.rotate_axis(Axis::YP, 1.3);
         pose.scale(-1.0, -1.0, 1.0);
         pose.translate(0.0, -1.501, 0.0);
         pose

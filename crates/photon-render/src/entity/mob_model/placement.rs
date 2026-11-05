@@ -55,6 +55,9 @@ pub struct MobPlacement {
     /// A turn about x the renderer's `setupRotations` adds last, in degrees
     /// (a fox that pounces or has its face planted tips with its pitch).
     pub pitch: Option<f32>,
+    /// The pose starts as the bare stack, before the feet and the scale (parity rows that set
+    /// neither); the library's property flags then differ from a stack that has been scaled.
+    pub bare: bool,
     /// The panda renderer's turns (the somersault, sitting, lying on its back).
     pub panda: Option<PandaRotation>,
     /// `LivingEntityRenderer.isShaking`: the age in ticks of a mob whose body
@@ -99,15 +102,26 @@ impl SpawnerCage {
             self.origin[1] + 0.4,
             self.origin[2] + 0.5,
         );
-        pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-            self.spin,
-        )));
+        pose.rotate_axis(
+            crate::joml::Axis::YP,
+            Quaternion::degrees_to_radians(self.spin),
+        );
         pose.translate(0.0, -0.2, 0.0);
-        pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-            -30.0,
-        )));
+        pose.rotate_axis(crate::joml::Axis::XP, Quaternion::degrees_to_radians(-30.0));
         pose.scale(self.scale, self.scale, self.scale);
         pose
+    }
+}
+
+impl MobPlacement {
+    /// A placement turned to `body_rot`, with the pose bare when the rows set neither the feet
+    /// nor the scale.
+    pub fn with_body(body_rot: f32, bare: bool) -> Self {
+        Self {
+            body_rot,
+            bare,
+            ..Self::default()
+        }
     }
 }
 
@@ -129,6 +143,7 @@ impl Default for MobPlacement {
             shift: None,
             roll_shift: None,
             pitch: None,
+            bare: false,
             panda: None,
             shaking: None,
             squid: None,
@@ -244,14 +259,14 @@ pub fn shake_degrees(age_in_ticks: f32) -> f32 {
 fn fall_or_flip(pose: &mut Pose, placement: &MobPlacement) {
     let degrees = Quaternion::degrees_to_radians;
     if let Some(roll) = death_roll(placement.death_time, placement.flip_degrees) {
-        pose.rotate(&Quaternion::rotation_z(degrees(roll)));
+        pose.rotate_axis(crate::joml::Axis::ZP, degrees(roll));
     } else if let Some(sleep) = placement.sleeping {
-        pose.rotate(&Quaternion::rotation_y(degrees(sleep.angle)));
-        pose.rotate(&Quaternion::rotation_z(degrees(placement.flip_degrees)));
-        pose.rotate(&Quaternion::rotation_y(degrees(270.0)));
+        pose.rotate_axis(crate::joml::Axis::YP, degrees(sleep.angle));
+        pose.rotate_axis(crate::joml::Axis::ZP, degrees(placement.flip_degrees));
+        pose.rotate_axis(crate::joml::Axis::YP, degrees(270.0));
     } else if let Some(height) = placement.upside_down {
         pose.translate(0.0, (height + 0.1) / placement.scale, 0.0);
-        pose.rotate(&Quaternion::rotation_z(degrees(180.0)));
+        pose.rotate_axis(crate::joml::Axis::ZP, degrees(180.0));
     }
 }
 
@@ -266,9 +281,12 @@ fn lying_feet(placement: &MobPlacement) -> [f32; 3] {
 /// The turn to face away from the body's facing, which a sleeper does not make.
 fn face_away(pose: &mut Pose, placement: &MobPlacement) {
     if placement.sleeping.is_none() {
-        pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-            180.0 - (placement.body_rot + placement.shaking.map_or(0.0, shake_degrees)),
-        )));
+        pose.rotate_axis(
+            crate::joml::Axis::YP,
+            Quaternion::degrees_to_radians(
+                180.0 - (placement.body_rot + placement.shaking.map_or(0.0, shake_degrees)),
+            ),
+        );
     }
 }
 
@@ -276,34 +294,42 @@ fn face_away(pose: &mut Pose, placement: &MobPlacement) {
 fn fish_rotate(pose: &mut Pose, fish: &FishTurns) {
     let degrees = Quaternion::degrees_to_radians;
     if let Some(swing) = fish.swing {
-        pose.rotate(&Quaternion::rotation_y(degrees(swing)));
+        pose.rotate_axis(crate::joml::Axis::YP, degrees(swing));
     }
     if let Some([x, y, z]) = fish.on_land {
         pose.translate(x, y, z);
-        pose.rotate(&Quaternion::rotation_z(degrees(90.0)));
+        pose.rotate_axis(crate::joml::Axis::ZP, degrees(90.0));
     }
+}
+
+/// The pose before `setupRotations`: the spawner's cage, the feet, the scale and a fish's bob.
+fn start_pose(placement: &MobPlacement) -> Pose {
+    let mut pose = placement
+        .spawner
+        .map_or_else(Pose::default, SpawnerCage::pose);
+    if !placement.bare {
+        let [x, y, z] = lying_feet(placement);
+        pose.translate(x, y, z);
+        pose.scale(placement.scale, placement.scale, placement.scale);
+    }
+    if let Some(fish) = placement.fish {
+        pose.translate(0.0, fish.bob, 0.0);
+    }
+    pose
 }
 
 /// What `LivingEntityRenderer.submit` has done by the end of the renderer's
 /// `setupRotations`: the feet, the scale, the turn to face away from the
 /// body's facing, the fall of a dead mob and the renderer's own turns.
 pub fn placement_rotations(placement: &MobPlacement) -> Pose {
-    let mut pose = placement
-        .spawner
-        .map_or_else(Pose::default, SpawnerCage::pose);
-    let [x, y, z] = lying_feet(placement);
-    pose.translate(x, y, z);
-    pose.scale(placement.scale, placement.scale, placement.scale);
-    if let Some(fish) = placement.fish {
-        pose.translate(0.0, fish.bob, 0.0);
-    }
+    let mut pose = start_pose(placement);
     if let Some(squid) = placement.squid {
         // `SquidRenderer.setupRotations`: no fall of a dead one, no shudder.
         pose.translate(0.0, if squid.baby { 0.25 } else { 0.5 }, 0.0);
         let degrees = Quaternion::degrees_to_radians;
-        pose.rotate(&Quaternion::rotation_y(degrees(180.0 - placement.body_rot)));
-        pose.rotate(&Quaternion::rotation_x(degrees(squid.x_body_rot)));
-        pose.rotate(&Quaternion::rotation_y(degrees(squid.z_body_rot)));
+        pose.rotate_axis(crate::joml::Axis::YP, degrees(180.0 - placement.body_rot));
+        pose.rotate_axis(crate::joml::Axis::XP, degrees(squid.x_body_rot));
+        pose.rotate_axis(crate::joml::Axis::YP, degrees(squid.z_body_rot));
         pose.translate(0.0, if squid.baby { -0.6 } else { -1.2 }, 0.0);
         return pose;
     }
@@ -316,17 +342,13 @@ pub fn placement_rotations(placement: &MobPlacement) -> Pose {
         pose.translate(x, y, z);
     }
     if let Some(roll) = placement.roll {
-        pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-            roll,
-        )));
+        pose.rotate_axis(crate::joml::Axis::ZP, Quaternion::degrees_to_radians(roll));
     }
     if let Some([x, y, z]) = placement.roll_shift {
         pose.translate(x, y, z);
     }
     if let Some(pitch) = placement.pitch {
-        pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-            pitch,
-        )));
+        pose.rotate_axis(crate::joml::Axis::XP, Quaternion::degrees_to_radians(pitch));
     }
     if let Some(panda) = placement.panda {
         panda_rotate(&mut pose, &panda);

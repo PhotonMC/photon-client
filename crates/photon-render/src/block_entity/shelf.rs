@@ -1,7 +1,7 @@
 //! The items on a shelf (`ShelfRenderer`): three slots along its front, each item scaled to a
 //! quarter and set on the shelf's floor or hung from its middle.
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 use crate::objects::item::ModelExtent;
 use photon_core::direction::Direction;
 
@@ -27,9 +27,7 @@ pub fn item_pose(
 ) -> Pose {
     let mut pose = *base;
     pose.translate(0.5, 0.5, 0.5);
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        y_rot,
-    )));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(y_rot));
     let across = (slot as f32 - 1.0) * 0.3125;
     let up = if align_to_bottom { -0.25 } else { 0.0 };
     pose.translate(across, up as f32, -0.25);

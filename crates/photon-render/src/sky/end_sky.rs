@@ -2,7 +2,7 @@
 //! the End sky texture repeated sixteen times over each.
 
 use super::{Attributes, SkyBlend, SkyFrame, SkySprites, SkyVertex, SkyView, Skybox};
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 use crate::joml::{cos_from_sin, sin};
 
 /// Where the tint and the repeat are marked: the texture repeats, and there is no fog.
@@ -66,8 +66,8 @@ pub fn end_sky_vertices() -> Vec<SkyVertex> {
 pub fn end_flash_pose(x_angle: f32, y_angle: f32) -> Pose {
     let radians = Quaternion::degrees_to_radians;
     let mut pose = Pose::default();
-    pose.rotate(&Quaternion::rotation_y(radians(180.0 - y_angle)));
-    pose.rotate(&Quaternion::rotation_x(radians(-90.0 - x_angle)));
+    pose.rotate_axis(Axis::YP, radians(180.0 - y_angle));
+    pose.rotate_axis(Axis::XP, radians(-90.0 - x_angle));
     pose.translate(0.0, 100.0, 0.0);
     pose.scale(60.0, 1.0, 60.0);
     pose

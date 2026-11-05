@@ -564,7 +564,9 @@ fn java_signum(value: f32) -> f32 {
     }
 }
 
+mod axis;
 mod matrix4;
+pub use axis::Axis;
 
 #[cfg(test)]
 mod tests {

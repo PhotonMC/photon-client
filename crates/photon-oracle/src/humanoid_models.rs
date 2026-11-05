@@ -154,7 +154,7 @@ pub(super) fn enderman_model_result(request: &Value) -> Result<Value, String> {
 pub(super) fn iron_golem_render_result(request: &Value) -> Result<Value, String> {
     use photon_render::entity::mob_model::{Crackiness, golem_crackiness, iron_golem_roll};
     use photon_render::joml::Pose;
-    use photon_render::joml::Quaternion;
+    use photon_render::joml::{Axis, Quaternion};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -166,13 +166,12 @@ pub(super) fn iron_golem_render_result(request: &Value) -> Result<Value, String>
             .map_err(|error| error.to_string())
         };
         let mut pose = Pose::default();
-        pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-            180.0 - bits("body_rot")?,
-        )));
+        pose.rotate_axis(
+            Axis::YP,
+            Quaternion::degrees_to_radians(180.0 - bits("body_rot")?),
+        );
         if let Some(roll) = iron_golem_roll(bits("walk_position")?, bits("walk_speed")?) {
-            pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-                roll,
-            )));
+            pose.rotate_axis(Axis::ZP, Quaternion::degrees_to_radians(roll));
         }
         let matrix: Vec<String> = (0..4)
             .flat_map(|column| (0..4).map(move |row| (column, row)))
@@ -220,11 +219,7 @@ pub(super) fn held_item_pose_result(request: &Value) -> Result<Value, String> {
         };
         // The spears the rows' stacks are, and what they change.
         let spear_of = |key: &str| row[key].as_str().and_then(photon_data::spear::spear_of);
-        let attack_arm = if row["attack_arm"].as_str() == Some("left") {
-            Arm::Left
-        } else {
-            Arm::Right
-        };
+        let attack_arm = swing_arm(row, humanoid.main_arm);
         let spears = photon_render::entity::held_item::spear_view(
             &photon_render::entity::held_item::SpearInput {
                 spears: (spear_of("right_item"), spear_of("left_item")),
@@ -255,6 +250,7 @@ pub(super) fn held_item_pose_result(request: &Value) -> Result<Value, String> {
         };
         let humanoid = photon_render::entity::player_model::PlayerRenderState {
             attack_arm,
+            current_swing: true,
             is_baby: baby,
             main_hand_empty: row[main_item].is_null(),
             swing_animation: spears.swing_animation,
@@ -470,4 +466,18 @@ pub(super) fn held_item_pose_result(request: &Value) -> Result<Value, String> {
         out.push(described);
     }
     Ok(json!({"rows": out}))
+}
+
+/// The arm a row swings: the one it names, else the main hand's, as the reference's state setup
+/// leaves it.
+fn swing_arm(
+    row: &Value,
+    main_arm: photon_render::entity::player_model::Arm,
+) -> photon_render::entity::player_model::Arm {
+    use photon_render::entity::player_model::Arm;
+    match row["attack_arm"].as_str() {
+        Some("left") => Arm::Left,
+        Some(_) => Arm::Right,
+        None => main_arm,
+    }
 }

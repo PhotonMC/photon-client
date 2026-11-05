@@ -291,6 +291,8 @@ pub(super) fn humanoid_state(
         age_in_ticks: bits("age_in_ticks")?,
         attack_time: bits("attack_time")?,
         swim_amount: bits("swim_amount")?,
+        // The reference rows always carry a swing, with no progress when `attack_time` is zero.
+        current_swing: true,
         ..Default::default()
     })
 }

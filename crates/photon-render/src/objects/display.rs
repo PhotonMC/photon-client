@@ -3,7 +3,7 @@
 
 use photon_world::objects::display::{Billboard, Transformation};
 
-use crate::joml::{Matrix4, Pose, Quaternion};
+use crate::joml::{Axis, Matrix4, Pose, Quaternion};
 
 /// `Transformation`'s matrix (`compose`): the translation, the left turn, the scale and the right
 /// turn, in that order.
@@ -70,7 +70,7 @@ pub fn display_pose(
 /// `ItemDisplayRenderer.submitInner`: the item is turned to face the other way.
 pub fn item_display_pose(pose: &Pose) -> Pose {
     let mut pose = *pose;
-    pose.rotate(&Quaternion::rotation_y(std::f32::consts::PI));
+    pose.rotate_axis(Axis::YP, std::f32::consts::PI);
     pose
 }
 

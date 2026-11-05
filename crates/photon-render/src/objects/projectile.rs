@@ -5,19 +5,15 @@
 use crate::entity::textures::{TextureRect, uv};
 use photon_core::math::{mth_cos_f64, mth_sin_f64};
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 use crate::scene::Vertex;
 
 /// `ArrowRenderer.submit` up to the model: turned about the vertical to point where it
 /// goes (the model lies along its x), then tipped by the pitch.
 pub fn arrow_pose(base: &Pose, y_rot: f32, x_rot: f32) -> Pose {
     let mut pose = *base;
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        y_rot - 90.0,
-    )));
-    pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-        x_rot,
-    )));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(y_rot - 90.0));
+    pose.rotate_axis(Axis::ZP, Quaternion::degrees_to_radians(x_rot));
     pose
 }
 
@@ -25,12 +21,8 @@ pub fn arrow_pose(base: &Pose, y_rot: f32, x_rot: f32) -> Pose {
 /// goes, then tipped to stand along its flight (the model stands upright, an arrow's lies down).
 pub fn trident_pose(base: &Pose, y_rot: f32, x_rot: f32) -> Pose {
     let mut pose = *base;
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        y_rot - 90.0,
-    )));
-    pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-        x_rot + 90.0,
-    )));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(y_rot - 90.0));
+    pose.rotate_axis(Axis::ZP, Quaternion::degrees_to_radians(x_rot + 90.0));
     pose
 }
 
@@ -70,9 +62,9 @@ pub fn firework_pose(base: &Pose, orientation: &Quaternion, shot_at_angle: bool)
     pose.rotate(orientation);
     if shot_at_angle {
         let degrees = Quaternion::degrees_to_radians;
-        pose.rotate(&Quaternion::rotation_z(degrees(180.0)));
-        pose.rotate(&Quaternion::rotation_y(degrees(180.0)));
-        pose.rotate(&Quaternion::rotation_x(degrees(90.0)));
+        pose.rotate_axis(Axis::ZP, degrees(180.0));
+        pose.rotate_axis(Axis::YP, degrees(180.0));
+        pose.rotate_axis(Axis::XP, degrees(90.0));
     }
     pose
 }
@@ -147,15 +139,18 @@ pub fn shulker_bullet_poses(base: &Pose, age_in_ticks: f32) -> [Pose; 2] {
     let degrees = Quaternion::degrees_to_radians;
     let mut pose = *base;
     pose.translate(0.0, 0.15, 0.0);
-    pose.rotate(&Quaternion::rotation_y(degrees(
-        mth_sin_f64(f64::from(age_in_ticks * 0.1)) * 180.0,
-    )));
-    pose.rotate(&Quaternion::rotation_x(degrees(
-        mth_cos_f64(f64::from(age_in_ticks * 0.1)) * 180.0,
-    )));
-    pose.rotate(&Quaternion::rotation_z(degrees(
-        mth_sin_f64(f64::from(age_in_ticks * 0.15)) * 360.0,
-    )));
+    pose.rotate_axis(
+        Axis::YP,
+        degrees(mth_sin_f64(f64::from(age_in_ticks * 0.1)) * 180.0),
+    );
+    pose.rotate_axis(
+        Axis::XP,
+        degrees(mth_cos_f64(f64::from(age_in_ticks * 0.1)) * 180.0),
+    );
+    pose.rotate_axis(
+        Axis::ZP,
+        degrees(mth_sin_f64(f64::from(age_in_ticks * 0.15)) * 360.0),
+    );
     pose.scale(-0.5, -0.5, 0.5);
     let core = pose;
     pose.scale(1.5, 1.5, 1.5);
@@ -166,12 +161,8 @@ pub fn shulker_bullet_poses(base: &Pose, age_in_ticks: f32) -> [Pose; 2] {
 pub fn llama_spit_pose(base: &Pose, y_rot: f32, x_rot: f32) -> Pose {
     let mut pose = *base;
     pose.translate(0.0, 0.15, 0.0);
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        y_rot - 90.0,
-    )));
-    pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-        x_rot,
-    )));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(y_rot - 90.0));
+    pose.rotate_axis(Axis::ZP, Quaternion::degrees_to_radians(x_rot));
     pose
 }
 
@@ -179,9 +170,7 @@ pub fn llama_spit_pose(base: &Pose, y_rot: f32, x_rot: f32) -> Pose {
 /// the way the fangs face, then flipped and set on the ground as a mob is.
 pub fn evoker_fangs_pose(base: &Pose, y_rot: f32) -> Pose {
     let mut pose = *base;
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        90.0 - y_rot,
-    )));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(90.0 - y_rot));
     pose.scale(-1.0, -1.0, 1.0);
     pose.translate(0.0, -1.501, 0.0);
     pose

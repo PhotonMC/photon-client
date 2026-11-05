@@ -1,7 +1,7 @@
 //! `ScreenEffectRenderer`'s item activation: the totem that spins up to the screen, hangs there
 //! and falls away over forty ticks.
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 use photon_core::math::{mth_cos_f64, mth_sin_f64};
 use photon_world::ClientItemStackState;
 
@@ -77,8 +77,8 @@ pub fn activation_pose(
         -10.0 + 9.0 * sin(pi_scale),
     );
     pose.scale(0.8, 0.8, 0.8);
-    pose.rotate(&Quaternion::rotation_y(rad(900.0 * sin(pi_scale).abs())));
-    pose.rotate(&Quaternion::rotation_x(rad(6.0 * cos(scale * 8.0))));
-    pose.rotate(&Quaternion::rotation_z(rad(6.0 * cos(scale * 8.0))));
+    pose.rotate_axis(Axis::YP, rad(900.0 * sin(pi_scale).abs()));
+    pose.rotate_axis(Axis::XP, rad(6.0 * cos(scale * 8.0)));
+    pose.rotate_axis(Axis::ZP, rad(6.0 * cos(scale * 8.0)));
     pose
 }

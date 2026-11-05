@@ -8,7 +8,7 @@ use photon_core::random::RandomSource;
 
 use crate::block::light::light_uv;
 use crate::block::world_mesh::ItemLayer;
-use crate::joml::{Pose, Quaternion, normalize};
+use crate::joml::{Axis, Pose, Quaternion, normalize};
 use crate::scene::Vertex;
 
 /// `ItemClusterRenderState.getRenderedAmount`: how many copies show for a
@@ -58,7 +58,7 @@ pub fn item_entity_poses(
     let min_offset_y = -(extent.min_y as f32) + 0.0625;
     let bob = mth_sin_f64(f64::from(age_in_ticks / 10.0 + bob_offset)) * 0.1 + 0.1;
     base.translate(0.0, bob + min_offset_y, 0.0);
-    base.rotate(&Quaternion::rotation_y(spin(age_in_ticks, bob_offset)));
+    base.rotate_axis(Axis::YP, spin(age_in_ticks, bob_offset));
     cluster_poses(base, count, seed, extent)
 }
 
@@ -84,9 +84,7 @@ pub fn ominous_item_poses(
     if degrees < -180.0 {
         degrees += 360.0;
     }
-    base.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        degrees,
-    )));
+    base.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(degrees));
     cluster_poses(base, count, seed, extent)
 }
 

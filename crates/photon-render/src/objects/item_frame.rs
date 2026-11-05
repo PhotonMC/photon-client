@@ -60,8 +60,8 @@ pub fn item_frame_poses(
     } else {
         (0.0, 180.0 - direction.to_y_rot())
     };
-    pose.rotate(&Quaternion::rotation_x(degrees(x_rot)));
-    pose.rotate(&Quaternion::rotation_y(degrees(y_rot)));
+    pose.rotate_axis(crate::joml::Axis::XP, degrees(x_rot));
+    pose.rotate_axis(crate::joml::Axis::YP, degrees(y_rot));
     let frame = (!invisible).then(|| {
         let mut frame = pose;
         frame.translate(-0.5, -0.5, -0.5);
@@ -72,16 +72,15 @@ pub fn item_frame_poses(
     // colours a block wide, and its corner put at the middle.
     let mut map = pose;
     let eighths = rotation % 4 * 2;
-    map.rotate(&Quaternion::rotation_z(degrees(
-        eighths as f32 * 360.0 / 8.0,
-    )));
-    map.rotate(&Quaternion::rotation_z(degrees(180.0)));
+    map.rotate_axis(crate::joml::Axis::ZP, degrees(eighths as f32 * 360.0 / 8.0));
+    map.rotate_axis(crate::joml::Axis::ZP, degrees(180.0));
     map.scale(0.007_812_5, 0.007_812_5, 0.007_812_5);
     map.translate(-64.0, -64.0, 0.0);
     map.translate(0.0, 0.0, -1.0);
-    pose.rotate(&Quaternion::rotation_z(degrees(
-        rotation as f32 * 360.0 / 8.0,
-    )));
+    pose.rotate_axis(
+        crate::joml::Axis::ZP,
+        degrees(rotation as f32 * 360.0 / 8.0),
+    );
     pose.scale(0.5, 0.5, 0.5);
     ItemFramePoses {
         frame,

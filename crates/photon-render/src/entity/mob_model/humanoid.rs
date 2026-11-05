@@ -4,73 +4,13 @@ impl MobModel {
     /// `ZombieModel.setupAnim` (and `DrownedModel.setupAnim`): the humanoid
     /// pose, then the arms held out in front.
     pub fn setup_zombie(&mut self, state: &ZombieState) {
-        let sin = |value: f32| mth_sin_f64(f64::from(value));
-        humanoid_anim(&mut self.root, &state.humanoid);
-        self.animate_zombie_arms(&state.humanoid, state.aggressive);
-        let humanoid = &state.humanoid;
-        let swim = humanoid.swim_amount;
-        if state.drowned && swim > 0.0 {
-            let age = humanoid.age_in_ticks;
-            let sway = swim * 0.35 * sin(0.1 * age);
-            let kick = swim * 0.55 * sin(0.1 * age);
-            let reach = (-std::f64::consts::PI * 4.0 / 5.0) as f32;
-            if let Some(arm) = self.root.child_mut("right_arm") {
-                arm.x_rot = rot_lerp_rad(swim, arm.x_rot, reach) + sway;
-                arm.z_rot = rot_lerp_rad(swim, arm.z_rot, -0.15);
-            }
-            if let Some(arm) = self.root.child_mut("left_arm") {
-                arm.x_rot = rot_lerp_rad(swim, arm.x_rot, reach) - sway;
-                arm.z_rot = rot_lerp_rad(swim, arm.z_rot, 0.15);
-            }
-            if let Some(leg) = self.root.child_mut("left_leg") {
-                leg.x_rot -= kick;
-            }
-            if let Some(leg) = self.root.child_mut("right_leg") {
-                leg.x_rot += kick;
-            }
-            if let Some(head) = self.root.child_mut("head") {
-                head.x_rot = 0.0;
-            }
-        }
-    }
-
-    /// `AnimationUtils.animateZombieArms`: unless the swing is a stab, `animateAttackArms` over a
-    /// drop that depends on the flag (a baby holding something keeps its arms down), then the arms'
-    /// breathing again.
-    pub(super) fn animate_zombie_arms(&mut self, humanoid: &PlayerRenderState, aggressive: bool) {
-        let sin = |value: f32| mth_sin_f64(f64::from(value));
-        let cos = |value: f32| mth_cos_f64(f64::from(value));
-        let pi = std::f64::consts::PI as f32;
-        if humanoid.swing_animation != SwingAnimation::Stab {
-            let raise_arms = !humanoid.is_baby || humanoid.main_hand_empty;
-            let arm_drop = if raise_arms {
-                -pi / if aggressive { 1.5 } else { 2.25 }
-            } else {
-                0.0
-            };
-            let attack_time = humanoid.attack_time;
-            let y_modifier = (if raise_arms { 1.0 } else { -1.0 }) * sin(attack_time * pi);
-            let x_modifier = sin((1.0 - (1.0 - attack_time) * (1.0 - attack_time)) * pi);
-            let x_rot = arm_drop + y_modifier * 1.2 - x_modifier * 0.4;
-            let y_rot = 0.1 - y_modifier * 0.6;
-            for (name, y) in [
-                ("right_arm", if raise_arms { -y_rot } else { y_rot }),
-                ("left_arm", if raise_arms { y_rot } else { -y_rot }),
-            ] {
-                if let Some(arm) = self.root.child_mut(name) {
-                    arm.x_rot = x_rot;
-                    arm.y_rot = y;
-                    arm.z_rot = 0.0;
-                }
-            }
-        }
-        for (name, bob) in [("right_arm", 1.0_f32), ("left_arm", -1.0)] {
-            if let Some(arm) = self.root.child_mut(name) {
-                // `bobArms`.
-                arm.z_rot += bob * (cos(humanoid.age_in_ticks * 0.09) * 0.05 + 0.05);
-                arm.x_rot += bob * (sin(humanoid.age_in_ticks * 0.067) * 0.05);
-            }
-        }
+        // The arms are held out by `setupAttackAnimation`, inside the humanoid pose.
+        let humanoid = PlayerRenderState {
+            zombie_arms: Some(state.aggressive),
+            drowned_swim: state.drowned,
+            ..state.humanoid
+        };
+        humanoid_anim(&mut self.root, &humanoid);
     }
 
     /// `ArmorStandModel.setupAnim` (and `ArmorStandArmorModel`'s, `stand` false
@@ -182,6 +122,8 @@ impl MobModel {
         // `PiglinModel.setupAttackAnimation`: a melee weapon swings down.
         humanoid.swing_weapon_down =
             !state.zombified && state.arm_pose == PiglinArmPose::AttackingWithMeleeWeapon;
+        // `ZombifiedPiglinModel.setupAttackAnimation`: a zombified piglin holds its arms out.
+        humanoid.zombie_arms = state.zombified.then_some(state.aggressive);
         let humanoid = &humanoid;
         humanoid_anim(&mut self.root, humanoid);
         let default_angle =
@@ -196,9 +138,7 @@ impl MobModel {
                 ear.z_rot = default_angle + cos(frequency) * amplitude;
             }
         }
-        if state.zombified {
-            self.animate_zombie_arms(humanoid, state.aggressive);
-        } else if state.arm_pose == PiglinArmPose::Dancing {
+        if !state.zombified && state.arm_pose == PiglinArmPose::Dancing {
             let dance = humanoid.age_in_ticks / 60.0;
             let degrees = (std::f64::consts::PI / 180.0) as f32;
             if let Some(head) = self.root.child_mut("head") {

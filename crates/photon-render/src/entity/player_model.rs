@@ -236,7 +236,6 @@ impl ArmPose {
                 | ArmPose::ThrowTrident
                 | ArmPose::CrossbowCharge
                 | ArmPose::CrossbowHold
-                | ArmPose::Spear
         )
     }
 
@@ -271,6 +270,13 @@ pub struct PlayerRenderState {
     pub age_in_ticks: f32,
     pub attack_time: f32,
     pub attack_arm: Arm,
+    /// `currentSwing != null`: the entity is in a swing, with `attack_arm` the arm of its hand.
+    pub current_swing: bool,
+    /// The aggressive flag of a zombie-like model, whose `setupAttackAnimation` holds the arms
+    /// out after the swing (`AnimationUtils.animateZombieArms`); `None` for any other.
+    pub zombie_arms: Option<bool>,
+    /// A drowned's `setupSwimAnimation`, which replaces the humanoid one.
+    pub drowned_swim: bool,
     pub swim_amount: f32,
     pub crouching: bool,
     pub spectator: bool,
@@ -316,6 +322,9 @@ impl Default for PlayerRenderState {
             age_in_ticks: 0.0,
             attack_time: 0.0,
             attack_arm: Arm::Right,
+            current_swing: false,
+            zombie_arms: None,
+            drowned_swim: false,
             swim_amount: 0.0,
             crouching: false,
             spectator: false,

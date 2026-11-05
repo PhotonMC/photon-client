@@ -3,7 +3,7 @@
 
 use super::player_model::{Arm, PlayerModel};
 use super::player_renderer::{HandView, arm_vertices, player_arm_pose, view_pose};
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 use crate::scene::Vertex;
 
 /// The arms of a held map and where its quad is.
@@ -27,8 +27,8 @@ fn pi() -> f32 {
 
 /// `ItemInHandRenderer.renderMap`'s turn and scale, from the pose of the hand.
 fn map_pose(mut pose: Pose) -> Pose {
-    pose.rotate(&Quaternion::rotation_y(degrees(180.0)));
-    pose.rotate(&Quaternion::rotation_z(degrees(180.0)));
+    pose.rotate_axis(Axis::YP, degrees(180.0));
+    pose.rotate_axis(Axis::ZP, degrees(180.0));
     pose.scale(0.38, 0.38, 0.38);
     pose.translate(-0.5, -0.5, 0.0);
     pose.scale(0.007_812_5, 0.007_812_5, 0.007_812_5);
@@ -49,7 +49,7 @@ pub fn one_handed(
     let mut arms = Vec::new();
     if !invisible {
         let mut arm_pose = pose;
-        arm_pose.rotate(&Quaternion::rotation_z(degrees(invert * 10.0)));
+        arm_pose.rotate_axis(Axis::ZP, degrees(invert * 10.0));
         player_arm_pose(&mut arm_pose, right_arm, (attack, inverse_arm_height));
         let (arm, sleeve) = if right_arm {
             (Arm::Right, view.sleeves[0])
@@ -69,8 +69,8 @@ pub fn one_handed(
         y_swing_position - 0.3 * x_swing,
         z_swing_position,
     );
-    pose.rotate(&Quaternion::rotation_x(degrees(x_swing * -45.0)));
-    pose.rotate(&Quaternion::rotation_y(degrees(invert * x_swing * -30.0)));
+    pose.rotate_axis(Axis::XP, degrees(x_swing * -45.0));
+    pose.rotate_axis(Axis::YP, degrees(invert * x_swing * -30.0));
     MapInHand {
         arms,
         pose: map_pose(pose),
@@ -97,25 +97,25 @@ pub fn two_handed(
     pose.translate(0.0, -y_swing_position / 2.0, z_swing_position);
     let tilt = map_tilt(x_rot);
     pose.translate(0.0, 0.04 + inverse_arm_height * -1.2 + tilt * -0.5, -0.72);
-    pose.rotate(&Quaternion::rotation_x(degrees(tilt * -85.0)));
+    pose.rotate_axis(Axis::XP, degrees(tilt * -85.0));
     let mut arms = Vec::new();
     if !invisible {
         let mut both = pose;
-        both.rotate(&Quaternion::rotation_y(degrees(90.0)));
+        both.rotate_axis(Axis::YP, degrees(90.0));
         for (arm, invert, sleeve) in [
             (Arm::Right, 1.0_f32, view.sleeves[0]),
             (Arm::Left, -1.0, view.sleeves[1]),
         ] {
             let mut arm_pose = both;
-            arm_pose.rotate(&Quaternion::rotation_y(degrees(92.0)));
-            arm_pose.rotate(&Quaternion::rotation_x(degrees(45.0)));
-            arm_pose.rotate(&Quaternion::rotation_z(degrees(invert * -41.0)));
+            arm_pose.rotate_axis(Axis::YP, degrees(92.0));
+            arm_pose.rotate_axis(Axis::XP, degrees(45.0));
+            arm_pose.rotate_axis(Axis::ZP, degrees(invert * -41.0));
             arm_pose.translate(invert * 0.3, -1.1, 0.45);
             arms.extend(arm_vertices(model, &arm_pose, (arm, sleeve), view));
         }
     }
     let z_swing_rotation = sin(sqrt_attack * pi());
-    pose.rotate(&Quaternion::rotation_x(degrees(z_swing_rotation * 20.0)));
+    pose.rotate_axis(Axis::XP, degrees(z_swing_rotation * 20.0));
     pose.scale(2.0, 2.0, 2.0);
     MapInHand {
         arms,

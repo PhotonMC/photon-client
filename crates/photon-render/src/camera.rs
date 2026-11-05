@@ -121,11 +121,11 @@ impl HurtView {
 /// `GameRenderer.bobHurt` on a pose: the view rolls over in a faint death, and tilts away from a
 /// blow while the flinch lasts.
 pub fn apply_hurt(pose: &mut crate::joml::Pose, view: &HurtView) {
-    use crate::joml::Quaternion;
+    use crate::joml::{Axis, Quaternion};
     if view.dying {
         let duration = view.death_time.min(20.0);
         let roll = Quaternion::degrees_to_radians(40.0 - 8000.0 / (duration + 200.0));
-        pose.rotate(&Quaternion::rotation_z(roll));
+        pose.rotate_axis(Axis::ZP, roll);
     }
     if view.hurt_time < 0.0 {
         return;
@@ -134,16 +134,10 @@ pub fn apply_hurt(pose: &mut crate::joml::Pose, view: &HurtView) {
     let hurt =
         photon_core::math::mth_sin_f64(f64::from(hurt * hurt * hurt * hurt * std::f32::consts::PI));
     let direction = view.hurt_dir;
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        -direction,
-    )));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(-direction));
     let tilt = (f64::from(-hurt) * 14.0 * view.tilt_strength) as f32;
-    pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-        tilt,
-    )));
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        direction,
-    )));
+    pose.rotate_axis(Axis::ZP, Quaternion::degrees_to_radians(tilt));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(direction));
 }
 
 /// The matrix `PoseStack` builds of [`apply_hurt`], column by column.

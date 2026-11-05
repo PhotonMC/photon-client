@@ -233,9 +233,8 @@ pub(super) fn shaking_rotations_result(request: &Value) -> Result<Value, String>
             .entity_snapshot(EntityId(entity_id), bits("partial")?)
             .ok_or("shaking fixture entity disappeared")?;
         let placed = MobPlacement {
-            body_rot: bits("body_rot")?,
             shaking: snapshot.shaking.then_some(snapshot.age_in_ticks),
-            ..MobPlacement::default()
+            ..MobPlacement::with_body(bits("body_rot")?, true)
         };
         out.push(json!({
             "label": row["label"],

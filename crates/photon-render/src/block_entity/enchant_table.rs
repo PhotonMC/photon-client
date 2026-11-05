@@ -1,7 +1,7 @@
 //! The enchanting table's book (`EnchantTableRenderer`): its model layer and texture, how far
 //! each page is flipped, and the pose it floats and turns in.
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 use photon_core::math::{frac_f32, mth_sin_f64};
 
 /// The model layer of the book (`ModelLayers.BOOK`).
@@ -37,9 +37,7 @@ pub fn table_pose(base: &Pose, time: f32, y_rot: f32) -> Pose {
     pose.translate(0.5, 0.75, 0.5);
     let bob = mth_sin_f64(f64::from(time * 0.1));
     pose.translate(0.0, 0.1 + bob * 0.01, 0.0);
-    pose.rotate(&Quaternion::rotation_y(-y_rot));
-    pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-        80.0,
-    )));
+    pose.rotate_axis(Axis::YP, -y_rot);
+    pose.rotate_axis(Axis::ZP, Quaternion::degrees_to_radians(80.0));
     pose
 }

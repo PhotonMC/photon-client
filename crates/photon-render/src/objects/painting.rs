@@ -3,7 +3,7 @@
 
 use photon_core::direction::Direction;
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 
 /// A sprite's place in its atlas (`TextureAtlasSprite`'s `u0`, `u1`, `v0` and `v1`).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -66,9 +66,10 @@ pub fn painting_center(
 /// `direction_2d` is the facing's `get2DDataValue` (south 0, west 1, north 2, east 3).
 pub fn painting_pose(base: &Pose, direction_2d: i32) -> Pose {
     let mut pose = *base;
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        (180 - direction_2d * 90) as f32,
-    )));
+    pose.rotate_axis(
+        Axis::YP,
+        Quaternion::degrees_to_radians((180 - direction_2d * 90) as f32),
+    );
     pose
 }
 

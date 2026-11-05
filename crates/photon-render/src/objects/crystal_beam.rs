@@ -6,7 +6,7 @@
 use photon_core::math::{mth_cos_f64, mth_sin_f64};
 
 use crate::entity::textures::{TextureRect, uv};
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose};
 use crate::scene::Vertex;
 
 /// One vertex of the beam, placed: where, which texel, and how far from black
@@ -41,12 +41,14 @@ pub fn crystal_beam(mut pose: Pose, delta: [f32; 3], time_in_ticks: f32) -> Crys
     let length = sqrt(dx * dx + dy * dy + dz * dz);
     let half_pi = (std::f64::consts::PI / 2.0) as f32;
     pose.translate(0.0, 2.0, 0.0);
-    pose.rotate(&Quaternion::rotation_y(
+    pose.rotate_axis(
+        Axis::YP,
         (-f64::from(dz).atan2(f64::from(dx))) as f32 - half_pi,
-    ));
-    pose.rotate(&Quaternion::rotation_x(
+    );
+    pose.rotate_axis(
+        Axis::XP,
         (-f64::from(horizontal_length).atan2(f64::from(dy))) as f32 - half_pi,
-    ));
+    );
     let v0 = 0.0 - time_in_ticks * 0.01;
     let v1 = length / 32.0 - time_in_ticks * 0.01;
     let two_pi = (std::f64::consts::PI * 2.0) as f32;

@@ -88,8 +88,6 @@ pub fn humanoid_anim(root: &mut Part, state: &PlayerRenderState) {
         head.y_rot = state.head_y_rot * degrees_to_radians;
         if state.is_fall_flying {
             head.x_rot = (-PI / 4.0) as f32;
-        } else if swim_amount > 0.0 {
-            head.x_rot = rot_lerp_rad(swim_amount, head.x_rot, (-PI / 4.0) as f32);
         }
     }
 
@@ -112,17 +110,12 @@ pub fn humanoid_anim(root: &mut Part, state: &PlayerRenderState) {
     pose_arms(root, state);
 
     setup_attack_animation(root, state);
+    if let Some(aggressive) = state.zombie_arms.filter(|_| !holds_spear(state)) {
+        animate_zombie_arms(root, state, aggressive);
+    }
 
     if state.crouching {
-        root.child("body").x_rot = 0.5;
-        root.child("right_arm").x_rot += 0.4;
-        root.child("left_arm").x_rot += 0.4;
-        root.child("right_leg").z += 4.0;
-        root.child("left_leg").z += 4.0;
-        root.child("head").y += 4.2;
-        root.child("body").y += 3.2;
-        root.child("left_arm").y += 3.2;
-        root.child("right_arm").y += 3.2;
+        crouch(root);
     }
 
     // `AnimationUtils.bobModelPart`: the arms breathe.
@@ -141,7 +134,11 @@ pub fn humanoid_anim(root: &mut Part, state: &PlayerRenderState) {
     }
 
     if swim_amount > 0.0 {
-        swim(root, state, pi);
+        if state.drowned_swim {
+            drowned_swim(root, state);
+        } else {
+            swim(root, state, pi);
+        }
     }
 }
 
@@ -409,9 +406,64 @@ pub(super) fn pose_arm(root: &mut Part, state: &PlayerRenderState, arm: Arm) {
                 fall_flying_or_swimming: state.is_fall_flying || state.swim_amount > 0.0,
                 ticks_using_item: state.ticks_using_item,
                 is_using_item: state.is_using_item,
-                use_item_main_hand: state.use_item_main_hand,
+                using_arm_holds: (state.use_item_main_hand == (state.main_arm == arm)),
             };
             third_person_hand_use(root.child(name), (head_x, head_y), right, &use_state);
         }
     }
+}
+
+/// `AnimationUtils.animateZombieArms`: unless a spear is held, `animateAttackArms` over a drop that
+/// depends on the flag (a baby holding something keeps its arms down); an arm throwing a trident
+/// is left alone.
+fn animate_zombie_arms(root: &mut Part, state: &PlayerRenderState, aggressive: bool) {
+    let sin = |value: f32| mth_sin_f64(f64::from(value));
+    let pi = std::f64::consts::PI as f32;
+    let raise_arms = !state.is_baby || state.main_hand_empty;
+    let arm_drop = if raise_arms {
+        -pi / if aggressive { 1.5 } else { 2.25 }
+    } else {
+        0.0
+    };
+    let swing = state.attack_time;
+    let y_modifier = (if raise_arms { 1.0 } else { -1.0 }) * sin(swing * pi);
+    let x_modifier = sin((1.0 - (1.0 - swing) * (1.0 - swing)) * pi);
+    let x_rot = arm_drop + y_modifier * 1.2 - x_modifier * 0.4;
+    let y_rot = 0.1 - y_modifier * 0.6;
+    for (name, pose, y) in [
+        (
+            "right_arm",
+            state.right_arm_pose,
+            if raise_arms { -y_rot } else { y_rot },
+        ),
+        (
+            "left_arm",
+            state.left_arm_pose,
+            if raise_arms { y_rot } else { -y_rot },
+        ),
+    ] {
+        if pose != ArmPose::ThrowTrident {
+            let arm = root.child(name);
+            arm.x_rot = x_rot;
+            arm.y_rot = y;
+            arm.z_rot = 0.0;
+        }
+    }
+}
+
+fn holds_spear(state: &PlayerRenderState) -> bool {
+    state.right_arm_pose == ArmPose::Spear || state.left_arm_pose == ArmPose::Spear
+}
+
+/// `HumanoidModel.setupAnim`'s crouch: the body leans, the arms follow, the head and body drop.
+fn crouch(root: &mut Part) {
+    root.child("body").x_rot = 0.5;
+    root.child("right_arm").x_rot += 0.4;
+    root.child("left_arm").x_rot += 0.4;
+    root.child("right_leg").z += 4.0;
+    root.child("left_leg").z += 4.0;
+    root.child("head").y += 4.2;
+    root.child("body").y += 3.2;
+    root.child("left_arm").y += 3.2;
+    root.child("right_arm").y += 3.2;
 }

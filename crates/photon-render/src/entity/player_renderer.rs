@@ -8,7 +8,7 @@
 
 pub use super::gui_view::*;
 use crate::entity::player_model::PlayerModel;
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 use crate::scene::Vertex;
 use photon_core::binary::Uuid;
 
@@ -122,18 +122,18 @@ fn fall_or_turn(pose: &mut Pose, placement: &Placement) {
     let degrees = Quaternion::degrees_to_radians;
     if placement.death_time > 0.0 {
         if let Some(roll) = crate::entity::mob_model::death_roll(placement.death_time, 90.0) {
-            pose.rotate(&Quaternion::rotation_z(degrees(roll)));
+            pose.rotate_axis(Axis::ZP, degrees(roll));
         }
     } else if let Some(age) = placement.auto_spin {
-        pose.rotate(&Quaternion::rotation_x(degrees(-90.0 - placement.x_rot)));
-        pose.rotate(&Quaternion::rotation_y(degrees(age * -75.0)));
+        pose.rotate_axis(Axis::XP, degrees(-90.0 - placement.x_rot));
+        pose.rotate_axis(Axis::YP, degrees(age * -75.0));
     } else if let Some(sleep) = placement.sleeping {
-        pose.rotate(&Quaternion::rotation_y(degrees(sleep.angle)));
-        pose.rotate(&Quaternion::rotation_z(degrees(90.0)));
-        pose.rotate(&Quaternion::rotation_y(degrees(270.0)));
+        pose.rotate_axis(Axis::YP, degrees(sleep.angle));
+        pose.rotate_axis(Axis::ZP, degrees(90.0));
+        pose.rotate_axis(Axis::YP, degrees(270.0));
     } else if let Some(height) = placement.upside_down {
         pose.translate(0.0, height + 0.1, 0.0);
-        pose.rotate(&Quaternion::rotation_z(degrees(180.0)));
+        pose.rotate_axis(Axis::ZP, degrees(180.0));
     }
 }
 
@@ -157,20 +157,22 @@ pub fn placement_pose(placement: &Placement) -> Pose {
     }
     pose.scale(1.0, 1.0, 1.0);
     if placement.sleeping.is_none() {
-        pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-            180.0 - placement.body_rot,
-        )));
+        pose.rotate_axis(
+            Axis::YP,
+            Quaternion::degrees_to_radians(180.0 - placement.body_rot),
+        );
     }
     fall_or_turn(&mut pose, placement);
     // `AvatarRenderer.setupRotations`: a glider tips forward, else a swimmer does.
     if let Some(flying) = placement.fall_flying {
         if placement.auto_spin.is_none() {
-            pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-                flying.scale * (-90.0 - placement.x_rot),
-            )));
+            pose.rotate_axis(
+                Axis::XP,
+                Quaternion::degrees_to_radians(flying.scale * (-90.0 - placement.x_rot)),
+            );
         }
         if let Some(y_rot) = flying.y_rot {
-            pose.rotate(&Quaternion::rotation_y(y_rot));
+            pose.rotate_axis(Axis::YP, y_rot);
         }
     } else if placement.swim_amount > 0.0 {
         let target = if placement.in_water {
@@ -179,9 +181,7 @@ pub fn placement_pose(placement: &Placement) -> Pose {
             -90.0
         };
         let angle = 0.0 + placement.swim_amount * (target - 0.0);
-        pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-            angle,
-        )));
+        pose.rotate_axis(Axis::XP, Quaternion::degrees_to_radians(angle));
         if placement.visually_swimming {
             pose.translate(0.0, -1.0, 0.3);
         }
@@ -315,17 +315,11 @@ pub(crate) fn view_pose(view: &HandView) -> Pose {
         -(cos(angle) * view.bob).abs(),
         0.0,
     );
-    pose.rotate(&Quaternion::rotation_z(rad(sin(angle) * view.bob * 3.0)));
-    pose.rotate(&Quaternion::rotation_x(rad((cos(angle - 0.2) * view.bob)
-        .abs()
-        * 5.0)));
+    pose.rotate_axis(Axis::ZP, rad(sin(angle) * view.bob * 3.0));
+    pose.rotate_axis(Axis::XP, rad((cos(angle - 0.2) * view.bob).abs() * 5.0));
     // The hand trails the view.
-    pose.rotate(&Quaternion::rotation_x(rad(
-        (view.view_x_rot - view.x_bob) * 0.1
-    )));
-    pose.rotate(&Quaternion::rotation_y(rad(
-        (view.view_y_rot - view.y_bob) * 0.1
-    )));
+    pose.rotate_axis(Axis::XP, rad((view.view_x_rot - view.x_bob) * 0.1));
+    pose.rotate_axis(Axis::YP, rad((view.view_y_rot - view.y_bob) * 0.1));
     pose
 }
 
@@ -438,19 +432,15 @@ pub(crate) fn player_arm_pose(
         y_swing + -0.6 + inverse_arm_height * -0.6,
         z_swing + -0.719_999_97,
     );
-    pose.rotate(&Quaternion::rotation_y(rad(invert * 45.0)));
+    pose.rotate_axis(Axis::YP, rad(invert * 45.0));
     let z_swing_rotation = sin(attack * attack * pi);
     let y_swing_rotation = sin(sqrt_attack * pi);
-    pose.rotate(&Quaternion::rotation_y(rad(invert
-        * y_swing_rotation
-        * 70.0)));
-    pose.rotate(&Quaternion::rotation_z(rad(invert
-        * z_swing_rotation
-        * -20.0)));
+    pose.rotate_axis(Axis::YP, rad(invert * y_swing_rotation * 70.0));
+    pose.rotate_axis(Axis::ZP, rad(invert * z_swing_rotation * -20.0));
     pose.translate(-invert, 3.6, 3.5);
-    pose.rotate(&Quaternion::rotation_z(rad(invert * 120.0)));
-    pose.rotate(&Quaternion::rotation_x(rad(200.0)));
-    pose.rotate(&Quaternion::rotation_y(rad(invert * -135.0)));
+    pose.rotate_axis(Axis::ZP, rad(invert * 120.0));
+    pose.rotate_axis(Axis::XP, rad(200.0));
+    pose.rotate_axis(Axis::YP, rad(invert * -135.0));
     pose.translate(invert * 5.6, 0.0, 0.0);
 }
 

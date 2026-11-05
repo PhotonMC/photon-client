@@ -11,7 +11,7 @@ use crate::entity::textures::{TextureRect, uv};
 use crate::joml::{Pose, Quaternion};
 
 use crate::entity::player_model::{
-    ModelVertex, Part, PlayerRenderState, SwingAnimation, humanoid_anim, rot_lerp_rad,
+    ModelVertex, Part, PlayerRenderState, humanoid_anim, rot_lerp_rad,
 };
 
 use crate::scene::Vertex;

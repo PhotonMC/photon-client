@@ -9,7 +9,7 @@ use photon_render::entity::mob_model::{
     mob_vertices_posed,
 };
 use photon_render::entity::textures::EntityTextures;
-use photon_render::joml::{Pose, Quaternion};
+use photon_render::joml::{Axis, Pose, Quaternion};
 use photon_render::objects::crystal_beam::{crystal_beam, crystal_beam_triangles};
 use photon_render::objects::dragon_rays::dragon_rays;
 use photon_render::scene::Vertex;
@@ -61,8 +61,8 @@ fn pose_of(state: &EnderDragonRenderState, feet: [f32; 3]) -> Pose {
     let radians = Quaternion::degrees_to_radians;
     let mut pose = Pose::default();
     pose.translate(feet[0], feet[1], feet[2]);
-    pose.rotate(&Quaternion::rotation_y(radians(-y_rot)));
-    pose.rotate(&Quaternion::rotation_x(radians(climb * 10.0)));
+    pose.rotate_axis(Axis::YP, radians(-y_rot));
+    pose.rotate_axis(Axis::XP, radians(climb * 10.0));
     pose.translate(0.0, 0.0, 1.0);
     pose.scale(-1.0, -1.0, 1.0);
     pose.translate(0.0, -1.501, 0.0);

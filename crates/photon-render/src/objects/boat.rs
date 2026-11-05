@@ -5,7 +5,7 @@ use photon_core::math::mth_sin_f64;
 
 use crate::entity::mob_model::MobModel;
 use crate::entity::textures::{TextureRect, uv};
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 use crate::scene::Vertex;
 
 /// What a boat's model is posed and placed from (`BoatRenderState`).
@@ -29,12 +29,16 @@ pub fn boat_pose(base: &Pose, state: &BoatRenderState) -> Pose {
     let mut pose = *base;
     let degrees = Quaternion::degrees_to_radians;
     pose.translate(0.0, 0.375, 0.0);
-    pose.rotate(&Quaternion::rotation_y(degrees(180.0 - state.y_rot)));
+    pose.rotate_axis(Axis::YP, degrees(180.0 - state.y_rot));
     let hurt = state.hurt_time;
     if hurt > 0.0 {
-        pose.rotate(&Quaternion::rotation_x(degrees(
-            mth_sin_f64(f64::from(hurt)) * hurt * state.damage_time / 10.0 * state.hurt_dir as f32,
-        )));
+        pose.rotate_axis(
+            Axis::XP,
+            degrees(
+                mth_sin_f64(f64::from(hurt)) * hurt * state.damage_time / 10.0
+                    * state.hurt_dir as f32,
+            ),
+        );
     }
     // `Mth.equal`: closer than a hundred thousandth.
     if !state.is_under_water && (state.bubble_angle - 0.0).abs() >= 1.0E-5 {
@@ -46,7 +50,7 @@ pub fn boat_pose(base: &Pose, state: &BoatRenderState) -> Pose {
         ));
     }
     pose.scale(-1.0, -1.0, 1.0);
-    pose.rotate(&Quaternion::rotation_y(degrees(90.0)));
+    pose.rotate_axis(Axis::YP, degrees(90.0));
     pose
 }
 

@@ -239,6 +239,7 @@ pub(super) fn humanoid_pose(
         swim_amount: snapshot.swim_amount,
         attack_time: snapshot.attack_time,
         attack_arm,
+        current_swing: snapshot.attack_time > 0.0,
         right_arm_pose,
         left_arm_pose,
         main_arm: if main_left { Arm::Left } else { Arm::Right },

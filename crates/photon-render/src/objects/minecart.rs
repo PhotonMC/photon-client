@@ -4,7 +4,7 @@
 
 use photon_core::math::mth_sin_f64;
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 
 /// What a minecart is placed from (`MinecartRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -64,15 +64,19 @@ pub fn minecart_poses(base: &Pose, state: &MinecartRenderState) -> MinecartPoses
     }
     let hurt = state.hurt_time;
     if hurt > 0.0 {
-        pose.rotate(&Quaternion::rotation_x(degrees(
-            mth_sin_f64(f64::from(hurt)) * hurt * state.damage_time / 10.0 * state.hurt_dir as f32,
-        )));
+        pose.rotate_axis(
+            Axis::XP,
+            degrees(
+                mth_sin_f64(f64::from(hurt)) * hurt * state.damage_time / 10.0
+                    * state.hurt_dir as f32,
+            ),
+        );
     }
     // The carried block: three quarters size, lowered, a quarter turn.
     let mut block = pose;
     block.scale(0.75, 0.75, 0.75);
     block.translate(-0.5, (state.display_offset - 8) as f32 / 16.0, 0.5);
-    block.rotate(&Quaternion::rotation_y(degrees(90.0)));
+    block.rotate_axis(Axis::YP, degrees(90.0));
     if let Some(swell) = state.block_swell {
         // `TntMinecartRenderer.submitMinecartContents`.
         block.translate(-swell * 0.5, 0.0, -swell * 0.5);
@@ -86,8 +90,8 @@ pub fn minecart_poses(base: &Pose, state: &MinecartRenderState) -> MinecartPoses
 /// `AbstractMinecartRenderer.newRender`: turned by the playback's turns alone.
 fn new_render(pose: &mut Pose, state: &MinecartRenderState) {
     let degrees = Quaternion::degrees_to_radians;
-    pose.rotate(&Quaternion::rotation_y(degrees(state.y_rot)));
-    pose.rotate(&Quaternion::rotation_z(degrees(-state.x_rot)));
+    pose.rotate_axis(Axis::YP, degrees(state.y_rot));
+    pose.rotate_axis(Axis::ZP, degrees(-state.x_rot));
     pose.translate(0.0, 0.375, 0.0);
 }
 
@@ -120,8 +124,8 @@ fn old_render(pose: &mut Pose, state: &MinecartRenderState) {
         }
     }
     pose.translate(0.0, 0.375, 0.0);
-    pose.rotate(&Quaternion::rotation_y(degrees(180.0 - rotation)));
-    pose.rotate(&Quaternion::rotation_z(degrees(-x_rot)));
+    pose.rotate_axis(Axis::YP, degrees(180.0 - rotation));
+    pose.rotate_axis(Axis::ZP, degrees(-x_rot));
 }
 
 /// `TntRenderer.getSwellAmount`: how far a block of primed tnt has swollen, at this long to its blast.
@@ -147,8 +151,8 @@ pub fn primed_tnt_pose(base: &Pose, fuse: f32) -> Pose {
         let scale = 1.0 + tnt_swell_amount(fuse);
         pose.scale(scale, scale, scale);
     }
-    pose.rotate(&Quaternion::rotation_y(degrees(-90.0)));
+    pose.rotate_axis(Axis::YP, degrees(-90.0));
     pose.translate(-0.5, -0.5, 0.5);
-    pose.rotate(&Quaternion::rotation_y(degrees(90.0)));
+    pose.rotate_axis(Axis::YP, degrees(90.0));
     pose
 }

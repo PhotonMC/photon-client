@@ -27,6 +27,7 @@ pub(super) fn player_model_case(request: &Value) -> Result<Value, String> {
             } else {
                 Arm::Right
             },
+            current_swing: true,
             swim_amount: bits(row, "swim_amount")?,
             crouching: flag(row, "crouching"),
             spectator: flag(row, "spectator"),

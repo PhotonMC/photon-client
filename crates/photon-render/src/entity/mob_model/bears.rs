@@ -5,9 +5,10 @@ use super::*;
 /// sitting tip (and the frightened shake) and lying on the back.
 pub(super) fn panda_rotate(pose: &mut Pose, panda: &PandaRotation) {
     let rotate_x = |pose: &mut Pose, degrees: f32| {
-        pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-            degrees,
-        )));
+        pose.rotate_axis(
+            crate::joml::Axis::XP,
+            Quaternion::degrees_to_radians(degrees),
+        );
     };
     if panda.roll_time > 0.0 {
         let transition = panda.roll_time - panda.roll_time.floor();
@@ -66,9 +67,7 @@ pub(super) fn panda_rotate(pose: &mut Pose, panda: &PandaRotation) {
             let shake = (f64::from(panda.age_in_ticks * 1.25).cos()
                 * std::f64::consts::PI
                 * f64::from(0.05_f32)) as f32;
-            pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-                shake,
-            )));
+            pose.rotate_axis(crate::joml::Axis::YP, Quaternion::degrees_to_radians(shake));
             if panda.baby {
                 pose.translate(0.0, 0.8, 0.55);
             }

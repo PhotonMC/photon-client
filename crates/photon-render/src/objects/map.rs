@@ -1,7 +1,7 @@
 //! A map drawn (`MapRenderer.render`): its 128 by 128 quad, then each decoration's sprite, turned
 //! and placed by its place on the map, each a little in front of the one before.
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 
 /// The side of a map in units of its own quad.
 pub const MAP_SIZE: f32 = 128.0;
@@ -63,9 +63,10 @@ pub fn map_quads(pose: &Pose, decorations: &[DecorationDraw], show_only_frame: b
             f32::from(decoration.y) / 2.0 + 64.0,
             -0.02,
         );
-        at.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-            (i32::from(decoration.rot) * 360) as f32 / 16.0,
-        )));
+        at.rotate_axis(
+            Axis::ZP,
+            Quaternion::degrees_to_radians((i32::from(decoration.rot) * 360) as f32 / 16.0),
+        );
         at.scale(4.0, 4.0, 3.0);
         at.translate(-0.125, 0.125, 0.0);
         let z = count as f32 * -0.001;

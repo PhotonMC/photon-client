@@ -1,7 +1,7 @@
 //! The conduit's shell (`ConduitRenderer`): the shell of a sleeping one, and the cage, the two
 //! turning winds and the eye of a waking one, each with the pose it is drawn from.
 
-use crate::joml::{Pose, Quaternion, normalize};
+use crate::joml::{Axis, Pose, Quaternion, normalize};
 use photon_core::math::mth_sin_f64;
 
 /// The sprites under `textures/`, in the block atlas (`ConduitRenderer.MAPPER`).
@@ -107,9 +107,7 @@ pub fn pieces(base: &Pose, frame: &ConduitFrame, orientation: &Quaternion) -> Ve
     if !frame.active {
         let mut pose = *base;
         pose.translate(0.5, 0.5, 0.5);
-        pose.rotate(&Quaternion::rotation_y(
-            frame.active_rotation * degrees_to_radians(),
-        ));
+        pose.rotate_axis(Axis::YP, frame.active_rotation * degrees_to_radians());
         return vec![(Piece::Shell, pose)];
     }
     let rotation = frame.active_rotation * (180.0 / pi);
@@ -128,8 +126,8 @@ pub fn pieces(base: &Pose, frame: &ConduitFrame, orientation: &Quaternion) -> Ve
     let mut wind = *base;
     wind.translate(0.5, 0.5, 0.5);
     match frame.phase {
-        1 => wind.rotate(&Quaternion::rotation_x(half)),
-        2 => wind.rotate(&Quaternion::rotation_z(half)),
+        1 => wind.rotate_axis(Axis::XP, half),
+        2 => wind.rotate_axis(Axis::ZP, half),
         _ => {}
     }
     let kind = Piece::Wind {

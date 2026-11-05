@@ -3,7 +3,7 @@
 
 use crate::entity::player_model::{Arm, ArmPose, Part, SwingAnimation};
 use crate::entity::spear_animation::{third_person_attack_item, third_person_use_item};
-use crate::joml::{Matrix4, Pose, Quaternion};
+use crate::joml::{Axis, Matrix4, Pose, Quaternion};
 use photon_data::spear::{FORWARD_MOVEMENT, Spear};
 
 /// What a hand's item does besides being held (`ItemInHandLayer.submitArmWithItem` after the
@@ -166,9 +166,7 @@ pub fn held_to_eye_pose(base: &Pose, root: &Part, head: &Part, side: Arm) -> Pos
     tilted.x_rot = head.x_rot.clamp((-pi / 6.0) as f32, (pi / 2.0) as f32);
     tilted.translate_and_rotate(&mut pose);
     pose.translate(0.0, -0.25, 0.0);
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        180.0,
-    )));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(180.0));
     pose.scale(0.625, -0.625, -0.625);
     let out = if side == Arm::Left { -2.5 } else { 2.5 };
     pose.translate(out / 16.0, -0.0625, 0.0);
@@ -178,12 +176,8 @@ pub fn held_to_eye_pose(base: &Pose, root: &Part, head: &Part, side: Arm) -> Pos
 /// What `ItemInHandLayer.submitArmWithItem` does after the model has moved the
 /// pose to the hand: lay the item along the arm and into the palm.
 fn in_hand(pose: &mut Pose, left: bool, baby: bool) {
-    pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-        -90.0,
-    )));
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        180.0,
-    )));
+    pose.rotate_axis(Axis::XP, Quaternion::degrees_to_radians(-90.0));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(180.0));
     let (x, y, z) = if baby {
         (0.0, 1.0, -4.5)
     } else {
@@ -223,7 +217,7 @@ pub fn allay_hand_pose(
     root.translate_and_rotate(&mut pose);
     body.translate_and_rotate(&mut pose);
     pose.translate(0.0, 0.0625, 0.1875);
-    pose.rotate(&Quaternion::rotation_x(right_arm.x_rot));
+    pose.rotate_axis(Axis::XP, right_arm.x_rot);
     pose.scale(0.7, 0.7, 0.7);
     pose.translate(0.0625, 0.0, 0.0);
     in_hand(&mut pose, side == Arm::Left, false);
@@ -245,9 +239,10 @@ pub fn copper_golem_hand_pose(
     body.translate_and_rotate(&mut pose);
     arm.translate_and_rotate(&mut pose);
     if idle {
-        pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-            if left { 90.0 } else { -90.0 },
-        )));
+        pose.rotate_axis(
+            Axis::YP,
+            Quaternion::degrees_to_radians(if left { 90.0 } else { -90.0 }),
+        );
         pose.translate(0.0, 0.0, 0.125);
     } else {
         pose.scale(0.55, 0.55, 0.55);
@@ -268,9 +263,7 @@ pub fn copper_golem_head_pose(base: &Pose, (root, body, head): (&Part, &Part, &P
     pose.translate(0.0, 0.125, 0.0);
     pose.scale(1.0625, 1.0625, 1.0625);
     pose.translate(0.0, -0.25, 0.0);
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        180.0,
-    )));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(180.0));
     pose.scale(0.625, -0.625, -0.625);
     pose
 }
@@ -308,9 +301,7 @@ pub fn head_item_pose(
     root.translate_and_rotate(&mut pose);
     head.translate_and_rotate(&mut pose);
     pose.translate(0.0, -0.25 + y_offset, 0.0);
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        180.0,
-    )));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(180.0));
     pose.scale(0.625, -0.625, -0.625);
     pose
 }
@@ -322,10 +313,10 @@ pub fn crossed_arms_item_pose(base: &Pose, root: &Part, arms: &Part) -> Pose {
     let mut pose = *base;
     root.translate_and_rotate(&mut pose);
     arms.translate_and_rotate(&mut pose);
-    pose.rotate(&Quaternion::rotation_x(0.75));
+    pose.rotate_axis(Axis::XP, 0.75);
     pose.scale(1.07, 1.07, 1.07);
     pose.translate(0.0, 0.13, -0.34);
-    pose.rotate(&Quaternion::rotation_x(std::f64::consts::PI as f32));
+    pose.rotate_axis(Axis::XP, std::f64::consts::PI as f32);
     pose
 }
 
@@ -343,13 +334,9 @@ pub fn fox_item_pose(
     if baby {
         pose.scale(0.75, 0.75, 0.75);
     }
-    pose.rotate(&Quaternion::rotation_z(head_roll_angle));
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        y_rot,
-    )));
-    pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-        x_rot,
-    )));
+    pose.rotate_axis(Axis::ZP, head_roll_angle);
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(y_rot));
+    pose.rotate_axis(Axis::XP, Quaternion::degrees_to_radians(x_rot));
     let (x, y, z) = match (baby, sleeping) {
         (true, true) => (0.4, 0.26, 0.15),
         (true, false) => (0.06, 0.26, -0.5),
@@ -357,13 +344,9 @@ pub fn fox_item_pose(
         (false, false) => (0.06, 0.27, -0.5),
     };
     pose.translate(x, y, z);
-    pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-        90.0,
-    )));
+    pose.rotate_axis(Axis::XP, Quaternion::degrees_to_radians(90.0));
     if sleeping {
-        pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-            90.0,
-        )));
+        pose.rotate_axis(Axis::ZP, Quaternion::degrees_to_radians(90.0));
     }
     pose
 }

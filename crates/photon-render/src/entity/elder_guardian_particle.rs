@@ -2,7 +2,7 @@
 //! (`ElderGuardianParticleGroup.ElderGuardianParticleRenderState.fromParticle`). The camera's own
 //! rotation is [`super::name_tag::camera_orientation`].
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 
 /// The texture the model is drawn in (`ElderGuardianRenderer.GUARDIAN_ELDER_LOCATION`).
 pub const TEXTURE: &str = "entity/guardian/guardian_elder";
@@ -33,9 +33,10 @@ pub fn place(
         0.05 + 0.5 * photon_core::math::mth_sin_f64(f64::from(age_scale * std::f32::consts::PI));
     let mut pose = *base;
     pose.rotate(camera);
-    pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-        60.0 - 150.0 * age_scale,
-    )));
+    pose.rotate_axis(
+        Axis::XP,
+        Quaternion::degrees_to_radians(60.0 - 150.0 * age_scale),
+    );
     let scale = 0.425_531_92;
     pose.scale(scale, -scale, -scale);
     pose.translate(0.0, -0.56, 3.5);

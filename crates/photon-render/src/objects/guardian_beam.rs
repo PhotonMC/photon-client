@@ -5,7 +5,7 @@
 use photon_core::math::{mth_cos_f64, mth_sin_f64};
 
 use crate::entity::textures::{TextureRect, uv};
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 use crate::scene::Vertex;
 
 /// One vertex of the beam's geometry, placed.
@@ -51,12 +51,8 @@ pub fn guardian_beam(
     let x_rot = direction[1].acos() as f32;
     let y_rot = (std::f64::consts::PI / 2.0) as f32 - direction[2].atan2(direction[0]) as f32;
     let degrees = 180.0_f32 / std::f64::consts::PI as f32;
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        y_rot * degrees,
-    )));
-    pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-        x_rot * degrees,
-    )));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(y_rot * degrees));
+    pose.rotate_axis(Axis::XP, Quaternion::degrees_to_radians(x_rot * degrees));
     let rot = time_in_ticks * 0.05 * -1.5;
     let colour_scale = scale * scale;
     let colour = [

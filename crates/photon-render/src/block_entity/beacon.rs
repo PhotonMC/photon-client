@@ -2,7 +2,7 @@
 //! them out, and the cut that lets a texture that does not repeat in the atlas draw as one that
 //! does.
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 use photon_core::math::{floor_f32, frac_f32};
 
 /// The texture under `textures/` (`BeaconRenderer.BEAM_LOCATION`).
@@ -112,9 +112,10 @@ fn beacon_beam(
     let v_offset = frac_f32(scroll * 0.2 - floor_f32(scroll * 0.1) as f32);
     // The solid core, turned as the beam's clock turns it.
     let mut turned = pose;
-    turned.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        animation_time * 2.25 - 45.0,
-    )));
+    turned.rotate_axis(
+        Axis::YP,
+        Quaternion::degrees_to_radians(animation_time * 2.25 - 45.0),
+    );
     let r = solid_radius;
     let v2 = -1.0 + v_offset;
     let v1 = height as f32 * texture_scale * (0.5 / r) + v2;

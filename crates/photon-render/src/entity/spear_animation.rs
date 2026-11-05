@@ -4,7 +4,7 @@
 //! these animations use are here.
 
 use crate::entity::player_model::{Arm, Part};
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 use photon_core::math::{mth_cos_f64, mth_sin_f64};
 use photon_data::spear::{FORWARD_MOVEMENT, Spear};
 
@@ -179,8 +179,8 @@ pub struct HandUse<'a> {
     pub fall_flying_or_swimming: bool,
     pub ticks_using_item: f32,
     pub is_using_item: bool,
-    /// Whether the hand using the item is the main hand.
-    pub use_item_main_hand: bool,
+    /// Whether the arm of the hand using the item is the arm being posed.
+    pub using_arm_holds: bool,
 }
 
 /// `SpearAnimations.thirdPersonHandUse`: the arm that holds a spear is raised with it, turned
@@ -201,10 +201,9 @@ pub fn third_person_hand_use(
     let to_degrees = 180.0 / PI;
     arm.y_rot = DEG * (to_degrees * arm.y_rot).clamp(-60.0, 60.0);
     arm.x_rot = DEG * (to_degrees * arm.x_rot).clamp(-120.0, 30.0);
-    // The reference tests against the hand the main hand's side holds in, not the main arm.
     // `!(ticks <= 0)`: a time that is not a number counts as used.
     let used = state.ticks_using_item > 0.0 || state.ticks_using_item.is_nan();
-    let in_use = used && (!state.is_using_item || state.use_item_main_hand == holding_in_right_arm);
+    let in_use = used && (!state.is_using_item || state.using_arm_holds);
     let Some(spear) = state.spear.filter(|_| in_use) else {
         return;
     };
@@ -338,9 +337,10 @@ pub fn first_person_attack(pose: &mut Pose, attack: f32, invert: f32) {
         -0.075 * (start - end),
         0.65 * (start - middle),
     );
-    pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-        -70.0 * (start - end),
-    )));
+    pose.rotate_axis(
+        Axis::XP,
+        Quaternion::degrees_to_radians(-70.0 * (start - end)),
+    );
     pose.translate(0.0, 0.0, (-0.25 * f64::from(end - middle)) as f32);
 }
 

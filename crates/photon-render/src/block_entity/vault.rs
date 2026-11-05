@@ -1,6 +1,6 @@
 //! The item a vault shows (`VaultRenderer`): turning above its keyhole while it is active.
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Axis, Pose, Quaternion};
 use crate::objects::item::{ModelExtent, cluster_poses, rendered_amount, seed_for_stack};
 use photon_core::ids::ItemId;
 use photon_core::math::mth_rot_lerp_f32;
@@ -20,9 +20,7 @@ pub fn item_poses(
 ) -> Vec<Pose> {
     let mut pose = *base;
     pose.translate(0.5, 0.4, 0.5);
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        spin,
-    )));
+    pose.rotate_axis(Axis::YP, Quaternion::degrees_to_radians(spin));
     cluster_poses(
         pose,
         rendered_amount(count),

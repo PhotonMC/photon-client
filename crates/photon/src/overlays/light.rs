@@ -529,6 +529,7 @@ pub(super) fn remote_render_state(
         crouching,
         attack_time: snapshot.attack_time,
         attack_arm,
+        current_swing: snapshot.attack_time > 0.0,
         swing_animation: spears.swing_animation,
         right_spear: spears.right,
         left_spear: spears.left,

@@ -3,19 +3,10 @@ use super::*;
 /// `HumanoidModel.setupAnim`'s swimming arms and legs.
 pub(super) fn swim(root: &mut Part, state: &PlayerRenderState, pi: f32) {
     let swim_amount = state.swim_amount;
+    swim_head(root, state);
     let position = state.walk_position;
     let swim_position = position % 26.0;
-    let swinging = |arm: Arm| state.attack_arm == arm && state.attack_time > 0.0;
-    let right_amount = if state.right_arm_pose == ArmPose::Spear || swinging(Arm::Right) {
-        0.0
-    } else {
-        swim_amount
-    };
-    let left_amount = if state.left_arm_pose == ArmPose::Spear || swinging(Arm::Left) {
-        0.0
-    } else {
-        swim_amount
-    };
+    let (right_amount, left_amount) = arm_swim_amounts(state);
     let quadratic = |x: f32| -65.0 * x + x * x;
     let half_pi = (std::f64::consts::PI / 2.0) as f32;
     // Targets for the left arm (turned the short way) and the right arm.
@@ -87,4 +78,53 @@ pub(crate) fn rot_lerp_rad(alpha: f32, from: f32, to: f32) -> f32 {
         difference -= turn;
     }
     from + alpha * difference
+}
+
+/// `DrownedModel.setupSwimAnimation`: the arms reach forward and sway, the legs kick, the head
+/// stays level.
+pub(super) fn drowned_swim(root: &mut Part, state: &PlayerRenderState) {
+    let swim = state.swim_amount;
+    let age = state.age_in_ticks;
+    let sin = |value: f32| mth_sin_f64(f64::from(value));
+    let sway = swim * 0.35 * sin(0.1 * age);
+    let kick = swim * 0.55 * sin(0.1 * age);
+    let reach = (-std::f64::consts::PI * 4.0 / 5.0) as f32;
+    let right = root.child("right_arm");
+    right.x_rot = rot_lerp_rad(swim, right.x_rot, reach) + sway;
+    right.z_rot = rot_lerp_rad(swim, right.z_rot, -0.15);
+    let left = root.child("left_arm");
+    left.x_rot = rot_lerp_rad(swim, left.x_rot, reach) - sway;
+    left.z_rot = rot_lerp_rad(swim, left.z_rot, 0.15);
+    root.child("left_leg").x_rot -= kick;
+    root.child("right_leg").x_rot += kick;
+    root.child("head").x_rot = 0.0;
+}
+
+/// `setupSwimAnimation`: the head tips down unless gliding.
+fn swim_head(root: &mut Part, state: &PlayerRenderState) {
+    if !state.is_fall_flying {
+        let head = root.child("head");
+        head.x_rot = rot_lerp_rad(
+            state.swim_amount,
+            head.x_rot,
+            (-std::f64::consts::PI / 4.0) as f32,
+        );
+    }
+}
+
+/// How far each arm (right, left) joins the stroke: not the arm of a swing, nor one holding a
+/// spear.
+fn arm_swim_amounts(state: &PlayerRenderState) -> (f32, f32) {
+    let amount = |arm: Arm, pose: ArmPose| {
+        let swinging = state.current_swing && state.attack_arm == arm;
+        if pose == ArmPose::Spear || swinging {
+            0.0
+        } else {
+            state.swim_amount
+        }
+    };
+    (
+        amount(Arm::Right, state.right_arm_pose),
+        amount(Arm::Left, state.left_arm_pose),
+    )
 }

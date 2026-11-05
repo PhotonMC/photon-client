@@ -292,10 +292,7 @@ pub(super) fn setup_rotations_result(request: &Value) -> Result<Value, String> {
         };
         let flag = |key: &str| row[key].as_bool().ok_or(format!("{key} must be a bool"));
         let (baby, x_rot, age) = (flag("baby")?, bits("x_rot")?, bits("age_in_ticks")?);
-        let mut placed = MobPlacement {
-            body_rot: bits("body_rot")?,
-            ..MobPlacement::default()
-        };
+        let mut placed = MobPlacement::with_body(bits("body_rot")?, row.get("feet_x").is_none());
         let mut poses = Vec::new();
         let mut full_pose = None;
         let mut block_overlay = None;

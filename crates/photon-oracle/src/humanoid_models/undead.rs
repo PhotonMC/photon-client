@@ -29,13 +29,16 @@ pub(crate) fn piglin_model_result(request: &Value) -> Result<Value, String> {
         let id = row["layer"].as_str().ok_or("layer")?;
         let layer = photon_data::entity_model::layer(id).ok_or("no such layer")?;
         let mut model = MobModel::bake(layer);
+        let main_arm = if row["main_arm"].as_str() == Some("left") {
+            photon_render::entity::player_model::Arm::Left
+        } else {
+            photon_render::entity::player_model::Arm::Right
+        };
         model.setup_piglin(&PiglinState {
             humanoid: photon_render::entity::player_model::PlayerRenderState {
-                main_arm: if row["main_arm"].as_str() == Some("left") {
-                    photon_render::entity::player_model::Arm::Left
-                } else {
-                    photon_render::entity::player_model::Arm::Right
-                },
+                main_arm,
+                // The swing is of the main hand, whichever arm that is.
+                attack_arm: main_arm,
                 ticks_using_item: f32_field(row, "ticks_using_item")?,
                 max_crossbow_charge_duration: f32_field(row, "max_crossbow_charge")?,
                 ..humanoid_state(row)?
@@ -78,6 +81,7 @@ pub(crate) fn zombie_model_result(request: &Value) -> Result<Value, String> {
                 age_in_ticks: bits(row, "age_in_ticks")?,
                 attack_time: bits(row, "attack_time")?,
                 swim_amount: bits(row, "swim_amount")?,
+                current_swing: true,
                 ..Default::default()
             },
             aggressive: row["aggressive"].as_bool().ok_or("aggressive")?,
