@@ -231,7 +231,7 @@ fn with_sounds(operation: &str, mut result: Value) -> Value {
 
 /// The extracted reference assets.
 fn assets_root() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.data/minecraft/assets/jar/assets")
+    crate::jar_root().join("assets")
 }
 
 pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {

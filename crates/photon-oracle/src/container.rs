@@ -49,8 +49,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
     let traits = std::sync::Arc::new(vanilla_enchantment_traits());
     let item_tags = std::sync::Arc::new(vanilla_item_tags()?);
     let lang = std::sync::Arc::new(photon_game::text::Lang::load(
-        &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../.data/minecraft/assets/jar/assets"),
+        &crate::jar_root().join("assets"),
     ));
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
@@ -145,8 +144,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
 
 /// The vanilla enchantments, in network order, as the data pack has them.
 fn vanilla_enchantment_entries() -> Vec<photon_game::registries::EnchantmentEntry> {
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
+    let data_root = crate::jar_root().join("data");
     photon_game::registries::Registries::vanilla(&data_root).enchantments
 }
 
@@ -160,8 +158,7 @@ fn vanilla_enchantments() -> Vec<String> {
 
 /// What menus read of the vanilla enchantments.
 fn vanilla_enchantment_traits() -> Vec<photon_game::menus::container::EnchantmentTraits> {
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
+    let data_root = crate::jar_root().join("data");
     photon_game::menus::container::EnchantmentTraits::of(
         &photon_game::registries::Registries::vanilla(&data_root),
     )

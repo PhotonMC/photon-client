@@ -303,8 +303,7 @@ fn present_component_names() -> Vec<&'static str> {
 
 pub(super) fn item_declarations(label: &str) -> Value {
     let classes = item_classes();
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
+    let data_root = crate::jar_root().join("data");
     let registries = photon_game::registries::Registries::vanilla(&data_root);
     let items: Vec<Value> = crate::case_ids::items()
         .map(|item| {
@@ -424,8 +423,7 @@ pub(super) fn potions(label: &str) -> Value {
 pub(super) fn tooltip_registries(label: &str) -> Value {
     use photon_data::item::attributes::ATTRIBUTES;
     use photon_game::registries::{DescribedEntry, Registries};
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
+    let data_root = crate::jar_root().join("data");
     let registries = Registries::vanilla(&data_root);
     let component =
         |value: &Option<photon_core::json::JsonValue>| value.as_ref().map_or(Value::Null, serde_of);

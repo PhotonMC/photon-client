@@ -124,8 +124,7 @@ pub(super) fn palette_permutation_result(request: &Value) -> Result<Value, Strin
 /// `trim_sprite_id`: the picture a pattern in a material takes on an armor's layer.
 pub(super) fn trim_sprite_id_result(request: &Value) -> Result<Value, String> {
     use photon_render::entity::trim::TrimData;
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
+    let data_root = crate::jar_root().join("data");
     let data = TrimData::load(&data_root);
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
@@ -183,9 +182,7 @@ pub(super) fn image_result(request: &Value) -> Result<Value, String> {
         let mut out = Vec::with_capacity(rows.len());
         for row in rows {
             // Test glue: the texture from the local copy of the pinned jar.
-            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../.data/minecraft/assets/jar")
-                .join(string(row, "texture")?);
+            let path = crate::jar_root().join(string(row, "texture")?);
             let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
             let image =
                 photon_render::texture::png::decode_rgba(&bytes).map_err(|e| format!("{e:?}"))?;
@@ -249,8 +246,7 @@ pub(super) fn image_result(request: &Value) -> Result<Value, String> {
 
 /// `sprite_ids`: the names of the sprites an atlas definition lists in the game's assets.
 fn sprite_ids_result(request: &Value) -> Result<Value, String> {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/assets");
+    let root = crate::jar_root().join("assets");
     let rows = request["rows"]
         .as_array()
         .ok_or("atlas rows must be an array")?;

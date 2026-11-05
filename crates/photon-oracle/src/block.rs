@@ -260,8 +260,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
             "potions" => out.push(potions(label)),
             "creative_tabs" => {
                 use photon_data::item::creative_tabs::{CREATIVE_TABS, DEFAULT_TAB, TabKind};
-                let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                    .join("../../.data/minecraft/assets/jar/data");
+                let data_root = crate::jar_root().join("data");
                 let registries = photon_game::registries::Registries::vanilla(&data_root);
                 let stack = |entry: &photon_data::item::creative::CreativeStack| {
                     crate::creative_op::stack_json(entry, &registries)

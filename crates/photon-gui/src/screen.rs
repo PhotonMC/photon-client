@@ -13,7 +13,7 @@ pub mod credits_attribution;
 pub mod death;
 pub mod debug_options;
 pub mod dialog;
-mod dialog_body;
+pub(crate) mod dialog_body;
 mod dialog_input;
 mod faces;
 pub mod friends;

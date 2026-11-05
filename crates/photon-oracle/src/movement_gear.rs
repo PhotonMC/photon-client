@@ -320,8 +320,7 @@ pub(super) fn hold_main_hand(
 
 /// The instruments of the vanilla data pack, by registry id.
 pub(super) fn vanilla_instruments() -> Vec<Option<photon_game::item::instrument::Instrument>> {
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
+    let data_root = crate::jar_root().join("data");
     photon_game::item::instrument::instruments_of(&photon_game::registries::Registries::vanilla(
         &data_root,
     ))
@@ -329,8 +328,7 @@ pub(super) fn vanilla_instruments() -> Vec<Option<photon_game::item::instrument:
 
 /// Which enchantments of the vanilla data pack carry the trident spin attack effect, by registry id.
 pub(super) fn vanilla_spin_attack() -> Vec<Option<photon_game::registries::SpinStrength>> {
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
+    let data_root = crate::jar_root().join("data");
     photon_game::registries::Registries::vanilla(&data_root)
         .enchantments
         .iter()
@@ -340,8 +338,7 @@ pub(super) fn vanilla_spin_attack() -> Vec<Option<photon_game::registries::SpinS
 
 /// Which enchantments of the vanilla data pack stop armor from being taken off, by registry id.
 pub(super) fn vanilla_prevents_armor_change() -> Vec<bool> {
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
+    let data_root = crate::jar_root().join("data");
     photon_game::registries::Registries::vanilla(&data_root)
         .enchantments
         .iter()

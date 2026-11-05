@@ -198,8 +198,7 @@ fn vanilla_registries() -> &'static photon_game::registries::Registries {
     static REGISTRIES: std::sync::OnceLock<photon_game::registries::Registries> =
         std::sync::OnceLock::new();
     REGISTRIES.get_or_init(|| {
-        let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../.data/minecraft/assets/jar/data");
+        let data_root = crate::jar_root().join("data");
         photon_game::registries::Registries::vanilla(&data_root)
     })
 }

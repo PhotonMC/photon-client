@@ -306,9 +306,7 @@ pub(super) fn vanilla_tags_of(
         }
         Ok(())
     }
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data/minecraft/tags")
-        .join(folder);
+    let root = crate::jar_root().join("data/minecraft/tags").join(folder);
     let mut names = Vec::new();
     walk(&root, &root, &mut names)?;
     names.sort();

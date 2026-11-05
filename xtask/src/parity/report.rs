@@ -16,7 +16,7 @@ pub fn run(families: &[String], args: &[String]) -> Result<(), String> {
         return Err(format!("unknown report option `{other}`"));
     }
     let mut counts = Counts::new();
-    for case in cases::generate(families, "", &|_| Ok(String::new()))? {
+    for case in cases::generate(families, "", &|_| Ok(String::new()), None)? {
         let value: serde_json::Value =
             serde_json::from_str(&case.line).map_err(|error| error.to_string())?;
         let operation = value["operation"].as_str().unwrap_or("?").to_owned();

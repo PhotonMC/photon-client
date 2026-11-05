@@ -147,7 +147,7 @@ pub(super) fn body_layout(
 }
 
 /// `GuiGraphicsExtractor.outline` in white.
-pub(super) fn outline(frame: &mut GuiFrame, atlas: &GuiAtlas, rect: Rectangle) {
+pub(crate) fn outline(frame: &mut GuiFrame, atlas: &GuiAtlas, rect: Rectangle) {
     let Rectangle {
         x,
         y,

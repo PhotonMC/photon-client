@@ -4,7 +4,7 @@ use photon_game::menus::container::ContainerMenu;
 use photon_world::block::tags::OrderedTags;
 
 fn data_root() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.data/minecraft/assets/jar/data")
+    crate::jar_root().join("data")
 }
 
 /// The entries a banner pattern tag lists, in the file's order.

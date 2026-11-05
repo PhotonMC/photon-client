@@ -10,7 +10,7 @@ const REGISTRIES: &[&str] =
     &["item", "block", "block_state", "entity_type", "sound_event", "particle_type", "menu", "block_entity_type"];
 
 /// The versions the oracle can capture; a new one adds its value and its oracle build.
-const VERSIONS: &[&str] = &["26.2"];
+const VERSIONS: &[&str] = &["26.2", "26.3"];
 
 pub fn cases() -> Vec<Value> {
     VERSIONS

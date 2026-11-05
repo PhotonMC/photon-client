@@ -21,7 +21,7 @@ pub(super) fn biome_names() -> Result<Vec<String>, String> {
 }
 
 fn data_root() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.data/minecraft/assets/jar/data")
+    crate::jar_root().join("data")
 }
 
 /// The number of the biome a row's scene is in (the plains where it says nothing).

@@ -24,10 +24,7 @@ fn value_id(stat_type: &str, name: &str) -> Result<i32, String> {
 }
 
 fn vanilla_registries() -> photon_game::registries::Registries {
-    photon_game::registries::Registries::vanilla(
-        &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../.data/minecraft/assets/jar/data"),
-    )
+    photon_game::registries::Registries::vanilla(&crate::jar_root().join("data"))
 }
 
 /// A stack's tooltip as the screen asks for it: with a player, in the default language.

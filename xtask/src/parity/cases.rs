@@ -23,6 +23,7 @@ pub fn generate(
     families: &[String],
     environment: &str,
     family_digest: &dyn Fn(&str) -> Result<String, String>,
+    version: Option<&str>,
 ) -> Result<Vec<Case>, String> {
     let mut sorted = families.to_vec();
     sorted.sort();
@@ -33,6 +34,9 @@ pub fn generate(
             parity_cases::lines(family).ok_or(format!("no case generator for family {family}"))?;
         let family_key = family_digest(family)?;
         for line in lines {
+            if !applies_to(&line, version) {
+                continue;
+            }
             let case = case(family, &family_key, environment, line)?;
             if !ids.insert(case.id.clone()) {
                 return Err(format!("duplicate case id {}", case.id));
@@ -44,6 +48,18 @@ pub fn generate(
         return Err("no cases were generated".to_owned());
     }
     Ok(cases)
+}
+
+/// Whether a case belongs to the version under test: a case naming a `version` is captured from
+/// that version's jar only.
+fn applies_to(line: &str, version: Option<&str>) -> bool {
+    let named = serde_json::from_str::<serde_json::Value>(line)
+        .ok()
+        .and_then(|value| value["version"].as_str().map(str::to_owned));
+    match (named, version) {
+        (Some(named), Some(version)) => named == version,
+        _ => true,
+    }
 }
 
 fn case(family: &str, family_key: &str, environment: &str, line: String) -> Result<Case, String> {

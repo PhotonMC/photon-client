@@ -6,8 +6,7 @@ use super::*;
 pub(super) fn tooltip_lines_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     use photon_game::tooltip::{Context, Flags, MapInfo, lines};
     let lang = photon_game::text::Lang::load(&ctx.root);
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
+    let data_root = crate::jar_root().join("data");
     let registries = photon_game::registries::Registries::vanilla(&data_root);
     let stack = row_stack(row)?;
     let map = row.get("map").map(|map| MapInfo {
@@ -63,8 +62,7 @@ pub(super) fn tooltip_lines_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
 pub(super) fn bundle_tooltip_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     use photon_game::tooltip::{Context, Flags, lines};
     let lang = photon_game::text::Lang::load(&ctx.root);
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
+    let data_root = crate::jar_root().join("data");
     let registries = photon_game::registries::Registries::vanilla(&data_root);
     let mut stack = row_stack(row)?;
     if let Some(selected) = row["selected"].as_i64() {

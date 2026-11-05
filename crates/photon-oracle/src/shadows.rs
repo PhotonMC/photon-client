@@ -9,8 +9,7 @@ const LOCAL_NAME: &str = "Parity";
 /// submitted for it, with the viewer the scene names.
 pub(super) fn name_tags_result(request: &Value) -> Result<Value, String> {
     use photon_render::entity::name_tag::{Viewer, name_tag};
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/assets");
+    let root = crate::jar_root().join("assets");
     let font = crate::fonts::load_font(&root).ok_or("font")?;
     let lang = photon_game::text::Lang::load(&root);
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;

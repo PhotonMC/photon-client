@@ -104,8 +104,7 @@ pub(super) fn entity_pick_table_result(request: &Value) -> Value {
 /// (plains, no weather, the clocks at zero), with the lightning flash on or off.
 pub(super) fn sky_flash_result(request: &Value) -> Result<Value, String> {
     use photon_render::sky::{Attribute, Environment, Value as Attr, Weather};
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
+    let data_root = crate::jar_root().join("data");
     let mut biomes: Vec<String> = std::fs::read_dir(data_root.join("minecraft/worldgen/biome"))
         .map_err(|error| error.to_string())?
         .filter_map(|entry| {

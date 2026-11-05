@@ -49,8 +49,7 @@ pub(super) fn stack_json(
 /// The operator tab for a player who can use game master blocks, what it gives the search tab,
 /// and the search tab's whole list then.
 pub(super) fn operator_tabs(label: &str) -> Value {
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
+    let data_root = crate::jar_root().join("data");
     let registries = photon_game::registries::Registries::vanilla(&data_root);
     let stacks = |entries: &[CreativeStack]| -> Vec<Value> {
         entries

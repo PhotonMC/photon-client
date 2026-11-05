@@ -79,7 +79,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         families = FAMILIES.iter().map(|family| (*family).to_owned()).collect();
     }
     if print_cases {
-        for case in cases::generate(&families, "", &|_| Ok(String::new()))? {
+        for case in cases::generate(&families, "", &|_| Ok(String::new()), None)? {
             println!("{}", case.line);
         }
         return Ok(());
@@ -159,8 +159,40 @@ fn runtime() -> PathBuf {
     process::root().join(".data/minecraft/runtime")
 }
 
-fn assets() -> PathBuf {
+/// The client jar's `assets` of `version`: its own extraction when there is one, the shared one
+/// otherwise.
+fn assets(version: &str) -> PathBuf {
+    let own = process::root().join(format!(".data/minecraft/assets/jar-{version}/assets"));
+    if own.is_dir() {
+        return own;
+    }
     process::root().join(".data/minecraft/assets/jar/assets")
+}
+
+/// Captures `missing` cases from Java into the store.
+fn capture_missing(
+    missing: &[&Case],
+    pins: &pins::Pins,
+    classpath: &[PathBuf],
+    jdk: &java::Jdk,
+    store: &mut store::Store,
+) -> Result<(), String> {
+    if missing.is_empty() {
+        return Ok(());
+    }
+    println!("parity: capturing {} cases from Java", missing.len());
+    let joined = join_paths(classpath);
+    let classes = jdk.compile(&pins.all_sources()?, &joined)?;
+    let oracle = capture::Oracle {
+        jdk,
+        classes: &classes,
+        classpath: &joined,
+        assets: &assets(&pins.version),
+    };
+    for (family, key, record) in capture::capture(&oracle, missing)? {
+        store.insert(&family, key, record);
+    }
+    Ok(())
 }
 
 /// Captures what is missing, then compares the adapter on `families`.
@@ -173,27 +205,19 @@ pub fn compare(families: &[String], recapture: bool, version: Option<&str>) -> R
     let classpath = pins.classpath(&runtime())?;
     let jdk = java::Jdk::find(pins.java_major)?;
     let environment = environment(&pins, &jdk);
-    let cases = cases::generate(families, &environment, &|family| pins.family_digest(family))?;
+    let cases = cases::generate(
+        families,
+        &environment,
+        &|family| pins.family_digest(family),
+        Some(&pins.version),
+    )?;
     let mut store = store::Store::open(&pins.version);
     store.load(families)?;
     let missing: Vec<&Case> = cases
         .iter()
         .filter(|case| recapture || store.get(&case.key).is_none())
         .collect();
-    if !missing.is_empty() {
-        println!("parity: capturing {} cases from Java", missing.len());
-        let joined = join_paths(&classpath);
-        let classes = jdk.compile(&pins.all_sources()?, &joined)?;
-        let oracle = capture::Oracle {
-            jdk: &jdk,
-            classes: &classes,
-            classpath: &joined,
-            assets: &assets(),
-        };
-        for (family, key, record) in capture::capture(&oracle, &missing)? {
-            store.insert(&family, key, record);
-        }
-    }
+    capture_missing(&missing, &pins, &classpath, &jdk, &mut store)?;
     store.save(&keys_in_use(&cases))?;
     let stamp = pass_stamp(&cases)?;
     if !recapture && passed_before(&pins.version, &stamp) {
@@ -203,7 +227,7 @@ pub fn compare(families: &[String], recapture: bool, version: Option<&str>) -> R
         );
         return Ok(());
     }
-    let failures = adapter_failures(&cases, &store)?;
+    let failures = adapter_failures(&cases, &store, &pins.version)?;
     let seconds = started.elapsed().as_secs_f32();
     if failures.is_empty() {
         println!("parity: {} cases passed in {seconds:.1}s", cases.len());
@@ -265,6 +289,7 @@ fn keys_in_use(cases: &[Case]) -> BTreeMap<String, Vec<String>> {
 fn adapter_failures<'a>(
     cases: &'a [Case],
     store: &store::Store,
+    version: &str,
 ) -> Result<Vec<(&'a Case, String)>, String> {
     process::run(
         "cargo",
@@ -278,7 +303,7 @@ fn adapter_failures<'a>(
     )?;
     let mut command =
         std::process::Command::new(process::root().join("target/release/photon-oracle"));
-    command.env("PHOTON_ASSETS", assets());
+    command.env("PHOTON_ASSETS", assets(version));
     let input: String = cases
         .iter()
         .map(|case| format!("{}\n", case.line))

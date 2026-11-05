@@ -343,8 +343,7 @@ pub(super) fn armor_stand_model_result(request: &Value) -> Result<Value, String>
 /// layers of each for the humanoid layer types.
 pub(super) fn equipment_layers_result() -> Result<Value, String> {
     use photon_render::entity::equipment::parse_equipment_info;
-    let folder = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/assets/minecraft/equipment");
+    let folder = crate::jar_root().join("assets/minecraft/equipment");
     let mut names: Vec<String> = std::fs::read_dir(&folder)
         .map_err(|error| error.to_string())?
         .filter_map(|entry| Some(entry.ok()?.file_name().to_str()?.to_owned()))
