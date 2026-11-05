@@ -143,8 +143,8 @@ pub(super) fn container_lines(values: &Values, registries: &Registries, out: &mu
             out.push(Component::translatable_with(
                 "item.container.item_count",
                 vec![
-                    hover_name(&stack, &inner),
                     Component::literal(stack.item_count().to_string()),
+                    hover_name(&stack, &inner),
                 ],
             ));
         }
