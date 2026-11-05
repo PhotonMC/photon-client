@@ -1,6 +1,7 @@
-//! The world settings screen (`WorldOptionsScreen`): the game rules, the difficulty with its lock,
-//! and the restrictions, between a title and Done. Photon has no integrated server, so the game
-//! mode and allow-commands buttons never exist and the difficulty can never be changed here.
+//! The world settings screen (`WorldOptionsScreen`): a General header over the difficulty with its
+//! lock, the game rules and the restrictions, between a title and the footer's Apply Changes and
+//! Cancel. Photon has no integrated server, so the game mode, allow-commands and multiplayer
+//! options never exist; the difficulty and its lock are the server's to change, by the gamemaster.
 
 use std::cell::Cell;
 
@@ -11,6 +12,7 @@ use crate::layout::{Arena, Grid, Item, Settings, horizontal, place_in_frame};
 use crate::options::text::generic_value;
 use crate::tooltip::{Holder, Pending};
 use crate::widgets::navigation::Rectangle;
+use crate::widgets::scroll_area::Place;
 use crate::widgets::slider::{InputType, SliderKey};
 use crate::widgets::{Kind, Widget};
 use photon_render::gui::font::Font;
@@ -18,8 +20,10 @@ use photon_render::gui::{GuiAtlas, GuiFrame};
 
 /// `HeaderAndFooterLayout.DEFAULT_HEADER_AND_FOOTER_HEIGHT`.
 const BAR: i32 = 33;
-/// `CONTENT_MARGIN_TOP`.
-const CONTENT_MARGIN_TOP: i32 = 30;
+/// The padding of the content's cells (`defaultCellSetting().padding(8)`).
+const CONTENT_PADDING: i32 = 8;
+/// `FocusableTextWidget.DEFAULT_PADDING`.
+const HEADER_PADDING: i32 = 4;
 
 /// What the server told the client about the world.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,16 +53,24 @@ impl Default for WorldFacts {
 pub enum WorldPress {
     GameRules,
     Restrictions,
+    /// Apply Changes: the difficulty wanted (if it changed) and whether it is locked now.
+    Apply {
+        difficulty: Option<u8>,
+        lock: bool,
+    },
+    /// Cancel.
     Done,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Part {
-    GameRules,
+    General,
     Difficulty,
     Lock,
+    GameRules,
     Restrictions,
-    Done,
+    Apply,
+    Cancel,
 }
 
 pub struct WorldOptionsScreen {
@@ -69,9 +81,13 @@ pub struct WorldOptionsScreen {
     title: Widget,
     /// The widgets in the order the screen adds them (the order Tab goes through).
     widgets: Vec<(Part, Widget)>,
+    /// The text inside the General header's widget.
+    general: Widget,
     tooltips: Vec<Option<Holder>>,
     focus: Option<usize>,
     input: Cell<InputType>,
+    /// The difficulty and the lock as the buttons have them now.
+    wanted: (u8, bool),
 }
 
 fn runs(lang: &Lang, key: &str) -> Vec<Run> {
@@ -83,57 +99,88 @@ fn difficulty_key(id: u8) -> &'static str {
     ["peaceful", "easy", "normal", "hard"][usize::from(id.min(3))]
 }
 
-/// The buttons, in the order the screen adds them. There is no integrated server: nothing is
-/// hardcore here, the difficulty is the server's to change and the game rules wait for the
-/// gamemaster permission.
-fn widgets(arena: &mut Arena, lang: &Lang, facts: WorldFacts) -> Vec<(Part, Widget)> {
+/// The difficulty button's label for a difficulty.
+fn difficulty_label(lang: &Lang, id: u8) -> Vec<Run> {
     let label = generic_value(
         &Component::translatable("options.difficulty"),
-        Component::translatable(format!(
-            "options.difficulty.{}",
-            difficulty_key(facts.difficulty)
-        )),
+        Component::translatable(format!("options.difficulty.{}", difficulty_key(id))),
     );
+    lang.runs(&label, &Style::default())
+}
+
+/// The buttons that change the difficulty are active for a gamemaster, unless it is locked.
+fn difficulty_active(facts: WorldFacts) -> bool {
+    facts.gamemaster && !facts.locked && !facts.hardcore
+}
+
+/// What the difficulty button and its lock are made of.
+fn difficulty_pair(lang: &Lang, facts: WorldFacts) -> [(Part, (i32, i32), bool, Kind); 2] {
+    let active = difficulty_active(facts);
+    let label = difficulty_label(lang, facts.difficulty);
+    let locked = facts.locked || facts.hardcore;
+    [
+        (Part::Difficulty, (130, 20), active, Kind::Button { label }),
+        (Part::Lock, (20, 20), active, Kind::Lock { locked }),
+    ]
+}
+
+/// The widgets, in the order the screen adds them, with each one's size.
+fn widgets(
+    arena: &mut Arena,
+    lang: &Lang,
+    facts: WorldFacts,
+    general: &[Run],
+) -> Vec<(Part, Widget)> {
     let button = |key: &str| Kind::Button {
         label: runs(lang, key),
     };
-    let lock = Kind::Lock {
-        locked: facts.locked || facts.hardcore,
+    let header = Kind::Text {
+        text: general.to_vec(),
     };
-    // `difficultyButton.setWidth(width - lockButton.getWidth())`.
-    let difficulty = Kind::Button {
-        label: lang.runs(&label, &Style::default()),
-    };
-    [
+    let header_width = Font::default().width_of_runs(general) + 2 * HEADER_PADDING;
+    let general = (
+        Part::General,
+        (header_width, 9 + 2 * HEADER_PADDING),
+        true,
+        header,
+    );
+    let rest = [
         (
             Part::GameRules,
             (150, 20),
-            facts.gamemaster,
+            facts.gamemaster && !facts.hardcore,
             button("editGamerule.inGame.button"),
         ),
-        (Part::Difficulty, (130, 20), false, difficulty),
-        (Part::Lock, (20, 20), false, lock),
         (
             Part::Restrictions,
             (150, 20),
             true,
             button("restrictions_screen.button"),
         ),
-        (Part::Done, (200, 20), true, button("gui.done")),
-    ]
-    .into_iter()
-    .map(|(part, (width, height), active, kind)| {
-        let rect = arena.add(width, height);
-        (part, Widget { rect, active, kind })
-    })
-    .collect()
+        (
+            Part::Apply,
+            (150, 20),
+            false,
+            button("menu.multiplayerOptions.applyChanges"),
+        ),
+        (Part::Cancel, (150, 20), true, button("gui.cancel")),
+    ];
+    std::iter::once(general)
+        .chain(difficulty_pair(lang, facts))
+        .chain(rest)
+        .map(|(part, (width, height), active, kind)| {
+            let rect = arena.add(width, height);
+            (part, Widget { rect, active, kind })
+        })
+        .collect()
 }
 
-/// `repositionElements`: the title in the header, Done in the footer, and the grid of the
-/// buttons between, 30 under the header or as high as the footer lets it.
+/// `repositionElements`: the title in the header, the footer's two buttons, and the content's
+/// grid under the header with the cells' padding around it. Gives the General header's own text
+/// its place, 4 units inside the widget.
 fn arrange(
     arena: &mut Arena,
-    title: usize,
+    (title, general): (usize, usize),
     widgets: &[(Part, Widget)],
     (width, height): (i32, i32),
 ) {
@@ -148,18 +195,72 @@ fn arrange(
     let mut grid = Grid::new();
     grid.column_spacing = 8;
     grid.row_spacing = 4;
-    let cell = Settings::default();
-    grid.add_in_row(Item::Leaf(rect(Part::GameRules)), 2, 1, cell);
+    let cell = Settings::default().align_horizontally(0.5);
+    grid.add_in_row(Item::Leaf(rect(Part::General)), 2, 2, cell);
     grid.add_in_row(Item::Grid(Box::new(layout)), 2, 1, cell);
+    grid.add_in_row(Item::Leaf(rect(Part::GameRules)), 2, 1, cell);
     grid.add_in_row(Item::Leaf(rect(Part::Restrictions)), 2, 1, cell);
     grid.arrange(arena);
-    let (grid_width, grid_height) = (grid.width, grid.height);
+    // The content is a column of one cell with the padding around it, centred in the screen.
+    let area_width = grid.width + 2 * CONTENT_PADDING;
+    let at = (
+        width / 2 - area_width / 2 + CONTENT_PADDING,
+        BAR + CONTENT_PADDING,
+    );
+    let frame = (at.0, at.1, grid.width, grid.height);
+    place_in_frame(arena, Item::Grid(Box::new(grid)), frame, (0.0, 0.0));
     place_in_frame(arena, Item::Leaf(title), (0, 0, width, BAR), (0.5, 0.5));
-    let done = Item::Leaf(rect(Part::Done));
-    place_in_frame(arena, done, (0, height - BAR, width, BAR), (0.5, 0.5));
-    let top = (BAR + CONTENT_MARGIN_TOP).min(height - BAR - grid_height);
-    let frame = (0, top, width.max(grid_width), grid_height);
-    place_in_frame(arena, Item::Grid(Box::new(grid)), frame, (0.5, 0.5));
+    let apply = rect(Part::Apply);
+    let mut footer = horizontal(arena, &[apply, rect(Part::Cancel)], 8);
+    footer.arrange(arena);
+    let frame = (0, height - BAR, width, BAR);
+    place_in_frame(arena, Item::Grid(Box::new(footer)), frame, (0.5, 0.5));
+    let outer = arena.0[rect(Part::General)];
+    arena.0[general].x = outer.x + HEADER_PADDING;
+    arena.0[general].y = outer.y + HEADER_PADDING;
+}
+
+/// The key of the tooltip that says why the difficulty buttons are off.
+fn difficulty_disabled(facts: WorldFacts) -> Option<&'static str> {
+    if !facts.gamemaster {
+        Some("options.worldOptions.difficulty.disabled.operator.tooltip")
+    } else if facts.locked {
+        Some("options.worldOptions.difficulty.disabled.locked.tooltip")
+    } else if facts.hardcore {
+        Some("options.worldOptions.difficulty.disabled.hardcore.tooltip")
+    } else {
+        None
+    }
+}
+
+/// The key of the tooltip that says why the game rules button is off.
+fn rules_disabled(facts: WorldFacts) -> Option<&'static str> {
+    if facts.hardcore {
+        Some("editGamerule.inGame.disabled.hardcore.tooltip")
+    } else if !facts.gamemaster {
+        Some("editGamerule.inGame.disabled.tooltip")
+    } else {
+        None
+    }
+}
+
+/// The key of the tooltip that says why a widget is off, for the facts.
+fn disabled_key(part: Part, facts: WorldFacts) -> Option<&'static str> {
+    match part {
+        Part::Difficulty => difficulty_disabled(facts),
+        Part::GameRules => rules_disabled(facts),
+        _ => None,
+    }
+}
+
+/// The tooltip of each widget that has one, for the facts.
+fn tooltips(lang: &Lang, widgets: &[(Part, Widget)], facts: WorldFacts) -> Vec<Option<Holder>> {
+    widgets
+        .iter()
+        .map(|(part, _)| {
+            disabled_key(*part, facts).map(|key| Holder::of(lang, &Component::translatable(key)))
+        })
+        .collect()
 }
 
 impl WorldOptionsScreen {
@@ -178,19 +279,23 @@ impl WorldOptionsScreen {
             active: false,
             kind: Kind::Text { text },
         };
-        let widgets = widgets(&mut arena, lang, facts);
-        arrange(&mut arena, title.rect, &widgets, size);
-        let tooltips = widgets
-            .iter()
-            .map(|(part, widget)| {
-                (*part == Part::GameRules && !widget.active).then(|| {
-                    Holder::of(
-                        lang,
-                        &Component::translatable("editGamerule.inGame.disabled.tooltip"),
-                    )
-                })
-            })
-            .collect();
+        let style = Style {
+            bold: Some(true),
+            underlined: Some(true),
+            ..Style::default()
+        };
+        let general_text = lang.runs(
+            &Component::translatable("options.worldOptions.general.title"),
+            &style,
+        );
+        let widgets = widgets_of(&mut arena, lang, facts, (font, &general_text));
+        let general = Widget {
+            rect: arena.add(font.width_of_runs(&general_text), 9),
+            active: false,
+            kind: Kind::Text { text: general_text },
+        };
+        arrange(&mut arena, (title.rect, general.rect), &widgets, size);
+        let tooltips = tooltips(lang, &widgets, facts);
         Self {
             arena,
             size,
@@ -198,9 +303,11 @@ impl WorldOptionsScreen {
             facts,
             title,
             widgets,
+            general,
             tooltips,
             focus: None,
             input: Cell::new(InputType::Mouse),
+            wanted: (facts.difficulty, facts.locked || facts.hardcore),
         }
     }
 
@@ -222,6 +329,15 @@ impl WorldOptionsScreen {
         self.focus = focus;
     }
 
+    fn place(&self) -> Place {
+        Place {
+            y: BAR,
+            width: self.size.0,
+            height: self.size.1 - 2 * BAR,
+            in_world: self.in_world,
+        }
+    }
+
     pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
         let (width, height) = self.size;
         let background = if self.in_world {
@@ -230,28 +346,24 @@ impl WorldOptionsScreen {
             "menu_background"
         };
         frame.tile_texture(atlas, background, (32, 32), (0, 0, width, height));
+        let place = self.place();
+        place.draw_header_separator(frame, atlas);
+        place.draw_background(frame, atlas, 0.0);
         self.title.draw(frame, atlas, font, &self.arena, false);
         let mut pending: Option<Pending> = None;
-        for (index, (_, widget)) in self.widgets.iter().enumerate() {
+        for (index, (part, widget)) in self.widgets.iter().enumerate() {
+            if *part == Part::Apply {
+                place.draw_footer_separator(frame, atlas);
+            }
             let focused = self.focus == Some(index);
             let hovered = widget.contains(&self.arena, mouse);
-            widget.draw(frame, atlas, font, &self.arena, hovered || focused);
-            let Some(tooltip) = &self.tooltips[index] else {
-                continue;
-            };
-            let rect = self.arena.0[widget.rect];
-            let rectangle = Rectangle {
-                x: rect.x,
-                y: rect.y,
-                width: rect.width,
-                height: rect.height,
-            };
-            if let Some(asked) = tooltip.refresh(
-                frame.millis,
-                (hovered, focused),
-                self.input.get(),
-                rectangle,
-            ) && (pending.is_none() || focused)
+            if *part == Part::General {
+                self.draw_general(frame, atlas, font, focused);
+            } else {
+                widget.draw(frame, atlas, font, &self.arena, hovered || focused);
+            }
+            if let Some(asked) = self.ask_tooltip(index, frame.millis, (hovered, focused))
+                && (pending.is_none() || focused)
             {
                 pending = Some(asked);
             }
@@ -261,26 +373,109 @@ impl WorldOptionsScreen {
         }
     }
 
-    fn press(&mut self, index: usize) -> Option<WorldPress> {
+    /// The widget's area in the screen.
+    fn area(&self, widget: &Widget) -> Rectangle {
+        let rect = self.arena.0[widget.rect];
+        Rectangle {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+        }
+    }
+
+    /// What the tooltip of the widget at `index` asks to show now, if it has one.
+    fn ask_tooltip(&self, index: usize, millis: u64, state: (bool, bool)) -> Option<Pending> {
+        let tooltip = self.tooltips[index].as_ref()?;
+        let area = self.area(&self.widgets[index].1);
+        tooltip.refresh(millis, state, self.input.get(), area)
+    }
+
+    /// The General header: its text, in a black box with a white border while it has the focus.
+    fn draw_general(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, focused: bool) {
+        if focused {
+            let area = self.area(&self.widgets[0].1);
+            frame.fill(
+                atlas,
+                (
+                    area.x + 1,
+                    area.y,
+                    area.x + area.width,
+                    area.y + area.height,
+                ),
+                0xFF00_0000,
+            );
+            crate::screen::dialog_body::outline(frame, atlas, area);
+        }
+        self.general.draw(frame, atlas, font, &self.arena, false);
+    }
+
+    /// Whether a widget can take the focus or a press: the General header always can.
+    fn focusable(part: Part, widget: &Widget) -> bool {
+        part == Part::General || widget.is_active()
+    }
+
+    /// Whether the difficulty or the lock differ from what the server said.
+    fn has_changes(&self) -> bool {
+        self.wanted
+            != (
+                self.facts.difficulty,
+                self.facts.locked || self.facts.hardcore,
+            )
+    }
+
+    /// Apply Changes is active while something differs.
+    fn refresh_apply(&mut self) {
+        let changed = self.has_changes();
+        if let Some((_, widget)) = self
+            .widgets
+            .iter_mut()
+            .find(|(part, _)| *part == Part::Apply)
+        {
+            widget.active = changed;
+        }
+    }
+
+    /// A press of the widget at `index`, going `step` through the difficulties.
+    fn press(&mut self, lang: &Lang, index: usize, step: i32) -> Option<WorldPress> {
         crate::ui_sound::play_down_sound();
         match self.widgets[index].0 {
             Part::GameRules => Some(WorldPress::GameRules),
             Part::Restrictions => Some(WorldPress::Restrictions),
-            Part::Done => Some(WorldPress::Done),
-            Part::Difficulty | Part::Lock => None,
+            Part::Cancel => Some(WorldPress::Done),
+            Part::Apply => Some(WorldPress::Apply {
+                difficulty: (self.wanted.0 != self.facts.difficulty).then_some(self.wanted.0),
+                lock: self.wanted.1,
+            }),
+            Part::Difficulty => {
+                self.wanted.0 = (i32::from(self.wanted.0) + step).rem_euclid(4) as u8;
+                self.widgets[index].1.kind = Kind::Button {
+                    label: difficulty_label(lang, self.wanted.0),
+                };
+                self.refresh_apply();
+                None
+            }
+            Part::Lock => {
+                self.wanted.1 = !self.wanted.1;
+                self.widgets[index].1.kind = Kind::Lock {
+                    locked: self.wanted.1,
+                };
+                self.refresh_apply();
+                None
+            }
+            Part::General => None,
         }
     }
 
     /// A press of the primary button at `mouse`.
-    pub fn clicked(&mut self, _lang: &Lang, mouse: (f64, f64), _shift: bool) -> Option<WorldPress> {
+    pub fn clicked(&mut self, lang: &Lang, mouse: (f64, f64), shift: bool) -> Option<WorldPress> {
         self.input.set(InputType::Mouse);
         let mouse = (mouse.0 as i32, mouse.1 as i32);
-        let index = self
-            .widgets
-            .iter()
-            .position(|(_, widget)| widget.is_active() && widget.contains(&self.arena, mouse))?;
+        let index = self.widgets.iter().position(|(part, widget)| {
+            Self::focusable(*part, widget) && widget.contains(&self.arena, mouse)
+        })?;
         self.focus = Some(index);
-        self.press(index)
+        self.press(lang, index, if shift { -1 } else { 1 })
     }
 
     /// Tab (and Shift+Tab): the focus goes to the next active widget.
@@ -291,7 +486,8 @@ impl WorldOptionsScreen {
         let mut at = self.focus.unwrap_or(if forward { count - 1 } else { 0 });
         for _ in 0..count {
             at = (at + step) % count;
-            if self.widgets[at].1.is_active() {
+            let (part, widget) = &self.widgets[at];
+            if Self::focusable(*part, widget) {
                 self.focus = Some(at);
                 return;
             }
@@ -299,19 +495,15 @@ impl WorldOptionsScreen {
     }
 
     /// Enter or Space: the focused button.
-    pub fn key_pressed(
-        &mut self,
-        _lang: &Lang,
-        key: SliderKey,
-        _shift: bool,
-    ) -> Option<WorldPress> {
+    pub fn key_pressed(&mut self, lang: &Lang, key: SliderKey, shift: bool) -> Option<WorldPress> {
         if key != SliderKey::Select {
             return None;
         }
-        let index = self
-            .focus
-            .filter(|&index| self.widgets[index].1.is_active())?;
-        self.press(index)
+        let index = self.focus.filter(|&index| {
+            let (part, widget) = &self.widgets[index];
+            Self::focusable(*part, widget)
+        })?;
+        self.press(lang, index, if shift { -1 } else { 1 })
     }
 
     /// The screen has no mouse drag.
@@ -319,12 +511,26 @@ impl WorldOptionsScreen {
 
     pub fn released(&mut self, _lang: &Lang) {}
 
-    /// The screen has no list to scroll.
+    /// The content has no more than it shows.
     pub fn scrolled(&mut self, _mouse: (f64, f64), _scroll_y: f64) {}
 
     pub fn scroll_amount(&self) -> f64 {
         0.0
     }
+}
+
+/// The widgets for a screen, the header's width from the font.
+fn widgets_of(
+    arena: &mut Arena,
+    lang: &Lang,
+    facts: WorldFacts,
+    (font, general): (&Font, &[Run]),
+) -> Vec<(Part, Widget)> {
+    let mut all = widgets(arena, lang, facts, general);
+    // The header is as wide as its text and the padding around it.
+    let (_, header) = &mut all[0];
+    arena.0[header.rect].width = font.width_of_runs(general) + 2 * HEADER_PADDING;
+    all
 }
 
 #[cfg(test)]
@@ -343,12 +549,12 @@ mod tests {
         WorldOptionsScreen::new(&font, &lang, (427, 240), true, facts)
     }
 
-    /// The centre of the Game Rules button.
-    fn game_rules(screen: &WorldOptionsScreen) -> (f64, f64) {
+    /// The centre of a button.
+    fn centre(screen: &WorldOptionsScreen, wanted: Part) -> (f64, f64) {
         let (_, widget) = screen
             .widgets
             .iter()
-            .find(|(part, _)| *part == Part::GameRules)
+            .find(|(part, _)| *part == wanted)
             .expect("the screen has the button");
         let rect = screen.arena.0[widget.rect];
         (
@@ -360,10 +566,26 @@ mod tests {
     #[test]
     fn a_gamemasters_button_is_active_in_the_reference_screen() {
         let mut screen = screen(gamemaster());
-        let at = game_rules(&screen);
+        let at = centre(&screen, Part::GameRules);
         assert_eq!(
             screen.clicked(&Lang::default(), at, false),
             Some(WorldPress::GameRules)
+        );
+    }
+
+    #[test]
+    fn a_new_difficulty_makes_apply_changes_active() {
+        let mut screen = screen(gamemaster());
+        let lang = Lang::default();
+        let at = centre(&screen, Part::Difficulty);
+        assert_eq!(screen.clicked(&lang, at, false), None);
+        let at = centre(&screen, Part::Apply);
+        assert_eq!(
+            screen.clicked(&lang, at, false),
+            Some(WorldPress::Apply {
+                difficulty: Some(3),
+                lock: false,
+            })
         );
     }
 }

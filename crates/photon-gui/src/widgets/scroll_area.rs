@@ -91,6 +91,28 @@ impl Place {
         );
     }
 
+    /// The line above the list.
+    pub fn draw_header_separator(&self, frame: &mut GuiFrame, atlas: &GuiAtlas) {
+        frame.blit_texture(
+            atlas,
+            &self.texture("header_separator"),
+            (32, 2),
+            (0, 0),
+            (0, self.y - 2, self.width, 2),
+        );
+    }
+
+    /// The line below the list.
+    pub fn draw_footer_separator(&self, frame: &mut GuiFrame, atlas: &GuiAtlas) {
+        frame.blit_texture(
+            atlas,
+            &self.texture("footer_separator"),
+            (32, 2),
+            (0, 0),
+            (0, self.bottom(), self.width, 2),
+        );
+    }
+
     /// `extractListSeparators` and `extractScrollbar`: the lines above and
     /// below the list, and the bar at `bar_x` if the list is longer than it
     /// shows.
@@ -101,20 +123,8 @@ impl Place {
         (scroll, content_height): (f64, i32),
         bar_x: i32,
     ) {
-        frame.blit_texture(
-            atlas,
-            &self.texture("header_separator"),
-            (32, 2),
-            (0, 0),
-            (0, self.y - 2, self.width, 2),
-        );
-        frame.blit_texture(
-            atlas,
-            &self.texture("footer_separator"),
-            (32, 2),
-            (0, 0),
-            (0, self.bottom(), self.width, 2),
-        );
+        self.draw_header_separator(frame, atlas);
+        self.draw_footer_separator(frame, atlas);
         self.draw_scrollbar(frame, atlas, bar_x, scroll, content_height);
     }
 
