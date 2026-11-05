@@ -287,7 +287,10 @@ impl Cursor<'_> {
             }
             1 => self.holder_set(),
             2 => Ok(()),
-            3 => self.float(),
+            3 => {
+                self.float()?;
+                self.directional_particles()
+            }
             4 => self.sound(),
             _ => Err(Malformed),
         }

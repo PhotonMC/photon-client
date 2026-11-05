@@ -55,7 +55,7 @@ const fn particle(
 }
 
 /// Every particle type, in the order of the ids the wire carries.
-pub const PARTICLE_TYPES: [ParticleType; 125] = [
+pub const PARTICLE_TYPES: [ParticleType; 128] = [
     particle("angry_villager", false, true, false),
     particle("block", false, false, true),
     particle("block_marker", true, false, true),
@@ -99,6 +99,9 @@ pub const PARTICLE_TYPES: [ParticleType; 125] = [
     particle("infested", false, true, false),
     particle("cherry_leaves", false, true, false),
     particle("pale_oak_leaves", false, true, false),
+    particle("red_poplar_leaves", false, true, false).since(Version::V26_3),
+    particle("orange_poplar_leaves", false, true, false).since(Version::V26_3),
+    particle("yellow_poplar_leaves", false, true, false).since(Version::V26_3),
     particle("tinted_leaves", false, false, false),
     particle("sculk_soul", false, true, false),
     particle("sculk_charge", true, false, false),

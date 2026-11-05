@@ -269,7 +269,7 @@
 "crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 14
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 14
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 19
-"crates/photon-oracle/src/block.rs::block_result" = 39
+"crates/photon-oracle/src/block.rs::block_result" = 37
 "crates/photon-oracle/src/blockpos.rs::key_mapping_result" = 12
 "crates/photon-oracle/src/blockpos.rs::toggle_key_mapping_result" = 12
 "crates/photon-oracle/src/boat_ticks.rs::client_world_entity_boat_tick_result" = 16
@@ -392,7 +392,7 @@
 "crates/photon-world/src/block/culling.rs::skip_rendering" = 12
 "crates/photon-world/src/block/fluid.rs::fluid_state" = 11
 "crates/photon-world/src/block/rules.rs::stairs_shape" = 16
-"crates/photon-world/src/block/shape_rules/singles/outline/furniture.rs::outline" = 49
+"crates/photon-world/src/block/shape_rules/singles/outline/furniture.rs::outline" = 48
 "crates/photon-world/src/block/shape_rules/singles/outline/mounts.rs::outline" = 27
 "crates/photon-world/src/block/shape_rules/singles/outline/plants.rs::outline" = 65
 "crates/photon-world/src/block/shape_rules/singles/outline/redstone.rs::outline" = 25
@@ -630,7 +630,7 @@
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 182
 "crates/photon-oracle/src/animal_models.rs::shaking_rotations_result" = 95
 "crates/photon-oracle/src/animation.rs::copper_golem_layers_result" = 70
-"crates/photon-oracle/src/block.rs::block_result" = 372
+"crates/photon-oracle/src/block.rs::block_result" = 341
 "crates/photon-oracle/src/blockpos.rs::key_mapping_result" = 121
 "crates/photon-oracle/src/blockpos.rs::toggle_key_mapping_result" = 138
 "crates/photon-oracle/src/blockstate.rs::model_state_result" = 62
@@ -738,7 +738,6 @@
 "crates/photon-oracle/src/strider.rs::setup_rotations_result" = 163
 "crates/photon-oracle/src/strider.rs::villager_held_layers_result" = 88
 "crates/photon-oracle/src/timer.rs::binary_result" = 284
-"crates/photon-oracle/src/tooltip.rs::item_declarations" = 67
 "crates/photon-oracle/src/tooltip.rs::tooltip_registries" = 89
 "crates/photon-oracle/src/transform.rs::client_world_entity_tick_result" = 78
 "crates/photon-oracle/src/transform.rs::client_world_entity_ticking_eligibility_result" = 107
@@ -809,7 +808,7 @@
 "crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 210
 "crates/photon-render/src/vulkan/scene.rs::VulkanBackend::load_atlas" = 94
 "crates/photon-render/src/vulkan/texture.rs::VulkanBackend::upload_texture" = 105
-"crates/photon-world/src/block/shape_rules/singles/outline/furniture.rs::outline" = 216
+"crates/photon-world/src/block/shape_rules/singles/outline/furniture.rs::outline" = 202
 "crates/photon-world/src/block/shape_rules/singles/outline/mounts.rs::outline" = 186
 "crates/photon-world/src/block/shape_rules/singles/outline/plants.rs::outline" = 147
 "crates/photon-world/src/block/shape_rules/singles/outline/redstone.rs::outline" = 129

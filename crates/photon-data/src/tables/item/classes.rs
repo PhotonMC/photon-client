@@ -44,6 +44,7 @@ pub enum ItemClass {
     BoneMealItem,
     BedItem,
     MapItem,
+    CushionItem,
     ShearsItem,
     EnderpearlItem,
     BottleItem,
@@ -84,7 +85,7 @@ pub enum ItemClass {
 
 impl ItemClass {
     /// Every class, in the order the registry first reaches them.
-    pub const ALL: [Self; 72] = [
+    pub const ALL: [Self; 73] = [
         Self::AirItem,
         Self::Item,
         Self::BlockItem,
@@ -100,11 +101,7 @@ impl ItemClass {
         Self::BowItem,
         Self::ProjectileWeaponItem,
         Self::ArrowItem,
-        Self::ShovelItem,
-        Self::AxeItem,
-        Self::HoeItem,
         Self::HangingEntityItem,
-        Self::SignItem,
         Self::HangingSignItem,
         Self::BucketItem,
         Self::SolidBucketItem,
@@ -113,13 +110,13 @@ impl ItemClass {
         Self::EggItem,
         Self::CompassItem,
         Self::BundleItem,
+        Self::CushionItem,
         Self::FishingRodItem,
         Self::SpyglassItem,
         Self::InkSacItem,
         Self::GlowInkSacItem,
         Self::DyeItem,
         Self::BoneMealItem,
-        Self::BedItem,
         Self::MapItem,
         Self::ShearsItem,
         Self::EnderpearlItem,
@@ -157,6 +154,11 @@ impl ItemClass {
         Self::HoneycombItem,
         Self::BrushItem,
         Self::SmithingTemplateItem,
+        Self::ShovelItem,
+        Self::AxeItem,
+        Self::HoeItem,
+        Self::SignItem,
+        Self::BedItem,
     ];
 
     /// The class this one extends; `None` for `Item`.
@@ -198,6 +200,7 @@ impl ItemClass {
             Self::BoneMealItem => Some(Self::Item),
             Self::BedItem => Some(Self::BlockItem),
             Self::MapItem => Some(Self::Item),
+            Self::CushionItem => Some(Self::Item),
             Self::ShearsItem => Some(Self::Item),
             Self::EnderpearlItem => Some(Self::Item),
             Self::BottleItem => Some(Self::Item),
@@ -271,6 +274,7 @@ impl ItemClass {
             Self::SpyglassItem => &[ItemMethod::Use],
             Self::BoneMealItem => &[ItemMethod::UseOn],
             Self::MapItem => &[ItemMethod::UseOn],
+            Self::CushionItem => &[ItemMethod::UseOn],
             Self::ShearsItem => &[ItemMethod::UseOn],
             Self::EnderpearlItem => &[ItemMethod::Use],
             Self::BottleItem => &[ItemMethod::Use],

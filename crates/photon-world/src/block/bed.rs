@@ -10,7 +10,11 @@ pub fn bed_orientation(
     use photon_data::block::classes::BlockClass;
     let id = world.block_state_or_air(x, y, z);
     let block = super::state_or_air(id).block();
-    if !block.class.lineage().any(|own| own == BlockClass::BedBlock) {
+    if !block
+        .class
+        .lineage()
+        .any(|own| own == BlockClass::AbstractBedBlock)
+    {
         return None;
     }
     super::rules::property(id, "facing").and_then(Direction::from_name)

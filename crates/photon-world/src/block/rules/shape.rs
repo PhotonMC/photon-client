@@ -123,7 +123,7 @@ const RULES: [(BlockClass, Update); 32] = [
     (BlockClass::HangingMossBlock, |s, p, _, c| {
         Rule::Known(moss(s, p, c))
     }),
-    (BlockClass::BedBlock, |s, p, d, c| {
+    (BlockClass::AbstractBedBlock, |s, p, d, c| {
         Rule::Known(super::paired::bed(s, p, d, c))
     }),
     (BlockClass::CampfireBlock, |s, p, d, c| {

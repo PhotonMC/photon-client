@@ -49,19 +49,31 @@ impl<'a> Numbering<'a> {
         }
     }
 
+    /// What the version does with the teleport effect's flag.
+    fn flag(&self) -> Flag {
+        if self.registries.has_teleport_flag() {
+            Flag::Keep
+        } else if self.outgoing {
+            Flag::Drop
+        } else {
+            Flag::Insert
+        }
+    }
+
     /// Whether no id this reads changes, so the bytes can stay as they are.
     pub fn is_identity(&self) -> bool {
-        [
-            Site::ComponentType,
-            Site::Attribute,
-            Site::SoundEvent,
-            Site::Item,
-            Site::Block,
-            Site::EntityType,
-            Site::BlockEntityType,
-        ]
-        .iter()
-        .all(|site| self.map_of(*site).is_identity())
+        self.flag() == Flag::Keep
+            && [
+                Site::ComponentType,
+                Site::Attribute,
+                Site::SoundEvent,
+                Site::Item,
+                Site::Block,
+                Site::EntityType,
+                Site::BlockEntityType,
+            ]
+            .iter()
+            .all(|site| self.map_of(*site).is_identity())
     }
 }
 
@@ -73,7 +85,7 @@ pub fn read_wire_patch(input: &mut &[u8], registries: &VersionRegistries) -> R<P
     }
     let map = |site, id| numbering.map(site, id);
     let data: &[u8] = input;
-    let mut cursor = Cursor::rewriting(data, &map);
+    let mut cursor = Cursor::rewriting(data, &map, numbering.flag());
     let patch = cursor.patch()?;
     let left = cursor.data.len();
     *input = &data[data.len() - left..];
@@ -87,13 +99,25 @@ impl Patch {
         if numbering.is_identity() {
             return Some(self.delimited());
         }
+        Some(self.renumbered(numbering)?.write(true))
+    }
+
+    /// [`Self::trusted`] with every id numbered as `numbering` has it.
+    pub fn trusted_for(&self, numbering: &Numbering<'_>) -> Option<Vec<u8>> {
+        if numbering.is_identity() {
+            return Some(self.trusted());
+        }
+        Some(self.renumbered(numbering)?.write(false))
+    }
+
+    fn renumbered(&self, numbering: &Numbering<'_>) -> Option<Patch> {
         let map = |site, id| numbering.map(site, id);
         let mut wire = Patch {
             added: Vec::new(),
             removed: Vec::new(),
         };
         for (id, value) in &self.added {
-            let mut cursor = Cursor::rewriting(value, &map);
+            let mut cursor = Cursor::rewriting(value, &map, numbering.flag());
             cursor.component(*id).ok()?;
             if !cursor.data.is_empty() {
                 return None;
@@ -104,6 +128,6 @@ impl Patch {
         for id in &self.removed {
             wire.removed.push(numbering.map(Site::ComponentType, *id));
         }
-        Some(wire.write(true))
+        Some(wire)
     }
 }

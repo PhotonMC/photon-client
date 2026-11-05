@@ -252,6 +252,19 @@ struct Rewrite<'a> {
     map: &'a dyn Fn(Site, i32) -> i32,
     out: Vec<u8>,
     mark: &'a [u8],
+    flag: Flag,
+}
+
+/// What a rewrite does with the teleport effect's `directional_particles` flag, which only
+/// 26.3 and later send: the canonical form has it.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Flag {
+    /// The bytes already have it, or are not translated.
+    Keep,
+    /// The bytes lack it (an older server's): add it, set.
+    Insert,
+    /// The bytes must lack it (an older server reads them): remove it.
+    Drop,
 }
 
 pub struct Cursor<'a> {
@@ -268,15 +281,49 @@ impl<'a> Cursor<'a> {
     }
 
     /// A cursor that renumbers the ids it reads with `map`; [`Self::finish`] gives the bytes.
-    pub fn rewriting(data: &'a [u8], map: &'a dyn Fn(Site, i32) -> i32) -> Self {
+    pub fn rewriting(data: &'a [u8], map: &'a dyn Fn(Site, i32) -> i32, flag: Flag) -> Self {
         Self {
             data,
             rewrite: Some(Rewrite {
                 map,
                 out: Vec::new(),
                 mark: data,
+                flag,
             }),
         }
+    }
+
+    /// The teleport effect's `directional_particles` flag (26.3 and later); a rewrite for an
+    /// older version adds or drops it.
+    pub fn directional_particles(&mut self) -> R {
+        let before = self.data;
+        let flag = self
+            .rewrite
+            .as_ref()
+            .map_or(Flag::Keep, |rewrite| rewrite.flag);
+        if flag != Flag::Insert {
+            self.boolean()?;
+        }
+        let Some(rewrite) = &mut self.rewrite else {
+            return Ok(());
+        };
+        match flag {
+            Flag::Keep => {}
+            Flag::Insert => {
+                rewrite
+                    .out
+                    .extend_from_slice(&rewrite.mark[..rewrite.mark.len() - before.len()]);
+                rewrite.out.push(1);
+                rewrite.mark = self.data;
+            }
+            Flag::Drop => {
+                rewrite
+                    .out
+                    .extend_from_slice(&rewrite.mark[..rewrite.mark.len() - before.len()]);
+                rewrite.mark = self.data;
+            }
+        }
+        Ok(())
     }
 
     /// The bytes read so far, renumbered.

@@ -126,12 +126,16 @@ class BlockItemOracle extends BlockPropertyOracle {
                 net.minecraft.core.component.DataComponentPatch.STREAM_CODEC, patch, registries));
             described.addProperty("delimited", encodePatch(
                 net.minecraft.core.component.DataComponentPatch.DELIMITED_STREAM_CODEC, patch, registries));
-            var ids = new JsonArray();
+            // The patch splits its entries in a hash order that differs by run, so the ids
+            // are listed ascending.
+            var sortedIds = new java.util.TreeSet<Integer>();
             for (var component : Access26_3.patchEntries(patch)) {
                 if (!component.getKey().isTransient()) {
-                    ids.add(types.getId(component.getKey()));
+                    sortedIds.add(types.getId(component.getKey()));
                 }
             }
+            var ids = new JsonArray();
+            sortedIds.forEach(ids::add);
             described.add("components", ids);
             // Every type of the item's own components, transient ones too:
             // what ItemStack's component count starts from.

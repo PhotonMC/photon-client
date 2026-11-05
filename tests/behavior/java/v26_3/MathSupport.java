@@ -441,6 +441,12 @@ class MathSupport {
         public boolean isTickingEntity(Entity entity) {
             return true;
         }
+
+        /** The fixture has no tick rate manager; the normal rate of 20 gives 1. */
+        @Override
+        public float getRelativeTickSpeed() {
+            return 1.0F;
+        }
     }
 
     static Unsafe unsafeInstance() {

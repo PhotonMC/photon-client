@@ -84,3 +84,23 @@ pub(crate) fn wire_state(state: BlockStateId) -> i32 {
 pub(crate) fn wire_sound(sound: i32) -> i32 {
     registries().sound_events.wire_or_unknown(sound)
 }
+
+/// The class [`ORACLE_VERSION`]'s Java gives an item. The newest version moved what the axe,
+/// hoe, shovel, sign and bed classes did into item components, so its items are plain ones;
+/// the client keeps the classes as the kinds of behaviour they name.
+pub(crate) fn reference_class(
+    class: photon_data::item::classes::ItemClass,
+) -> photon_data::item::classes::ItemClass {
+    use photon_data::item::classes::ItemClass as C;
+    match class {
+        C::AxeItem | C::HoeItem | C::ShovelItem => C::Item,
+        C::SignItem => C::StandingAndWallBlockItem,
+        C::BedItem => C::BlockItem,
+        other => other,
+    }
+}
+
+/// Whether [`ORACLE_VERSION`]'s Java has the class.
+pub(crate) fn reference_has_class(class: photon_data::item::classes::ItemClass) -> bool {
+    reference_class(class) == class
+}

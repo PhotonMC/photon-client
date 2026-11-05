@@ -3,7 +3,7 @@
 //! This table is maintained by hand; the parity families compare it with the reference.
 
 #[rustfmt::skip]
-pub static SHADOWS: [(&str, f32, f32); 155] = [
+pub static SHADOWS: [(&str, f32, f32); 158] = [
     ("minecraft:acacia_boat", 0.8, 1.0),
     ("minecraft:acacia_chest_boat", 0.8, 1.0),
     ("minecraft:allay", 0.4, 1.0),
@@ -37,6 +37,7 @@ pub static SHADOWS: [(&str, f32, f32); 155] = [
     ("minecraft:cow", 0.7, 1.0),
     ("minecraft:creaking", 0.6, 1.0),
     ("minecraft:creeper", 0.5, 1.0),
+    ("minecraft:cushion", 0.0, 1.0),
     ("minecraft:dark_oak_boat", 0.8, 1.0),
     ("minecraft:dark_oak_chest_boat", 0.8, 1.0),
     ("minecraft:dolphin", 0.7, 1.0),
@@ -98,6 +99,8 @@ pub static SHADOWS: [(&str, f32, f32); 155] = [
     ("minecraft:ominous_item_spawner", 0.0, 1.0),
     ("minecraft:pale_oak_boat", 0.8, 1.0),
     ("minecraft:pale_oak_chest_boat", 0.8, 1.0),
+    ("minecraft:poplar_boat", 0.8, 1.0),
+    ("minecraft:poplar_chest_boat", 0.8, 1.0),
     ("minecraft:panda", 0.9, 1.0),
     ("minecraft:parched", 0.5, 1.0),
     ("minecraft:parrot", 0.3, 1.0),

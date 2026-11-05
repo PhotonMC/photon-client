@@ -35,7 +35,9 @@ pub enum BlockClass {
     HalfTransparentBlock,
     DispenserBlock,
     NoteBlock,
+    AbstractBedBlock,
     BedBlock,
+    StrawBedBlock,
     HorizontalDirectionalBlock,
     PoweredRailBlock,
     BaseRailBlock,
@@ -56,6 +58,7 @@ pub enum BlockClass {
     FlowerBlock,
     WitherRoseBlock,
     MushroomBlock,
+    ShelfMushroomBlock,
     TntBlock,
     ChiseledBookShelfBlock,
     ShelfBlock,
@@ -306,7 +309,7 @@ pub enum BlockClass {
 
 impl BlockClass {
     /// Every class, in the order the registry first reaches them.
-    pub const ALL: [Self; 294] = [
+    pub const ALL: [Self; 297] = [
         Self::AirBlock,
         Self::Block,
         Self::GrassBlock,
@@ -334,7 +337,9 @@ impl BlockClass {
         Self::HalfTransparentBlock,
         Self::DispenserBlock,
         Self::NoteBlock,
+        Self::AbstractBedBlock,
         Self::BedBlock,
+        Self::StrawBedBlock,
         Self::HorizontalDirectionalBlock,
         Self::PoweredRailBlock,
         Self::BaseRailBlock,
@@ -355,6 +360,7 @@ impl BlockClass {
         Self::FlowerBlock,
         Self::WitherRoseBlock,
         Self::MushroomBlock,
+        Self::ShelfMushroomBlock,
         Self::TntBlock,
         Self::ChiseledBookShelfBlock,
         Self::ShelfBlock,
@@ -634,7 +640,9 @@ impl BlockClass {
             Self::HalfTransparentBlock => Some(Self::Block),
             Self::DispenserBlock => Some(Self::BaseEntityBlock),
             Self::NoteBlock => Some(Self::Block),
-            Self::BedBlock => Some(Self::HorizontalDirectionalBlock),
+            Self::AbstractBedBlock => Some(Self::HorizontalDirectionalBlock),
+            Self::BedBlock => Some(Self::AbstractBedBlock),
+            Self::StrawBedBlock => Some(Self::AbstractBedBlock),
             Self::HorizontalDirectionalBlock => Some(Self::Block),
             Self::PoweredRailBlock => Some(Self::BaseRailBlock),
             Self::BaseRailBlock => Some(Self::Block),
@@ -655,6 +663,7 @@ impl BlockClass {
             Self::FlowerBlock => Some(Self::VegetationBlock),
             Self::WitherRoseBlock => Some(Self::FlowerBlock),
             Self::MushroomBlock => Some(Self::VegetationBlock),
+            Self::ShelfMushroomBlock => Some(Self::HorizontalDirectionalBlock),
             Self::TntBlock => Some(Self::Block),
             Self::ChiseledBookShelfBlock => Some(Self::BaseEntityBlock),
             Self::ShelfBlock => Some(Self::BaseEntityBlock),
@@ -931,6 +940,7 @@ impl BlockClass {
             Self::TallSeagrassBlock => &[BlockInterface::LiquidBlockContainer],
             Self::FlowerBlock => &[BlockInterface::SuspiciousEffectHolder],
             Self::MushroomBlock => &[BlockInterface::BonemealableBlock],
+            Self::ShelfMushroomBlock => &[BlockInterface::BonemealableBlock],
             Self::ChiseledBookShelfBlock => &[BlockInterface::SelectableSlotContainer],
             Self::ShelfBlock => &[
                 BlockInterface::SelectableSlotContainer,
@@ -1088,12 +1098,12 @@ impl BlockClass {
                 Method::UseItemOn,
                 Method::UpdateShape,
             ],
-            Self::BedBlock => &[
+            Self::AbstractBedBlock => &[
                 Method::GetStateForPlacement,
                 Method::UseWithoutItem,
                 Method::UpdateShape,
-                Method::GetShape,
             ],
+            Self::BedBlock | Self::StrawBedBlock => &[Method::GetShape],
             Self::BaseRailBlock => &[
                 Method::GetStateForPlacement,
                 Method::CanSurvive,
@@ -1133,6 +1143,12 @@ impl BlockClass {
             Self::FlowerBlock => &[Method::GetShape],
             Self::WitherRoseBlock => &[Method::MayPlaceOn],
             Self::MushroomBlock => &[Method::CanSurvive, Method::GetShape, Method::MayPlaceOn],
+            Self::ShelfMushroomBlock => &[
+                Method::GetStateForPlacement,
+                Method::CanSurvive,
+                Method::UpdateShape,
+                Method::GetShape,
+            ],
             Self::TntBlock => &[Method::UseItemOn],
             Self::ChiseledBookShelfBlock => &[
                 Method::GetStateForPlacement,

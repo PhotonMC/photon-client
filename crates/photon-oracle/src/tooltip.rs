@@ -165,49 +165,6 @@ fn single_value_json(component: &photon_data::item::component::Component) -> Val
     }
 }
 
-/// An item's default components the client reads, as the codec's JSON and
-/// as the network's bytes, keyed by component type name.
-pub(super) fn default_components(
-    item: &photon_data::item::definition::Item,
-    registries: &photon_game::registries::Registries,
-) -> (Value, Value) {
-    use photon_data::item::component::Component;
-    use photon_data::item::component_types::NAMES;
-    let mut json_map = serde_json::Map::new();
-    let mut wire_map = serde_json::Map::new();
-    let hex = |bytes: &[u8]| {
-        bytes
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect::<String>()
-    };
-    let mut put = |id: i32, json: Value, bytes: &[u8]| {
-        let name = NAMES[id as usize];
-        json_map.insert(name.to_owned(), json);
-        wire_map.insert(name.to_owned(), json!(hex(bytes)));
-    };
-    let declared_name = item
-        .components
-        .iter()
-        .any(|component| matches!(component, Component::ItemName(_)));
-    if !declared_name {
-        let key = photon_game::item::default_components::description_key(item);
-        put(
-            photon_data::item::component_types::ITEM_NAME,
-            json!({"translate": key}),
-            &photon_game::item::default_components::translatable(&key),
-        );
-    }
-    for component in item.components {
-        if let Some((id, bytes)) =
-            photon_game::item::default_components::encode(component, Some(registries))
-        {
-            put(id, component_json(component), &bytes);
-        }
-    }
-    (Value::Object(json_map), Value::Object(wire_map))
-}
-
 /// `item_declarations`: the declarations as the oracle describes them.
 /// An item's `equippable` component as the declarations case writes it.
 fn describe_equippable(equip: &photon_data::item::definition::Equip) -> Value {
@@ -301,10 +258,12 @@ fn describe_tool(tool: &photon_data::item::definition::Tool) -> Value {
     })
 }
 
-pub(super) fn item_declarations(label: &str) -> Value {
+/// The item classes [`crate::case_ids::ORACLE_VERSION`]'s Java has, in its order.
+fn item_classes() -> Vec<Value> {
     use photon_data::item::classes::ItemClass;
-    let classes: Vec<Value> = ItemClass::ALL
+    ItemClass::ALL
         .iter()
+        .filter(|class| crate::case_ids::reference_has_class(**class))
         .map(|class| {
             let declares: Vec<String> = class
                 .declares()
@@ -316,11 +275,34 @@ pub(super) fn item_declarations(label: &str) -> Value {
                 .collect();
             json!({
                 "name": format!("{class:?}"),
-                "parent": class.parent().map_or(String::new(), |parent| format!("{parent:?}")),
+                "parent": class.parent().map_or(String::new(), |parent| {
+                    format!("{:?}", crate::case_ids::reference_class(parent))
+                }),
                 "declares": declares,
             })
         })
+        .collect()
+}
+
+/// The component types of the oracle's version, in its registry order.
+fn present_component_names() -> Vec<&'static str> {
+    let component_map = crate::case_ids::registries();
+    let mut present: Vec<(u32, &str)> = photon_data::item::component_types::NAMES
+        .iter()
+        .enumerate()
+        .filter_map(|(index, name)| {
+            component_map
+                .component_types
+                .to_wire(index as u32)
+                .map(|wire| (wire, *name))
+        })
         .collect();
+    present.sort_unstable();
+    present.into_iter().map(|(_, name)| name).collect()
+}
+
+pub(super) fn item_declarations(label: &str) -> Value {
+    let classes = item_classes();
     let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/data");
     let registries = photon_game::registries::Registries::vanilla(&data_root);
@@ -328,7 +310,7 @@ pub(super) fn item_declarations(label: &str) -> Value {
         .map(|item| {
             let mut described = json!({
                 "name": item.name,
-                "class": format!("{:?}", item.class),
+                "class": format!("{:?}", crate::case_ids::reference_class(item.class)),
                 "max_stack_size": item.max_stack_size,
                 "max_damage": item.max_damage,
                 "consumable": item.consumable.is_some(),
@@ -344,11 +326,13 @@ pub(super) fn item_declarations(label: &str) -> Value {
             if let Some(tool) = item.tool {
                 described["tool"] = describe_tool(tool);
             }
+            // The newest version keeps what burns as a component of the item, and the
+            // ingredients a brewing stand takes come from the server's recipes.
             if item.burn_time > 0 {
-                described["burn_time"] = json!(item.burn_time);
+                described["cooking_fuel"] = json!(true);
             }
-            if item.brewing_ingredient {
-                described["brewing_ingredient"] = json!(true);
+            if item.name == "minecraft:blaze_powder" {
+                described["brewing_fuel"] = json!(true);
             }
             if let Some(block) = item.block {
                 described["block"] = json!(block);
@@ -359,7 +343,7 @@ pub(super) fn item_declarations(label: &str) -> Value {
             described
         })
         .collect();
-    let component_types: Vec<&str> = photon_data::item::component_types::NAMES.to_vec();
+    let component_types = present_component_names();
     json!({
         "label": label,
         "outcome": "listed",

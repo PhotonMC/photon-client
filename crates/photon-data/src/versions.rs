@@ -4,12 +4,14 @@
 use photon_core::version::Version;
 
 pub mod v26_1;
+pub mod v26_2;
 
 /// The window of blocks the version numbers in another order than the union list, in its order;
 /// empty for a version that follows the union list.
 pub fn block_patch(version: Version) -> &'static [&'static str] {
     match version {
         Version::V26_1 => &v26_1::BLOCKS,
+        Version::V26_2 => &v26_2::BLOCKS,
         _ => &[],
     }
 }

@@ -6,7 +6,7 @@ use crate::named::Named;
 use photon_core::version::Version;
 
 #[rustfmt::skip]
-pub static SOUND_EVENTS: [Named; 1968] = [
+pub static SOUND_EVENTS: [Named; 1991] = [
     Named::new("minecraft:entity.allay.ambient_with_item"),
     Named::new("minecraft:entity.allay.ambient_without_item"),
     Named::new("minecraft:entity.allay.death"),
@@ -499,6 +499,10 @@ pub static SOUND_EVENTS: [Named; 1968] = [
     Named::new("minecraft:item.crossbow.quick_charge_2"),
     Named::new("minecraft:item.crossbow.quick_charge_3"),
     Named::new("minecraft:item.crossbow.shoot"),
+    Named::new("minecraft:entity.cushion.break").since(Version::V26_3),
+    Named::new("minecraft:entity.cushion.place").since(Version::V26_3),
+    Named::new("minecraft:entity.cushion.sit").since(Version::V26_3),
+    Named::new("minecraft:entity.cushion.get_up").since(Version::V26_3),
     Named::new("minecraft:block.deadbush.idle"),
     Named::new("minecraft:block.decorated_pot.break"),
     Named::new("minecraft:block.decorated_pot.fall"),
@@ -1975,4 +1979,23 @@ pub static SOUND_EVENTS: [Named; 1968] = [
     Named::new("minecraft:entity.small_sulfur_cube.jump").since(Version::V26_2),
     Named::new("minecraft:entity.small_sulfur_cube.squish").since(Version::V26_2),
     Named::new("minecraft:entity.small_sulfur_cube.eat").since(Version::V26_2),
+    Named::new("minecraft:block.shelf_mushroom.break").since(Version::V26_3),
+    Named::new("minecraft:block.shelf_mushroom.fall").since(Version::V26_3),
+    Named::new("minecraft:block.shelf_mushroom.place").since(Version::V26_3),
+    Named::new("minecraft:block.shelf_mushroom.step").since(Version::V26_3),
+    Named::new("minecraft:block.shelf_mushroom.bounce").since(Version::V26_3),
+    Named::new("minecraft:block.poplar_leaves.break").since(Version::V26_3),
+    Named::new("minecraft:block.poplar_leaves.hit").since(Version::V26_3),
+    Named::new("minecraft:block.poplar_leaves.fall").since(Version::V26_3),
+    Named::new("minecraft:block.poplar_leaves.place").since(Version::V26_3),
+    Named::new("minecraft:block.poplar_leaves.step").since(Version::V26_3),
+    Named::new("minecraft:block.poplar_leaves.ambient").since(Version::V26_3),
+    Named::new("minecraft:block.straw_bed.break").since(Version::V26_3),
+    Named::new("minecraft:block.straw_bed.break_leave").since(Version::V26_3),
+    Named::new("minecraft:block.straw_bed.step").since(Version::V26_3),
+    Named::new("minecraft:block.straw_bed.place").since(Version::V26_3),
+    Named::new("minecraft:block.straw_bed.hit").since(Version::V26_3),
+    Named::new("minecraft:block.straw_bed.fall").since(Version::V26_3),
+    Named::new("minecraft:block.red_shrub.break").since(Version::V26_3),
+    Named::new("minecraft:block.red_shrub.place").since(Version::V26_3),
 ];

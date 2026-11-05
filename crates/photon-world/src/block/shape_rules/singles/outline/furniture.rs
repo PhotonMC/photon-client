@@ -45,23 +45,8 @@ pub(super) fn outline(class: BlockClass, block: &Block, offset: u32) -> Option<V
             3 => cached!(VoxelShape, cube(5.0, 0.0, 6.0, 10.0, 6.0, 11.0)).clone(),
             _ => cached!(VoxelShape, cube(5.0, 0.0, 5.0, 11.0, 6.0, 10.0)).clone(),
         },
-        C::BedBlock => {
-            let ring = cached!(Horizontal, {
-                let north_west = cube(0.0, 0.0, 0.0, 3.0, 3.0, 3.0);
-                let north_east = Shapes::rotate(&north_west, ShapeRotation::Rot90YNeg);
-                Shapes::rotate_horizontal(&Shapes::or_many(
-                    &column(16.0, 16.0, 3.0, 9.0),
-                    &[north_west, north_east],
-                ))
-            });
-            let facing = facing(block, offset, "facing");
-            // `getConnectedDirection(state).getOpposite()`.
-            let direction = if prop(block, offset, "part") == Some("head") {
-                facing
-            } else {
-                facing.opposite()
-            };
-            arm(ring, direction).clone()
+        C::BedBlock | C::StrawBedBlock | C::ShelfMushroomBlock => {
+            grown_furniture(class, block, offset)
         }
         C::CampfireBlock => cached!(VoxelShape, column_xz(16.0, 0.0, 7.0)).clone(),
         C::ShulkerBoxBlock => Shapes::block(),
@@ -218,4 +203,65 @@ pub(super) fn outline(class: BlockClass, block: &Block, offset: u32) -> Option<V
         }
         _ => return None,
     })
+}
+
+/// `getShape` of the straw bed and the shelf mushroom, which the newest version added.
+fn grown_furniture(class: BlockClass, block: &Block, offset: u32) -> VoxelShape {
+    match class {
+        BlockClass::BedBlock => bed(block, offset),
+        BlockClass::StrawBedBlock => straw_bed(block, offset),
+        _ => shelf_mushroom(block, offset),
+    }
+}
+
+fn bed(block: &Block, offset: u32) -> VoxelShape {
+    let ring = cached!(Horizontal, {
+        let north_west = cube(0.0, 0.0, 0.0, 3.0, 3.0, 3.0);
+        let north_east = Shapes::rotate(&north_west, ShapeRotation::Rot90YNeg);
+        Shapes::rotate_horizontal(&Shapes::or_many(
+            &column(16.0, 16.0, 3.0, 9.0),
+            &[north_west, north_east],
+        ))
+    });
+    let facing = facing(block, offset, "facing");
+    // `getConnectedDirection(state).getOpposite()`.
+    let direction = if prop(block, offset, "part") == Some("head") {
+        facing
+    } else {
+        facing.opposite()
+    };
+    arm(ring, direction).clone()
+}
+
+fn straw_bed(block: &Block, offset: u32) -> VoxelShape {
+    let rings = cached!([Horizontal; 2], {
+        let base = column(16.0, 16.0, 0.0, 4.0);
+        let pillow = cube(0.0, 0.0, 0.0, 16.0, 5.0, 8.0);
+        [
+            Shapes::rotate_horizontal(&base),
+            Shapes::rotate_horizontal(&Shapes::or(&base, &pillow)),
+        ]
+    });
+    let facing = facing(block, offset, "facing");
+    // `getConnectedDirection(state).getOpposite()`.
+    let head = prop(block, offset, "part") == Some("head");
+    let direction = if head { facing } else { facing.opposite() };
+    arm(&rings[usize::from(head)], direction).clone()
+}
+
+fn shelf_mushroom(block: &Block, offset: u32) -> VoxelShape {
+    let rings = cached!([Horizontal; 2], {
+        let grown = |i: f64| {
+            let cap = column(10.0 + i * 4.0, 7.0 + i * 3.0, 1.0 + i, 3.0 + i * 2.0)
+                .move_by(0.0, (8.0 - i * 2.0) / 16.0, -(i * 1.5 - 4.5) / 16.0)
+                .optimize();
+            let stem = column(6.0 + i * 2.0, 4.0 + i * 2.0, 0.0, 1.0 + i)
+                .move_by(0.0, (8.0 - i * 2.0) / 16.0, -(i - 6.0) / 16.0)
+                .optimize();
+            Shapes::rotate_horizontal(&Shapes::or(&cap, &stem))
+        };
+        [grown(0.0), grown(1.0)]
+    });
+    let age = number(block, offset, "age");
+    arm(&rings[age.clamp(0, 1)], facing(block, offset, "facing")).clone()
 }

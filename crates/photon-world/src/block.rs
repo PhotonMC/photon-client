@@ -90,7 +90,7 @@ pub fn seed(state: &StateInfo, position: [i32; 3]) -> i64 {
                 let below = i32::from(block.value(offset, &DOUBLE_BLOCK_HALF) != Some("lower"));
                 return photon_core::math::mth_get_seed(x, y - below, z);
             }
-            BlockClass::BedBlock => {
+            BlockClass::AbstractBedBlock => {
                 let step = i32::from(block.value(offset, &BED_PART) != Some("head"));
                 let (dx, _, dz) = block
                     .value(offset, &HORIZONTAL_FACING)

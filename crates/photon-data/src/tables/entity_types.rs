@@ -6,7 +6,7 @@ use crate::named::Named;
 use photon_core::version::Version;
 
 #[rustfmt::skip]
-pub static ENTITY_TYPES: [Named; 158] = [
+pub static ENTITY_TYPES: [Named; 161] = [
     Named::new("minecraft:acacia_boat"),
     Named::new("minecraft:acacia_chest_boat"),
     Named::new("minecraft:allay"),
@@ -40,6 +40,7 @@ pub static ENTITY_TYPES: [Named; 158] = [
     Named::new("minecraft:cow"),
     Named::new("minecraft:creaking"),
     Named::new("minecraft:creeper"),
+    Named::new("minecraft:cushion").since(Version::V26_3),
     Named::new("minecraft:dark_oak_boat"),
     Named::new("minecraft:dark_oak_chest_boat"),
     Named::new("minecraft:dolphin"),
@@ -112,6 +113,8 @@ pub static ENTITY_TYPES: [Named; 158] = [
     Named::new("minecraft:piglin_brute"),
     Named::new("minecraft:pillager"),
     Named::new("minecraft:polar_bear"),
+    Named::new("minecraft:poplar_boat").since(Version::V26_3),
+    Named::new("minecraft:poplar_chest_boat").since(Version::V26_3),
     Named::new("minecraft:splash_potion"),
     Named::new("minecraft:lingering_potion"),
     Named::new("minecraft:pufferfish"),

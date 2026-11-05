@@ -146,6 +146,8 @@ mod nbt_cases;
 use nbt_cases::*;
 mod tooltip;
 use tooltip::*;
+mod item_components;
+use item_components::*;
 mod block;
 mod creative_op;
 mod spectator_op;

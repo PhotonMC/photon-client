@@ -169,11 +169,11 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 let items: Vec<Value> = crate::case_ids::items()
                     .map(|item| {
                         use photon_data::item::classes::ItemMethod;
-                        let owner =
-                            |method: ItemMethod| format!("{:?}", item.class.owner_of(method));
+                        let class = crate::case_ids::reference_class(item.class);
+                        let owner = |method: ItemMethod| format!("{:?}", class.owner_of(method));
                         let mut described = json!({
                             "name": item.name,
-                            "class": format!("{:?}", item.class),
+                            "class": format!("{class:?}"),
                             "use_on": owner(ItemMethod::UseOn),
                             "use": owner(ItemMethod::Use),
                             "default_use_pass": item.use_does_nothing(),
@@ -229,8 +229,12 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 use photon_data::item::classes::ItemMethod;
                 let items: Vec<Value> = crate::case_ids::items()
                     .map(|item| {
-                        let owner =
-                            |method: ItemMethod| format!("{:?}", item.class.owner_of(method));
+                        let owner = |method: ItemMethod| {
+                            format!(
+                                "{:?}",
+                                crate::case_ids::reference_class(item.class).owner_of(method)
+                            )
+                        };
                         let mut described = json!({
                             "name": item.name,
                             "max_stack_size": item.max_stack_size,
@@ -251,45 +255,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "items": items}));
             }
-            "item_components" => {
-                let hex = |bytes: &[u8]| {
-                    bytes
-                        .iter()
-                        .map(|byte| format!("{byte:02x}"))
-                        .collect::<String>()
-                };
-                // The reference's whole default patch of each item, kept as a
-                // fixture, is read by this port, and both forms are written
-                // back from what it read.
-                const PATCHES: &str =
-                    include_str!("../../../tests/behavior/fixtures/item-default-patches.txt");
-                use photon_data::item::component_sets::DEFAULT_COMPONENT_SETS;
-                let items: Vec<Value> = PATCHES
-                    .lines()
-                    .map(|line| {
-                        let (name, wire) = line.split_once(' ').expect("a name and its bytes");
-                        let index = photon_data::item::registry::index(name).expect("a listed item");
-                        let set = DEFAULT_COMPONENT_SETS.get(index).copied().unwrap_or(0);
-                        let types: Vec<u32> = (0..128).filter(|id| set >> id & 1 == 1).collect();
-                        let bytes: Vec<u8> = (0..wire.len())
-                            .step_by(2)
-                            .map(|at| u8::from_str_radix(&wire[at..at + 2], 16).expect("hex"))
-                            .collect();
-                        let mut input = bytes.as_slice();
-                        match photon_game::item_components::read_patch(&mut input) {
-                            Ok(patch) if input.is_empty() => json!({
-                                "name": name,
-                                "wire": hex(&patch.trusted()),
-                                "delimited": hex(&patch.delimited()),
-                                "components": patch.added.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
-                                "types": types,
-                            }),
-                            _ => json!({"name": name, "wire": "unreadable"}),
-                        }
-                    })
-                    .collect();
-                out.push(json!({"label": label, "outcome": "listed", "items": items}));
-            }
+            "item_components" => out.push(item_components(label)),
             "tooltip_registries" => out.push(tooltip_registries(label)),
             "potions" => out.push(potions(label)),
             "creative_tabs" => {

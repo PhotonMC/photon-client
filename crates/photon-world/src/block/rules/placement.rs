@@ -109,7 +109,7 @@ const PLACEMENTS: &[(BlockClass, Placement)] = &[
     (BlockClass::DoublePlantBlock, |_, default, ctx| {
         super::tall::double_plant(default, ctx)
     }),
-    (BlockClass::BedBlock, |_, default, ctx| {
+    (BlockClass::AbstractBedBlock, |_, default, ctx| {
         super::tall::bed(default, ctx)
     }),
     (BlockClass::LeavesBlock, |_, default, ctx| {

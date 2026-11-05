@@ -267,6 +267,12 @@ impl VersionRegistries {
         self.version
     }
 
+    /// Whether the version's teleport consume effect carries its `directional_particles` flag
+    /// (26.3 and later).
+    pub fn has_teleport_flag(&self) -> bool {
+        self.version >= Version::V26_3
+    }
+
     /// Whether the item named exists in this version; the filter for lists built from the union
     /// tables (creative tabs, the recipe book, command suggestions).
     pub fn has_item(&self, name: &str) -> bool {

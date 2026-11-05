@@ -332,11 +332,11 @@ fn declared(block: &photon_data::block::definition::Block) -> Value {
     },
     "instrument": block.instrument,
     "pushReaction": match block.push_reaction {
-            PushReaction::Normal => "NORMAL",
-            PushReaction::Destroy => "DESTROY",
-            PushReaction::Block => "BLOCK",
-            PushReaction::Ignore => "IGNORE",
-            PushReaction::PushOnly => "PUSH_ONLY",
+            PushReaction::Normal => "PUSH_PULL",
+            PushReaction::Destroy => "POPPED",
+            PushReaction::Block => "IMMOVEABLE",
+            PushReaction::Ignore => "IGNORE_ENTITY",
+            PushReaction::PushOnly => "PUSH",
         },
     })
 }
