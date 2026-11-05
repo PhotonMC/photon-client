@@ -77,7 +77,21 @@ fn stack_of(row: &Value) -> Result<ClientItemStackState, String> {
     let item = photon_game::item::id_of(name).ok_or("unknown item")?;
     if let Some(wire) = row["patch"].as_str() {
         let count = row["count"].as_i64().map_or(1, |count| count as i32);
-        return Ok(ClientItemStackState::new(count, item).with_patch_bytes(hex_bytes(wire)?));
+        let bytes = hex_bytes(wire)?;
+        // The case's ids are the reference's wire ids.
+        let patch = photon_data::item_components::read_wire_patch(
+            &mut bytes.as_slice(),
+            &crate::case_ids::registries(),
+        )
+        .map_err(|_| format!("malformed patch {wire}"))?;
+        let trusted = patch.trusted();
+        return Ok(ClientItemStackState::from_wire(
+            count,
+            item,
+            patch.added.iter().map(|(kind, _)| *kind).collect(),
+            patch.removed,
+        )
+        .with_patch_bytes(trusted));
     }
     let added = added_components(row)?;
     let removed = removed_components(row);
