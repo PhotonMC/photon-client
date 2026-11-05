@@ -1531,7 +1531,7 @@ class GuiHudOracle extends GuiCommandOracle {
                     MovementOracle.setField(hud, "tickCount", frame.get("tick").getAsInt());
                     now[0] = frame.get("ms").getAsLong();
                     local.setHealth(Oracle.f32(frame, "health"));
-                    MovementOracle.setField(local, "invulnerableTime", frame.get("invulnerable").getAsInt());
+                    MovementOracle.setField(local, "damageCooldownTime", frame.get("invulnerable").getAsInt());
                     var state = new GuiRenderState();
                     var graphics = new GuiGraphicsExtractor(minecraft, state, 0, 0);
                     health.invoke(hud, graphics);
