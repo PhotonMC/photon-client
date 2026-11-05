@@ -151,19 +151,19 @@ fn a_pack_is_saved_under_its_hash_and_the_server_is_told_who_asks() {
     );
     assert_eq!(
         web.header(0, "X-Minecraft-Version").as_deref(),
-        Some("26.2")
+        Some("26.3")
     );
     assert_eq!(
         web.header(0, "X-Minecraft-Version-ID").as_deref(),
-        Some("26.2")
+        Some("26.3")
     );
     assert_eq!(
         web.header(0, "X-Minecraft-Pack-Format").as_deref(),
-        Some("88.0")
+        Some("97.1")
     );
     assert_eq!(
         web.header(0, "User-Agent").as_deref(),
-        Some("Minecraft Java/26.2")
+        Some("Minecraft Java/26.3")
     );
 }
 

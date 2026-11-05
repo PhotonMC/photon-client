@@ -52,7 +52,7 @@ pub(crate) fn shared(jar_assets: &Path) -> Arc<ResourceStack> {
 }
 
 /// The pack format of the running game (`SharedConstants.getCurrentVersion().packVersion`).
-pub(crate) const PACK_FORMAT: photon_assets::PackFormat = photon_assets::PackFormat::of(88, 0);
+pub(crate) const PACK_FORMAT: photon_assets::PackFormat = photon_assets::PackFormat::of(97, 1);
 
 /// Whether `Options.loadSelectedResourcePacks` keeps a pack: a compatible one that is not listed
 /// as incompatible, or an incompatible one the player listed. A compatible pack that is still

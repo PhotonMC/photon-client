@@ -18,7 +18,7 @@ use super::source::{PackFetcher, PackUser};
 pub const MAX_PACK_BYTES: u64 = 262_144_000;
 
 /// The pack format of the client's resources, for the header the servers see.
-const PACK_FORMAT: &str = "88.0";
+const PACK_FORMAT: &str = "97.1";
 
 /// The game's version name and id, as the servers see them.
 const VERSION: &str = crate::resources::KnownPack::VANILLA_VERSION;

@@ -412,7 +412,7 @@ pub(super) fn resource_reload_result(request: &Value) -> Result<Value, String> {
 }
 
 pub(super) fn resource_compatibility_result(request: &Value) -> Result<Value, String> {
-    let game = PackFormat::new(88, 0);
+    let game = PackFormat::new(97, 1);
     let probes = request["probes"]
         .as_array()
         .ok_or("probes must be an array")?

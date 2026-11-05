@@ -160,7 +160,7 @@ pub enum KnownPackListCodecError {
 
 impl KnownPack {
     pub const VANILLA_NAMESPACE: &'static str = "minecraft";
-    pub const VANILLA_VERSION: &'static str = "26.2";
+    pub const VANILLA_VERSION: &'static str = "26.3";
 
     pub fn new(namespace: String, id: String, version: String) -> Self {
         Self {
