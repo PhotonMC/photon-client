@@ -84,7 +84,16 @@ impl Jdk {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).map_err(|error| format!("{}: {error}", dir.display()))?;
         let output = Command::new(&self.javac)
-            .args(["-encoding", "UTF-8", "-nowarn", "-cp", classpath, "-d"])
+            .args([
+                "-encoding",
+                "UTF-8",
+                "-nowarn",
+                "-Xmaxerrs",
+                "1000",
+                "-cp",
+                classpath,
+                "-d",
+            ])
             .arg(&dir)
             .args(sources)
             .env_remove("CLASSPATH")

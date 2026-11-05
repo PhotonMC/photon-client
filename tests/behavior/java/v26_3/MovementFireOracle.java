@@ -1,0 +1,197 @@
+import com.google.gson.JsonObject;
+
+/**
+ * Block tables the client reads that are set when the game starts: the blocks fire catches on
+ * (`FireBlock`'s odds), each state's map colour, and the falling blocks' dust colours.
+ */
+class MovementFireOracle extends MovementPickupOracle {
+    /** Every block with odds, in registry order: its name, its ignite odds and its burn odds. */
+    @SuppressWarnings("unchecked")
+    static JsonObject fireFlammability(JsonObject row) throws Exception {
+        var fire = net.minecraft.world.level.block.Blocks.FIRE;
+        var ignite = (it.unimi.dsi.fastutil.objects.Object2IntMap<net.minecraft.world.level.block.Block>)
+            getField(fire, "igniteOdds");
+        var burn = (it.unimi.dsi.fastutil.objects.Object2IntMap<net.minecraft.world.level.block.Block>)
+            getField(fire, "burnOdds");
+        var blocks = new com.google.gson.JsonArray();
+        for (var block : net.minecraft.core.registries.BuiltInRegistries.BLOCK) {
+            if (ignite.getInt(block) == 0 && burn.getInt(block) == 0) {
+                continue;
+            }
+            var entry = new JsonObject();
+            entry.addProperty("name", net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).toString());
+            entry.addProperty("ignite", ignite.getInt(block));
+            entry.addProperty("burn", burn.getInt(block));
+            blocks.add(entry);
+        }
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.add("blocks", blocks);
+        return entry;
+    }
+
+    /** Every item a composter takes, in registry order: its name and the chance it fills a layer. */
+    @SuppressWarnings("unchecked")
+    static JsonObject compostables(JsonObject row) throws Exception {
+        var chances = (it.unimi.dsi.fastutil.objects.Object2FloatMap<net.minecraft.world.level.ItemLike>)
+            getStaticField(net.minecraft.world.level.block.ComposterBlock.class, "COMPOSTABLES");
+        var items = new com.google.gson.JsonArray();
+        for (var item : net.minecraft.core.registries.BuiltInRegistries.ITEM) {
+            if (!chances.containsKey(item)) {
+                continue;
+            }
+            var entry = new JsonObject();
+            entry.addProperty("name", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString());
+            entry.addProperty("chance", Oracle.bits(chances.getFloat(item)));
+            items.add(entry);
+        }
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.add("items", items);
+        return entry;
+    }
+
+    /**
+     * Every game rule, in registry order: its name, category, type, default, the bounds of an
+     * integer, and whether the vanilla feature set turns it on.
+     */
+    static JsonObject gameRules(JsonObject row) throws Exception {
+        var rules = new com.google.gson.JsonArray();
+        for (var rule : net.minecraft.core.registries.BuiltInRegistries.GAME_RULE) {
+            var entry = new JsonObject();
+            entry.addProperty("name", rule.getIdentifier().toString());
+            entry.addProperty("category", rule.category().id().getPath());
+            entry.addProperty("type", rule.gameRuleType().getSerializedName());
+            entry.addProperty("default", castRule(rule).serialize(castRule(rule).defaultValue()));
+            if (rule.argument() instanceof com.mojang.brigadier.arguments.IntegerArgumentType integer) {
+                entry.addProperty("min", integer.getMinimum());
+                entry.addProperty("max", integer.getMaximum());
+            }
+            entry.addProperty("vanilla",
+                rule.requiredFeatures().isSubsetOf(net.minecraft.world.flag.FeatureFlags.VANILLA_SET));
+            rules.add(entry);
+        }
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.add("rules", rules);
+        return entry;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static net.minecraft.world.level.gamerules.GameRule<Object> castRule(
+        net.minecraft.world.level.gamerules.GameRule<?> rule) {
+        return (net.minecraft.world.level.gamerules.GameRule<Object>) rule;
+    }
+
+    /**
+     * Each entity type's renderer, built from the renderers' own table with a context that only
+     * holds the vanilla model set: the shadow radius and strength it sets in its
+     * constructor (`EntityRenderer.shadowRadius`, `shadowStrength`). A type whose renderer cannot
+     * be built that way is listed by name, never guessed.
+     */
+    @SuppressWarnings("unchecked")
+    static JsonObject rendererShadows(JsonObject row) throws Exception {
+        var context = (net.minecraft.client.renderer.entity.EntityRendererProvider.Context)
+            unsafe.allocateInstance(net.minecraft.client.renderer.entity.EntityRendererProvider.Context.class);
+        setField(context, "modelSet", net.minecraft.client.model.geom.EntityModelSet.vanilla());
+        var providers = (java.util.Map<net.minecraft.world.entity.EntityType<?>,
+            net.minecraft.client.renderer.entity.EntityRendererProvider<?>>)
+            getStaticField(net.minecraft.client.renderer.entity.EntityRenderers.class, "PROVIDERS");
+        var types = new com.google.gson.JsonArray();
+        var failed = new com.google.gson.JsonArray();
+        for (var type : net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE) {
+            var name = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(type).toString();
+            var provider = providers.get(type);
+            if (provider == null) {
+                continue;
+            }
+            try {
+                var renderer = provider.create(context);
+                var entry = new JsonObject();
+                entry.addProperty("name", name);
+                entry.addProperty("radius", Oracle.bits((float) getField(renderer, "shadowRadius")));
+                entry.addProperty("strength", Oracle.bits((float) getField(renderer, "shadowStrength")));
+                types.add(entry);
+            } catch (Throwable error) {
+                failed.add(name);
+            }
+        }
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.add("types", types);
+        entry.add("failed", failed);
+        return entry;
+    }
+
+    static Object getStaticField(Class<?> type, String name) throws Exception {
+        var field = Reflect.field(type, name);
+        return field.get(null);
+    }
+
+    /**
+     * Every block's map colour (`BlockState.getMapColor`): its first state's, and each state whose
+     * colour is another; a falling block's dust colour (`FallingBlock.getDustColor`).
+     */
+    static JsonObject blockMapColors(JsonObject row) throws Exception {
+        var level = net.minecraft.world.level.EmptyBlockGetter.INSTANCE;
+        var origin = net.minecraft.core.BlockPos.ZERO;
+        var blocks = new com.google.gson.JsonArray();
+        for (var block : net.minecraft.core.registries.BuiltInRegistries.BLOCK) {
+            var states = block.getStateDefinition().getPossibleStates();
+            int first = states.get(0).getMapColor(level, origin).id;
+            var entry = new JsonObject();
+            entry.addProperty("name", net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).toString());
+            entry.addProperty("color", first);
+            var others = new com.google.gson.JsonArray();
+            for (var state : states) {
+                int color = state.getMapColor(level, origin).id;
+                if (color != first) {
+                    var pair = new com.google.gson.JsonArray();
+                    pair.add(net.minecraft.world.level.block.Block.getId(state));
+                    pair.add(color);
+                    others.add(pair);
+                }
+            }
+            entry.add("states", others);
+            if (block instanceof net.minecraft.world.level.block.FallingBlock falling) {
+                entry.addProperty("dust", falling.getDustColor(block.defaultBlockState(), level, origin));
+            }
+            blocks.add(entry);
+        }
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.add("blocks", blocks);
+        return entry;
+    }
+
+    /**
+     * Every leaves block: the chance it lets a leaf fall each pick, and the leaf it lets fall (the
+     * tinted one takes the block's tint; another is its own type, with its colour if it has one).
+     */
+    static JsonObject leafParticles(JsonObject row) throws Exception {
+        var blocks = new com.google.gson.JsonArray();
+        for (var block : net.minecraft.core.registries.BuiltInRegistries.BLOCK) {
+            if (!(block instanceof net.minecraft.world.level.block.LeavesBlock)) {
+                continue;
+            }
+            var entry = new JsonObject();
+            entry.addProperty("name", net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).toString());
+            entry.addProperty("chance", Oracle.bits((float) getField(block, "leafParticleChance")));
+            if (block instanceof net.minecraft.world.level.block.UntintedParticleLeavesBlock) {
+                var options = (net.minecraft.core.particles.ParticleOptions) getField(block, "leafParticle");
+                entry.addProperty("particle",
+                    net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.getKey(options.getType()).toString());
+                if (options instanceof net.minecraft.core.particles.ColorParticleOption colour) {
+                    entry.addProperty("color", (int) getField(colour, "color"));
+                }
+            } else {
+                entry.addProperty("particle", "tinted");
+            }
+            blocks.add(entry);
+        }
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.add("blocks", blocks);
+        return entry;
+    }
+}

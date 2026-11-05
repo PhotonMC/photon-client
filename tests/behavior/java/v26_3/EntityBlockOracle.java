@@ -1,0 +1,1421 @@
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
+class EntityBlockOracle extends EntityAquaticOracle {
+    /**
+     * The render type the armor's enchantment glint asks for (`RenderTypes.armorEntityGlint`): its
+     * pipeline's state and texture, and the matrix that moves the texture at some times and glint
+     * speeds (`TextureTransform.setupGlintTexturing`, the time and the option set as asked).
+     */
+    /** A chest's model (a half of a double one too), its lid at a given eased openness. */
+    static JsonObject chestModel(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.object.chest.ChestModel(bakedLayer(row.get("layer").getAsString()));
+            model.setupAnim(Oracle.f32(row, "open"));
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `ChestRenderer.submit` hands the collector: the pose, the lid's eased openness,
+     * the light and the sprite, for a chest's type, material, facing and openness.
+     */
+    static JsonObject chestPose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var roots = net.minecraft.client.model.geom.LayerDefinitions.createRoots();
+        java.util.function.Function<net.minecraft.client.model.geom.ModelLayerLocation,
+            net.minecraft.client.model.object.chest.ChestModel> bake = layer ->
+                new net.minecraft.client.model.object.chest.ChestModel(roots.get(layer).bakeRoot());
+        var models = net.minecraft.client.renderer.blockentity.ChestRenderer.LAYERS.map(bake);
+        var renderer = (net.minecraft.client.renderer.blockentity.ChestRenderer<?>) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.ChestRenderer.class);
+        var modelsField = Reflect.field(net.minecraft.client.renderer.blockentity.ChestRenderer.class, "models");
+        modelsField.set(renderer, models);
+        // The first use of each facing's matrix works its flags out (a facing that turns nothing
+        // becomes the identity), as the first chest drawn does in the game.
+        for (var facing : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+            com.mojang.math.MatrixUtil.isPureTranslation(
+                net.minecraft.client.renderer.blockentity.ChestRenderer.modelTransformation(facing).getMatrix());
+        }
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.ChestRenderState();
+            state.type = net.minecraft.world.level.block.state.properties.ChestType.valueOf(
+                row.get("type").getAsString().toUpperCase());
+            state.facing = net.minecraft.core.Direction.valueOf(row.get("facing").getAsString().toUpperCase());
+            state.material = net.minecraft.client.renderer.blockentity.state.ChestRenderState.ChestMaterialType
+                .valueOf(row.get("material").getAsString());
+            state.open = Oracle.f32(row, "open");
+            state.lightCoords = row.get("light").getAsInt();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        out.addProperty("open", Oracle.bits((Float) args[1]));
+                        out.addProperty("light", (Integer) args[3]);
+                        out.addProperty("texture", ((net.minecraft.client.resources.model.sprite.SpriteId) args[6])
+                            .texture().getPath());
+                        out.addProperty("layer", args[0] == models.single() ? "single"
+                            : args[0] == models.left() ? "left" : "right");
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "x"), Oracle.f32(row, "y"), Oracle.f32(row, "z"));
+            renderer.submit(state, stack, collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * Everything the real `BannerRenderer.submit` hands the collector for a banner block: the pole
+     * and bar, the flag, and each pattern layer in the order it is drawn, each with its pose, light,
+     * sprite and tint.
+     */
+    static JsonObject bannerPose(final JsonObject request) throws Exception {
+        var registries = Game26_3.vanillaRegistries();
+        var patterns = registries.lookupOrThrow(net.minecraft.core.registries.Registries.BANNER_PATTERN);
+        var requested = new net.minecraft.client.resources.model.sprite.SpriteId[1];
+        var sprites = (net.minecraft.client.resources.model.sprite.SpriteGetter) java.lang.reflect.Proxy.newProxyInstance(
+            EntityOracle.class.getClassLoader(),
+            new Class<?>[] {net.minecraft.client.resources.model.sprite.SpriteGetter.class},
+            (proxy, method, args) -> {
+                requested[0] = (net.minecraft.client.resources.model.sprite.SpriteId) args[0];
+                return null;
+            });
+        var renderer = new net.minecraft.client.renderer.blockentity.BannerRenderer(
+            net.minecraft.client.model.geom.EntityModelSet.vanilla(), sprites);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.BannerRenderState();
+            var transformations = net.minecraft.client.renderer.blockentity.BannerRenderer.TRANSFORMATIONS;
+            if (row.get("wall").isJsonNull()) {
+                state.transformation = transformations.freeTransformations(row.get("rotation").getAsInt());
+                state.attachmentType = net.minecraft.world.level.block.BannerBlock.AttachmentType.GROUND;
+            } else {
+                state.transformation = transformations.wallTransformation(
+                    net.minecraft.core.Direction.valueOf(row.get("wall").getAsString().toUpperCase()));
+                state.attachmentType = net.minecraft.world.level.block.BannerBlock.AttachmentType.WALL;
+            }
+            state.baseColor = net.minecraft.world.item.DyeColor.valueOf(row.get("color").getAsString().toUpperCase());
+            var layers = new java.util.ArrayList<net.minecraft.world.level.block.entity.BannerPatternLayers.Layer>();
+            for (var layerElement : row.get("patterns").getAsJsonArray()) {
+                var layer = layerElement.getAsJsonObject();
+                var key = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.BANNER_PATTERN,
+                    net.minecraft.resources.Identifier.parse(layer.get("pattern").getAsString()));
+                layers.add(new net.minecraft.world.level.block.entity.BannerPatternLayers.Layer(
+                    patterns.getOrThrow(key),
+                    net.minecraft.world.item.DyeColor.valueOf(layer.get("color").getAsString().toUpperCase())));
+            }
+            state.patterns = new net.minecraft.world.level.block.entity.BannerPatternLayers(layers);
+            state.phase = Oracle.f32(row, "phase");
+            state.lightCoords = row.get("light").getAsInt();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var calls = new JsonArray();
+            var order = new int[] {0};
+            var holder = new net.minecraft.client.renderer.SubmitNodeCollector[1];
+            holder[0] = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("order")) {
+                        order[0] = (int) args[0];
+                        return holder[0];
+                    }
+                    if (method.getName().equals("submitModel")) {
+                        var call = new JsonObject();
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        call.add("matrix", described);
+                        call.addProperty("order", order[0]);
+                        @SuppressWarnings("unchecked")
+                        var model = (net.minecraft.client.model.Model<Object>) args[0];
+                        if (args[3] instanceof Integer) {
+                            // Plain sprite call: light, overlay, tint, sprite.
+                            call.addProperty("light", (Integer) args[3]);
+                            call.addProperty("tint", Integer.toHexString((Integer) args[5]));
+                            call.addProperty("texture", ((net.minecraft.client.resources.model.sprite.SpriteId) args[6])
+                                .texture().getPath());
+                        } else {
+                            // Pattern layer: render type, light, overlay, tint, sprite.
+                            call.addProperty("light", (Integer) args[4]);
+                            call.addProperty("tint", Integer.toHexString((Integer) args[6]));
+                            call.addProperty("texture", requested[0].texture().getPath());
+                        }
+                        model.setupAnim(args[1]);
+                        call.add("quads", posedQuads("", model).get("quads"));
+                        calls.add(call);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), holder[0], null);
+            out.add("calls", calls);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `SkullBlockRenderer.submit` hands the collector for a skull block: the pose its
+     * wall or rotation gives, the light, the texture and the model posed for the animation.
+     */
+    static JsonObject skullBlockPose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var modelSet = net.minecraft.client.model.geom.EntityModelSet.vanilla();
+        var renderer = (net.minecraft.client.renderer.blockentity.SkullBlockRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.SkullBlockRenderer.class);
+        var modelsField = Reflect.field(net.minecraft.client.renderer.blockentity.SkullBlockRenderer.class, "modelByType");
+        java.util.function.Function<net.minecraft.world.level.block.SkullBlock.Type,
+            net.minecraft.client.model.object.skull.SkullModelBase> models = net.minecraft.util.Util.memoize(
+                type -> net.minecraft.client.renderer.blockentity.SkullBlockRenderer.createModel(modelSet, type));
+        modelsField.set(renderer, models);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.SkullBlockRenderState();
+            state.skullType = net.minecraft.world.level.block.SkullBlock.Types.valueOf(row.get("kind").getAsString());
+            var transformations = net.minecraft.client.renderer.blockentity.SkullBlockRenderer.TRANSFORMATIONS;
+            state.transformation = row.get("wall").isJsonNull()
+                ? transformations.freeTransformations(row.get("rotation").getAsInt())
+                : transformations.wallTransformation(
+                    net.minecraft.core.Direction.valueOf(row.get("wall").getAsString().toUpperCase()));
+            state.animationProgress = Oracle.f32(row, "animation");
+            state.lightCoords = row.get("light").getAsInt();
+            state.renderType = net.minecraft.client.renderer.blockentity.SkullBlockRenderer.getSkullRenderType(
+                state.skullType, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        out.addProperty("light", (Integer) args[4]);
+                        var found = java.util.regex.Pattern.compile("textures/([a-z0-9_/]+)\\.png")
+                            .matcher(String.valueOf(args[3]));
+                        out.addProperty("texture", found.find() ? found.group(1) : String.valueOf(args[3]));
+                        @SuppressWarnings("unchecked")
+                        var model = (net.minecraft.client.model.Model<Object>) args[0];
+                        model.setupAnim(args[1]);
+                        out.add("quads", posedQuads("", model).get("quads"));
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `ElderGuardianParticleGroup` hands the collector for an elder guardian particle
+     * of an age, the camera looking along a yaw and a pitch: the pose, the light, the colour and
+     * the texture. (The model is the elder guardian's own, drawn unposed.)
+     */
+    static JsonObject elderGuardianParticlePose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var group = (net.minecraft.client.particle.ElderGuardianParticleGroup) UNSAFE.allocateInstance(
+            net.minecraft.client.particle.ElderGuardianParticleGroup.class);
+        var queueField = Reflect.field(net.minecraft.client.particle.ParticleGroup.class, "particles");
+        var ageField = Reflect.field(net.minecraft.client.particle.Particle.class, "age");
+        var lifetimeField = Reflect.field(net.minecraft.client.particle.Particle.class, "lifetime");
+        var typeField = Reflect.field(net.minecraft.client.particle.ElderGuardianParticle.class, "renderType");
+        var setRotation = Reflect.method(net.minecraft.client.Camera.class, "setRotation", float.class, float.class);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var particle = (net.minecraft.client.particle.ElderGuardianParticle) UNSAFE.allocateInstance(
+                net.minecraft.client.particle.ElderGuardianParticle.class);
+            ageField.setInt(particle, row.get("age").getAsInt());
+            lifetimeField.setInt(particle, row.get("lifetime").getAsInt());
+            typeField.set(particle, net.minecraft.client.renderer.rendertype.RenderTypes.entityTranslucent(
+                net.minecraft.client.renderer.entity.ElderGuardianRenderer.GUARDIAN_ELDER_LOCATION));
+            queueField.set(group, new java.util.ArrayDeque<>(java.util.List.of(particle)));
+            var camera = new net.minecraft.client.Camera();
+            setRotation.invoke(camera, Oracle.f32(row, "yaw"), Oracle.f32(row, "pitch"));
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        out.addProperty("light", (Integer) args[4]);
+                        out.addProperty("color", (Integer) args[6]);
+                        var found = java.util.regex.Pattern.compile("textures/([a-z0-9_/]+)\\.png")
+                            .matcher(String.valueOf(args[3]));
+                        out.addProperty("texture", found.find() ? found.group(1) : String.valueOf(args[3]));
+                    }
+                    return null;
+                });
+            group.extractRenderState(null, camera, Oracle.f32(row, "partial")).submit(collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `BellRenderer.submit` hands the collector: the model with the bell swung for the
+     * ticks and the side it was struck from, the light and the sprite.
+     */
+    static JsonObject bellPose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var renderer = (net.minecraft.client.renderer.blockentity.BellRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.BellRenderer.class);
+        var modelField = Reflect.field(net.minecraft.client.renderer.blockentity.BellRenderer.class, "model");
+        modelField.set(renderer, new net.minecraft.client.model.object.bell.BellModel(
+            bakedLayer("minecraft:bell#main")));
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.BellRenderState();
+            state.ticks = Oracle.f32(row, "ticks");
+            state.shakeDirection = row.get("shake").isJsonNull() ? null
+                : net.minecraft.core.Direction.valueOf(row.get("shake").getAsString().toUpperCase());
+            state.lightCoords = row.get("light").getAsInt();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var modelState = (net.minecraft.client.model.object.bell.BellModel.State) args[1];
+                        out.addProperty("ticks", Oracle.bits(modelState.ticks()));
+                        out.addProperty("light", (Integer) args[3]);
+                        out.addProperty("texture", ((net.minecraft.client.resources.model.sprite.SpriteId) args[6])
+                            .texture().getPath());
+                        out.add("quads", posedQuads("", (net.minecraft.client.model.Model<?>) args[0]).get("quads"));
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The bits of some floats, as an array. */
+    static JsonArray floatBits(final float... values) {
+        var array = new JsonArray();
+        for (float value : values) {
+            array.add(Oracle.bits(value));
+        }
+        return array;
+    }
+
+    /**
+     * What the real `EnchantTableRenderer` hands the collector for an enchanting table whose book
+     * is at some numbers, at a partial tick: what the render state takes from the entity, the pose,
+     * the model's state and the model set up with it.
+     */
+    static JsonObject enchantTablePose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var renderer = (net.minecraft.client.renderer.blockentity.EnchantTableRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.EnchantTableRenderer.class);
+        var modelField = Reflect.field(net.minecraft.client.renderer.blockentity.EnchantTableRenderer.class, "bookModel");
+        modelField.set(renderer, new net.minecraft.client.model.object.book.BookModel(bakedLayer("minecraft:book#main")));
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var entity = new net.minecraft.world.level.block.entity.EnchantingTableBlockEntity(
+                net.minecraft.core.BlockPos.ZERO, net.minecraft.world.level.block.Blocks.ENCHANTING_TABLE.defaultBlockState());
+            entity.time = row.get("time").getAsInt();
+            entity.flip = Oracle.f32(row, "flip");
+            entity.oFlip = Oracle.f32(row, "o_flip");
+            entity.open = Oracle.f32(row, "open");
+            entity.oOpen = Oracle.f32(row, "o_open");
+            entity.rot = Oracle.f32(row, "rot");
+            entity.oRot = Oracle.f32(row, "o_rot");
+            var state = renderer.createRenderState();
+            renderer.extractRenderState(entity, state, Oracle.f32(row, "partial"), net.minecraft.world.phys.Vec3.ZERO, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("view", floatBits(state.flip, state.open, state.time, state.yRot));
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        var book = (net.minecraft.client.model.object.book.BookModel.State) args[1];
+                        out.add("book", floatBits(book.openness(), book.pageFlip1(), book.pageFlip2()));
+                        out.addProperty("texture", ((net.minecraft.client.resources.model.sprite.SpriteId) args[6])
+                            .texture().getPath());
+                        @SuppressWarnings("unchecked")
+                        var model = (net.minecraft.client.model.Model<Object>) args[0];
+                        model.setupAnim(book);
+                        out.add("quads", posedQuads("", model).get("quads"));
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The quads of one part, sorted, as the part renderer writes them. */
+    static JsonArray partQuads(final net.minecraft.client.model.geom.ModelPart part) {
+        var capture = new Capture();
+        part.render(new com.mojang.blaze3d.vertex.PoseStack(), capture, 0, 0);
+        var quads = new java.util.ArrayList<String>();
+        for (int i = 0; i < capture.vertices.size(); i += 4) {
+            quads.add(String.join("", capture.vertices.subList(i, i + 4)));
+        }
+        java.util.Collections.sort(quads);
+        var array = new JsonArray();
+        quads.forEach(array::add);
+        return array;
+    }
+
+    /** A vertex consumer that notes each vertex whole: its place, picture, colour, light and normal. */
+    static final class VertexRecorder implements com.mojang.blaze3d.vertex.VertexConsumer {
+        final java.util.List<String> vertices = new java.util.ArrayList<>();
+        private float x;
+        private float y;
+        private float z;
+        private float u;
+        private float v;
+        private int color;
+        private int light;
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer addVertex(final float x, final float y, final float z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int r, final int g, final int b, final int a) {
+            this.color = (a & 255) << 24 | (r & 255) << 16 | (g & 255) << 8 | b & 255;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int color) {
+            this.color = color;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv(final float u, final float v) {
+            this.u = u;
+            this.v = v;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv1(final int u, final int v) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv3(final float u, final float v) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv2(final int u, final int v) {
+            this.light = u | v << 16;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setNormal(final float nx, final float ny, final float nz) {
+            this.vertices.add(Oracle.bits(this.x) + Oracle.bits(this.y) + Oracle.bits(this.z) + Oracle.bits(this.u)
+                + Oracle.bits(this.v) + String.format(java.util.Locale.ROOT, "%08x%08x", this.color, this.light)
+                + Oracle.bits(nx) + Oracle.bits(ny) + Oracle.bits(nz));
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setLineWidth(final float width) {
+            return this;
+        }
+    }
+
+    /**
+     * What the real `BeaconRenderer.submit` hands the collector for a beam of some stretches, at
+     * some time of the beam's clock and some scale of its radius: each layer submitted, whether it
+     * is the translucent glow, and the quads it writes.
+     */
+    static JsonObject beaconBeam(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var renderer = new net.minecraft.client.renderer.blockentity.BeaconRenderer<
+            net.minecraft.world.level.block.entity.BeaconBlockEntity>();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.BeaconRenderState();
+            state.animationTime = Oracle.f32(row, "animation_time");
+            state.beamRadiusScale = Oracle.f32(row, "radius_scale");
+            for (var section : row.getAsJsonArray("sections")) {
+                var described = section.getAsJsonObject();
+                state.sections.add(new net.minecraft.client.renderer.blockentity.state.BeaconRenderState.Section(
+                    described.get("color").getAsInt(), described.get("height").getAsInt()));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var translucentType = net.minecraft.client.renderer.rendertype.RenderTypes.beaconBeam(
+                net.minecraft.client.renderer.blockentity.BeaconRenderer.BEAM_LOCATION, true);
+            var layers = new JsonArray();
+            var collector = beamCollector(translucentType, layers);
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            out.add("layers", layers);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** A collector that records each beam layer it is handed: whether it is the glow, and its quads. */
+    private static net.minecraft.client.renderer.SubmitNodeCollector beamCollector(
+        final Object translucentType, final JsonArray layers) {
+        return (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+            EntityOracle.class.getClassLoader(),
+            new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+            (proxy, method, args) -> {
+                if (method.getName().equals("submitCustomGeometry")) {
+                    var recorder = new VertexRecorder();
+                    ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                        .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), recorder);
+                    var layer = new JsonObject();
+                    layer.addProperty("translucent", args[1] == translucentType);
+                    var quads = new JsonArray();
+                    for (int i = 0; i < recorder.vertices.size(); i += 4) {
+                        quads.add(String.join("|", recorder.vertices.subList(i, i + 4)));
+                    }
+                    layer.add("quads", quads);
+                    layers.add(layer);
+                }
+                return null;
+            });
+    }
+
+    /**
+     * What the real `TheEndGatewayRenderer.submit` hands the collector for a beam of some height
+     * and colour, at some scale and time of the beam's clock: each layer submitted, whether it is
+     * the translucent glow, and the quads it writes. No face of the cube is shown.
+     */
+    static JsonObject gatewayBeam(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var renderer = new net.minecraft.client.renderer.blockentity.TheEndGatewayRenderer();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.EndGatewayRenderState();
+            state.animationTime = Oracle.f32(row, "animation_time");
+            state.scale = Oracle.f32(row, "scale");
+            state.height = row.get("height").getAsInt();
+            state.color = row.get("color").getAsInt();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var layers = new JsonArray();
+            var translucentType = net.minecraft.client.renderer.rendertype.RenderTypes.beaconBeam(
+                net.minecraft.resources.Identifier.withDefaultNamespace("textures/entity/end_portal/end_gateway_beam.png"),
+                true);
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), beamCollector(translucentType, layers), null);
+            out.add("layers", layers);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `BrushableBlockRenderer.submit` does with the item of a suspicious block that
+     * has been brushed some way on some face: whether it draws one, and the pose its item layer is
+     * submitted from. The item's own model is a bare layer.
+     */
+    static JsonObject brushablePose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var renderer = (net.minecraft.client.renderer.blockentity.BrushableBlockRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.BrushableBlockRenderer.class);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = renderer.createRenderState();
+            state.hitDirection = net.minecraft.core.Direction.valueOf(row.get("direction").getAsString().toUpperCase());
+            state.dustProgress = row.get("dusted").getAsInt();
+            state.itemState.newLayer();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var drawn = new boolean[1];
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        drawn[0] = true;
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            out.addProperty("drawn", drawn[0]);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `ShelfRenderer.submit` does with the items on a shelf facing some way, standing
+     * on its floor or not: the pose each item layer is submitted from, slot by slot. Each item's
+     * model is a bare layer with two points for its extent; `gaps` leaves slots empty.
+     */
+    static JsonObject shelfPose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var renderer = (net.minecraft.client.renderer.blockentity.ShelfRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.ShelfRenderer.class);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = renderer.createRenderState();
+            state.facing = net.minecraft.core.Direction.valueOf(row.get("facing").getAsString().toUpperCase());
+            state.alignToBottom = row.get("align").getAsBoolean();
+            var low = Oracle.f32(row, "min_y");
+            var high = Oracle.f32(row, "max_y");
+            var gaps = row.getAsJsonArray("gaps");
+            for (int slot = 0; slot < 3; slot++) {
+                if (gaps.get(slot).getAsBoolean()) {
+                    continue;
+                }
+                var item = new net.minecraft.client.renderer.item.ItemStackRenderState();
+                item.newLayer().setExtents(() -> new org.joml.Vector3fc[] {
+                    new org.joml.Vector3f(0.0F, low, 0.0F), new org.joml.Vector3f(0.0F, high, 0.0F)});
+                state.items[slot] = item;
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `ConduitRenderer` does: for a "state" row the numbers its extraction takes from
+     * a conduit that has counted some ticks and turns, and for a "pose" row each part it submits
+     * for a render state, in order, with its sprite, its pose and its quads. The sprites are
+     * recorded by the path they are asked for; the camera turns as given.
+     */
+    static JsonObject conduitPose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var rendererClass = net.minecraft.client.renderer.blockentity.ConduitRenderer.class;
+        var renderer = (net.minecraft.client.renderer.blockentity.ConduitRenderer) UNSAFE.allocateInstance(rendererClass);
+        var made = new java.util.IdentityHashMap<Object, net.minecraft.client.resources.model.sprite.SpriteId>();
+        var byId = new java.util.HashMap<net.minecraft.client.resources.model.sprite.SpriteId,
+            net.minecraft.client.renderer.texture.TextureAtlasSprite>();
+        net.minecraft.client.resources.model.sprite.SpriteGetter sprites = id -> byId.computeIfAbsent(id, key -> {
+            try {
+                var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) UNSAFE.allocateInstance(
+                    net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+                made.put(sprite, key);
+                return sprite;
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(error);
+            }
+        });
+        var names = new java.util.IdentityHashMap<Object, String>();
+        var spritesField = Reflect.field(rendererClass, "sprites");
+        spritesField.set(renderer, sprites);
+        for (var name : new String[] {"eye", "wind", "shell", "cage"}) {
+            var field = Reflect.field(rendererClass, name);
+            var part = bakedLayer("minecraft:conduit#" + name);
+            field.set(renderer, part);
+            names.put(part, name);
+        }
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            if (row.get("kind").getAsString().equals("state")) {
+                var entity = new net.minecraft.world.level.block.entity.ConduitBlockEntity(
+                    net.minecraft.core.BlockPos.ZERO, net.minecraft.world.level.block.Blocks.CONDUIT.defaultBlockState());
+                entity.tickCount = row.get("tick_count").getAsInt();
+                for (var field : new String[] {"activeRotation", "isActive", "isHunting"}) {
+                    var reflected = Reflect.field(net.minecraft.world.level.block.entity.ConduitBlockEntity.class, field);
+                    if (field.equals("activeRotation")) {
+                        reflected.setFloat(entity, (float) row.get("rotation").getAsInt());
+                    } else {
+                        reflected.setBoolean(entity, row.get(field.equals("isActive") ? "active" : "hunting").getAsBoolean());
+                    }
+                }
+                var state = renderer.createRenderState();
+                renderer.extractRenderState(entity, state, Oracle.f32(row, "partial"), net.minecraft.world.phys.Vec3.ZERO, null);
+                out.addProperty("active", state.isActive);
+                out.addProperty("hunting", state.isHunting);
+                out.addProperty("active_rotation", Oracle.bits(state.activeRotation));
+                out.addProperty("anim_time", Oracle.bits(state.animTime));
+                out.addProperty("phase", state.animationPhase);
+                rows.add(out);
+                continue;
+            }
+            var state = renderer.createRenderState();
+            state.isActive = row.get("active").getAsBoolean();
+            state.isHunting = row.get("hunting").getAsBoolean();
+            state.activeRotation = Oracle.f32(row, "active_rotation");
+            state.animTime = Oracle.f32(row, "anim_time");
+            state.animationPhase = row.get("phase").getAsInt();
+            var camera = new net.minecraft.client.renderer.state.level.CameraRenderState();
+            float degrees = (float) (Math.PI / 180.0);
+            camera.orientation.rotationYXZ((float) Math.PI - Oracle.f32(row, "yaw") * degrees,
+                -Oracle.f32(row, "pitch") * degrees, 0.0F);
+            var parts = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModelPart")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[1]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        var drawn = new JsonObject();
+                        drawn.addProperty("part", names.get(args[0]));
+                        drawn.addProperty("texture", made.get(args[5]).texture().getPath());
+                        drawn.add("matrix", described);
+                        drawn.add("quads", partQuads((net.minecraft.client.model.geom.ModelPart) args[0]));
+                        parts.add(drawn);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, camera);
+            out.add("parts", parts);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `CampfireRenderer.submit` does with the food on a campfire facing some way: the
+     * pose each filled slot's item layer is submitted from. Each item's model is a bare layer;
+     * `gaps` leaves slots empty.
+     */
+    static JsonObject campfirePose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var renderer = (net.minecraft.client.renderer.blockentity.CampfireRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.CampfireRenderer.class);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = renderer.createRenderState();
+            state.facing = net.minecraft.core.Direction.valueOf(row.get("facing").getAsString().toUpperCase());
+            state.items = new java.util.ArrayList<>();
+            for (var gap : row.getAsJsonArray("gaps")) {
+                var item = new net.minecraft.client.renderer.item.ItemStackRenderState();
+                if (!gap.getAsBoolean()) {
+                    item.newLayer();
+                }
+                state.items.add(item);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `VaultRenderer.submit` does with the item a vault shows: the pose each copy of
+     * its layer is submitted from, for a stack of an item and a count turned some way. The item's
+     * model is a bare layer with two points for its extent (`depth` apart in z); the spin is worked
+     * out as the renderer's extraction works it, from the last two ticks'.
+     */
+    static JsonObject vaultPose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var renderer = (net.minecraft.client.renderer.blockentity.VaultRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.VaultRenderer.class);
+        var randomField = Reflect.field(net.minecraft.client.renderer.blockentity.VaultRenderer.class, "random");
+        randomField.set(renderer, net.minecraft.util.RandomSource.create());
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var stack = new net.minecraft.world.item.ItemStack(
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                    net.minecraft.resources.Identifier.parse(row.get("item").getAsString())),
+                row.get("count").getAsInt());
+            var state = new net.minecraft.client.renderer.blockentity.state.VaultRenderState();
+            state.displayItem = new net.minecraft.client.renderer.entity.state.ItemClusterRenderState();
+            state.displayItem.count = net.minecraft.client.renderer.entity.state.ItemClusterRenderState.getRenderedAmount(stack.getCount());
+            state.displayItem.seed = net.minecraft.client.renderer.entity.state.ItemClusterRenderState.getSeedForItemStack(stack);
+            state.spin = net.minecraft.util.Mth.rotLerp(Oracle.f32(row, "partial"),
+                (float) row.get("previous").getAsInt(), (float) row.get("current").getAsInt());
+            var low = Oracle.f32(row, "min_y");
+            var high = Oracle.f32(row, "max_y");
+            var depth = Oracle.f32(row, "depth");
+            state.displayItem.item.newLayer().setExtents(() -> new org.joml.Vector3fc[] {
+                new org.joml.Vector3f(0.0F, low, 0.0F), new org.joml.Vector3f(0.0F, high, depth)});
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("spin", Oracle.bits(state.spin));
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `CopperGolemStatueBlockRenderer.submit` hands the collector for a statue in a
+     * pose, facing a way, as weathered as a state says: the model's pose, its texture, and its
+     * quads once the statue model has been set up.
+     */
+    static JsonObject copperStatuePose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var rendererClass = net.minecraft.client.renderer.blockentity.CopperGolemStatueBlockRenderer.class;
+        var renderer = (net.minecraft.client.renderer.blockentity.CopperGolemStatueBlockRenderer) UNSAFE.allocateInstance(rendererClass);
+        var models = new java.util.HashMap<net.minecraft.world.level.block.CopperGolemStatueBlock.Pose,
+            net.minecraft.client.model.object.statue.CopperGolemStatueModel>();
+        var layers = java.util.Map.of(
+            net.minecraft.world.level.block.CopperGolemStatueBlock.Pose.STANDING, "minecraft:copper_golem#main",
+            net.minecraft.world.level.block.CopperGolemStatueBlock.Pose.RUNNING, "minecraft:copper_golem_running#main",
+            net.minecraft.world.level.block.CopperGolemStatueBlock.Pose.SITTING, "minecraft:copper_golem_sitting#main",
+            net.minecraft.world.level.block.CopperGolemStatueBlock.Pose.STAR, "minecraft:copper_golem_star#main");
+        for (var entry : layers.entrySet()) {
+            models.put(entry.getKey(), new net.minecraft.client.model.object.statue.CopperGolemStatueModel(bakedLayer(entry.getValue())));
+        }
+        var modelsField = Reflect.field(rendererClass, "models");
+        modelsField.set(renderer, models);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = renderer.createRenderState();
+            state.direction = net.minecraft.core.Direction.valueOf(row.get("facing").getAsString().toUpperCase());
+            state.pose = net.minecraft.world.level.block.CopperGolemStatueBlock.Pose.valueOf(row.get("pose").getAsString().toUpperCase());
+            state.oxidationState = net.minecraft.world.level.block.WeatheringCopper.WeatherState.values()[row.get("weathering").getAsInt()];
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        out.addProperty("texture", ((net.minecraft.resources.Identifier) args[3]).getPath()
+                            .replaceFirst("^textures/", "").replaceFirst("\\.png$", ""));
+                        @SuppressWarnings("unchecked")
+                        var model = (net.minecraft.client.model.Model<Object>) args[0];
+                        model.setupAnim(args[1]);
+                        out.add("quads", posedQuads("", model).get("quads"));
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** A vertex consumer that notes each vertex's place alone, as the end portal's cubes give them. */
+    static final class PositionRecorder implements com.mojang.blaze3d.vertex.VertexConsumer {
+        final java.util.List<String> vertices = new java.util.ArrayList<>();
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer addVertex(final float x, final float y, final float z) {
+            this.vertices.add(Oracle.bits(x) + Oracle.bits(y) + Oracle.bits(z));
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int r, final int g, final int b, final int a) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int color) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv(final float u, final float v) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv1(final int u, final int v) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv3(final float u, final float v) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv2(final int u, final int v) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setNormal(final float nx, final float ny, final float nz) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setLineWidth(final float width) {
+            return this;
+        }
+    }
+
+    /**
+     * What the real `TheEndPortalRenderer` and `TheEndGatewayRenderer` hand the collector for a
+     * cube showing some of its faces: the render type's name and the corners written, in order.
+     */
+    static JsonObject endPortalCube(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var gateway = row.get("gateway").getAsBoolean();
+            var shown = new java.util.ArrayList<net.minecraft.core.Direction>();
+            for (var name : row.getAsJsonArray("faces")) {
+                shown.add(net.minecraft.core.Direction.valueOf(name.getAsString().toUpperCase()));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var corners = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        var recorder = new PositionRecorder();
+                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                            .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), recorder);
+                        recorder.vertices.forEach(corners::add);
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            if (gateway) {
+                var state = new net.minecraft.client.renderer.blockentity.state.EndGatewayRenderState();
+                state.facesToShow.addAll(shown);
+                new net.minecraft.client.renderer.blockentity.TheEndGatewayRenderer().submit(state, stack, collector, null);
+            } else {
+                var state = new net.minecraft.client.renderer.blockentity.state.EndPortalRenderState();
+                state.facesToShow.addAll(shown);
+                new net.minecraft.client.renderer.blockentity.TheEndPortalRenderer().submit(state, stack, collector, null);
+            }
+            out.add("corners", corners);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `DecoratedPotRenderer.submit` hands the collector for a pot facing some way,
+     * wobbling some way through, with some items set in its sides: the pose, and each part in the
+     * order it is drawn with its picture and its quads. The render state is made as the renderer's
+     * extraction leaves it, which never records the wobble's style.
+     */
+    static JsonObject decoratedPotPose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var made = new java.util.IdentityHashMap<Object, net.minecraft.client.resources.model.sprite.SpriteId>();
+        var byId = new java.util.HashMap<net.minecraft.client.resources.model.sprite.SpriteId,
+            net.minecraft.client.renderer.texture.TextureAtlasSprite>();
+        net.minecraft.client.resources.model.sprite.SpriteGetter sprites = id -> byId.computeIfAbsent(id, key -> {
+            try {
+                var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) UNSAFE.allocateInstance(
+                    net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+                made.put(sprite, key);
+                return sprite;
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(error);
+            }
+        });
+        var renderer = new net.minecraft.client.renderer.blockentity.DecoratedPotRenderer(
+            net.minecraft.client.model.geom.EntityModelSet.vanilla(), sprites);
+        var names = new java.util.IdentityHashMap<Object, String>();
+        for (var name : new String[] {"neck", "top", "bottom"}) {
+            var field = Reflect.field(net.minecraft.client.renderer.blockentity.DecoratedPotRenderer.class, name);
+            names.put(field.get(renderer), name);
+        }
+        for (var name : new String[] {"front", "back", "left", "right"}) {
+            var field = Reflect.field(net.minecraft.client.renderer.blockentity.DecoratedPotRenderer.class, name + "Side");
+            names.put(field.get(renderer), name);
+        }
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.DecoratedPotRenderState();
+            state.direction = net.minecraft.core.Direction.valueOf(row.get("facing").getAsString().toUpperCase());
+            state.wobbleProgress = Oracle.f32(row, "wobble");
+            state.lightCoords = row.get("light").getAsInt();
+            var items = new java.util.ArrayList<java.util.Optional<net.minecraft.world.item.ItemStackTemplate>>();
+            for (var sherd : row.getAsJsonArray("sherds")) {
+                items.add(sherd.isJsonNull() ? java.util.Optional.empty() : java.util.Optional.of(
+                    new net.minecraft.world.item.ItemStackTemplate(
+                        net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                            net.minecraft.resources.Identifier.parse(sherd.getAsString())))));
+            }
+            state.decorations = new net.minecraft.world.level.block.entity.PotDecorations(
+                items.get(0), items.get(1), items.get(2), items.get(3));
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var parts = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModelPart")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[1]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        var drawn = new JsonObject();
+                        drawn.addProperty("part", names.get(args[0]));
+                        drawn.addProperty("light", (Integer) args[3]);
+                        drawn.addProperty("texture", made.get(args[5]).texture().getPath());
+                        drawn.add("quads", partQuads((net.minecraft.client.model.geom.ModelPart) args[0]));
+                        parts.add(drawn);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            out.add("parts", parts);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `LecternRenderer` hands the collector for a lectern facing some way, with a book
+     * or none: the turn it takes from the facing, the pose, the model's state and the model set up
+     * with it.
+     */
+    static JsonObject lecternPose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var renderer = (net.minecraft.client.renderer.blockentity.LecternRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.LecternRenderer.class);
+        var modelField = Reflect.field(net.minecraft.client.renderer.blockentity.LecternRenderer.class, "bookModel");
+        modelField.set(renderer, new net.minecraft.client.model.object.book.BookModel(bakedLayer("minecraft:book#main")));
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var lectern = net.minecraft.world.level.block.Blocks.LECTERN.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.LecternBlock.FACING,
+                    net.minecraft.core.Direction.valueOf(row.get("facing").getAsString().toUpperCase()))
+                .setValue(net.minecraft.world.level.block.LecternBlock.HAS_BOOK, row.get("has_book").getAsBoolean());
+            var entity = new net.minecraft.world.level.block.entity.LecternBlockEntity(net.minecraft.core.BlockPos.ZERO, lectern);
+            var state = renderer.createRenderState();
+            renderer.extractRenderState(entity, state, 0.0F, net.minecraft.world.phys.Vec3.ZERO, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("has_book", state.hasBook);
+            out.addProperty("turn", Oracle.bits(state.yRot));
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        var book = (net.minecraft.client.model.object.book.BookModel.State) args[1];
+                        out.add("book", floatBits(book.openness(), book.pageFlip1(), book.pageFlip2()));
+                        out.addProperty("texture", ((net.minecraft.client.resources.model.sprite.SpriteId) args[6])
+                            .texture().getPath());
+                        @SuppressWarnings("unchecked")
+                        var model = (net.minecraft.client.model.Model<Object>) args[0];
+                        model.setupAnim(book);
+                        out.add("quads", posedQuads("", model).get("quads"));
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `ShulkerBoxRenderer.submit` hands the collector: the pose, the light, the sprite
+     * and the model with its lid set for the progress, for a colour, facing and progress.
+     */
+    static JsonObject shulkerBoxPose(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var renderer = new net.minecraft.client.renderer.blockentity.ShulkerBoxRenderer(
+            net.minecraft.client.model.geom.EntityModelSet.vanilla(), null);
+        // The first use of each facing's matrix works its flags out, as the first box drawn does.
+        for (var facing : net.minecraft.core.Direction.values()) {
+            com.mojang.math.MatrixUtil.isPureTranslation(
+                net.minecraft.client.renderer.blockentity.ShulkerBoxRenderer.modelTransform(facing).getMatrix());
+        }
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.ShulkerBoxRenderState();
+            state.direction = net.minecraft.core.Direction.valueOf(row.get("facing").getAsString().toUpperCase());
+            state.color = row.get("color").isJsonNull() ? null
+                : net.minecraft.world.item.DyeColor.valueOf(row.get("color").getAsString().toUpperCase());
+            state.progress = Oracle.f32(row, "progress");
+            state.lightCoords = row.get("light").getAsInt();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        out.addProperty("progress", Oracle.bits((Float) args[1]));
+                        out.addProperty("light", (Integer) args[3]);
+                        out.addProperty("texture", ((net.minecraft.client.resources.model.sprite.SpriteId) args[6])
+                            .texture().getPath());
+                        out.add("quads", posedQuads("", (net.minecraft.client.model.Model<?>) args[0]).get("quads"));
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "x"), Oracle.f32(row, "y"), Oracle.f32(row, "z"));
+            renderer.submit(state, stack, collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * The game's own block model table for entities (`BuiltInBlockModels`): for every block state
+     * it holds, the model it names, written by walking the records it is made of. A state key is
+     * `BlockStateParser.serialize`. Three things are written short: a `Transformation` is the word
+     * "transform" (the matrices are compared elsewhere), the tint sources are left out, and a
+     * `BlockState` is its serialized string.
+     */
+    static JsonObject builtInBlockModels(final JsonObject request) throws Exception {
+        Game26_3.vanillaRegistries();
+        var models = net.minecraft.client.renderer.block.BuiltInBlockModels.createBlockModels(
+            net.minecraft.client.color.block.BlockColors.createDefault());
+        var sorted = new java.util.TreeMap<String, JsonObject>();
+        for (var entry : models.entrySet()) {
+            var reduced = reduceEntry(entry.getKey(), entry.getValue());
+            var row = new JsonObject();
+            row.addProperty("state", net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(entry.getKey()));
+            row.addProperty("model", describeModel(reduced));
+            // The matrices of the three transformations a block of this kind is drawn through.
+            if (reduced instanceof net.minecraft.client.renderer.block.model.SpecialBlockModelWrapper.Unbaked<?> special
+                && special.transformation().isPresent()
+                && (entry.getKey().is(net.minecraft.world.level.block.Blocks.ENCHANTING_TABLE)
+                    || entry.getKey().is(net.minecraft.world.level.block.Blocks.CONDUIT)
+                    || entry.getKey().is(net.minecraft.world.level.block.Blocks.END_PORTAL))) {
+                var matrix = new float[16];
+                special.transformation().get().getMatrix().get(matrix);
+                var described = new JsonArray();
+                for (float value : matrix) {
+                    described.add(Oracle.bits(value));
+                }
+                row.add("matrix", described);
+            }
+            sorted.put(row.get("state").getAsString(), row);
+        }
+        var rows = new JsonArray();
+        for (var entry : sorted.values()) {
+            rows.add(entry);
+        }
+        var result = new JsonObject();
+        result.add("states", rows);
+        return result;
+    }
+
+    /**
+     * A table entry. Most are a composite of the state's own baked model, untransformed, and the
+     * model that stands in for it; those are written as the second alone, and the rest in full.
+     */
+    private static net.minecraft.client.renderer.block.model.BlockModel.Unbaked reduceEntry(
+        final net.minecraft.world.level.block.state.BlockState state,
+        final net.minecraft.client.renderer.block.model.BlockModel.Unbaked model) {
+        if (model instanceof net.minecraft.client.renderer.block.model.CompositeBlockModel.Unbaked composite
+            && composite.transformation().isEmpty()
+            && composite.normal() instanceof net.minecraft.client.renderer.block.model.BlockStateModelWrapper.Unbaked normal
+            && normal.model() == state && normal.transformation().isEmpty()) {
+            return composite.custom();
+        }
+        return model;
+    }
+
+    /** A value written for the table's comparison: records, optionals, lists and enums walked. */
+    private static String describeModel(final Object value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof java.util.Optional<?> optional) {
+            return optional.isPresent() ? describeModel(optional.get()) : "none";
+        }
+        if (value instanceof com.mojang.math.Transformation) {
+            return "transform";
+        }
+        if (value instanceof net.minecraft.world.level.block.state.BlockState state) {
+            return net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(state);
+        }
+        if (value instanceof java.util.List<?> list) {
+            var parts = new java.util.ArrayList<String>();
+            for (var each : list) {
+                parts.add(describeModel(each));
+            }
+            return "[" + String.join(",", parts) + "]";
+        }
+        if (value.getClass().isRecord()) {
+            return describeRecord(value);
+        }
+        if (value instanceof Enum<?> constant) {
+            return constant.name().toLowerCase();
+        }
+        var text = String.valueOf(value);
+        if (text.contains("@")) {
+            var name = value.getClass().getName();
+            return name.substring(name.lastIndexOf('.') + 1);
+        }
+        return text;
+    }
+
+    /** A record as `Name(component=value,...)`, without the tint sources (`tints`). */
+    private static String describeRecord(final Object value) {
+        var parts = new java.util.ArrayList<String>();
+        for (var component : value.getClass().getRecordComponents()) {
+            if (component.getName().equals("tints")) {
+                continue;
+            }
+            try {
+                Reflect.open(component.getAccessor());
+                parts.add(component.getName() + "=" + describeModel(component.getAccessor().invoke(value)));
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(error);
+            }
+        }
+        var name = value.getClass().getName();
+        return name.substring(name.lastIndexOf('.') + 1) + "(" + String.join(",", parts) + ")";
+    }
+
+    /** An entity renderer dispatcher that keeps the pose an entity is submitted through. */
+    static class CageDispatcher extends net.minecraft.client.renderer.entity.EntityRenderDispatcher {
+        float[] matrix;
+
+        CageDispatcher() {
+            super(null, null, null, null, null, null, null, null, null, null, null);
+        }
+
+        @Override
+        public <E extends net.minecraft.world.entity.Entity> net.minecraft.client.renderer.entity.state.EntityRenderState
+            extractEntity(final E entity, final float partialTicks) {
+            return new net.minecraft.client.renderer.entity.state.EntityRenderState();
+        }
+
+        @Override
+        public <S extends net.minecraft.client.renderer.entity.state.EntityRenderState> void submit(
+            final S renderState, final net.minecraft.client.renderer.state.level.CameraRenderState camera,
+            final double x, final double y, final double z, final com.mojang.blaze3d.vertex.PoseStack poseStack,
+            final net.minecraft.client.renderer.SubmitNodeCollector collector) {
+            matrix = new float[16];
+            poseStack.last().pose().get(matrix);
+        }
+    }
+
+    /** The spin, scale and pose a spawner shows its mob through, for entity types and spins. */
+    static JsonObject spawnerCage(final JsonObject request) throws Exception {
+        MovementSupport.bootstrap();
+        var sceneRow = new JsonObject();
+        sceneRow.add("blocks", new JsonArray());
+        sceneRow.addProperty("chunk_radius", 0);
+        var scene = MovementSupport.buildScene(sceneRow);
+        // Monsters are made only where the difficulty is not peaceful.
+        scene.level().getLevelData().setDifficulty(net.minecraft.world.Difficulty.NORMAL);
+        var dispatcher = (CageDispatcher) MovementSupport.unsafe.allocateInstance(CageDispatcher.class);
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
+                net.minecraft.resources.Identifier.parse(row.get("type").getAsString()));
+            // The entity tag of the spawner's data, loaded as `BaseSpawner.getOrCreateDisplayEntity` loads it.
+            var tag = new net.minecraft.nbt.CompoundTag();
+            tag.putString("id", row.get("type").getAsString());
+            if (row.has("baby")) {
+                tag.putBoolean("IsBaby", row.get("baby").getAsBoolean());
+            }
+            if (row.has("size")) {
+                tag.putInt("Size", row.get("size").getAsInt());
+            }
+            var entity = net.minecraft.world.entity.EntityType.loadEntityRecursive(
+                tag, scene.level(),
+                new net.minecraft.world.entity.EntitySpawnRequest(net.minecraft.world.entity.EntitySpawnReason.SPAWNER, true),
+                loaded -> loaded);
+            var state = new net.minecraft.client.renderer.blockentity.state.SpawnerRenderState();
+            net.minecraft.client.renderer.blockentity.TrialSpawnerRenderer.extractSpawnerData(
+                state, Oracle.f32(row, "partial"), entity, dispatcher, Oracle.f64(row, "o_spin"), Oracle.f64(row, "spin"));
+            net.minecraft.client.renderer.blockentity.SpawnerRenderer.submitEntityInSpawner(
+                new com.mojang.blaze3d.vertex.PoseStack(), null, state.displayEntity, dispatcher, state.spin, state.scale,
+                null);
+            var out = new JsonObject();
+            out.add("label", row.get("label"));
+            out.addProperty("spin", Oracle.bits(state.spin));
+            out.addProperty("scale", Oracle.bits(state.scale));
+            var matrix = new JsonArray();
+            for (float value : dispatcher.matrix) {
+                matrix.add(Oracle.bits(value));
+            }
+            out.add("matrix", matrix);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+}

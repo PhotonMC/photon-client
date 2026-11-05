@@ -2,6 +2,7 @@ target/
 .data/
 assets/
 reference/
+!/tests/behavior/reference/
 references/
 captures/
 test-results/
