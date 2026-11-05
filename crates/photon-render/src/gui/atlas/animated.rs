@@ -11,8 +11,8 @@ use crate::vulkan::AtlasRegion;
 
 /// One client tick.
 const TICK: Duration = Duration::from_millis(50);
-/// The most ticks caught up at once, after a long stall.
-const MAX_CATCH_UP: u32 = 20;
+/// The most ticks caught up at once, after a long stall (`Minecraft.MAX_TICKS_PER_UPDATE`).
+const MAX_CATCH_UP: u32 = 10;
 
 /// One animated sprite: every frame of its strip and where it plays.
 #[derive(Debug)]
