@@ -37,6 +37,7 @@ impl Listener {
 struct Subtitle {
     key: String,
     range: f32,
+    looping: bool,
     played_at: Vec<(Vec3Key, u64)>,
 }
 
@@ -47,13 +48,28 @@ fn vec3(place: Vec3Key) -> Vec3 {
     Vec3::new(place.0, place.1, place.2)
 }
 
+/// How long a looping sound's line stays at full brightness, in milliseconds
+/// (`LOOPING_DISPLAY_FULL_BRIGHTNESS_TIME`).
+const LOOPING_FULL_BRIGHTNESS: u64 = 500;
+
 impl Subtitle {
-    /// `getClosest`: the place heard at that is nearest to `position`, the first of equals.
-    fn closest(&self, position: Vec3) -> Option<(Vec3Key, u64)> {
+    /// `getBestSubtitleCandidate`: with one hearing, that one; with more, the latest within range,
+    /// the farthest of equals in time (`max` keeps the first of equals).
+    fn best_candidate(&self, position: Vec3) -> Option<(Vec3Key, u64)> {
+        if let [only] = self.played_at.as_slice() {
+            return Some(*only);
+        }
+        let range = f64::from(self.range);
         let mut best: Option<((Vec3Key, u64), f64)> = None;
         for played in &self.played_at {
+            if !vec3(played.0).closer_than_position(position, range) {
+                continue;
+            }
             let distance = vec3(played.0).distance_to(position);
-            if best.is_none_or(|(_, nearest)| distance < nearest) {
+            let better = best.is_none_or(|((_, time), far)| {
+                (played.1, distance).partial_cmp(&(time, far)) == Some(std::cmp::Ordering::Greater)
+            });
+            if better {
                 best = Some((*played, distance));
             }
         }
@@ -65,7 +81,7 @@ impl Subtitle {
         if self.range.is_infinite() {
             return true;
         }
-        self.closest(camera).is_some_and(|(place, _)| {
+        self.best_candidate(camera).is_some_and(|(place, _)| {
             camera.closer_than_position(vec3(place), f64::from(self.range))
         })
     }
@@ -73,6 +89,18 @@ impl Subtitle {
     fn purge_old_instances(&mut self, max_age: f64, now: u64) {
         self.played_at
             .retain(|(_, time)| now.saturating_sub(*time) as f64 <= max_age);
+    }
+
+    /// `getBrightness`: a looping sound keeps its full brightness a while longer.
+    fn brightness(&self, time: u64, (now, display_time): (u64, f64)) -> u32 {
+        let full = if self.looping {
+            LOOPING_FULL_BRIGHTNESS
+        } else {
+            0
+        };
+        let age = now.saturating_sub(time).saturating_sub(full) as f32;
+        let elapsed = age / ((DISPLAY_TIME as u64 - full) as f64 * display_time) as f32;
+        photon_core::math::clamped_lerp_f32(elapsed, 255.0, 75.0).floor() as u32
     }
 }
 
@@ -84,9 +112,9 @@ pub struct Subtitles {
 
 impl Subtitles {
     /// `onPlaySound`: a sound whose event has a subtitle (the translation key) starts at a place
-    /// `range` units carry. A text heard again keeps its line, and its old hearing at the same place
-    /// is taken out.
-    pub fn heard(&mut self, key: &str, position: Vec3Key, range: f32, now: u64) {
+    /// `range` units carry (and may loop). A text heard again keeps its line, and its old hearing
+    /// at the same place is taken out.
+    pub fn heard(&mut self, key: &str, (position, range, looping): (Vec3Key, f32, bool), now: u64) {
         if let Some(subtitle) = self
             .subtitles
             .iter_mut()
@@ -99,6 +127,7 @@ impl Subtitles {
         self.subtitles.push(Subtitle {
             key: key.to_owned(),
             range,
+            looping,
             played_at: vec![(position, now)],
         });
     }
@@ -114,22 +143,18 @@ impl Subtitles {
         now: u64,
         (display_time, background): (f64, u32),
     ) {
-        let mut audible: Vec<usize> = (0..self.subtitles.len())
-            .filter(|&index| self.subtitles[index].is_audible_from(listener.position))
-            .collect();
+        let mut audible = Vec::new();
+        let mut widest = 0;
+        for (index, subtitle) in self.subtitles.iter_mut().enumerate() {
+            subtitle.purge_old_instances(DISPLAY_TIME * display_time, now);
+            if subtitle.is_audible_from(listener.position) && !subtitle.played_at.is_empty() {
+                audible.push(index);
+                widest = widest.max(font.width_of_runs(&text_of(lang, &subtitle.key)));
+            }
+        }
         if audible.is_empty() {
             return;
         }
-        let mut widest = 0;
-        audible.retain(|&index| {
-            let subtitle = &mut self.subtitles[index];
-            subtitle.purge_old_instances(DISPLAY_TIME * display_time, now);
-            if subtitle.played_at.is_empty() {
-                return false;
-            }
-            widest = widest.max(font.width_of_runs(&text_of(lang, &subtitle.key)));
-            true
-        });
         widest += font.width("<") + font.width(" ") + font.width(">") + font.width(" ");
         let view = View {
             size: (width, height),
@@ -169,7 +194,7 @@ impl Subtitle {
         row: i32,
         view: &View,
     ) {
-        let Some((place, time)) = self.closest(view.listener.position) else {
+        let Some((place, time)) = self.best_candidate(view.listener.position) else {
             return;
         };
         let delta = vec3(place)
@@ -181,9 +206,7 @@ impl Subtitle {
         let half_height = 9 / 2;
         let text = text_of(lang, &self.key);
         let text_width = font.width_of_runs(&text);
-        let (now, display_time) = view.time;
-        let elapsed = now.saturating_sub(time) as f32 / (DISPLAY_TIME * display_time) as f32;
-        let brightness = photon_core::math::clamped_lerp_f32(elapsed, 255.0, 75.0).floor() as u32;
+        let brightness = self.brightness(time, view.time);
         let centre_x = (view.size.0 as f32 - half_width as f32 * 1.0 - 2.0) as i32;
         let centre_y = (view.size.1 as f32 - 35.0 - row as f32 * (9.0 + 1.0) * 1.0) as i32;
         frame.fill(

@@ -92,11 +92,12 @@ impl<S: ChannelSource> SoundEngine<S> {
             .registry
             .event(&instance.event)
             .and_then(|event| event.subtitle.clone());
-        let position = instance.position;
+        let (position, looping) = (instance.position, instance.looping);
         self.heard.push(Heard {
             subtitle,
             position,
             range,
+            looping,
         });
     }
 

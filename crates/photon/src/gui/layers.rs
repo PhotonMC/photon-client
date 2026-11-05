@@ -138,7 +138,8 @@ impl Layers {
         let now = self.now_ms();
         for heard in sound.take_heard() {
             if let Some(key) = heard.subtitle {
-                self.subtitles.heard(&key, heard.position, heard.range, now);
+                self.subtitles
+                    .heard(&key, (heard.position, heard.range, heard.looping), now);
             }
         }
         let (position, forward, up) = sound.listener_view();

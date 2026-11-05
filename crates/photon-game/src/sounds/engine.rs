@@ -264,6 +264,8 @@ pub struct Heard {
     pub subtitle: Option<String>,
     pub position: (f64, f64, f64),
     pub range: f32,
+    /// `SoundInstance.isLooping`.
+    pub looping: bool,
 }
 
 mod volume;

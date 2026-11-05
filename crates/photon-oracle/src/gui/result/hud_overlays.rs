@@ -37,10 +37,10 @@ pub(super) fn subtitles_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
         } else {
             heard["range"].as_f64().ok_or("range")? as f32
         };
+        let looping = heard["looping"].as_bool().unwrap_or(false);
         subtitles.heard(
             heard["key"].as_str().ok_or("key")?,
-            (place.x, place.y, place.z),
-            range,
+            ((place.x, place.y, place.z), range, looping),
             heard["at"].as_u64().ok_or("at")?,
         );
     }
