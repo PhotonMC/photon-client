@@ -46,6 +46,12 @@ pub trait AssetSource: Sync {
         None
     }
 
+    /// The client item files of namespaces other than `minecraft` (`items/<name>.json`): the items a
+    /// pack defines for itself, sorted.
+    fn pack_items(&self) -> Vec<Identifier> {
+        Vec::new()
+    }
+
     /// Whether an atlas definition lists the sprite. A model face naming one it does not list
     /// is drawn with the missing texture (see [`Hiding`]).
     fn sprite_listed(&self, _name: &Identifier) -> bool {

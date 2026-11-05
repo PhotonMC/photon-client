@@ -1,6 +1,6 @@
 # ADR 0024: Server-delivered mods
 
-- Status: accepted (2026-11-05); built in the client, server side open; `item_model` naming a registry item works live, definition ids that exist only in a pack are not loaded yet
+- Status: accepted (2026-11-05); built in the client, server side open; `item_model` naming a registry item works live, definition ids that exist only in a pack (`items/<namespace>/<name>.json`) work live too; an id nothing defines draws the stack's own item where Java draws the missing model
 
 ## Context
 

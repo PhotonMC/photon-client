@@ -223,6 +223,25 @@ impl photon_render::AssetSource for StackAssets {
         self.text(name, "items")
     }
 
+    fn pack_items(&self) -> Vec<photon_core::identifier::Identifier> {
+        let mut found: Vec<_> =
+            photon_core::resources::Resources::list(&*self.stack, "items", ".json")
+                .into_iter()
+                .filter(|id| id.namespace() != "minecraft")
+                .filter_map(|id| {
+                    let name = id.path().strip_prefix("items/")?.strip_suffix(".json")?;
+                    photon_core::identifier::Identifier::parse(&format!(
+                        "{}:{name}",
+                        id.namespace()
+                    ))
+                    .ok()
+                })
+                .collect();
+        found.sort_by_key(photon_core::identifier::Identifier::as_string);
+        found.dedup();
+        found
+    }
+
     fn texture(&self, name: &photon_core::identifier::Identifier) -> Option<Vec<u8>> {
         texture_of(
             &|name, kind, extension| self.bytes(name, kind, extension),

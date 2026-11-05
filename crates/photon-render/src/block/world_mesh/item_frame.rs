@@ -123,6 +123,12 @@ impl BlockRenderer {
         out
     }
 
+    /// The id a pack's own item definition (`items/<namespace>/<name>.json`) is drawn from, by the
+    /// name an `item_model` component gives; ids past the registry's.
+    pub fn pack_item(&self, name: &str) -> Option<ItemId> {
+        self.pack_items.get(name).map(|index| ItemId(*index))
+    }
+
     /// The branches an item's model takes for its holder's use of it: what tells the layers of
     /// one item apart.
     pub fn item_branches(
@@ -294,6 +300,34 @@ fn flat_alpha(
         .collect()
 }
 
+/// What [`item_models`] makes: the definitions (a pack's own after the registry's), the ids of
+/// the pack's, the alpha of every flat item's layers and the sprites no element names.
+pub(super) type ItemModels = (
+    Vec<Option<crate::item_model::ClientItem>>,
+    BTreeMap<String, i32>,
+    BTreeMap<String, crate::item_model::LayerAlpha>,
+    Vec<Identifier>,
+);
+
+/// The items a pack defines for itself, appended after the registry's: their ids by name.
+fn add_pack_items(
+    source: &impl AssetSource,
+    items: &mut Vec<Option<crate::item_model::ClientItem>>,
+) -> BTreeMap<String, i32> {
+    let mut ids = BTreeMap::new();
+    for name in source.pack_items() {
+        let Some(def) = source
+            .item(&name)
+            .and_then(|text| crate::item_model::parse_client_item(&text))
+        else {
+            continue;
+        };
+        ids.insert(name.as_string(), items.len() as i32);
+        items.push(Some(def));
+    }
+    ids
+}
+
 /// Every item's client item definition, the models its layers name in any
 /// display context (added to `models`), the alpha of every flat item's
 /// layers and the sprites no element names.
@@ -301,13 +335,9 @@ pub(super) fn item_models(
     source: &impl AssetSource,
     cache: &mut crate::resolve::ModelCache,
     models: &mut BTreeMap<String, ResolvedModel>,
-) -> (
-    Vec<Option<crate::item_model::ClientItem>>,
-    BTreeMap<String, crate::item_model::LayerAlpha>,
-    Vec<Identifier>,
-) {
+) -> ItemModels {
     use rayon::prelude::*;
-    let items: Vec<Option<crate::item_model::ClientItem>> = photon_data::item::registry::ITEMS
+    let mut items: Vec<Option<crate::item_model::ClientItem>> = photon_data::item::registry::ITEMS
         .par_iter()
         .map(|item| {
             Identifier::parse(item.name)
@@ -316,6 +346,7 @@ pub(super) fn item_models(
                 .and_then(|text| crate::item_model::parse_client_item(&text))
         })
         .collect();
+    let pack_ids = add_pack_items(source, &mut items);
     cache.prefetch(
         source,
         items
@@ -361,7 +392,7 @@ pub(super) fn item_models(
         }
     }
     let layer_alpha = flat_alpha(source, &flat_sprites);
-    (items, layer_alpha, layer_sprites)
+    (items, pack_ids, layer_alpha, layer_sprites)
 }
 
 /// The blockstate files that name no block: the item frames' (`BlockStateDefinitions`), each with

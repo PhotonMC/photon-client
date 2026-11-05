@@ -22,6 +22,8 @@ pub struct BlockRenderer {
     pub(super) baked: Vec<BakedModel>,
     /// Each item's client item model tree, by registry id.
     pub(super) items: Vec<Option<crate::item_model::ClientItem>>,
+    /// The ids of the items a pack defines for itself, by name; they follow the registry's.
+    pub(super) pack_items: BTreeMap<String, i32>,
     /// The alpha of every texture a flat item extrudes, with its size.
     pub(super) layer_alpha: BTreeMap<String, crate::item_model::LayerAlpha>,
     /// What each block state draws, by state id; after the registry's come the item frames'

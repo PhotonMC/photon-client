@@ -68,19 +68,19 @@ impl BlockRenderer {
         let (mut pending, mut air) = state_lists(&blockstates);
         let frame_base = pending.len() as u32;
         add_item_frame_states(&frame_files, &mut pending, &mut air);
-        let (items, layer_alpha, layer_sprites) =
+        let (items, pack_items, layer_alpha, layer_sprites) =
             item_models(source, &mut model_cache, &mut models);
         let (atlas, unlisted) =
             atlas_of(source, (&models, layer_sprites, &layer_alpha), (mip, bit))?;
         let (baked, states) = bake_states(&models, &atlas, pending, &air);
-        let particle_sprites = particle_sprites(&blockstates, &models);
         Ok(Self {
+            particle_sprites: particle_sprites(&blockstates, &models),
             models,
             baked,
             items,
+            pack_items,
             layer_alpha,
             states,
-            particle_sprites,
             frame_base,
             atlas,
             skipped,
