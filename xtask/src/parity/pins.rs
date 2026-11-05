@@ -62,28 +62,36 @@ fn reference_dir() -> PathBuf {
     process::root().join("tests/behavior/reference")
 }
 
-/// The versions that have a reference, oldest protocol first.
+/// The versions that have a reference file, oldest first. A file that does not parse still
+/// counts, so that loading it fails loudly instead of the version going missing.
 pub fn versions() -> Vec<String> {
-    let mut found: Vec<(u32, String)> = fs::read_dir(reference_dir())
+    let mut found: Vec<(i32, String)> = fs::read_dir(reference_dir())
         .into_iter()
         .flatten()
         .filter_map(Result::ok)
         .filter_map(|entry| {
             let name = entry.file_name().to_string_lossy().into_owned();
             let version = name.strip_suffix(".json")?.to_owned();
-            let pins = Pins::load(&version).ok()?;
-            Some((pins.protocol, version))
+            let protocol = photon_core::version::Version::from_name(&version)
+                .map_or(i32::MAX, photon_core::version::Version::protocol);
+            Some((protocol, version))
         })
         .collect();
     found.sort();
     found.into_iter().map(|(_, version)| version).collect()
 }
 
-/// The newest version that has a reference: the one parity runs by default.
+/// The version parity runs by default: the one the Rust code is canonical for, which needs a
+/// reference of its own (a newer reference alone does not change it).
 pub fn newest_version() -> Result<String, String> {
-    versions()
-        .pop()
-        .ok_or_else(|| "no reference in tests/behavior/reference".to_owned())
+    let newest = photon_core::version::Version::NEWEST.name();
+    if versions().iter().any(|version| version == newest) {
+        Ok(newest.to_owned())
+    } else {
+        Err(format!(
+            "blocked, no reference for the newest version {newest}"
+        ))
+    }
 }
 
 impl Pins {

@@ -135,11 +135,12 @@ pub fn versions() -> Vec<String> {
     pins::versions()
 }
 
-/// `changed` without the files that belong to an older version's reference (its pins and its
+/// `changed` without the files that belong to a reference other than the newest (its pins and its
 /// oracle classes), which only CI runs; those files come back second.
 pub fn split_older(changed: Vec<String>) -> (Vec<String>, Vec<String>) {
+    let newest = pins::newest_version().ok();
     let mut versions = pins::versions();
-    versions.pop();
+    versions.retain(|version| Some(version) != newest.as_ref());
     let own = |path: &str, version: &str| {
         path == format!("tests/behavior/reference/{version}.json")
             || path.starts_with(&format!("tests/behavior/java/v{}/", pins::tag(version)))
@@ -422,6 +423,14 @@ mod tests {
     #[test]
     fn a_version_is_spelled_with_an_underscore_in_oracle_files() {
         assert_eq!(super::pins::tag("26.2"), "26_2");
+    }
+
+    #[test]
+    fn the_newest_supported_version_has_a_reference() {
+        assert_eq!(
+            super::pins::newest_version().as_deref(),
+            Ok(photon_core::version::Version::NEWEST.name())
+        );
     }
 
     #[test]
