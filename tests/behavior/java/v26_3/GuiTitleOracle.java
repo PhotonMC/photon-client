@@ -65,7 +65,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
                         };
                         minecraft.setLastInputType(code == 258 ? net.minecraft.client.InputType.KEYBOARD_TAB
                             : net.minecraft.client.InputType.KEYBOARD_ARROW);
-                        title.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, name.startsWith("shift+") ? 1 : 0));
+                        title.keyPressed(SdlInput.key(code, 0, name.startsWith("shift+") ? 1 : 0));
                     }
                 }
             }
@@ -252,7 +252,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
                 double y = step.get("y").getAsDouble();
                 switch (step.get("do").getAsString()) {
                     case "click" -> list.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(x, y,
-                        new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                        SdlInput.button(0, 0)), false);
                     case "scroll" -> list.mouseScrolled(x, y, 0.0, step.get("dy").getAsDouble());
                     default -> throw new IllegalArgumentException(step.toString());
                 }
@@ -329,11 +329,11 @@ class GuiTitleOracle extends GuiSettingsOracle {
                             default -> throw new IllegalArgumentException(name);
                         };
                         minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
-                        form.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, name.startsWith("shift+") ? 1 : 0));
+                        form.keyPressed(SdlInput.key(code, 0, name.startsWith("shift+") ? 1 : 0));
                     }
                     case "click" -> form.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
                         step.get("x").getAsDouble(), step.get("y").getAsDouble(),
-                        new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                        SdlInput.button(0, 0)), false);
                     default -> throw new IllegalArgumentException(step.toString());
                 }
             }

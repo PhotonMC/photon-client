@@ -33,7 +33,7 @@ class GuiCreditsOracle extends GuiTestInstanceOracle {
             set(win, "scroll", (float) row.get("scroll").getAsDouble());
             for (var step : row.getAsJsonArray("keys")) {
                 int code = step.getAsJsonObject().get("code").getAsInt();
-                var event = new net.minecraft.client.input.KeyEvent(code, 0, 0);
+                var event = SdlInput.key(code, 0, 0);
                 if (step.getAsJsonObject().get("down").getAsBoolean()) {
                     win.keyPressed(event);
                 } else {

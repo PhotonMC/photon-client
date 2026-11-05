@@ -98,11 +98,11 @@ class GuiTestInstanceOracle extends GuiTestBlockOracle {
                     }
                     case "drag" -> edit.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(
                         step.get("x").getAsDouble(), step.get("y").getAsDouble(),
-                        new net.minecraft.client.input.MouseButtonInfo(0, 0)),
+                        SdlInput.button(0, 0)),
                         step.get("dx").getAsDouble(), step.get("dy").getAsDouble());
                     case "release" -> edit.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(
                         step.get("x").getAsDouble(), step.get("y").getAsDouble(),
-                        new net.minecraft.client.input.MouseButtonInfo(0, 0)));
+                        SdlInput.button(0, 0)));
                     case "wheel" -> edit.mouseScrolled(step.get("x").getAsDouble(), step.get("y").getAsDouble(),
                         0.0, step.get("amount").getAsDouble());
                     default -> {

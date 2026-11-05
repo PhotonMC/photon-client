@@ -246,9 +246,9 @@ class MathKeyOracle extends MathInterpolationOracle {
 
     static JsonObject inputWithModifiersCase(JsonObject request) {
         var result = new JsonObject();
-        KeyEvent keyEvent = new KeyEvent(
+        KeyEvent keyEvent = SdlInput.key(
             request.get("key").getAsInt(), request.get("scancode").getAsInt(), request.get("modifiers").getAsInt());
-        MouseButtonInfo buttonInfo = new MouseButtonInfo(
+        MouseButtonInfo buttonInfo = SdlInput.button(
             request.get("mouse_button").getAsInt(), request.get("modifiers").getAsInt());
         MouseButtonEvent mouseEvent = new MouseButtonEvent(
             f64(request, "mouse_x"), f64(request, "mouse_y"), buttonInfo);
@@ -281,15 +281,15 @@ class MathKeyOracle extends MathInterpolationOracle {
         KeyMapping primary = newKeyMapping(prefix + ".primary", primaryKey);
         KeyMapping secondary = newKeyMapping(prefix + ".secondary", secondaryKey);
         KeyMapping other = newKeyMapping(prefix + ".other", otherKey);
-        KeyEvent keyEvent = new KeyEvent(
+        KeyEvent keyEvent = SdlInput.key(
             request.getAsJsonObject("key_event").get("key").getAsInt(),
             request.getAsJsonObject("key_event").get("scancode").getAsInt(), 0);
-        KeyEvent unknownKeyEvent = new KeyEvent(
+        KeyEvent unknownKeyEvent = SdlInput.key(
             request.getAsJsonObject("unknown_key_event").get("key").getAsInt(),
             request.getAsJsonObject("unknown_key_event").get("scancode").getAsInt(), 0);
         MouseButtonEvent mouseEvent = new MouseButtonEvent(
             0.0, 0.0,
-            new MouseButtonInfo(request.get("mouse_button").getAsInt(), 0));
+            SdlInput.button(request.get("mouse_button").getAsInt(), 0));
         result.add("initial", keyMappingState(primary, secondary, other));
         result.add("initial_properties", keyMappingProperties(
             primary, secondary, other, primaryKey, primaryDefaultKey, secondaryKey,
@@ -355,15 +355,15 @@ class MathKeyOracle extends MathInterpolationOracle {
             KeyMapping.Category.MOVEMENT, () -> secondaryNeedsToggle, secondaryShouldRestore);
         KeyMapping other = new ToggleKeyMapping(prefix + ".other", otherKey.getType(), otherKey.getValue(),
             KeyMapping.Category.MOVEMENT, () -> otherNeedsToggle, otherShouldRestore);
-        KeyEvent keyEvent = new KeyEvent(
+        KeyEvent keyEvent = SdlInput.key(
             request.getAsJsonObject("key_event").get("key").getAsInt(),
             request.getAsJsonObject("key_event").get("scancode").getAsInt(), 0);
-        KeyEvent unknownKeyEvent = new KeyEvent(
+        KeyEvent unknownKeyEvent = SdlInput.key(
             request.getAsJsonObject("unknown_key_event").get("key").getAsInt(),
             request.getAsJsonObject("unknown_key_event").get("scancode").getAsInt(), 0);
         MouseButtonEvent mouseEvent = new MouseButtonEvent(
             0.0, 0.0,
-            new MouseButtonInfo(request.get("mouse_button").getAsInt(), 0));
+            SdlInput.button(request.get("mouse_button").getAsInt(), 0));
         result.add("initial", keyMappingState(primary, secondary, other));
         result.add("initial_properties", keyMappingProperties(
             primary, secondary, other, primaryKey, primaryKey, secondaryKey,

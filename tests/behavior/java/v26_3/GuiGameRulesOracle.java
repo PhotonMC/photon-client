@@ -76,7 +76,7 @@ class GuiGameRulesOracle extends GuiTutorialOracle {
                 double x = step.has("x") ? step.get("x").getAsDouble() : 0.0;
                 double y = step.has("y") ? step.get("y").getAsDouble() : 0.0;
                 var press = new net.minecraft.client.input.MouseButtonEvent(x, y,
-                    new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                    SdlInput.button(0, 0));
                 switch (step.get("do").getAsString()) {
                     case "click", "release" -> minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
                     case "key" -> {
@@ -97,7 +97,7 @@ class GuiGameRulesOracle extends GuiTutorialOracle {
                         }
                     }
                     case "resize" -> options.resize(step.get("width").getAsInt(), step.get("height").getAsInt());
-                    case "key" -> options.keyPressed(new net.minecraft.client.input.KeyEvent(
+                    case "key" -> options.keyPressed(SdlInput.key(
                         step.get("key").getAsInt(), 0, (step.has("shift") ? 1 : 0) | (step.has("ctrl") ? 2 : 0)));
                     case "values" -> values(options, step.getAsJsonArray("values"));
                     case "permission" -> options.onGamemasterPermissionChanged(step.get("has").getAsBoolean());

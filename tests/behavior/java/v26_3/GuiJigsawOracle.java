@@ -47,7 +47,7 @@ class GuiJigsawOracle extends GuiStructureBlockOracle {
             JsonObject step, net.minecraft.client.Minecraft minecraft) throws Exception {
         double x = step.has("x") ? step.get("x").getAsDouble() : 0.0;
         double y = step.has("y") ? step.get("y").getAsDouble() : 0.0;
-        var button = new net.minecraft.client.input.MouseButtonInfo(0, step.has("shift") ? 1 : 0);
+        var button = SdlInput.button(0, step.has("shift") ? 1 : 0);
         switch (step.get("do").getAsString()) {
             case "type" -> step.get("text").getAsString().codePoints().forEach(cp ->
                 edit.charTyped(new net.minecraft.client.input.CharacterEvent(cp)));
@@ -68,7 +68,7 @@ class GuiJigsawOracle extends GuiStructureBlockOracle {
                 } else if (code >= 262 && code <= 265) {
                     minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_ARROW);
                 }
-                edit.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, modifiers));
+                edit.keyPressed(SdlInput.key(code, 0, modifiers));
             }
             case "click" -> {
                 minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);

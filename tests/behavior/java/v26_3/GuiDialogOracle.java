@@ -268,7 +268,7 @@ class GuiDialogOracle extends GuiSocialOracle {
             set(shown, "height", height);
             var init = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "init");
             init.invoke(shown);
-            var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
+            var info = SdlInput.button(0, 0);
             for (var stepElement : row.getAsJsonArray("steps")) {
                 var step = stepElement.getAsJsonObject();
                 String action = step.get("do").getAsString();
@@ -309,14 +309,14 @@ class GuiDialogOracle extends GuiSocialOracle {
                         if (code == 258) {
                             minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
                         }
-                        shown.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, modifiers));
+                        shown.keyPressed(SdlInput.key(code, 0, modifiers));
                     }
                     case "type" -> step.get("text").getAsString().codePoints()
                         .forEach(point -> shown.charTyped(new net.minecraft.client.input.CharacterEvent(point)));
                     case "click" -> {
                         minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
                         var clickInfo = step.has("shift") && step.get("shift").getAsBoolean()
-                            ? new net.minecraft.client.input.MouseButtonInfo(0, 1) : info;
+                            ? SdlInput.button(0, 1) : info;
                         shown.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
                             step.get("x").getAsDouble(), step.get("y").getAsDouble(), clickInfo), false);
                     }
@@ -391,7 +391,7 @@ class GuiDialogOracle extends GuiSocialOracle {
             set(shown, "height", height);
             var init = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "init");
             init.invoke(shown);
-            var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
+            var info = SdlInput.button(0, 0);
             for (var stepElement : row.getAsJsonArray("steps")) {
                 var step = stepElement.getAsJsonObject();
                 String action = step.get("do").getAsString();
@@ -408,7 +408,7 @@ class GuiDialogOracle extends GuiSocialOracle {
                         if (code == 258) {
                             minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
                         }
-                        shown.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, name.startsWith("shift+") ? 1 : 0));
+                        shown.keyPressed(SdlInput.key(code, 0, name.startsWith("shift+") ? 1 : 0));
                     }
                     case "click" -> {
                         minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);

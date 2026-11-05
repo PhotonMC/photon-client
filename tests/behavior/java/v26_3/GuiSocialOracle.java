@@ -122,7 +122,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
                     double x = step.has("x") ? step.get("x").getAsDouble() : 0.0;
                     double y = step.has("y") ? step.get("y").getAsDouble() : 0.0;
                     var press = new net.minecraft.client.input.MouseButtonEvent(x, y,
-                        new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                        SdlInput.button(0, 0));
                     switch (step.get("do").getAsString()) {
                         case "click" -> social_screen.mouseClicked(press, false);
                         case "release" -> social_screen.mouseReleased(press);
@@ -134,7 +134,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
                             }
                         }
                         case "key" -> social_screen.keyPressed(
-                            new net.minecraft.client.input.KeyEvent(step.get("key").getAsInt(), 0, 0));
+                            SdlInput.key(step.get("key").getAsInt(), 0, 0));
                         default -> throw new IllegalArgumentException(step.toString());
                     }
                     social_screen.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
@@ -242,7 +242,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
                     double x = step.has("x") ? step.get("x").getAsDouble() : 0.0;
                     double y = step.has("y") ? step.get("y").getAsDouble() : 0.0;
                     var press = new net.minecraft.client.input.MouseButtonEvent(x, y,
-                        new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                        SdlInput.button(0, 0));
                     // The input type the game sets before a screen hears the event (MouseHandler.onButton
                     // and KeyboardHandler.keyPress); a list scrolls to a focused entry differently by it.
                     switch (step.get("do").getAsString()) {
@@ -268,7 +268,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
                             }
                         }
                         case "resize" -> options.resize(step.get("width").getAsInt(), step.get("height").getAsInt());
-                        case "key" -> options.keyPressed(new net.minecraft.client.input.KeyEvent(
+                        case "key" -> options.keyPressed(SdlInput.key(
                             step.get("key").getAsInt(), 0, (step.has("shift") ? 1 : 0) | (step.has("ctrl") ? 2 : 0)));
                         default -> throw new IllegalArgumentException(step.toString());
                     }

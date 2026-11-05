@@ -233,7 +233,7 @@ class GuiChatOracle extends GuiLanguageOracle {
                         default -> throw new IllegalArgumentException(key);
                     };
                     int modifiers = key.startsWith("shift+") ? 1 : 0;
-                    commandSuggestions.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, modifiers));
+                    commandSuggestions.keyPressed(SdlInput.key(code, 0, modifiers));
                 }
                 var drawn = screen(width, height, 0, 0);
                 // `ChatScreen.extractRenderState`'s band under the box.
@@ -386,7 +386,7 @@ class GuiChatOracle extends GuiLanguageOracle {
                             case "enter" -> 257;
                             default -> throw new IllegalArgumentException(event.get("key").getAsString());
                         };
-                        current.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, 0));
+                        current.keyPressed(SdlInput.key(code, 0, 0));
                     }
                     case "close" -> {
                         var reason = net.minecraft.client.gui.screens.ChatScreen.class.getDeclaredClasses();

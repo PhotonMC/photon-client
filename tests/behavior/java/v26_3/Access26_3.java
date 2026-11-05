@@ -278,3 +278,147 @@ final class Access26_3 {
         Reflect.set(minecraft, "soundManager", manager);
     }
 }
+
+/**
+ * The input the 26.3 client takes is SDL's: keys are scancodes (with the key's SDL keycode beside
+ * them), mouse buttons count from 1 and the modifier bits are SDL's. The cases name keys, buttons
+ * and modifiers the way Photon holds them (GLFW's numbers), so every event the oracle makes goes
+ * through here.
+ */
+final class SdlInput {
+    private SdlInput() {}
+
+    private static final int SDL_SHIFT = 1;
+    private static final int SDL_CONTROL = 64;
+    private static final int SDL_ALT = 256;
+    private static final int SDL_SUPER = 1024;
+
+    /** A key event for the key GLFW numbers `glfwKey`, with GLFW's modifier bits. */
+    static net.minecraft.client.input.KeyEvent key(int glfwKey, int unused, int glfwModifiers) {
+        return new net.minecraft.client.input.KeyEvent(scancode(glfwKey), keycode(glfwKey), modifiers(glfwModifiers));
+    }
+
+    /** A mouse button as SDL numbers it, with SDL's modifier bits. */
+    static net.minecraft.client.input.MouseButtonInfo button(int glfwButton, int glfwModifiers) {
+        return new net.minecraft.client.input.MouseButtonInfo(button(glfwButton), modifiers(glfwModifiers));
+    }
+
+    static int button(int glfwButton) {
+        return switch (glfwButton) {
+            case 0 -> 1;
+            case 1 -> 3;
+            case 2 -> 2;
+            default -> glfwButton + 1;
+        };
+    }
+
+    static int modifiers(int glfw) {
+        int sdl = 0;
+        if ((glfw & 1) != 0) {
+            sdl |= SDL_SHIFT;
+        }
+        if ((glfw & 2) != 0) {
+            sdl |= SDL_CONTROL;
+        }
+        if ((glfw & 4) != 0) {
+            sdl |= SDL_ALT;
+        }
+        if ((glfw & 8) != 0) {
+            sdl |= SDL_SUPER;
+        }
+        return sdl;
+    }
+
+    /** The scancode of the key GLFW numbers `key`; 0 for a key SDL has no scancode for. */
+    static int scancode(int key) {
+        if (key >= 65 && key <= 90) {
+            return 4 + key - 65;
+        }
+        if (key >= 49 && key <= 57) {
+            return 30 + key - 49;
+        }
+        if (key >= 290 && key <= 301) {
+            return 58 + key - 290;
+        }
+        if (key >= 302 && key <= 313) {
+            return 104 + key - 302;
+        }
+        if (key >= 321 && key <= 329) {
+            return 89 + key - 321;
+        }
+        return switch (key) {
+            case 48 -> 39;
+            case 32 -> 44;
+            case 39 -> 52;
+            case 44 -> 54;
+            case 45 -> 45;
+            case 46 -> 55;
+            case 47 -> 56;
+            case 59 -> 51;
+            case 61 -> 46;
+            case 91 -> 47;
+            case 92 -> 49;
+            case 93 -> 48;
+            case 96 -> 53;
+            case 256 -> 41;
+            case 257 -> 40;
+            case 258 -> 43;
+            case 259 -> 42;
+            case 260 -> 73;
+            case 261 -> 76;
+            case 262 -> 79;
+            case 263 -> 80;
+            case 264 -> 81;
+            case 265 -> 82;
+            case 266 -> 75;
+            case 267 -> 78;
+            case 268 -> 74;
+            case 269 -> 77;
+            case 280 -> 57;
+            case 281 -> 71;
+            case 282 -> 83;
+            case 283 -> 70;
+            case 284 -> 72;
+            case 320 -> 98;
+            case 330 -> 99;
+            case 331 -> 84;
+            case 332 -> 85;
+            case 333 -> 86;
+            case 334 -> 87;
+            case 335 -> 88;
+            case 336 -> 103;
+            case 340 -> 225;
+            case 341 -> 224;
+            case 342 -> 226;
+            case 343 -> 227;
+            case 344 -> 229;
+            case 345 -> 228;
+            case 346 -> 230;
+            case 347 -> 231;
+            case 348 -> 101;
+            default -> 0;
+        };
+    }
+
+    /** The SDL keycode of the key GLFW numbers `key` (letters are lower case). */
+    static int keycode(int key) {
+        if (key >= 65 && key <= 90) {
+            return key + 32;
+        }
+        if ((key >= 48 && key <= 57) || key == 32 || key == 39 || key == 44 || key == 45 || key == 46
+                || key == 47 || key == 59 || key == 61 || key == 91 || key == 92 || key == 93 || key == 96) {
+            return key;
+        }
+        int scancode = scancode(key);
+        return switch (key) {
+            case 256 -> 27;
+            case 257 -> 13;
+            case 258 -> 9;
+            case 259 -> 8;
+            case 261 -> 127;
+            case 335 -> 1073741912;
+            case 348 -> 1073741925;
+            default -> scancode == 0 ? 0 : 0x40000000 | scancode;
+        };
+    }
+}

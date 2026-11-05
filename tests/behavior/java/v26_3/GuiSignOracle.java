@@ -102,7 +102,7 @@ class GuiSignOracle extends GuiTitleOracle {
                         };
                         minecraft.setLastInputType(code == 258 ? net.minecraft.client.InputType.KEYBOARD_TAB
                             : net.minecraft.client.InputType.KEYBOARD_ARROW);
-                        edit.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, modifiers));
+                        edit.keyPressed(SdlInput.key(code, 0, modifiers));
                     }
                     default -> throw new IllegalArgumentException(step.toString());
                 }
@@ -232,11 +232,11 @@ class GuiSignOracle extends GuiTitleOracle {
                     };
                     minecraft.setLastInputType(code == 258 ? net.minecraft.client.InputType.KEYBOARD_TAB
                         : net.minecraft.client.InputType.KEYBOARD_ARROW);
-                    edit.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, modifiers));
+                    edit.keyPressed(SdlInput.key(code, 0, modifiers));
                 }
                 case "click" -> edit.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
                     step.get("x").getAsDouble(), step.get("y").getAsDouble(),
-                    new net.minecraft.client.input.MouseButtonInfo(0, step.has("shift") ? 1 : 0)), false);
+                    SdlInput.button(0, step.has("shift") ? 1 : 0)), false);
                 default -> throw new IllegalArgumentException(step.toString());
             }
         }

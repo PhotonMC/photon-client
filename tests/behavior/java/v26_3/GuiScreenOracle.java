@@ -52,14 +52,14 @@ class GuiScreenOracle extends GuiOverlayOracle {
                         if (step.get("do").getAsString().equals("click")) {
                             death.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
                                 step.get("x").getAsInt(), step.get("y").getAsInt(),
-                                new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                                SdlInput.button(0, 0)), false);
                         } else {
                             int code = switch (step.get("key").getAsString()) {
                                 case "tab" -> 258;
                                 case "enter" -> 257;
                                 default -> throw new IllegalArgumentException(step.get("key").getAsString());
                             };
-                            death.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, 0));
+                            death.keyPressed(SdlInput.key(code, 0, 0));
                         }
                     } catch (NullPointerException ignored) {
                         // The sound comes first; what a button does next needs a live game.
@@ -111,14 +111,14 @@ class GuiScreenOracle extends GuiOverlayOracle {
                         if (step.get("do").getAsString().equals("click")) {
                             disconnected.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
                                 step.get("x").getAsInt(), step.get("y").getAsInt(),
-                                new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                                SdlInput.button(0, 0)), false);
                         } else {
                             int code = switch (step.get("key").getAsString()) {
                                 case "tab" -> 258;
                                 case "enter" -> 257;
                                 default -> throw new IllegalArgumentException(step.get("key").getAsString());
                             };
-                            disconnected.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, 0));
+                            disconnected.keyPressed(SdlInput.key(code, 0, 0));
                         }
                     } catch (NullPointerException ignored) {
                         // The sound comes first; leaving the screen needs a live game.
@@ -189,7 +189,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
                         try {
                             pause.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
                                 step.get("x").getAsInt(), step.get("y").getAsInt(),
-                                new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                                SdlInput.button(0, 0)), false);
                         } catch (RuntimeException ignored) {
                         }
                     } else if (step.get("do").getAsString().equals("frame")) {
@@ -213,7 +213,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
                         minecraft.setLastInputType(code == 258 ? net.minecraft.client.InputType.KEYBOARD_TAB
                             : net.minecraft.client.InputType.KEYBOARD_ARROW);
                         try {
-                            pause.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, name.startsWith("shift+") ? 1 : 0));
+                            pause.keyPressed(SdlInput.key(code, 0, name.startsWith("shift+") ? 1 : 0));
                         } catch (RuntimeException ignored) {
                             // As for a click: the sound comes first, the action may need a live game.
                         }
@@ -412,11 +412,11 @@ class GuiScreenOracle extends GuiOverlayOracle {
                     case "space" -> 32;
                     default -> throw new IllegalArgumentException(name);
                 };
-                confirm.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, name.startsWith("shift+") ? 1 : 0));
+                confirm.keyPressed(SdlInput.key(code, 0, name.startsWith("shift+") ? 1 : 0));
             }
             if (row.get("click").getAsBoolean()) {
                 confirm.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY,
-                    new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                    SdlInput.button(0, 0)), false);
             }
             if (row.get("death").getAsBoolean() || row.has("popup")) {
                 confirm.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
@@ -483,7 +483,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
             });
             var widget = instance.createButton(options, 100, 50, row.get("width").getAsInt());
             widget.active = row.get("active").getAsBoolean();
-            var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
+            var info = SdlInput.button(0, 0);
             for (var stepElement : row.getAsJsonArray("steps")) {
                 var step = stepElement.getAsJsonObject();
                 String action = step.get("do").getAsString();
@@ -496,7 +496,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
                     case "unfocus" -> widget.setFocused(false);
                     case "click" -> widget.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
                         step.get("x").getAsDouble(), step.get("y").getAsDouble(),
-                        new net.minecraft.client.input.MouseButtonInfo(0, step.get("shift").getAsBoolean() ? 1 : 0)),
+                        SdlInput.button(0, step.get("shift").getAsBoolean() ? 1 : 0)),
                         false);
                     case "drag" -> widget.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(
                         step.get("x").getAsDouble(), 60, info), 0, 0);
@@ -510,7 +510,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
                             case "space" -> 32;
                             default -> throw new IllegalArgumentException(step.get("key").getAsString());
                         };
-                        widget.keyPressed(new net.minecraft.client.input.KeyEvent(
+                        widget.keyPressed(SdlInput.key(
                             code, 0, step.get("shift").getAsBoolean() ? 1 : 0));
                     }
                     case "scroll" -> widget.mouseScrolled(110, 60, 0, step.get("dy").getAsDouble());
@@ -566,7 +566,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
             set(options, "height", height);
             var init = Reflect.method(net.minecraft.client.gui.screens.options.OptionsScreen.class, "init");
             init.invoke(options);
-            var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
+            var info = SdlInput.button(0, 0);
             for (var stepElement : row.getAsJsonArray("steps")) {
                 var step = stepElement.getAsJsonObject();
                 String action = step.get("do").getAsString();
@@ -589,7 +589,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
                         } else if (code == 262 || code == 263 || code == 264 || code == 265) {
                             minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_ARROW);
                         }
-                        options.keyPressed(new net.minecraft.client.input.KeyEvent(
+                        options.keyPressed(SdlInput.key(
                             code, 0, name.startsWith("shift+") ? 1 : 0));
                     }
                     case "click" -> {

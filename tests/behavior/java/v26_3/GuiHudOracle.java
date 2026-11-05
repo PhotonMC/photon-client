@@ -528,7 +528,7 @@ class GuiHudOracle extends GuiCommandOracle {
                     switch (action.get("do").getAsString()) {
                         case "click" -> {
                             var event = new net.minecraft.client.input.MouseButtonEvent(x, y,
-                                new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                                SdlInput.button(0, 0));
                             stats.mouseClicked(event, false);
                             stats.mouseReleased(event);
                         }
@@ -541,7 +541,7 @@ class GuiHudOracle extends GuiCommandOracle {
                             } else if (code >= 262 && code <= 265) {
                                 minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_ARROW);
                             }
-                            stats.keyPressed(new net.minecraft.client.input.KeyEvent(
+                            stats.keyPressed(SdlInput.key(
                                 code, 0, action.get("modifiers").getAsInt()));
                         }
                         case "resize" -> {
@@ -736,7 +736,7 @@ class GuiHudOracle extends GuiCommandOracle {
                             net.minecraft.resources.Identifier.parse(step.get("id").getAsString())), false);
                         case "click" -> {
                             var event = new net.minecraft.client.input.MouseButtonEvent(x, y,
-                                new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                                SdlInput.button(0, 0));
                             try {
                                 screen.mouseClicked(event, false);
                             } catch (NullPointerException ignored) {
@@ -746,11 +746,11 @@ class GuiHudOracle extends GuiCommandOracle {
                         }
                         case "drag" -> {
                             var event = new net.minecraft.client.input.MouseButtonEvent(x, y,
-                                new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                                SdlInput.button(0, 0));
                             screen.mouseDragged(event, step.get("dx").getAsDouble(), step.get("dy").getAsDouble());
                         }
                         case "release" -> screen.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(x, y,
-                            new net.minecraft.client.input.MouseButtonInfo(0, 0)));
+                            SdlInput.button(0, 0)));
                         case "scroll" -> screen.mouseScrolled(x, y, step.get("sx").getAsDouble(), step.get("sy").getAsDouble());
                         case "tick" -> {
                             MovementOracle.setField(mouseHandler, "xpos", x);

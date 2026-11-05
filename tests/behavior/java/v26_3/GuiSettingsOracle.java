@@ -54,6 +54,17 @@ class GuiSettingsOracle extends GuiScreenOracle {
      */
     /// The quality options as `options.txt` would have loaded them: the game is not running yet, so
     /// a set neither applies the preset nor turns it to Custom.
+    /** A GUI that lets a screen be opened without showing it. */
+    static final class OpeningGui extends net.minecraft.client.gui.Gui {
+        OpeningGui() {
+            super(null, null, null);
+        }
+
+        @Override
+        public void setScreen(net.minecraft.client.gui.screens.Screen screen) {
+        }
+    }
+
     /**
      * What the server told the world screen: the difficulty and whether it is locked, a hardcore world,
      * and the player's permission level (a player is made only when one is given).
@@ -73,6 +84,9 @@ class GuiSettingsOracle extends GuiScreenOracle {
             case 4 -> net.minecraft.server.permissions.LevelBasedPermissionSet.OWNER;
             default -> net.minecraft.server.permissions.PermissionSet.NO_PERMISSIONS;
         });
+        // The player's connection is the level's: the game rules button opens a screen over it.
+        set(player, "connection", get(level, "connection"));
+        set(player, "minecraft", minecraft);
         minecraft.player = (net.minecraft.client.player.LocalPlayer) player;
     }
 
@@ -177,6 +191,12 @@ class GuiSettingsOracle extends GuiScreenOracle {
             var clockBefore = clock.get(null);
             long[] now = {0};
             clock.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
+            // The screens a button opens are not switched to: opening one is all a press does.
+            var plainGui = Reflect.get(minecraft, "gui");
+            var openingGui = unsafe.allocateInstance(OpeningGui.class);
+            set(openingGui, "chatListener", Reflect.get(plainGui, "chatListener"));
+            set(openingGui, "hud", Reflect.get(plainGui, "hud"));
+            set(minecraft, "gui", openingGui);
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
             set(minecraft, "musicManager", unsafe.allocateInstance(SilentMusic.class));
             // `GraphicsPreset.apply` asks for the device even for Custom, which does nothing with it.
@@ -200,6 +220,16 @@ class GuiSettingsOracle extends GuiScreenOracle {
                     ? net.minecraft.world.flag.FeatureFlagSet.of(net.minecraft.world.flag.FeatureFlags.MINECART_IMPROVEMENTS)
                     : net.minecraft.world.flag.FeatureFlagSet.of());
                 set(level, "connection", connection);
+                // What the screens send over it goes to a connection that is not open: it is kept, not sent.
+                set(connection, "connection",
+                    new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.CLIENTBOUND));
+                var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+                set(player, "connection", connection);
+                set(player, "minecraft", minecraft);
+                set(minecraft, "player", player);
+                // Saving the options tells the server, which asks the account whether text is filtered.
+                set(minecraft, "userPropertiesFuture", java.util.concurrent.CompletableFuture.completedFuture(
+                    com.mojang.authlib.minecraft.UserApiService.OFFLINE_PROPERTIES));
                 set(minecraft, "level", level);
                 if (row.has("world")) {
                     worldFacts(minecraft, level, row.getAsJsonObject("world"));
@@ -307,7 +337,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
             }
             video.tick();
             SilentSounds.ASKED.clear();
-            var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
+            var info = SdlInput.button(0, 0);
             double lastX = 0;
             double lastY = 0;
             for (var stepElement : row.getAsJsonArray("steps")) {
@@ -331,7 +361,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                     case "click" -> {
                         minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
                         video.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(x, y,
-                            new net.minecraft.client.input.MouseButtonInfo(
+                            SdlInput.button(
                                 step.has("button") ? step.get("button").getAsInt() : 0, step.has("shift") && step.get("shift").getAsBoolean() ? 1 : 0)),
                             step.has("double") && step.get("double").getAsBoolean());
                     }
@@ -364,7 +394,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                         } else if (code >= 262 && code <= 265) {
                             minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_ARROW);
                         }
-                        video.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0,
+                        video.keyPressed(SdlInput.key(code, 0,
                             name.startsWith("shift+") ? 1 : 0));
                     }
                     case "drag" -> video.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(x, y, info),
@@ -702,7 +732,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 try {
                     screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
                         click.getAsJsonArray().get(0).getAsDouble(), click.getAsJsonArray().get(1).getAsDouble(),
-                        new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                        SdlInput.button(0, 0)), false);
                 } catch (NullPointerException stub) {
                     if (GuiScreenOracle.SilentSounds.ASKED.size() == before) {
                         throw stub;
@@ -715,7 +745,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
                 int before = GuiScreenOracle.SilentSounds.ASKED.size();
                 try {
-                    screen.keyPressed(new net.minecraft.client.input.KeyEvent(press.getAsInt(), 0, 0));
+                    screen.keyPressed(SdlInput.key(press.getAsInt(), 0, 0));
                 } catch (NullPointerException stub) {
                     if (GuiScreenOracle.SilentSounds.ASKED.size() == before) {
                         throw stub;
@@ -815,7 +845,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 int mouseY = step.getAsJsonArray("mouse").get(1).getAsInt();
                 if (step.has("key")) {
                     // The switch key (F4).
-                    screen.keyPressed(new net.minecraft.client.input.KeyEvent(293, 0, 0));
+                    screen.keyPressed(SdlInput.key(293, 0, 0));
                 }
                 var frame = prepare(minecraft, width, height, mouseX, mouseY);
                 frame.graphics().nextStratum();
