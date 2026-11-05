@@ -376,6 +376,13 @@ impl ItemLayerCache {
         ticks: Option<i32>,
         (renderer, tints): (&BlockRenderer, &BiomeTints),
     ) -> &[ItemLayer] {
+        // Java appends layers only when the stack has an `item_model`; a patch that removes it
+        // leaves nothing to draw.
+        if photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+            .removes(photon_data::item::component_types::ITEM_MODEL)
+        {
+            return &[];
+        }
         let context = self.context;
         let item = model_item(stack);
         let mut state = self.item_state(stack, ticks);

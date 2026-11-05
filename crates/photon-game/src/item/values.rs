@@ -534,6 +534,22 @@ mod tests {
         );
     }
 
+    /// `item_model` names the definition that draws a stack; a patch that removes it names none.
+    #[test]
+    fn an_item_model_is_the_identifier_the_patch_sets() {
+        let id = photon_data::item::component_types::ITEM_MODEL as u8;
+        let mut set = vec![1, 0, id, 17];
+        set.extend(b"minecraft:diamond");
+        let values = Values::new(item("minecraft:stick"), &set);
+        assert_eq!(values.item_model().as_deref(), Some("minecraft:diamond"));
+        assert!(!values.removes(i32::from(id)));
+        let removed = [0, 1, id];
+        let values = Values::new(item("minecraft:stick"), &removed);
+        assert_eq!(values.item_model(), None);
+        assert!(values.removes(i32::from(id)));
+        assert_eq!(Values::new(item("minecraft:stick"), &[]).item_model(), None);
+    }
+
     /// A trim's material is a holder: `0` is an inline value with no key, `n` the registry entry
     /// `n - 1`.
     #[test]
