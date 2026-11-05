@@ -1,31 +1,41 @@
 use super::*;
 
+/// A stack as a click case describes it: the item, the count and the component patch in the
+/// reference's wire ids.
+fn click_stack(described: &Value) -> Result<photon_world::ClientItemStackState, String> {
+    use photon_world::ClientItemStackState;
+    let name = described["item"].as_str().ok_or("item must be a string")?;
+    let id = photon_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
+    let count = described["count"]
+        .as_i64()
+        .ok_or("count must be a number")? as i32;
+    let stack = ClientItemStackState::new(count, id);
+    let Some(hex_patch) = described["patch"].as_str() else {
+        return Ok(stack);
+    };
+    let bytes = hex_bytes(hex_patch)?;
+    // The case's ids are the reference's wire ids.
+    let patch = photon_data::item_components::read_wire_patch(
+        &mut bytes.as_slice(),
+        &crate::case_ids::registries(),
+    )
+    .map_err(|_| format!("malformed patch {hex_patch}"))?;
+    let bytes = patch.trusted();
+    Ok(ClientItemStackState::from_wire(
+        count,
+        id,
+        patch.added.iter().map(|(kind, _)| *kind).collect(),
+        patch.removed,
+    )
+    .with_patch_bytes(bytes))
+}
+
 /// Clicks in the player's own inventory menu, as the client predicts them
 /// and sends them.
 pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> {
     use photon_game::menus::container::{ClickType, ContainerMenu, Player};
     use photon_world::ClientItemStackState;
-    let stack = |described: &Value| -> Result<ClientItemStackState, String> {
-        let name = described["item"].as_str().ok_or("item must be a string")?;
-        let id = photon_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
-        let count = described["count"]
-            .as_i64()
-            .ok_or("count must be a number")? as i32;
-        let stack = ClientItemStackState::new(count, id);
-        let Some(hex_patch) = described["patch"].as_str() else {
-            return Ok(stack);
-        };
-        let bytes = hex_bytes(hex_patch)?;
-        let patch = photon_game::item_components::read_patch(&mut bytes.as_slice())
-            .map_err(|_| format!("malformed patch {hex_patch}"))?;
-        Ok(ClientItemStackState::from_wire(
-            count,
-            id,
-            patch.added.iter().map(|(kind, _)| *kind).collect(),
-            patch.removed,
-        )
-        .with_patch_bytes(bytes))
-    };
+    let stack = click_stack;
     let describe = |stack: Option<&ClientItemStackState>| -> Value {
         match stack {
             None => Value::Null,

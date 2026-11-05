@@ -208,6 +208,8 @@ class GuiSocialOracle extends GuiCreditsOracle {
             // What the setup saved is not what the screen saves.
             new java.io.File(directory, "debug-profile.json").delete();
             set(minecraft, "debugEntries", list);
+            // The scale button lists its values up to what the window allows, which it asks only while running.
+            set(minecraft, "running", true);
             // The game that hears of the screens opened, as for the social screen.
             var hud = get(get(minecraft, "gui"), "hud");
             var recording = (RecordingGui) unsafe.allocateInstance(RecordingGui.class);

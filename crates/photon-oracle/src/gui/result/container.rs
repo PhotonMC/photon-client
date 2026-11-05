@@ -12,8 +12,12 @@ pub(super) fn row_stack(slot: &Value) -> Result<photon_world::ClientItemStackSta
     }
     if let Some(hex_patch) = slot["patch"].as_str() {
         let bytes = crate::hex::hex_bytes(hex_patch)?;
-        let patch = photon_game::item_components::read_patch(&mut bytes.as_slice())
-            .map_err(|_| format!("malformed patch {hex_patch}"))?;
+        // The case's ids are the reference's wire ids.
+        let patch = photon_data::item_components::read_wire_patch(
+            &mut bytes.as_slice(),
+            &crate::case_ids::registries(),
+        )
+        .map_err(|_| format!("malformed patch {hex_patch}"))?;
         stack.set_patch(&patch);
     }
     Ok(stack)

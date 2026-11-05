@@ -18,7 +18,12 @@ final class GuiTooltipOracle {
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();
-            var stack = MovementSupport.stack(row);
+            net.minecraft.world.item.ItemStack stack;
+            try {
+                stack = MovementSupport.stack(row);
+            } catch (RuntimeException failure) {
+                throw new IllegalStateException("tooltip row " + row, failure);
+            }
             net.minecraft.world.level.saveddata.maps.MapItemSavedData map = null;
             if (row.has("map")) {
                 var described = row.getAsJsonObject("map");

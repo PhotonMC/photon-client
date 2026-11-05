@@ -128,8 +128,10 @@ final class Access26_3 {
 
     /** The render system's device, with `backend` as its backend. */
     static void installDevice(com.mojang.renderpearl.backend.api.GpuDeviceBackend backend) throws Exception {
-        var device = Reflect.unsafe().allocateInstance(com.mojang.renderpearl.api.device.GpuDevice.class);
-        Reflect.set(device, "backend", backend);
+        // `GpuDevice` is an interface: a proxy that answers the device info from the backend stub.
+        var device = java.lang.reflect.Proxy.newProxyInstance(Access26_3.class.getClassLoader(),
+            new Class<?>[] {com.mojang.renderpearl.api.device.GpuDevice.class},
+            (proxy, method, args) -> method.getName().equals("getDeviceInfo") ? backend.getDeviceInfo() : null);
         Reflect.setStatic(com.mojang.blaze3d.systems.RenderSystem.class, "DEVICE", device);
     }
 
@@ -204,9 +206,9 @@ final class Access26_3 {
         Reflect.set(criterion, "obtained", at);
     }
 
-    @SuppressWarnings("unchecked")
-    static java.util.Collection<net.minecraft.advancements.AdvancementNode> tasks(Object tree) throws Exception {
-        return (java.util.Collection<net.minecraft.advancements.AdvancementNode>) Reflect.get(tree, "tasks");
+    /** The nodes that are tasks: the tree now derives them from its nodes. */
+    static Iterable<net.minecraft.advancements.AdvancementNode> tasks(Object tree) {
+        return ((net.minecraft.advancements.AdvancementTree) tree).tasks();
     }
 
     @SuppressWarnings("unchecked")
@@ -243,8 +245,9 @@ final class Access26_3 {
     static void extractDebugLines(Object overlay, Object graphics, java.util.List<?> lines, boolean left)
             throws Exception {
         Reflect.invoke(overlay, net.minecraft.client.gui.components.DebugScreenOverlay.class, "extractLines",
-            new Class<?>[] {net.minecraft.client.gui.GuiGraphicsExtractor.class, java.util.List.class, boolean.class},
-            graphics, lines, left);
+            new Class<?>[] {net.minecraft.client.gui.GuiGraphicsExtractor.class, java.util.List.class, boolean.class,
+                int.class},
+            graphics, lines, left, ((net.minecraft.client.gui.GuiGraphicsExtractor) graphics).guiWidth());
     }
 
     /** `ContextualBar.extractExperienceLevel` (static). */

@@ -27,16 +27,17 @@ fn book(author: &str, generation: i64) -> String {
 }
 
 /// `Instrument.DIRECT_STREAM_CODEC` after the holder's 0: a written-out sound with no fixed
-/// range, the use duration and range, and the description.
+/// range, the use duration and range, the durability damage and the description.
 fn written_horn() -> String {
     let float = |value: f32| value.to_be_bytes().iter().map(|byte| format!("{byte:02x}")).collect::<String>();
     format!(
-        "{}{}{}00{}{}{}",
+        "{}{}{}00{}{}{}{}",
         vi(0),
         vi(0),
         text("minecraft:item.goat_horn.sound.2"),
         float(3.5),
         float(64.0),
+        vi(0),
         nbt("Old Horn")
     )
 }

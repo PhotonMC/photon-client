@@ -40,6 +40,7 @@ class GuiHudOracle extends GuiCommandOracle {
                         case "getX" -> place.x;
                         case "getY" -> place.y;
                         case "getZ" -> place.z;
+                        case "isLooping" -> heard.has("looping") && heard.get("looping").getAsBoolean();
                         default -> null;
                     });
                 var events = new net.minecraft.client.sounds.WeighedSoundEvents(
@@ -1090,18 +1091,29 @@ class GuiHudOracle extends GuiCommandOracle {
             // The frame rate line: the count of the last second, the limit the tracker gives (a real tracker
             // over the options, with input just received) and the surface's configuration.
             Access26_3.fps(row.get("fps").getAsInt());
+            // The refresh rate asks the window, which only the render thread may do.
+            Reflect.setStatic(com.mojang.blaze3d.systems.RenderSystem.class, "renderThread", Thread.currentThread());
+            // With no video subsystem started, SDL answers a window it does not know with no mode at all.
+            MovementOracle.setField(minecraft.getWindow(), "handle", 1L);
+            // The terrain line asks the level renderer, which has not set up multi draw.
+            MovementOracle.setField(minecraft, "levelRenderer",
+                unsafe.allocateInstance(net.minecraft.client.renderer.LevelRenderer.class));
             minecraft.options.framerateLimit().set(row.get("limit").getAsInt());
             MovementOracle.setField(minecraft.getWindow(), "iconified", row.get("iconified").getAsBoolean());
+            // A window that has the focus never asks the platform whether it is fullscreen.
+            MovementOracle.setField(minecraft.getWindow(), "focused", true);
             var tracker = new com.mojang.blaze3d.platform.FramerateLimitTracker(minecraft.options, minecraft);
             tracker.onInputReceived();
             MovementOracle.setField(minecraft, "framerateLimitTracker", tracker);
-            var surface = (com.mojang.renderpearl.api.device.GpuSurface) unsafe.allocateInstance(
-                com.mojang.renderpearl.api.device.GpuSurface.class);
             var present = row.get("present").getAsString();
-            MovementOracle.setField(surface, "currentConfiguration", present.equals("none")
-                ? java.util.Optional.empty()
+            var configuration = present.equals("none")
+                ? java.util.Optional.<com.mojang.renderpearl.api.device.GpuSurface.Configuration>empty()
                 : java.util.Optional.of(new com.mojang.renderpearl.api.device.GpuSurface.Configuration(854, 480,
-                    com.mojang.renderpearl.api.device.GpuSurface.PresentMode.valueOf(present))));
+                    com.mojang.renderpearl.api.device.GpuSurface.PresentMode.valueOf(present)));
+            // `GpuSurface` is an interface: a proxy that tells the configuration the row gives.
+            var surface = java.lang.reflect.Proxy.newProxyInstance(GuiOracle.class.getClassLoader(),
+                new Class<?>[] {com.mojang.renderpearl.api.device.GpuSurface.class},
+                (proxy, method, args) -> method.getName().equals("currentConfiguration") ? configuration : null);
             MovementOracle.setField(minecraft, "windowSurface", surface);
             // The server line: the brand the server told, what the connection counted and the tick rate.
             var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.CLIENTBOUND);
@@ -1245,6 +1257,10 @@ class GuiHudOracle extends GuiCommandOracle {
                 scene.level().clockManager().handleUpdates(0L, java.util.Map.of(clock,
                     new net.minecraft.world.clock.ClockNetworkState(row.get("day").getAsLong(), 0.0F, 1.0F)));
             }
+            // The registries bind each holder's tags into a set whose order changes with every JVM start:
+            // put them in name order, as the tag table lists them.
+            sortBoundTags(net.minecraft.core.registries.BuiltInRegistries.BLOCK);
+            sortBoundTags(net.minecraft.core.registries.BuiltInRegistries.FLUID);
             statuses.keySet().removeIf(id -> !kept.contains(id.getPath()));
             MovementOracle.setField(entries, "allStatuses", statuses);
             MovementOracle.setField(entries, "currentlyEnabled", new java.util.ArrayList<>());
@@ -1474,8 +1490,14 @@ class GuiHudOracle extends GuiCommandOracle {
                 }
                 if (row.get("eye_in_water").getAsBoolean()) {
                     var interaction = get(local, "fluidInteraction");
-                    var trackers = (java.util.Map<?, ?>) get(interaction, "trackerByFluid");
-                    MovementOracle.setField(trackers.get(net.minecraft.tags.FluidTags.WATER), "eyesInside", true);
+                    // The trackers are a list now: one for water, with the eyes inside it.
+                    @SuppressWarnings("unchecked")
+                    var trackers = (java.util.List<Object>) get(interaction, "fluidTrackers");
+                    var trackerClass = Class.forName("net.minecraft.world.entity.EntityFluidInteraction$Tracker");
+                    var water = Reflect.construct(trackerClass, new Class<?>[] {net.minecraft.core.Holder.class},
+                        net.minecraft.world.level.material.Fluids.WATER.builtInRegistryHolder());
+                    MovementOracle.setField(water, "eyesInside", true);
+                    trackers.add(water);
                 }
                 var hud = scene.screen().hud();
                 MovementOracle.setField(hud, "random", net.minecraft.util.RandomSource.create());
@@ -1535,5 +1557,19 @@ class GuiHudOracle extends GuiCommandOracle {
         var result = new JsonObject();
         result.add("rows", rows);
         return result;
+    }
+
+    /** Each holder of `registry` keeps its tags in name order. */
+    static void sortBoundTags(net.minecraft.core.Registry<?> registry) throws Exception {
+        for (Object holder : registry.listElements().map(each -> (Object) each).toList()) {
+            @SuppressWarnings("unchecked")
+            var tags = (java.util.Set<net.minecraft.tags.TagKey<?>>) Reflect.get(holder, "tags");
+            if (tags == null) {
+                continue;
+            }
+            var sorted = new java.util.ArrayList<>(tags);
+            sorted.sort(java.util.Comparator.comparing(tag -> tag.location().toString()));
+            Reflect.set(holder, "tags", new java.util.LinkedHashSet<>(sorted));
+        }
     }
 }

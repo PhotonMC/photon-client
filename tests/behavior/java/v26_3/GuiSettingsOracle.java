@@ -180,8 +180,10 @@ class GuiSettingsOracle extends GuiScreenOracle {
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
             set(minecraft, "musicManager", unsafe.allocateInstance(SilentMusic.class));
             // `GraphicsPreset.apply` asks for the device even for Custom, which does nothing with it.
-            var deviceField = Reflect.field(com.mojang.blaze3d.systems.RenderSystem.class, "DEVICE");
-            deviceField.set(null, unsafe.allocateInstance(com.mojang.renderpearl.api.device.GpuDevice.class));
+            Access26_3.installDevice((com.mojang.renderpearl.backend.api.GpuDeviceBackend)
+                java.lang.reflect.Proxy.newProxyInstance(GuiOracle.class.getClassLoader(),
+                    new Class<?>[] {com.mojang.renderpearl.backend.api.GpuDeviceBackend.class},
+                    (proxy, method, args) -> null));
             set(minecraft, "framerateLimitTracker",
                 unsafe.allocateInstance(com.mojang.blaze3d.platform.FramerateLimitTracker.class));
             var warnlist = unsafe.allocateInstance(net.minecraft.client.renderer.GpuWarnlistManager.class);
@@ -238,6 +240,10 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 // The font options tell the font manager (no fonts loaded).
                 var fonts = unsafe.allocateInstance(net.minecraft.client.gui.font.FontManager.class);
                 set(fonts, "fontSets", new java.util.HashMap<>());
+                // The two caches the options drop: nothing is cached, so empty shells will do.
+                var cached = Class.forName("net.minecraft.client.gui.font.FontManager$CachedFontProvider");
+                set(fonts, "anyGlyphs", unsafe.allocateInstance(cached));
+                set(fonts, "nonFishyGlyphs", unsafe.allocateInstance(cached));
                 set(minecraft, "fontManager", fonts);
                 // The values the row stores; the variants are set whatever the JVM locale says.
                 var stored = row.has("options") ? row.getAsJsonObject("options") : new JsonObject();
