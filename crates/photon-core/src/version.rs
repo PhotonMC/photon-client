@@ -39,6 +39,8 @@ versions! {
     V26_1 = ("26.1", 775);
     /// Java Edition 26.2, protocol 776.
     V26_2 = ("26.2", 776);
+    /// Java Edition 26.3, protocol 777.
+    V26_3 = ("26.3", 777);
 }
 
 impl Default for Version {
@@ -134,8 +136,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_newest_version_is_protocol_776() {
-        assert_eq!(Version::NEWEST.protocol(), 776);
+    fn the_newest_version_is_protocol_777() {
+        assert_eq!(Version::NEWEST.protocol(), 777);
     }
 
     #[test]

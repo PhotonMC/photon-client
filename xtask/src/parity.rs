@@ -434,10 +434,17 @@ mod tests {
     }
 
     #[test]
-    fn the_only_reference_is_never_older() {
-        let changed = files(&["tests/behavior/reference/26.2.json"]);
+    fn the_newest_reference_is_never_older() {
+        let changed = files(&["tests/behavior/reference/26.3.json"]);
         let (own, older) = super::split_older(changed.clone());
         assert_eq!((own, older.len()), (changed, 0));
+    }
+
+    #[test]
+    fn an_older_reference_is_split_off() {
+        let changed = files(&["tests/behavior/reference/26.2.json"]);
+        let (own, older) = super::split_older(changed);
+        assert_eq!((own.len(), older.len()), (0, 1));
     }
 
     #[test]

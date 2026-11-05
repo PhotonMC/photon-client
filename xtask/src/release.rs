@@ -266,7 +266,7 @@ mod tests {
             fs::read_to_string(dir.join("photon-x86_64-unknown-linux-gnu.manifest.sig")).unwrap();
         let release = photon_update::verify_manifest(&[public], &manifest, &signature).unwrap();
         assert_eq!((release.size, release.notes.as_str()), (7, "notes"));
-        assert_eq!(release.protocols, [775, 776]);
+        assert_eq!(release.protocols, [775, 776, 777]);
     }
 
     #[test]
