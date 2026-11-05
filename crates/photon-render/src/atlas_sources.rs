@@ -309,6 +309,20 @@ pub(crate) fn read_sprite(resources: &dyn Resources, sprite: &Sprite) -> Option<
     }
 }
 
+/// The `animation` section of a sprite read from a file of its own, if its metadata has one.
+pub(crate) fn animation_of(
+    resources: &dyn Resources,
+    sprite: &Sprite,
+) -> Option<crate::texture::metadata::AnimationFrames> {
+    let Origin::File(file) = &sprite.origin else {
+        return None;
+    };
+    let meta = Identifier::parse(&format!("{}.mcmeta", file.as_string())).ok()?;
+    let text = String::from_utf8(resources.read(&meta)?).ok()?;
+    let root = photon_core::json::parse_object(&text)?;
+    crate::texture::metadata::AnimationFrames::parse(root.object("animation")?)
+}
+
 /// `Unstitcher.RegionInstance.get`: the region of `whole`, its numbers scaled by the picture's
 /// size over the divisors and floored; none if it reaches outside the picture.
 fn unstitched(

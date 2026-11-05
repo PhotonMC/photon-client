@@ -9,6 +9,7 @@ use crate::texture::png::DecodedImage;
 use photon_core::identifier::Identifier;
 use photon_core::resources::{FolderResources, Resources};
 
+mod animated;
 mod unifont;
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
@@ -294,14 +295,24 @@ fn register_favicon_slots(
     Some(())
 }
 
+/// What collecting the atlas's images gives: the stitcher, the images, which are sampled smoothly,
+/// and the animated sprites.
+type Collected = (
+    Stitcher,
+    BTreeMap<String, DecodedImage>,
+    BTreeSet<String>,
+    animated::Animations,
+);
+
 /// Every image the atlas holds, registered with the stitcher, and which of them are sampled
 /// smoothly.
 fn collect_images(
     resources: &dyn Resources,
     fonts: &[&crate::gui::font::Font],
     side: i32,
-) -> Option<(Stitcher, BTreeMap<String, DecodedImage>, BTreeSet<String>)> {
+) -> Option<Collected> {
     let mut images = BTreeMap::new();
+    let animations = animated::Animations::default();
     let mut stitcher = Stitcher::new(side, side, 0, 0);
     // The font's images go in whole, and glyphs are cut from them.
     for (name, image) in fonts.iter().flat_map(|font| &font.images) {
@@ -317,7 +328,16 @@ fn collect_images(
         let Some(image) = crate::atlas_sources::read_sprite(resources, &sprite) else {
             continue;
         };
-        let id = sprite.id;
+        let id = sprite.id.clone();
+        // An animated sprite is stitched as its first frame.
+        let image = match crate::atlas_sources::animation_of(resources, &sprite) {
+            Some(section) => {
+                let mut split = animated::split(&id, image, &section);
+                animations.add(&mut split);
+                split.image
+            }
+            None => image,
+        };
         stitcher.register_sprite(SpriteEntry {
             width: image.width as i32,
             height: image.height as i32,
@@ -339,7 +359,7 @@ fn collect_images(
     unifont::register(&mut stitcher, &mut images)?;
     register_white(&mut stitcher, &mut images)?;
     register_missing(&mut stitcher, &mut images)?;
-    Some((stitcher, images, blurred))
+    Some((stitcher, images, blurred, animations))
 }
 
 /// The GUI sprites packed into one texture.
@@ -351,6 +371,8 @@ pub struct GuiAtlas {
     glyphs: unifont::GlyphCells,
     /// The whole textures sampled smoothly (`blur` in their metadata), by key.
     blurred: BTreeSet<String>,
+    /// The animated sprites, brought up to the clock by [`Self::apply_glyphs`].
+    animations: animated::Animations,
 }
 
 impl GuiAtlas {
@@ -369,19 +391,21 @@ impl GuiAtlas {
         fonts: &[&crate::gui::font::Font],
     ) -> Option<(Self, DecodedImage)> {
         // The atlas grows with the pictures (a high-resolution pack needs a larger one).
-        let (stitcher, images, blurred) = [4096, 8192, 16384].into_iter().find_map(|side| {
-            let (mut stitcher, images, blurred) = collect_images(resources, fonts, side)?;
-            stitcher.stitch().ok()?;
-            Some((stitcher, images, blurred))
-        })?;
-        Self::assemble(stitcher, &images, blurred)
+        let (stitcher, images, blurred, animations) =
+            [4096, 8192, 16384].into_iter().find_map(|side| {
+                let (mut stitcher, images, blurred, animations) =
+                    collect_images(resources, fonts, side)?;
+                stitcher.stitch().ok()?;
+                Some((stitcher, images, blurred, animations))
+            })?;
+        Self::assemble(stitcher, &images, (blurred, animations))
     }
 
     /// Pack the stitched `images` into the texture and note where each went.
     fn assemble(
         stitcher: Stitcher,
         images: &BTreeMap<String, DecodedImage>,
-        blurred: BTreeSet<String>,
+        (blurred, animations): (BTreeSet<String>, animated::Animations),
     ) -> Option<(Self, DecodedImage)> {
         let width = stitcher.width().max(1) as u32;
         let height = stitcher.height().max(1) as u32;
@@ -419,6 +443,7 @@ impl GuiAtlas {
                     key: None,
                 });
             } else {
+                animations.placed(&key, (left, top));
                 sprites.insert(key, uv);
             }
         }
@@ -428,6 +453,7 @@ impl GuiAtlas {
                 favicons,
                 glyphs,
                 blurred,
+                animations,
             },
             atlas,
         ))
@@ -495,7 +521,9 @@ impl GuiAtlas {
     /// Write the glyphs that text asked for since the last call into `atlas`, the image `load`
     /// made, and the cells they went into, which are to be sent to the GPU.
     pub fn apply_glyphs(&self, atlas: &mut DecodedImage) -> Vec<crate::vulkan::AtlasRegion> {
-        self.glyphs.apply(atlas)
+        let mut regions = self.glyphs.apply(atlas);
+        regions.extend(self.animations.apply(atlas));
+        regions
     }
 
     /// The blend a draw of `name` takes: the smooth-sampling variant for a blurred texture.
@@ -518,6 +546,7 @@ impl GuiAtlas {
             favicons: Vec::new(),
             glyphs: unifont::GlyphCells::default(),
             blurred: BTreeSet::new(),
+            animations: animated::Animations::default(),
         }
     }
 
