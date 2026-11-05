@@ -267,19 +267,11 @@ fn display_options(gui_scale: i32, max_gui_scale: i32, display: &VideoValues) ->
                 toggle_text,
                 false,
                 Box::new(|value: &bool| {
-                    // A value other than the one the game started with
-                    // needs a restart (`TOOLTIP_NEEDS_RESTART`).
-                    let mut lines = Vec::new();
-                    if *value {
-                        lines.push(Some(Component::translatable("options.needsRestart")));
-                        lines.push(None);
-                    }
-                    lines.push(Some(Component::translatable(if *value {
+                    vec![Some(Component::translatable(if *value {
                         "options.exclusiveFullscreen.on.tooltip"
                     } else {
                         "options.exclusiveFullscreen.off.tooltip"
-                    })));
-                    lines
+                    }))]
                 }),
             ),
         ),

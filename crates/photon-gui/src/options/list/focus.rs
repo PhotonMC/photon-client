@@ -26,11 +26,16 @@ impl OptionsList {
     /// `addHeader`: a line of text, with room above it unless it is first.
     pub fn add_header(&mut self, font: &Font, lang: &Lang, key: &str) {
         let padding_top = if self.entries.is_empty() { 0 } else { 9 * 2 };
-        let text = lang.runs(&Component::translatable(key), &Style::default());
+        let style = Style {
+            bold: Some(true),
+            underlined: Some(true),
+            ..Style::default()
+        };
+        let text = lang.runs(&Component::translatable(key), &style);
         let rect = self.arena.add(font.width_of_runs(&text), 9);
         self.push(Entry {
             y: 0,
-            height: padding_top + 9 + 4,
+            height: padding_top + 9 * 2,
             content: Content::Header {
                 text: Widget {
                     rect,
@@ -161,8 +166,13 @@ impl OptionsList {
             y += entry.height;
             match &entry.content {
                 Content::Header { text, padding_top } => {
+                    // A `FocusableTextWidget` centred in the row, its text 4 units inside.
                     let rect = &mut self.arena.0[text.rect];
-                    (rect.x, rect.y) = (x, entry.y + PADDING + padding_top);
+                    let widget_width = rect.width + 2 * HEADER_PADDING;
+                    (rect.x, rect.y) = (
+                        self.place.width / 2 - widget_width / 2 + HEADER_PADDING,
+                        entry.y + PADDING + padding_top + HEADER_PADDING,
+                    );
                 }
                 Content::Row(children) => {
                     for (index, child) in children.iter().enumerate() {
@@ -226,7 +236,9 @@ impl OptionsList {
                 continue;
             }
             match &entry.content {
-                Content::Header { text, .. } => text.draw(frame, atlas, font, &self.arena, false),
+                Content::Header { text, .. } => {
+                    self.draw_header(frame, (atlas, font), (entry_index, text));
+                }
                 Content::Row(children) => {
                     for (child_index, child) in children.iter().enumerate() {
                         child.control.draw(frame, atlas, font, &self.arena, mouse);
@@ -236,11 +248,7 @@ impl OptionsList {
                             continue;
                         };
                         let rect = self.arena.0[child.rect];
-                        let hovered = inside
-                            && mouse.0 >= rect.x
-                            && mouse.0 < rect.x + rect.width
-                            && mouse.1 >= rect.y
-                            && mouse.1 < rect.y + rect.height;
+                        let hovered = inside && over(&rect, mouse);
                         let focused = self.focus == Some((entry_index, child_index));
                         let widget = Rectangle {
                             x: rect.x,
@@ -266,6 +274,54 @@ impl OptionsList {
             self.scrollbar_x(),
         );
         pending
+    }
+
+    /// Whether `mouse` is over a header's widget: its text and the padding around it.
+    pub(super) fn header_contains(&self, text: &Widget, (x, y): (f64, f64)) -> bool {
+        let rect = self.arena.0[text.rect];
+        let (left, top) = (rect.x - HEADER_PADDING, rect.y - HEADER_PADDING);
+        let (width, height) = (
+            rect.width + 2 * HEADER_PADDING,
+            rect.height + 2 * HEADER_PADDING,
+        );
+        x >= f64::from(left)
+            && x < f64::from(left + width)
+            && y >= f64::from(top)
+            && y < f64::from(top + height)
+    }
+
+    /// A header: its text, with a black ground and a white border while it has the focus
+    /// (`FocusableTextWidget` with the ground `ON_FOCUS`).
+    fn draw_header(
+        &self,
+        frame: &mut GuiFrame,
+        (atlas, font): (&GuiAtlas, &Font),
+        (entry, text): (usize, &Widget),
+    ) {
+        if self.focus == Some((entry, 0)) {
+            self.draw_header_focus(frame, atlas, text);
+        }
+        text.draw(frame, atlas, font, &self.arena, false);
+    }
+
+    fn draw_header_focus(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, text: &Widget) {
+        let rect = self.arena.0[text.rect];
+        let (x, y) = (rect.x - HEADER_PADDING, rect.y - HEADER_PADDING);
+        let (width, height) = (
+            rect.width + 2 * HEADER_PADDING,
+            rect.height + 2 * HEADER_PADDING,
+        );
+        frame.fill(atlas, (x + 1, y, x + width, y + height), 0xFF00_0000);
+        crate::screen::dialog_body::outline(
+            frame,
+            atlas,
+            Rectangle {
+                x,
+                y,
+                width,
+                height,
+            },
+        );
     }
 
     /// `getEntryAtPosition`.
@@ -315,13 +371,16 @@ impl OptionsList {
     pub(super) fn widgets_in(&self, entry: usize) -> usize {
         match &self.entries[entry].content {
             Content::Row(children) => children.len(),
-            Content::Header { .. } => 0,
+            Content::Header { .. } => 1,
         }
     }
 
     pub(super) fn is_active(&self, (entry, child): Focus) -> bool {
-        matches!(&self.entries[entry].content,
-            Content::Row(children) if children[child].control.is_active())
+        match &self.entries[entry].content {
+            Content::Row(children) => children[child].control.is_active(),
+            // A `FocusableTextWidget` is active.
+            Content::Header { .. } => true,
+        }
     }
 
     /// The first active widget of an entry among `order`.
@@ -450,4 +509,9 @@ impl OptionsList {
             height: self.place.height,
         }
     }
+}
+
+/// Whether `(x, y)` is inside a widget's rectangle.
+fn over(rect: &crate::layout::Rect, (x, y): (i32, i32)) -> bool {
+    x >= rect.x && x < rect.x + rect.width && y >= rect.y && y < rect.y + rect.height
 }

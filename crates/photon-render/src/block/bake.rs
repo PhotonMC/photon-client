@@ -19,8 +19,8 @@ pub struct BakedQuad {
     pub cull: Option<Direction>,
     /// The tint slot the quad takes its colour from; negative for none.
     pub tint_index: i32,
-    /// Whether the quad takes the per-side shade.
-    pub shade: bool,
+    /// The side whose shade the quad takes instead of its own.
+    pub shade_override: Option<Direction>,
     /// The layer the quad bakes to.
     pub layer: crate::texture::sprite_alpha::Layer,
 }
@@ -31,7 +31,7 @@ impl BakedQuad {
         crate::scene::QuadInfo {
             direction: self.direction,
             cull: None,
-            shade: self.shade,
+            shade_override: self.shade_override,
             tint_index: self.tint_index,
             layer: self.layer,
         }
@@ -99,7 +99,7 @@ pub fn bake(model: &ResolvedModel, atlas: &BuiltAtlas, key: &BakeKey) -> Option<
                 direction: info.direction,
                 cull: info.cull,
                 tint_index: info.tint_index,
-                shade: info.shade,
+                shade_override: info.shade_override,
                 layer: info.layer,
             }
         })

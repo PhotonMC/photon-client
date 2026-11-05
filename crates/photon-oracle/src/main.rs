@@ -100,6 +100,8 @@ mod case_ids;
 mod data_tables;
 mod glint;
 use glint::*;
+mod model_json;
+use model_json::*;
 mod hex;
 mod music;
 mod registry;

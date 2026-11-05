@@ -43,11 +43,12 @@ impl VideoSettingsScreen {
             list.add_big(
                 lang,
                 FULLSCREEN_RESOLUTION,
-                slider(
-                    "options.fullscreen.resolution",
+                slider_tip(
+                    "options.fullscreen.exclusive.mode",
                     fullscreen.clone(),
                     fullscreen_resolution,
                     fullscreen.initial(),
+                    constant_tip("options.fullscreen.exclusive.mode.tooltip"),
                 ),
             );
             list.add_small(lang, display_options(gui_scale, max_gui_scale, &values));
@@ -93,16 +94,12 @@ impl VideoSettingsScreen {
     /// (`isRestartRequiredToApplyVideoSettings`).
     pub fn tick(&mut self) {
         let list = &self.screen.list;
-        let exclusive = list
-            .find(EXCLUSIVE_FULLSCREEN)
-            .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
-            .is_some_and(|button| *button.value());
         let api_changed = list
             .find(GRAPHICS_API)
             .and_then(|control| control.as_any().downcast_ref::<CycleButton<Named>>())
             .is_some_and(|button| *button.value() != "options.graphicsApi.default");
         self.screen
-            .set_header_line((&self.restart.0, self.restart.1), exclusive || api_changed);
+            .set_header_line((&self.restart.0, self.restart.1), api_changed);
         let anisotropic = self
             .screen
             .list

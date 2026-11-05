@@ -431,7 +431,7 @@ pub(super) fn push_block_quad(
     shift: [f32; 3],
     cardinal: photon_world::CardinalLightType,
 ) {
-    let side = crate::block::light::face_shade(quad.direction, quad.shade, cardinal);
+    let side = crate::block::light::face_shade(quad.direction, quad.shade_override, cardinal);
     let tint = [16, 8, 0, 24].map(|bits| ((tint >> bits) & 0xFF) as i32);
     let white = tint == [255, 255, 255, 255];
     let base = mesh.vertices.len() as u32;
@@ -559,7 +559,7 @@ mod tests {
             direction: Direction::North,
             cull: None,
             tint_index: -1,
-            shade: true,
+            shade_override: None,
             layer,
         }
     }

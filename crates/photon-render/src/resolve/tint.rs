@@ -93,7 +93,7 @@ pub fn build_mesh(
                     Some(state) => crate::block::rotation::rotate_direction(state, cull),
                     None => cull,
                 }),
-                shade: element.shade,
+                shade_override: element.shade_override,
                 tint_index: face.tint_index,
                 layer,
             });

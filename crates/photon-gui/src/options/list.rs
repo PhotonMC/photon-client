@@ -27,6 +27,8 @@ const ROW_WIDTH: i32 = 310;
 const SMALL_WIDTH: i32 = 150;
 const COLUMN_STEP: i32 = 160;
 /// `Entry.CONTENT_PADDING`.
+/// `FocusableTextWidget.DEFAULT_PADDING`, around a header's text.
+const HEADER_PADDING: i32 = 4;
 const PADDING: i32 = 2;
 /// `ScrollbarSettings.scrollRate`: half of an item's height.
 const SCROLL_RATE: f64 = (ITEM_HEIGHT / 2) as f64;

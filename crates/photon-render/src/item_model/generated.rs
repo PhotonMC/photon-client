@@ -75,7 +75,7 @@ pub fn generated_elements(
                 from,
                 to,
                 rotation: None,
-                shade: true,
+                shade_override: None,
                 light_emission: 0,
                 faces: vec![(
                     facing,

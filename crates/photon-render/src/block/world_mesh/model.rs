@@ -31,7 +31,7 @@ pub(super) fn model_mesh(
         mesh.quads.push(crate::scene::QuadInfo {
             direction: crate::block::geometry::closest_direction(normal).unwrap_or(Direction::Up),
             cull: None,
-            shade: true,
+            shade_override: None,
             tint_index: -1,
             // An entity model draws through its own render type.
             layer: crate::texture::sprite_alpha::Layer::Solid,

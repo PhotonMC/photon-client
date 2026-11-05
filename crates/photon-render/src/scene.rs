@@ -91,8 +91,8 @@ pub struct QuadInfo {
     pub direction: photon_core::direction::Direction,
     /// The side whose neighbour may hide it, if the face names one.
     pub cull: Option<photon_core::direction::Direction>,
-    /// Whether the face takes the per-side shade.
-    pub shade: bool,
+    /// The side whose shade the face takes instead of its own.
+    pub shade_override: Option<photon_core::direction::Direction>,
     /// The tint slot the face takes its colour from; negative for none.
     pub tint_index: i32,
     /// The layer the face bakes to, from the alpha of the part of the sprite

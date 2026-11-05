@@ -181,12 +181,7 @@ pub(super) fn parse_element(value: &JsonValue) -> Result<ModelElement, ModelPars
     let rotation = parse_rotation(object)?;
     let faces = parse_faces(object)?;
 
-    // The reference checks the type before converting, so a number here is a
-    // rejection rather than a coercion.
-    if object.has("shade") && object.bool("shade").is_none() {
-        return Err(reject("shade must be a boolean"));
-    }
-    let shade = object.bool("shade").unwrap_or(true);
+    let shade_override = parse_shade_override(object)?;
 
     let mut light_emission = 0;
     if object.has("light_emission") {
@@ -203,10 +198,24 @@ pub(super) fn parse_element(value: &JsonValue) -> Result<ModelElement, ModelPars
         from,
         to,
         rotation,
-        shade,
+        shade_override,
         light_emission,
         faces,
     })
+}
+
+/// `shade_direction_override`, which replaced the boolean `shade` in 26.3 (the old key is no
+/// longer read).
+fn parse_shade_override(object: &JsonObject) -> Result<Option<Direction>, ModelParseError> {
+    if let Some(name) = object.text("shade_direction_override") {
+        return Direction::from_name(&name)
+            .map(Some)
+            .ok_or_else(|| reject("unknown shade direction override"));
+    }
+    if object.has("shade_direction_override") {
+        return Err(reject("shade_direction_override must be a string"));
+    }
+    Ok(None)
 }
 
 /// A corner, rejected if it reaches past what an element may occupy.

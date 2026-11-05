@@ -13,15 +13,17 @@ impl OptionsList {
             && mouse.0 <= f64::from(self.scrollbar_x() + SCROLLBAR_WIDTH)
             && mouse.1 >= f64::from(self.place.y)
             && mouse.1 < f64::from(self.place.bottom());
-        let hit = self.entry_at(mouse).and_then(|entry| {
-            let Content::Row(children) = &self.entries[entry].content else {
-                return None;
-            };
-            children
-                .iter()
-                .position(|child| child.control.is_mouse_over(&self.arena, mouse))
-                .map(|child| (entry, child))
-        });
+        let hit = self
+            .entry_at(mouse)
+            .and_then(|entry| match &self.entries[entry].content {
+                Content::Row(children) => children
+                    .iter()
+                    .position(|child| child.control.is_mouse_over(&self.arena, mouse))
+                    .map(|child| (entry, child)),
+                Content::Header { text, .. } => {
+                    self.header_contains(text, mouse).then_some((entry, 0))
+                }
+            });
         let Some((entry, child)) = hit else {
             // An entry (or the bar) takes the click, so the list takes the
             // screen's focus, though no widget of it has taken any.

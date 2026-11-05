@@ -26,6 +26,12 @@ pub(super) fn lighting_result(operation: &str, request: &Value) -> Option<Result
     }
 }
 
+/// What the quad's `shade` flag stands for: a quad that takes no shade is shaded as the top.
+fn shade_override(quad: &Value) -> Result<Option<photon_core::direction::Direction>, String> {
+    let shade = quad["shade"].as_bool().ok_or("shade must be a bool")?;
+    Ok((!shade).then_some(photon_core::direction::Direction::Up))
+}
+
 /// `block_lighting`: the colour and light each corner of a quad takes from
 /// the blocks around it (`BlockModelLighter`), over a level lit as the
 /// client lights it.
@@ -75,11 +81,7 @@ pub(super) fn block_lighting_result(request: &Value) -> Result<Value, String> {
             }
             let smooth = quad["smooth"].as_bool().ok_or("smooth must be a bool")?;
             let lit = lighter.light_quad(state, at, &corners, face, cull, smooth);
-            let side = face_shade(
-                face,
-                quad["shade"].as_bool().ok_or("shade must be a bool")?,
-                kind,
-            );
+            let side = face_shade(face, shade_override(quad)?, kind);
             let vertices: Vec<Value> = (0..4)
                 .map(|corner| json!({"grey": grey(&lit, corner, side), "light": lit.light[corner]}))
                 .collect();

@@ -439,29 +439,17 @@ pub(super) fn model_parse_result(request: &Value) -> Result<Value, String> {
                             .collect::<Vec<_>>()
                     )
                 };
-                json!({
+                let mut described = json!({
                     "from": bits(element.from),
                     "to": bits(element.to),
-                    "shade": element.shade,
                     "light_emission": element.light_emission,
-                    "rotation": match &element.rotation {
-                        None => json!("none"),
-                        Some(rotation) => {
-                            let mut matrix = Vec::with_capacity(16);
-                            for column in &rotation.transform {
-                                for value in column {
-                                    matrix.push(json!(format!("{:08x}", value.to_bits())));
-                                }
-                            }
-                            json!({
-                                "origin": bits(rotation.origin),
-                                "rescale": rotation.rescale,
-                                "transform": matrix,
-                            })
-                        }
-                    },
+                    "rotation": rotation_json(element.rotation.as_ref()),
                     "faces": described_faces,
-                })
+                });
+                if let Some(side) = element.shade_override {
+                    described["shade_direction_override"] = json!(side.name());
+                }
+                described
             })
             .collect();
 

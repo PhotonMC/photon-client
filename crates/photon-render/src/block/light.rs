@@ -101,10 +101,14 @@ pub fn cardinal(direction: Direction, kind: CardinalLightType) -> f32 {
     }
 }
 
-/// The side shade of a block quad: its own face's when it takes shade,
-/// otherwise the top's (`BlockModelLighter`'s `shade()` test).
-pub fn face_shade(direction: Direction, shade: bool, kind: CardinalLightType) -> f32 {
-    cardinal(if shade { direction } else { Direction::Up }, kind)
+/// The side shade of a block quad: its own face's, or the side its element
+/// names instead (`BlockModelLighter.getDirectionalBrightness`).
+pub fn face_shade(
+    direction: Direction,
+    shade_override: Option<Direction>,
+    kind: CardinalLightType,
+) -> f32 {
+    cardinal(shade_override.unwrap_or(direction), kind)
 }
 
 // The face shape's slots: the bounds, then one minus each bound.

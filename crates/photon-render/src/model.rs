@@ -220,8 +220,8 @@ pub struct ModelElement {
     pub to: [f32; 3],
     /// Rotation block, if the element carries one.
     pub rotation: Option<ElementRotation>,
-    /// Whether the element takes directional shading.
-    pub shade: bool,
+    /// The side whose directional shade the element takes instead of its faces' own.
+    pub shade_override: Option<Direction>,
     /// Light the element emits, `0` to `15`.
     pub light_emission: i32,
     /// Faces, keyed by the direction they face.
