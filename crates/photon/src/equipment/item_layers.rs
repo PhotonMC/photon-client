@@ -381,6 +381,7 @@ impl ItemLayerCache {
         if photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
             .removes(photon_data::item::component_types::ITEM_MODEL)
         {
+            self.glint.decal = None;
             return &[];
         }
         let context = self.context;
