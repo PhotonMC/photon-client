@@ -20,7 +20,7 @@ The hooks enforce the [coding standards](docs/development/coding-standards.md):
 
 - **pre-commit** runs rustfmt, the lint rules and clippy on affected crates, in seconds.
 - **commit-msg** checks the message format.
-- **pre-push** runs the tests of affected crates and parity.
+- **pre-push** runs the tests of affected crates and parity of the newest version (CI runs every version).
 
 Run `cargo xtask check` for the whole gate. Parity needs the local reference; see [development setup](docs/development/setup.md).
 

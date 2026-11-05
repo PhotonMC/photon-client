@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, platform]
   pull_request:
 
 env:
@@ -86,9 +86,15 @@ jobs:
   # servers into the runner's .data/ on every run and checked against its
   # hashes. It is never cached or uploaded: no original or derived content
   # leaves the runner, and the log carries only verdicts and differences.
+  # One run per game version that has a reference in tests/behavior/reference/: the pre-push
+  # hook only runs the newest one.
   parity:
     needs: lint
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["26.2"]
     steps:
       - uses: actions/checkout@v4
       - name: Install system packages
@@ -106,12 +112,12 @@ jobs:
           toolchain: 1.97.1
       - uses: Swatinem/rust-cache@v2
         with:
-          key: parity
+          key: parity-${{ matrix.version }}
       # The decompiled source stays on the runner like the rest of .data/; the progress check
       # reads it and prints numbers only.
       - name: Fetch the pinned game from Mojang
         run: cargo xtask setup --named --decompile
-      - run: cargo xtask parity
+      - run: cargo xtask parity --version ${{ matrix.version }}
       # Each supported release's own server writes its registry reports; the jars come from
       # Mojang's manifest and are hash-checked like the pinned one, kept on the runner, and
       # only the verdict reaches the log.

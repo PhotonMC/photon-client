@@ -53,7 +53,7 @@ To exercise reconfiguration in play, run Velocity (the stable jar from the Paper
 | --- | --- |
 | `cargo xtask lint` | Repository rules (~150 ms) |
 | `cargo xtask pre-commit` | rustfmt on staged files, lint, clippy on affected crates |
-| `cargo xtask pre-push` | Tests of affected crates; parity if engine or reference sources changed (only the families a reference-only change names, and not at all when the cases, oracle and Rust adapter are unchanged since the last pass). The hook runs at the lowest priority on half the cores (`PHOTON_HOOK_JOBS`) |
+| `cargo xtask pre-push` | Tests of affected crates; parity of the newest version if engine or reference sources changed (older versions run in CI) (only the families a reference-only change names, and not at all when the cases, oracle and Rust adapter are unchanged since the last pass). The hook runs at the lowest priority on half the cores (`PHOTON_HOOK_JOBS`) |
 | `cargo xtask check` | Everything: fmt, lint, clippy, tests, cargo-deny, cargo-machete, parity |
 | `cargo xtask affected` | The crates changed since the push base, and their dependents |
 

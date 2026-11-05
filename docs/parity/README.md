@@ -33,11 +33,11 @@ cargo xtask parity report [--missing]   # coverage per family and operation, no 
 
 `parity report` counts the generated cases per family and operation and joins them with `parity/cases/src/coverage.rs`, which records the Java class each operation exercises; `--missing` lists the operations that have no entry yet. Add an entry when an operation gets its Java class.
 
-The pre-push hook runs parity when engine crates or reference sources changed; a run whose case keys and Rust adapter binary equal an earlier passing run is skipped (`.data/parity/passed`, forced by `--recapture`). Requirements: the local reference installed by `cargo xtask setup` under `.data/` and a Java 25 JDK. See [setup](../development/setup.md).
+The pre-push hook runs parity for the newest version only, when engine crates or reference sources changed (files of an older version's reference only print a note); CI runs every version that has a reference, and `cargo xtask check` runs them all locally; a run whose case keys and Rust adapter binary equal an earlier passing run is skipped (`.data/parity/passed`, forced by `--recapture`). Requirements: the local reference installed by `cargo xtask setup` under `.data/` and a Java 25 JDK. See [setup](../development/setup.md).
 
 ## How it works today
 
-- **Pins.** `tests/behavior/reference.json` pins the version (26.2, protocol 776, Java 25), the client jar SHA-1, its libraries, and each family's oracle sources.
+- **Pins.** `tests/behavior/reference/<version>.json` pins one game version (`26.2.json`: protocol 776, Java 25), the client jar SHA-1, its libraries, and each family's oracle sources. `cargo xtask parity` runs the newest version that has a reference; `--version <v>` picks another, and a version without a reference is reported as blocked.
 - **Cases.** The `parity-cases` crate (`parity/cases/`) generates the cases as JSONL, one generator per family.
 - **Oracle.** `tests/behavior/java/` holds the oracle classes: `common/` has `Oracle.java` (dispatch and JSONL I/O) and `Reflect.java`, which name no game class; `v26_2/` has everything written against the 26.2 game, including `Game26_2.java` (version stamp, bootstrap, registries), which every family compiles. `Oracle.java` dispatches by family to `<Family>Oracle.run`. They call the game's own classes, built with `Unsafe` and reflection where the game expects a running client. All sources are compiled once into `.data/parity/classes/<digest>/`.
 - **Keys.** Every case is keyed by `hash(game jar, libraries, JDK, OS/arch, JVM flags, the family's oracle sources, case input)`. Changing an oracle file or a case invalidates exactly the cases it can affect.
@@ -70,7 +70,7 @@ Call sites name members by their 26.2 names, the Mojang-mapped ones. New or chan
 
 To add a version:
 
-- The pinned game version, its jars and the family source lists live in `tests/behavior/reference.json`, which holds one version today, so a second version needs a second reference file and the `xtask` support to select it.
+- Each version has its own reference file `tests/behavior/reference/<version>.json` (the pinned jars and the family source lists), its oracle classes in `tests/behavior/java/v<version with underscores>/` (`Game<tag>.java` and `Access<tag>.java` for 26.2 are `Game26_2` and `Access26_2`), and its captures in `.data/parity/<version>/`, with its own pass stamp. Add the file and the classes, add the version to the `matrix` of the `parity` job in `.github/workflows/ci.yml`.
 - For an obfuscated version (1.14.4 and later have Mojang's official mappings), compile the oracle against the jar remapped with those mappings, so call sites stay readable.
 - For members renamed since 26.2, add a rename table for that version and consult it inside the lookups of `Reflect`; no call site changes.
 - Where a setup differs in shape, write a class like `Access26_2` for that version.
