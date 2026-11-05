@@ -123,7 +123,7 @@ pub(super) fn palette_permutation_result(request: &Value) -> Result<Value, Strin
 
 /// `trim_sprite_id`: the picture a pattern in a material takes on an armor's layer.
 pub(super) fn trim_sprite_id_result(request: &Value) -> Result<Value, String> {
-    use photon_render::entity::trim::{TrimData, sprite_path};
+    use photon_render::entity::trim::TrimData;
     let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/data");
     let data = TrimData::load(&data_root);
@@ -136,11 +136,14 @@ pub(super) fn trim_sprite_id_result(request: &Value) -> Result<Value, String> {
             .material(string(row, "material")?)
             .ok_or("no such trim material")?;
         let prefix = format!("trims/entity/{}", string(row, "layer")?);
-        let path = sprite_path(&prefix, pattern, material, string(row, "equipment")?);
+        // 26.3 draws the pattern's own picture recoloured by the material's palette.
+        let sprite = format!("minecraft:{prefix}/{}", pattern.asset);
+        let palette = format!("minecraft:trim/{}", material.base);
         out.push(json!({
             "label": row["label"],
             "outcome": "named",
-            "sprite": format!("minecraft:{path}"),
+            "sprite": sprite,
+            "palette": palette,
             "decal": pattern.decal,
         }));
     }
