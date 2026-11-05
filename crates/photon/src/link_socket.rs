@@ -193,7 +193,9 @@ mod imp {
 
 #[cfg(not(unix))]
 mod imp {
+    /// The same answers as the Unix build gives; this stub only ever answers `NoPrimary`.
     #[derive(Debug, PartialEq, Eq)]
+    #[expect(dead_code, reason = "only the Unix build delivers or refuses")]
     pub enum Sent {
         Delivered,
         Refused,
