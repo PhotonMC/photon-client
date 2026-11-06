@@ -167,7 +167,7 @@ impl OptionsList {
             match &entry.content {
                 Content::Header { text, padding_top } => {
                     let rect = &mut self.arena.0[text.rect];
-                    if photon_core::version::Version::active_before_26_3() {
+                    if photon_core::versions::behaviour::option_headers_are_plain() {
                         // A `StringWidget` at the row's left edge.
                         (rect.x, rect.y) = (x, entry.y + PADDING + padding_top);
                         continue;
@@ -523,7 +523,7 @@ fn over(rect: &crate::layout::Rect, (x, y): (i32, i32)) -> bool {
 
 /// The height a header takes below its padding: two lines in 26.3, a line and 4 before.
 fn header_line_height() -> i32 {
-    if photon_core::version::Version::active_before_26_3() {
+    if photon_core::versions::behaviour::option_headers_are_plain() {
         9 + 4
     } else {
         9 * 2

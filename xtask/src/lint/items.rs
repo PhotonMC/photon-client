@@ -123,6 +123,9 @@ impl<'ast> Visit<'ast> for Facts {
         if raw_id_wrap(expr) {
             self.raw_id_wraps.push(expr.span().start().line);
         }
+        if reads_active_version(expr) {
+            self.version_compares.push(expr.span().start().line);
+        }
         visit::visit_expr_call(self, expr);
     }
 
@@ -194,9 +197,33 @@ fn is_comparison(op: &syn::BinOp) -> bool {
     )
 }
 
-/// An expression that is a `Version::..` path.
+/// An expression that is a `Version::..` path, spelled in full or not.
 fn names_version(expr: &Expr) -> bool {
-    matches!(expr, Expr::Path(path) if path.path.segments.first().is_some_and(|s| s.ident == "Version"))
+    matches!(expr, Expr::Path(path) if path_names_version(&path.path))
+}
+
+/// A path with a `Version` segment: `Version::V26_3`, `photon_core::version::Version::V26_3`.
+fn path_names_version(path: &syn::Path) -> bool {
+    path.segments
+        .iter()
+        .any(|segment| segment.ident == "Version")
+}
+
+/// A call that reads the active version: `Version::active()` or `active_before_*()`.
+fn reads_active_version(call: &syn::ExprCall) -> bool {
+    let Expr::Path(path) = &*call.func else {
+        return false;
+    };
+    let mut segments = path.path.segments.iter().rev();
+    let Some(last) = segments.next() else {
+        return false;
+    };
+    let name = last.ident.to_string();
+    name.starts_with("active_before_")
+        || (name == "active"
+            && segments
+                .next()
+                .is_some_and(|segment| segment.ident == "Version"))
 }
 
 /// `value` reads like a registry or protocol id and `literal` is a non-zero
@@ -287,9 +314,10 @@ mod tests {
     fn finds_raw_id_wraps_and_version_comparisons() {
         let source = "fn f() { let a = ItemId(read_varint(i, \"x\")?); \
             let b = ItemId(map.canonical(read_varint(i, \"x\")?)); \
-            if v >= Version::V26_2 {} if n == 3 {} }\n";
+            if v >= Version::V26_2 {} if n == 3 {} \
+            if a < photon_core::version::Version::V26_3 {} if Version::active() == x {} }\n";
         let facts = collect(&syn::parse_file(source).expect("valid Rust"));
         assert_eq!(facts.raw_id_wraps, [1]);
-        assert_eq!(facts.version_compares, [1]);
+        assert_eq!(facts.version_compares, [1, 1, 1]);
     }
 }

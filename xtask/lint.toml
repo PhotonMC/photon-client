@@ -10,7 +10,7 @@ unsafe_allowed = ["crates/photon-render/src/vulkan", "crates/photon-video/src/de
 non_ascii_allowed = []
 
 # Where `Version` values may be compared: version modules and the dispatch points (ADR 0013).
-version_allowed = ["crates/photon-core/src/version.rs", "crates/photon-data/src/version_registries.rs", "crates/photon-data/src/block/definition.rs", "crates/photon-data/src/item/definition.rs"]
+version_allowed = ["crates/photon-core/src/version.rs", "crates/photon-data/src/version_registries.rs", "crates/photon-data/src/block/definition.rs", "crates/photon-data/src/item/definition.rs", "crates/photon-oracle/"]
 
 # Where `Version::NEWEST` or the `PHOTON_CONNECT_VERSION` override may be named: the places that select a version, and tests. Everything
 # else takes the session's registries, so a connection to an older version is not numbered by

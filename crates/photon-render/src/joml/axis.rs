@@ -99,7 +99,7 @@ impl Pose {
     /// `PoseStack.Pose.rotate(axis, angle)`.
     pub fn rotate_axis(&mut self, axis: Axis, angle: f32) {
         let (index, sign) = axis.parts();
-        if photon_core::version::Version::active() < photon_core::version::Version::V26_3 {
+        if photon_core::versions::behaviour::pose_rotates_by_quaternion() {
             // Before 26.3 `mulPose(Axis.rotation(..))` goes through a quaternion.
             self.rotate(&Quaternion::rotation_about(index, sign * angle));
             return;

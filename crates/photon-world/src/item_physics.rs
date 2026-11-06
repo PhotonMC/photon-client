@@ -69,7 +69,7 @@ pub(crate) fn restitute(
     use super::local_player::flag;
     // Before 26.3 the client does not simulate these entities, so a collision leaves their
     // speed as it was (`canSimulateMovement` guards the restitution).
-    if photon_core::version::Version::active() < photon_core::version::Version::V26_3 {
+    if photon_core::versions::behaviour::item_collision_keeps_speed() {
         return current;
     }
     let mut restitution = 0.0_f64;

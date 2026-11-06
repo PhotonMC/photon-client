@@ -111,7 +111,7 @@ impl ContainerMenu {
     /// The brewing stand's ingredient slot: the server's `brewing_reagent` recipe set in 26.3,
     /// `PotionBrewing`'s own list before.
     fn brewing_ingredient(&self, stack: &Stack) -> bool {
-        if photon_core::version::Version::active() < photon_core::version::Version::V26_3 {
+        if photon_core::versions::behaviour::brewing_ingredients_are_hard_coded() {
             return stacking(stack).is_some_and(|item| {
                 item.name
                     .strip_prefix("minecraft:")

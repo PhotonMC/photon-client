@@ -205,7 +205,7 @@ fn action_wire(action: PlayerAction) -> i32 {
 
 /// Before 26.3 the packet is the swing of a hand.
 pub fn punch_is_swing() -> bool {
-    photon_core::version::Version::active() < photon_core::version::Version::V26_3
+    photon_core::versions::behaviour::punch_is_swing()
 }
 
 /// The body of a punch or a swing: a hand before 26.3, nothing after.
