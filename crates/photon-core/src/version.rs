@@ -53,6 +53,11 @@ impl Version {
     /// The newest supported version: the one the client is held to full parity with.
     pub const NEWEST: Version = Self::ALL[Self::ALL.len() - 1];
 
+    /// Whether this is the newest supported version.
+    pub fn is_newest(self) -> bool {
+        self == Self::NEWEST
+    }
+
     /// The supported version a protocol number belongs to, if there is one.
     pub fn from_protocol(protocol: i32) -> Option<Version> {
         Self::ALL

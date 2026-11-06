@@ -18,8 +18,74 @@ pub fn set_installed_assets(root: String) -> bool {
     INSTALLED.set(root).is_ok()
 }
 
+/// The assets folder of one game version, found beside the folder [`assets`] names: a sibling
+/// `jar-<version>` or `jar` whose `version.json` carries that version's name. The newest
+/// version falls back to [`assets`] itself, as an installed game keeps only that one. `None`
+/// when the version's assets are not on disk, so the version cannot be played.
+pub fn assets_for(version: crate::version::Version) -> Option<std::path::PathBuf> {
+    assets_beside(std::path::PathBuf::from(assets().ok()?), version)
+}
+
+/// [`assets_for`] with the named folder given.
+fn assets_beside(
+    base: std::path::PathBuf,
+    version: crate::version::Version,
+) -> Option<std::path::PathBuf> {
+    let container = base.parent()?.parent()?;
+    let candidates = [
+        container
+            .join(format!("jar-{}", version.name()))
+            .join("assets"),
+        container.join("jar").join("assets"),
+        base.clone(),
+    ];
+    let found = candidates
+        .into_iter()
+        .find(|folder| folder_version(folder).as_deref() == Some(version.name()));
+    found.or_else(|| version.is_newest().then_some(base))
+}
+
+/// The release name in the `version.json` beside an `assets` folder.
+fn folder_version(assets: &std::path::Path) -> Option<String> {
+    let text = std::fs::read_to_string(assets.parent()?.join("version.json")).ok()?;
+    let rest = text.split("\"id\"").nth(1)?;
+    let rest = rest.split_once(':')?.1.trim_start().strip_prefix('"')?;
+    Some(rest.split('"').next()?.to_owned())
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::version::Version;
+
+    fn game(container: &std::path::Path, folder: &str, name: &str) {
+        let root = container.join(folder);
+        std::fs::create_dir_all(root.join("assets")).expect("assets");
+        std::fs::write(
+            root.join("version.json"),
+            format!("{{\n  \"id\": \"{name}\"\n}}"),
+        )
+        .expect("json");
+    }
+
+    #[test]
+    fn each_version_finds_its_own_folder_beside_the_named_one() {
+        let dir = std::env::temp_dir().join(format!("photon-assets-for-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        game(&dir, "jar", "26.2");
+        game(&dir, "jar-26.3", "26.3");
+        let base = dir.join("jar/assets");
+        assert_eq!(
+            super::assets_beside(base.clone(), Version::V26_2),
+            Some(base.clone())
+        );
+        assert_eq!(
+            super::assets_beside(base.clone(), Version::V26_3),
+            Some(dir.join("jar-26.3/assets"))
+        );
+        assert_eq!(super::assets_beside(base, Version::V26_1), None);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn the_installed_folder_answers_when_the_environment_does_not() {
         if std::env::var_os("PHOTON_ASSETS").is_some() {
