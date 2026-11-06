@@ -28,19 +28,19 @@ fn after(current: Option<Version>, offered: &[Version]) -> Option<Version> {
     }
 }
 
-impl Menu {
-    /// The text of the version button: the picked version, or automatic.
-    pub(super) fn version_label(&self) -> String {
-        match chosen_version() {
-            Some(version) => version.name().to_owned(),
-            None => self.gui.lang().text("photon.home.version.auto"),
-        }
+/// The text of the version button: the picked version, or automatic.
+pub(super) fn label(lang: &photon_game::text::Lang) -> String {
+    match chosen_version() {
+        Some(version) => version.name().to_owned(),
+        None => lang.text("photon.home.version.auto"),
     }
+}
 
+impl Menu {
     /// A press on the version button: the next choice, shown on the button.
     pub(super) fn cycle_version(&mut self) {
         choose_version(after(chosen_version(), &offered()));
-        let label = self.version_label();
+        let label = label(self.gui.lang());
         let font = self.gui.text_assets().0;
         if let Screen::Home(home) = &mut self.screen {
             home.set_game_version(&label, font);

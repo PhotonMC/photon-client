@@ -304,7 +304,7 @@ impl Menu {
             screen.friends_available();
         }
         self.directory.apply(&mut screen, self.gui.lang());
-        screen.set_game_version(&self.version_label(), self.gui.text_assets().0);
+        screen.set_game_version(&version::label(self.gui.lang()), self.gui.text_assets().0);
         Screen::Home(screen)
     }
 
@@ -548,7 +548,9 @@ fn home_screen(
     lang: &photon_game::text::Lang,
     size: (i32, i32),
 ) -> Screen {
-    Screen::Home(HomeScreen::new(size, &version_line(), font, lang))
+    let mut screen = HomeScreen::new(size, &version_line(), font, lang);
+    screen.set_game_version(&version::label(lang), font);
+    Screen::Home(screen)
 }
 
 /// The line under the name in the sidebar.
