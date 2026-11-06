@@ -382,6 +382,18 @@ impl LocalPlayer {
         }
     }
 
+    /// The four corner pushes of `aiStep`; since 26.3 a passenger is not pushed by its own tick.
+    fn push_out_of_blocks(&mut self, level: &Level<'_>) {
+        if self.no_physics || self.is_passenger() {
+            return;
+        }
+        let half = f64::from(self.dimensions.width()) * 0.35;
+        for (sx, sz) in [(-1.0, 1.0), (-1.0, -1.0), (1.0, -1.0), (1.0, 1.0)] {
+            let (x, z) = (self.position.x, self.position.z);
+            self.move_towards_closest_space(level, x + sx * half, z + sz * half);
+        }
+    }
+
     pub(super) fn local_ai_step(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
         self.tick_start_timers();
 
@@ -401,17 +413,7 @@ impl LocalPlayer {
             self.input.key_presses.jump = true;
         }
 
-        if !self.no_physics {
-            let half = f64::from(self.dimensions.width()) * 0.35;
-            let (x, z) = (self.position.x, self.position.z);
-            self.move_towards_closest_space(level, x - half, z + half);
-            let (x, z) = (self.position.x, self.position.z);
-            self.move_towards_closest_space(level, x - half, z - half);
-            let (x, z) = (self.position.x, self.position.z);
-            self.move_towards_closest_space(level, x + half, z - half);
-            let (x, z) = (self.position.x, self.position.z);
-            self.move_towards_closest_space(level, x + half, z + half);
-        }
+        self.push_out_of_blocks(level);
 
         self.open_sprint_window(was_shift_key_down, had_forward_impulse);
 

@@ -28,7 +28,7 @@ impl ParticleEngine {
     ) -> bool {
         match event {
             1500 => self.composter_fill(pos, data > 0, context, sounds),
-            2002 | 2007 => self.splash_potion(pos, (event == 2007, data), context, sounds),
+            2002 | 2007 | 1053 | 1054 => self.splash_event((event, pos, data), context, sounds),
             2003 => self.ender_eye(pos, context),
             2004 => self.spawner_flames(pos, context),
             3015 | 3016 => self.vault_event((event, pos, data), context, sounds),
@@ -140,14 +140,27 @@ impl ParticleEngine {
         }
     }
 
-    /// Events 2002 and 2007: the potion's shards, then a hundred specks of its colour flung out,
-    /// then the sound of the bottle.
+    /// The splash of a bottle: its shards (2002, 2007) or its sound (1053, 1054).
+    fn splash_event<F: FnMut() -> RandomSource>(
+        &mut self,
+        (event, pos, data): (i32, (i32, i32, i32), i32),
+        context: &mut LevelEventContext<'_, F>,
+        sounds: &mut Vec<LocalSound>,
+    ) {
+        if event >= 2000 {
+            self.splash_potion(pos, (event == 2007, data), context);
+        } else {
+            splash_sound(pos, context, sounds);
+        }
+    }
+
+    /// Events 2002 and 2007 (`potionSplashParticles`): the potion's shards, then a hundred specks of
+    /// its colour flung out. The sound of the bottle is its own event since 26.3.
     fn splash_potion<F: FnMut() -> RandomSource>(
         &mut self,
         pos: (i32, i32, i32),
         (instant, color): (bool, i32),
         context: &mut LevelEventContext<'_, F>,
-        sounds: &mut Vec<LocalSound>,
     ) {
         let (x, y, z) = (
             f64::from(pos.0) + 0.5,
@@ -182,13 +195,6 @@ impl ParticleEngine {
             let at = (x + vx * 0.1, y + 0.3, z + vz * 0.1);
             self.level_add_data_pushed(context, name, data, at, (vx, vy, vz));
         }
-        let pitch = context.level_random.next_float() * 0.1 + 0.9;
-        let event = (
-            "minecraft:entity.splash_potion.break",
-            LocalSoundSource::Neutral,
-        );
-        let place = (x, y + 0.5, z);
-        sounds.push(local_sound(event, (1.0, pitch), place, context));
     }
 
     /// Event 2003: an ender eye's shards, and a ring of portal specks drawn in at two speeds.
@@ -377,6 +383,25 @@ fn smash_attack_dust(
         ring += 1;
     }
     dust
+}
+
+/// Events 1053 and 1054: the sound of a potion bottle breaking, a pitch a little above one.
+fn splash_sound<F: FnMut() -> RandomSource>(
+    pos: (i32, i32, i32),
+    context: &mut LevelEventContext<'_, F>,
+    sounds: &mut Vec<LocalSound>,
+) {
+    let place = (
+        f64::from(pos.0) + 0.5,
+        f64::from(pos.1) + 0.5,
+        f64::from(pos.2) + 0.5,
+    );
+    let pitch = context.level_random.next_float() * 0.1 + 0.9;
+    let event = (
+        "minecraft:entity.splash_potion.break",
+        LocalSoundSource::Neutral,
+    );
+    sounds.push(local_sound(event, (1.0, pitch), place, context));
 }
 
 #[cfg(test)]

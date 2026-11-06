@@ -95,11 +95,8 @@ impl ParticleEngine {
                     self.particles_on_block_faces(pos, "electric_spark", (3, 5), context);
                 }
             }
-            3003 => {
-                self.particles_on_block_faces(pos, "wax_on", (3, 5), context);
-                let event = ("minecraft:item.honeycomb.wax_on", LocalSoundSource::Blocks);
-                sounds.push(local_sound(event, (1.0, 1.0), centre, context));
-            }
+            // The wax-on sound is not played here since 26.3.
+            3003 => self.particles_on_block_faces(pos, "wax_on", (3, 5), context),
             3004 => self.particles_on_block_faces(pos, "wax_off", (3, 5), context),
             3005 => self.particles_on_block_faces(pos, "scrape", (3, 5), context),
             3006 => self.sculk_charge(pos, data, context, sounds),

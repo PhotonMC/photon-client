@@ -420,7 +420,7 @@
 "crates/photon-world/src/local_player/sounds.rs::LocalPlayer::apply_movement_emission" = 11
 "crates/photon-world/src/local_player/sounds.rs::LocalPlayer::fall_on" = 12
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 24
-"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 30
+"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 29
 "crates/photon-world/src/local_player/travel.rs::LocalPlayer::entity_move" = 13
 "crates/photon-world/src/mobs/axolotl.rs::AxolotlState::tick" = 17
 "crates/photon-world/src/mobs/creaking.rs::CreakingState::eq" = 12
@@ -816,7 +816,7 @@
 "crates/photon-world/src/local_player/serverbound.rs::ServerboundMovement::encode_body" = 96
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 120
 "crates/photon-world/src/local_player/state.rs::LocalPlayer::new" = 102
-"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 80
+"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 70
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::tick_riding" = 73
 "crates/photon-world/src/mobs/guardian.rs::GuardianState::tick" = 70
 "crates/photon-world/src/particles/attract.rs::Particle::attract_tick" = 62
@@ -828,7 +828,7 @@
 "crates/photon-world/src/particles/firework.rs::Particle::firework_starter_tick" = 74
 "crates/photon-world/src/particles/hit.rs::Particle::hit_provider" = 103
 "crates/photon-world/src/particles/level_events.rs::ParticleEngine::level_event" = 68
-"crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::last_level_event" = 76
+"crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::last_level_event" = 72
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::sculk_charge" = 104
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create" = 96
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create_own" = 84
@@ -946,7 +946,7 @@ photon-gui = 46
 photon-net = 35
 photon-protocol = 6
 photon-render = 239
-photon-world = 1166
+photon-world = 1165
 
 [unsafe]
 "crates/photon/src/controls/keybinds.rs" = 1

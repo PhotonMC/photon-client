@@ -223,9 +223,12 @@ pub(super) fn expand_tag(root: &Path, kind: &str, name: &str, out: &mut Vec<Stri
 /// A biome's `AMBIENT_PARTICLES`: each particle (its type, as a name or an object) and the chance
 /// each pick makes one.
 pub(super) fn parse_ambient_particles(biome: Option<&JsonObject>) -> Vec<AmbientParticle> {
-    let list = biome
-        .and_then(|biome| biome.object("attributes"))
-        .and_then(|attributes| attributes.array("minecraft:visual/ambient_particles"));
+    let attributes = biome.and_then(|biome| biome.object("attributes"));
+    // A plain list, or (26.3, where a biome may modify the default) `{argument, modifier}`.
+    let key = "minecraft:visual/ambient_particles";
+    let list = attributes
+        .and_then(|attributes| attributes.array(key))
+        .or_else(|| attributes?.object(key)?.array("argument"));
     list.unwrap_or(&[])
         .iter()
         .filter_map(|value| {

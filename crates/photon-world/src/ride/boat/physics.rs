@@ -377,7 +377,7 @@ impl BoatBody {
         }
         if self.ride.vertical_collision {
             if self.ride.vertical_collision_below {
-                let falls_slowly = -current.y < self.gravity();
+                let falls_slowly = -current.y <= self.gravity();
                 restitution = if !falls_slowly && !suppresses_bounce {
                     java_math::max(restitution, f64::from(block_bounce * 0.8_f32))
                 } else {
