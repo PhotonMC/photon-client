@@ -92,13 +92,15 @@ fn packets(wire: &str, direction: &str, template: &str) -> Result<(usize, usize)
 }
 
 /// The part of our id constant's name that differs from the reference's packet type name: the
-/// bundle packet is the delimiter in our code, and three names differ.
+/// bundle packet is the delimiter in our code, and four names differ.
 fn constant_stem(packet_type: &str) -> &str {
     match packet_type {
         "CLIENTBOUND_BUNDLE" => "CLIENTBOUND_BUNDLE_DELIMITER",
         "CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT" => "CLIENTBOUND_CHUNK",
         "CLIENTBOUND_MOVE_MINECART_ALONG_TRACK" => "CLIENTBOUND_MOVE_MINECART",
         "SERVERBOUND_BUNDLE_ITEM_SELECTED" => "SERVERBOUND_SELECT_BUNDLE_ITEM",
+        // 26.3 renamed the swing packet; the pinned reference is still 26.2.
+        "SERVERBOUND_SWING" => "SERVERBOUND_PUNCH",
         other => other,
     }
 }
