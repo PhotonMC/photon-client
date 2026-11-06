@@ -35,7 +35,7 @@ impl OptionsList {
         let rect = self.arena.add(font.width_of_runs(&text), 9);
         self.push(Entry {
             y: 0,
-            height: padding_top + 9 * 2,
+            height: padding_top + header_line_height(),
             content: Content::Header {
                 text: Widget {
                     rect,
@@ -166,8 +166,13 @@ impl OptionsList {
             y += entry.height;
             match &entry.content {
                 Content::Header { text, padding_top } => {
-                    // A `FocusableTextWidget` centred in the row, its text 4 units inside.
                     let rect = &mut self.arena.0[text.rect];
+                    if photon_core::version::Version::active_before_26_3() {
+                        // A `StringWidget` at the row's left edge.
+                        (rect.x, rect.y) = (x, entry.y + PADDING + padding_top);
+                        continue;
+                    }
+                    // A `FocusableTextWidget` centred in the row, its text 4 units inside.
                     let widget_width = rect.width + 2 * HEADER_PADDING;
                     (rect.x, rect.y) = (
                         self.place.width / 2 - widget_width / 2 + HEADER_PADDING,
@@ -514,4 +519,13 @@ impl OptionsList {
 /// Whether `(x, y)` is inside a widget's rectangle.
 fn over(rect: &crate::layout::Rect, (x, y): (i32, i32)) -> bool {
     x >= rect.x && x < rect.x + rect.width && y >= rect.y && y < rect.y + rect.height
+}
+
+/// The height a header takes below its padding: two lines in 26.3, a line and 4 before.
+fn header_line_height() -> i32 {
+    if photon_core::version::Version::active_before_26_3() {
+        9 + 4
+    } else {
+        9 * 2
+    }
 }
