@@ -187,3 +187,15 @@ pub(crate) fn reference_class_name(class: photon_data::block::classes::BlockClas
 pub(crate) fn block_class_name(block: &photon_data::block::registry::Block) -> String {
     reference_class_name(reference_block_class(block))
 }
+
+/// Whether [`oracle_version`]'s Java has the block class: 26.3 added the straw bed and its
+/// parent, the falling-particles leaves and the shelf mushroom.
+pub(crate) fn reference_has_block_class(class: photon_data::block::classes::BlockClass) -> bool {
+    const NEW_IN_26_3: [&str; 4] = [
+        "AbstractBedBlock",
+        "StrawBedBlock",
+        "FallingParticlesLeavesBlock",
+        "ShelfMushroomBlock",
+    ];
+    !Version::active_before_26_3() || !NEW_IN_26_3.contains(&format!("{class:?}").as_str())
+}

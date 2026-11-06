@@ -22,15 +22,45 @@ fn insert_view_blocking(
     block: &photon_data::block::registry::Block,
     states: &photon_world::block::state::States,
 ) {
-    if lists_view_blocking(block) {
-        per_state.insert("isViewBlocking".into(), json!(view_blocking(block, states)));
+    if !lists_view_blocking(block) {
+        return;
     }
+    let name = block.name.strip_prefix("minecraft:").unwrap_or(block.name);
+    let values = if photon_core::version::Version::active_before_26_3()
+        && LEGACY_VIEW_BLOCKING.contains(&name)
+    {
+        // Their 26.2 declarations name the answer for every state.
+        let always = ["farmland", "soul_sand", "dirt_path", "mud"].contains(&name);
+        vec![always; block.state_count() as usize]
+    } else {
+        view_blocking(block, states)
+    };
+    per_state.insert("isViewBlocking".into(), json!(values));
 }
+
+/// Blocks whose 26.2 declaration names a view blocking rule the newest version derives instead.
+const LEGACY_VIEW_BLOCKING: [&str; 13] = [
+    "mangrove_roots",
+    "cherry_leaves",
+    "pale_oak_leaves",
+    "glass",
+    "moving_piston",
+    "farmland",
+    "soul_sand",
+    "dirt_path",
+    "test_instance_block",
+    "tinted_glass",
+    "mud",
+    "trial_spawner",
+    "vault",
+];
 
 /// Whether the block's declarations list a view blocking rule: 26.3 lists every block's, earlier
 /// versions only an explicit one.
 fn lists_view_blocking(block: &photon_data::block::registry::Block) -> bool {
+    let name = block.name.strip_prefix("minecraft:").unwrap_or(block.name);
     !photon_core::version::Version::active_before_26_3()
+        || LEGACY_VIEW_BLOCKING.contains(&name)
         || !matches!(
             block.view_blocking,
             photon_data::block::definition::Rule::Default
@@ -43,18 +73,29 @@ fn class_declarations() -> Vec<Value> {
     use photon_data::block::classes::BlockClass;
     BlockClass::ALL
         .iter()
+        .filter(|class| crate::case_ids::reference_has_block_class(**class))
         .map(|class| {
-            let parent = class
-                .parent()
-                .map_or(String::new(), |parent| format!("{parent:?}"));
-            let interfaces: Vec<String> = class
-                .interfaces()
+            // A class the reference lacks is folded into its child: the child hangs from the
+            // missing class's parent and declares what it declared.
+            let mut folded = vec![*class];
+            let mut above = class.parent();
+            while let Some(candidate) =
+                above.filter(|c| !crate::case_ids::reference_has_block_class(*c))
+            {
+                folded.push(candidate);
+                above = candidate.parent();
+            }
+            let parent = above.map_or(String::new(), crate::case_ids::reference_class_name);
+            let interfaces: Vec<String> = folded
                 .iter()
+                .rev()
+                .flat_map(|class| class.interfaces().iter())
                 .map(|interface| format!("{interface:?}"))
                 .collect();
-            let declares: Vec<String> = class
-                .declares()
+            let declares: Vec<String> = folded
                 .iter()
+                .rev()
+                .flat_map(|class| class.declares().iter())
                 .map(|method| {
                     let name = format!("{method:?}");
                     name[..1].to_lowercase() + &name[1..]
@@ -347,11 +388,35 @@ pub(super) fn vanilla_tags_of(
     )]))
 }
 
+/// Whether the reference declares the block as forced solid: the resin brick wall only
+/// does from 26.3.
+fn force_solid_on(block: &photon_data::block::definition::Block) -> bool {
+    block.force_solid_on
+        && !(photon_core::version::Version::active_before_26_3()
+            && block.name.ends_with(":resin_brick_wall"))
+}
+
+/// The blast resistance the reference declares: before 26.3 three slabs set their own 6.0
+/// where the newest version copies their block's.
+fn explosion_resistance(block: &photon_data::block::definition::Block) -> f32 {
+    let own = [
+        "quartz_slab",
+        "red_sandstone_slab",
+        "cut_red_sandstone_slab",
+    ];
+    let name = block.name.strip_prefix("minecraft:").unwrap_or(block.name);
+    if photon_core::version::Version::active_before_26_3() && own.contains(&name) {
+        6.0
+    } else {
+        block.explosion_resistance
+    }
+}
+
 /// The `Properties` a block declares, as the reference's own fields read back.
 fn declared(block: &photon_data::block::definition::Block) -> Value {
     json!({
         "destroyTime": bits(block.destroy_time),
-        "explosionResistance": bits(block.explosion_resistance),
+        "explosionResistance": bits(explosion_resistance(block)),
         "friction": bits(block.friction),
         "speedFactor": bits(block.speed_factor),
         "jumpFactor": bits(block.jump_factor),
@@ -364,7 +429,7 @@ fn declared(block: &photon_data::block::definition::Block) -> Value {
         "ignitedByLava": block.ignited_by_lava,
         "liquid": block.liquid,
         "forceSolidOff": block.force_solid_off,
-        "forceSolidOn": block.force_solid_on,
+        "forceSolidOn": force_solid_on(block),
         "spawnTerrainParticles": block.spawn_terrain_particles,
         "replaceable": block.replaceable,
         "dynamicShape": block.dynamic_shape,
