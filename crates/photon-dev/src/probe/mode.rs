@@ -286,7 +286,8 @@ pub(super) fn connect_and_probe_with_mode(
                 trace.entity_metadata_observations.push(observation);
             }
             PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID => {
-                let mut observation = parse_entity_position_sync_packet(payload)?;
+                let mut observation =
+                    parse_entity_position_sync_packet_for(payload, &registries())?;
                 let snap_before = if probe.observe_player_position_snap {
                     trace
                         .world
@@ -390,7 +391,7 @@ pub(super) fn connect_and_probe_with_mode(
                 trace.entity_teleport_observations.push(observation);
             }
             PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID => {
-                let mut observation = parse_move_entity_pos_packet(payload)?;
+                let mut observation = parse_move_entity_pos_packet_for(payload, &registries())?;
                 let interpolation_before = if probe.observe_player_interpolation {
                     trace
                         .world
@@ -437,7 +438,7 @@ pub(super) fn connect_and_probe_with_mode(
                 trace.entity_move_observations.push(observation);
             }
             PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID => {
-                let mut observation = parse_move_entity_pos_rot_packet(payload)?;
+                let mut observation = parse_move_entity_pos_rot_packet_for(payload, &registries())?;
                 let interpolation_before = if probe.observe_player_interpolation {
                     trace
                         .world
@@ -484,7 +485,7 @@ pub(super) fn connect_and_probe_with_mode(
                 trace.entity_move_observations.push(observation);
             }
             PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID => {
-                let mut observation = parse_move_entity_rot_packet(payload)?;
+                let mut observation = parse_move_entity_rot_packet_for(payload, &registries())?;
                 let interpolation_before = if probe.observe_player_interpolation {
                     trace
                         .world
@@ -673,7 +674,8 @@ pub(super) fn connect_and_probe_with_mode(
                 trace.world.update_chunk_cache_center(x, z);
             }
             PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID => {
-                let mut observation = parse_light_update_packet(payload)?;
+                let mut observation =
+                    parse_light_update_packet_for(payload, registries().has_byte_bit_sets())?;
                 let application = trace.world.apply_light_updates(
                     observation.x,
                     observation.z,
@@ -767,13 +769,7 @@ pub(super) fn connect_and_probe_with_mode(
                     |output| write_teleport_confirm(output, &packet),
                     compression_threshold,
                 )?;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
-                    |output| encode_move_player_pos_rot(output, absolute, 0),
-                    compression_threshold,
-                )?;
+                send_teleport_move(&mut stream, absolute, compression_threshold)?;
                 player_position = Some(absolute);
             }
             PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID => {
@@ -1035,6 +1031,7 @@ pub(super) fn connect_and_probe_with_mode(
                             |output| encode_move_player_pos_rot(output, moved, 1),
                             compression_threshold,
                         )?;
+                        send_tick_end(&mut stream, compression_threshold)?;
                         trace.movement_packets_sent += 1;
                         player_position = Some(moved);
                     }
@@ -1057,6 +1054,7 @@ pub(super) fn connect_and_probe_with_mode(
                             |output| encode_move_player_pos_rot(output, moved, 1),
                             compression_threshold,
                         )?;
+                        send_tick_end(&mut stream, compression_threshold)?;
                         trace.movement_packets_sent += 1;
                         player_position = Some(moved);
                     }

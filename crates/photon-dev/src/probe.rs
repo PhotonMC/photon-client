@@ -63,6 +63,39 @@ pub(crate) fn write_teleport_confirm(
     Ok(())
 }
 
+/// The client tick's end, which 26.3 needs between two position packets.
+fn send_tick_end(
+    stream: &mut Transport,
+    compression_threshold: Option<usize>,
+) -> Result<(), photon_net::connection::ConnectionError> {
+    send_packet(
+        stream,
+        ConnectionProtocol::Play,
+        PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID,
+        |_| Ok(()),
+        compression_threshold,
+    )
+}
+
+/// The move that follows a teleport's confirmation, which 26.3 does without (the confirmation
+/// carries the position).
+fn send_teleport_move(
+    stream: &mut Transport,
+    position: (f64, f64, f64, f32, f32),
+    compression_threshold: Option<usize>,
+) -> Result<(), photon_net::connection::ConnectionError> {
+    if registries().has_teleport_position() {
+        return Ok(());
+    }
+    send_packet(
+        stream,
+        ConnectionProtocol::Play,
+        PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
+        |output| encode_move_player_pos_rot(output, position, 0),
+        compression_threshold,
+    )
+}
+
 /// `send_packet` with the play ids of the probed version (the constants are the newest-but-one
 /// numbering).
 fn send_packet<F>(
