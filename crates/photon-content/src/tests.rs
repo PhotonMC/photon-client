@@ -354,7 +354,7 @@ fn the_real_jar_extracts_to_the_development_tree() {
     let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.data/minecraft");
     let (jar, dev_tree) = (
         data.join("runtime/client-26.2.jar"),
-        data.join("assets/jar"),
+        data.join("assets/jar-26.2"),
     );
     let Ok(bytes) = std::fs::read(&jar) else {
         println!("missing reference: {}", jar.display());
