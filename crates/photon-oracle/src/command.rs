@@ -238,6 +238,13 @@ pub(super) fn respond(request: Value) -> Result<Value, String> {
 /// Answers every input line. Cases are independent, so they are answered in
 /// parallel; the output keeps the input order.
 pub(super) fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if let [command, from, to] = args.as_slice()
+        && command == "translate-ids"
+    {
+        println!("{}", crate::id_translation::translate(from, to)?);
+        return Ok(());
+    }
     let _ = crate::case_ids::oracle_version();
     let lines: Vec<String> = io::stdin().lock().lines().collect::<Result<_, _>>()?;
     let responses = answer_all(&lines).map_err(io::Error::other)?;

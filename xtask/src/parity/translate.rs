@@ -2,11 +2,10 @@
 //!
 //! The cases are written once, with the ids of the base version's registries. Another version
 //! numbers its registries differently where it adds or removes entries, so for it each id is
-//! translated by name (and, for block states, properties) through the two versions' registry
-//! captures. A capture that is missing leaves the cases as written.
+//! translated by name (and, for block states, properties) through the two versions'
+//! registries (the oracle binary answers it). The registry family checks those against Java.
 
 use std::collections::HashMap;
-use std::io::Read;
 
 use serde_json::Value;
 
@@ -32,20 +31,35 @@ pub struct Translation {
 }
 
 impl Translation {
-    /// The translation to `version`, or none when it is the base or a registry capture is missing.
+    /// The translation to `version`, or none when it is the base or the client's registries
+    /// cannot be asked.
     pub fn load(version: &str) -> Option<Self> {
         if version == BASE {
             return None;
         }
+        let root = super::super::process::root();
+        super::super::process::run(
+            "cargo",
+            &[
+                "build",
+                "--quiet",
+                "--release",
+                "--package",
+                "photon-oracle",
+            ],
+        )
+        .ok()?;
+        let output = std::process::Command::new(root.join("target/release/photon-oracle"))
+            .args(["translate-ids", BASE, version])
+            .output()
+            .ok()?;
+        let answer: Value = serde_json::from_slice(&output.stdout).ok()?;
         let mut maps = HashMap::new();
         for (field, registry) in FIELDS {
-            let (old, new) = (entries(BASE, registry)?, entries(version, registry)?);
-            let by_name: HashMap<&str, i64> =
-                new.iter().map(|(id, key)| (key.as_str(), *id)).collect();
-            let map = old
+            let map = answer[registry]
+                .as_object()?
                 .iter()
-                .filter_map(|(id, key)| by_name.get(key.as_str()).map(|new| (*id, *new)))
-                .filter(|(old, new)| old != new)
+                .filter_map(|(old, new)| Some((old.parse::<i64>().ok()?, new.as_i64()?)))
                 .collect();
             maps.insert(field, map);
         }
@@ -95,30 +109,4 @@ impl Translation {
         }
         changed
     }
-}
-
-/// A registry's entries in a version's capture: each id with a key naming the entry.
-fn entries(version: &str, registry: &str) -> Option<Vec<(i64, String)>> {
-    let file = std::fs::File::open(format!(".data/parity/{version}/registry.jsonl.gz")).ok()?;
-    let mut text = String::new();
-    flate2::read::GzDecoder::new(file)
-        .read_to_string(&mut text)
-        .ok()?;
-    for line in text.lines() {
-        let record: Value = serde_json::from_str(line).ok()?;
-        for row in record["record"]["result"]["rows"].as_array()? {
-            if row["label"].as_str() != Some(registry) {
-                continue;
-            }
-            return row["entries"]
-                .as_array()?
-                .iter()
-                .map(|entry| {
-                    let key = format!("{}{}", entry["name"].as_str()?, entry["properties"]);
-                    Some((entry["id"].as_i64()?, key))
-                })
-                .collect();
-        }
-    }
-    None
 }

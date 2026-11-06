@@ -99,6 +99,7 @@ use std::rc::Rc;
 mod case_ids;
 mod data_tables;
 mod glint;
+mod id_translation;
 mod jar;
 use glint::*;
 use jar::{jar_root, jar_version};
