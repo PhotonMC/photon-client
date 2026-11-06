@@ -45,7 +45,53 @@ fn wire_item(item: photon_core::ids::ItemId) -> photon_core::ids::ItemId {
 }
 
 use photon_net::connection::entities;
-use photon_net::connection::{read_packet, send_packet};
+
+/// `ServerboundAcceptTeleportationPacket`: the id, and from 26.3 where the player stands.
+pub(crate) fn write_teleport_confirm(
+    output: &mut Vec<u8>,
+    packet: &PlayerPositionPacket,
+) -> Result<(), photon_net::connection::ConnectionError> {
+    wire::write_varint(packet.teleport_id, output);
+    if registries().has_teleport_position() {
+        for value in [packet.x, packet.y, packet.z] {
+            output.extend_from_slice(&value.to_be_bytes());
+        }
+        for value in [packet.y_rot, packet.x_rot] {
+            output.extend_from_slice(&value.to_be_bytes());
+        }
+    }
+    Ok(())
+}
+
+/// `send_packet` with the play ids of the probed version (the constants are the newest-but-one
+/// numbering).
+fn send_packet<F>(
+    stream: &mut Transport,
+    phase: ConnectionProtocol,
+    packet_id: i32,
+    encode_payload: F,
+    compression_threshold: Option<usize>,
+) -> Result<(), photon_net::connection::ConnectionError>
+where
+    F: FnOnce(&mut Vec<u8>) -> Result<(), photon_net::connection::ConnectionError>,
+{
+    let wire_id = if phase == ConnectionProtocol::Play {
+        photon_protocol::versions::packet_ids::serverbound_play_wire_id(
+            registries().version(),
+            packet_id,
+        )
+    } else {
+        packet_id
+    };
+    photon_net::connection::send_packet(
+        stream,
+        phase,
+        wire_id,
+        encode_payload,
+        compression_threshold,
+    )
+}
+use photon_net::connection::read_packet;
 use photon_protocol::play::*;
 use photon_protocol::{common, login};
 

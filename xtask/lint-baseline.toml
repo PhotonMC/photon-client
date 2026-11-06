@@ -3,7 +3,7 @@
 # Never raise a value or add an entry by hand; fix the code instead.
 
 [file-lines]
-"crates/photon-dev/src/probe/mode.rs" = 2246
+"crates/photon-dev/src/probe/mode.rs" = 2243
 
 [file-name]
 "crates/photon-dev/examples/block_break_rejection_probe.rs" = 1
@@ -562,7 +562,7 @@
 "crates/photon-dev/examples/world_remote_player_interpolation_probe.rs::main" = 109
 "crates/photon-dev/examples/world_remote_player_motion_probe.rs::main" = 98
 "crates/photon-dev/examples/world_remote_player_position_snap_probe.rs::main" = 98
-"crates/photon-dev/src/probe/mode.rs::connect_and_probe_with_mode" = 2245
+"crates/photon-dev/src/probe/mode.rs::connect_and_probe_with_mode" = 2242
 "crates/photon-game/src/game_mode/outgoing.rs::Outgoing::encode_body" = 97
 "crates/photon-game/src/input/event.rs::PreeditEvent::create_from_callback" = 64
 "crates/photon-game/src/input/key_mapping.rs::keysym_name" = 69

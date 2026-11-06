@@ -764,10 +764,7 @@ pub(super) fn connect_and_probe_with_mode(
                     &mut stream,
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
-                    |output| {
-                        wire::write_varint(packet.teleport_id, output);
-                        Ok(())
-                    },
+                    |output| write_teleport_confirm(output, &packet),
                     compression_threshold,
                 )?;
                 send_packet(
