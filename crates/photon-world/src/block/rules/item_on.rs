@@ -485,10 +485,17 @@ fn shelf(use_: &Use) -> Option<ItemOn> {
     if !use_.user.block_entity || !use_.user.main_hand || slot_hit(use_, (1, 3)).is_none() {
         return pass();
     }
+    // Before 26.3 the same answer was a plain success, which swings.
+    let consumed = if photon_core::version::Version::active() < photon_core::version::Version::V26_3
+    {
+        SUCCESS
+    } else {
+        SERVER
+    };
     Some(ItemOn::answer(if use_.held.empty {
         UseResult::Pass
     } else {
-        SERVER
+        consumed
     }))
 }
 
