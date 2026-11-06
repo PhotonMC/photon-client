@@ -48,16 +48,26 @@ pub(crate) fn block_state(wire: i32) -> BlockStateId {
 /// The blocks of [`oracle_version`] in registry order: the position in this list is the
 /// block's place in the reference's registry.
 pub(crate) fn blocks() -> impl Iterator<Item = &'static photon_data::block::registry::Block> {
-    photon_data::block::registry::BLOCKS
-        .iter()
-        .filter(|block| block.exists_in(oracle_version()))
+    in_wire_order(&photon_data::block::registry::BLOCKS, &registries().blocks).into_iter()
 }
 
 /// The items of [`oracle_version`] in registry order.
 pub(crate) fn items() -> impl Iterator<Item = &'static photon_data::item::registry::Item> {
-    photon_data::item::registry::ITEMS
+    in_wire_order(&photon_data::item::registry::ITEMS, &registries().items).into_iter()
+}
+
+/// The entries of a canonical list that the version has, in the order it numbers them.
+fn in_wire_order<T>(
+    list: &'static [T],
+    map: &photon_data::version_registries::IdMap,
+) -> Vec<&'static T> {
+    let mut present: Vec<(u32, &'static T)> = list
         .iter()
-        .filter(|item| item.exists_in(oracle_version()))
+        .enumerate()
+        .filter_map(|(canonical, entry)| Some((map.to_wire(canonical as u32)?, entry)))
+        .collect();
+    present.sort_by_key(|(wire, _)| *wire);
+    present.into_iter().map(|(_, entry)| entry).collect()
 }
 
 /// How many block states [`oracle_version`] has.
