@@ -304,6 +304,12 @@ impl VersionRegistries {
         self.version >= Version::V26_3
     }
 
+    /// Whether an arm's swing travels as a packet of its own with the animation and its length
+    /// (26.3 and later), where before the animate packet's action named the hand only.
+    pub fn has_swing_animation_packet(&self) -> bool {
+        self.version >= Version::V26_3
+    }
+
     /// Whether the teleport confirmation carries the position it ends at (26.3 and later); before
     /// it was a bare id, followed by a position packet of its own.
     pub fn has_teleport_position(&self) -> bool {
