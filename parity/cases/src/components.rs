@@ -43,16 +43,18 @@ pub const SMITE: i64 = 35;
 pub const UNBREAKING: i64 = 40;
 pub const VANISHING_CURSE: i64 = 41;
 
-static CASE_VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+static CASE_VERSION: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
 
 /// Names the version the cases are generated for: the ids below are the newest version's, and the
 /// version before it numbers some of them differently.
 pub fn set_version(version: &str) {
-    let _ = CASE_VERSION.set(version.to_owned());
+    if let Ok(mut current) = CASE_VERSION.write() {
+        *current = Some(version.to_owned());
+    }
 }
 
 pub fn is_26_2() -> bool {
-    CASE_VERSION.get().is_some_and(|version| version == "26.2")
+    CASE_VERSION.read().is_ok_and(|current| current.as_deref() == Some("26.2"))
 }
 
 /// A component type id (as the newest version numbers it) as the version under test does.

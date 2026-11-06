@@ -8,13 +8,13 @@ use crate::process;
 use super::{ADAPTER_TIMEOUT, assets, cases, java};
 
 /// The adapter's answers to `input`, one line each, started as the version `first`.
-fn answers(first: &str, input: &str) -> Result<Vec<String>, String> {
+fn answers(first: &str, input: &str, stage: &str) -> Result<Vec<String>, String> {
     let mut command =
         std::process::Command::new(process::root().join("target/release/photon-oracle"));
     command.env("PHOTON_ASSETS", assets(first));
     command.env("PHOTON_ORACLE_VERSION", first);
     let raw = java::run_with_timeout(command, input, ADAPTER_TIMEOUT)
-        .map_err(|error| format!("Rust adapter: {error}"))?;
+        .map_err(|error| format!("Rust adapter ({stage}): {error}"))?;
     Ok(raw.lines().map(str::to_owned).collect())
 }
 
@@ -32,7 +32,11 @@ fn fresh_runs(families: &[String], versions: &[String]) -> Result<Fresh, String>
     for version in versions {
         let cases = cases::generate(families, "", &|_| Ok(String::new()), Some(version))?;
         let own: Vec<String> = cases.into_iter().map(|case| case.line).collect();
-        fresh.answers.push(answers(version, &own.join("\n"))?);
+        fresh.answers.push(answers(
+            version,
+            &own.join("\n"),
+            &format!("{version} fresh"),
+        )?);
         fresh.lines.push(own);
     }
     Ok(fresh)
@@ -71,7 +75,7 @@ pub fn check(families: &[String], versions: &[String]) -> Result<(), String> {
     // 0, 1, .., n-1, 0, 1, .., n-1: every version is switched to, and back to.
     let order: Vec<usize> = (0..2).flat_map(|_| 0..versions.len()).collect();
     let input = switched_input(&fresh.lines, versions, &order);
-    let switched = answers(&versions[order[0]], &input)?;
+    let switched = answers(&versions[order[0]], &input, "switched")?;
     let mut rest = switched.as_slice();
     let mut differing = 0;
     for &which in &order {
