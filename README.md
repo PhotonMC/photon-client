@@ -54,12 +54,12 @@ The table is computed by `cargo xtask progress` and checked in CI. Counts of thi
 <!-- progress:start -->
 | Measure | Now |
 | --- | --- |
-| Clientbound play packets handled | 137 / 141 |
+| Clientbound play packets handled | 140 / 144 |
 | Serverbound play packets sent | 67 / 69 |
 | Screens named by the client | 73 / 117 |
-| Entity types with a renderer, named by the client | 156 / 156 |
+| Entity types with a renderer, named by the client | 156 / 159 |
 | Block entity types with a renderer, named by the client | 24 / 26 |
-| Particle types named by the client | 120 / 125 |
+| Particle types named by the client | 121 / 129 |
 | Parity cases | 27,509 in 19 families |
 | Lint baseline entries | 932 (at introduction: 1,234) |
 <!-- progress:end -->

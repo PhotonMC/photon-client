@@ -12,7 +12,6 @@ use super::local::group;
 use crate::entities::{self, CLIENT, has_word, mentions, registered};
 use crate::process;
 
-const SOURCE: &str = ".data/minecraft/source/net/minecraft";
 /// Crates that read and write the play packets.
 const WIRE: &[&str] = &["crates/photon-net/src", "crates/photon-protocol/src"];
 /// The screens' package in the client jar, and the class they all extend.
@@ -22,7 +21,9 @@ const SCREEN_ROOT: &str = "net/minecraft/client/gui/screens/Screen";
 const SCREENS: &[&str] = &["crates/photon-gui/src", "crates/photon/src"];
 
 fn source(relative: &str) -> Result<String, String> {
-    let path = process::root().join(SOURCE).join(relative);
+    let path = entities::reference_root()
+        .join("net/minecraft")
+        .join(relative);
     fs::read_to_string(&path).map_err(|error| {
         format!(
             "{}: {error} (run `cargo xtask setup --named --decompile`)",

@@ -95,9 +95,20 @@ pub(crate) fn mentions(files: &[String], name: &str) -> usize {
         .count()
 }
 
+/// The decompiled reference the counts are read from: the newest game's, which is the only one
+/// a CI checkout has.
+pub fn reference_root() -> std::path::PathBuf {
+    let root = process::root().join(".data/minecraft");
+    let newest = root.join("source-26.3");
+    if newest.is_dir() {
+        newest
+    } else {
+        root.join("source")
+    }
+}
+
 pub fn run(_args: &[String]) -> Result<(), String> {
-    let root = process::root();
-    let path = root.join(".data/minecraft/source").join(REGISTRY);
+    let path = reference_root().join(REGISTRY);
     let source = fs::read_to_string(&path).map_err(|error| {
         format!(
             "{}: {error} (run `cargo xtask setup --named --decompile`)",
@@ -127,7 +138,7 @@ pub fn run(_args: &[String]) -> Result<(), String> {
             unnamed.push(name.as_str());
         }
     }
-    let dir = root.join(".data/reports");
+    let dir = process::root().join(".data/reports");
     fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
     fs::write(dir.join("entities.md"), &report).map_err(|error| error.to_string())?;
     println!(

@@ -36,7 +36,7 @@ fn block() -> Result<String, String> {
 /// The staleness check for the pre-push hook: skipped without the decompiled reference, which
 /// the numbers need.
 pub fn check_if_possible() -> Result<(), String> {
-    if !process::root().join(".data/minecraft/source").is_dir() {
+    if !crate::entities::reference_root().is_dir() {
         println!("progress: no decompiled reference, skipped");
         return Ok(());
     }
