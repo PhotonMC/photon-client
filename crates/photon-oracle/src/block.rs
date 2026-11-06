@@ -151,7 +151,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                         let replaceable = if block.replaceable { "1" } else { "0" };
                         json!({
                             "name": block.name,
-                            "class": format!("{:?}", block.class),
+                            "class": format!("{:?}", crate::case_ids::reference_block_class(block)),
                             "placement": owner(block, Method::GetStateForPlacement),
                             "can_be_replaced": owner(block, Method::CanBeReplaced),
                             "can_survive": owner(block, Method::CanSurvive),

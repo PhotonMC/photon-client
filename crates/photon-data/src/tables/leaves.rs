@@ -19,3 +19,7 @@ pub static LEAVES: [(&str, f32, &str, Option<i32>); 13] = [
     ("minecraft:azalea_leaves", 0.01, "minecraft:tinted_leaves", Some(-9399763)),
     ("minecraft:flowering_azalea_leaves", 0.01, "minecraft:tinted_leaves", Some(-9399763)),
 ];
+
+/// Before 26.3 the spruce let tinted leaves fall too.
+pub const LEGACY_SPRUCE: (&str, f32, &str, Option<i32>) =
+    ("minecraft:spruce_leaves", 0.01, "tinted", None);

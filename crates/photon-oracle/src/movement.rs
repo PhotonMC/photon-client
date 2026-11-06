@@ -1,5 +1,4 @@
 use super::*;
-use crate::case_ids::block_state;
 
 /// The uuid the oracle gives the local player in rows that name an owner (the Java side sets the same).
 pub(crate) const ORACLE_PLAYER_UUID: u64 = 0x7001;
@@ -64,46 +63,6 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
     }
     if let Some(result) = crate::data_tables::table_result(string(request, "operation")?) {
         return Ok(result);
-    }
-    if string(request, "operation")? == "block_map_colors" {
-        // The map colours and dust colours, as the data crate carries them.
-        let (blocks, states, dust) = photon_data::map::map_color_tables();
-        let rows: Vec<Value> = blocks
-            .iter()
-            .map(|(name, color)| {
-                let others: Vec<Value> = states
-                    .iter()
-                    .filter(|(state, _)| {
-                        photon_data::block::registry::block_for_state(block_state(*state as i32))
-                            .is_some_and(|(block, _)| block.name == *name)
-                    })
-                    .map(|(state, color)| json!([state, color]))
-                    .collect();
-                let mut entry = json!({"name": name, "color": color, "states": others});
-                if let Some((_, color)) = dust.iter().find(|(block, _)| block == name) {
-                    entry["dust"] = json!(color);
-                }
-                entry
-            })
-            .collect();
-        return Ok(json!({"rows": [{"label": "all", "blocks": rows}]}));
-    }
-    if string(request, "operation")? == "leaf_particles" {
-        let blocks: Vec<Value> = photon_data::leaves::all()
-            .iter()
-            .map(|(name, chance, particle, color)| {
-                let mut entry = json!({
-                    "name": name,
-                    "chance": format!("{:08x}", chance.to_bits()),
-                    "particle": particle,
-                });
-                if let Some(color) = color {
-                    entry["color"] = json!(color);
-                }
-                entry
-            })
-            .collect();
-        return Ok(json!({"rows": [{"label": "all", "blocks": blocks}]}));
     }
     if string(request, "operation")? == "item_pickup" {
         return item_pickup_result(request);

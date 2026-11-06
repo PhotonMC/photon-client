@@ -84,6 +84,11 @@ impl Version {
         Self::ALL[ACTIVE.load(std::sync::atomic::Ordering::Relaxed)]
     }
 
+    /// Whether the active version is older than 26.3.
+    pub fn active_before_26_3() -> bool {
+        Self::active() < Self::V26_3
+    }
+
     /// Sets [`Version::active`]. For code whose arithmetic differs by version and has no
     /// session to ask.
     pub fn set_active(version: Version) {

@@ -149,3 +149,15 @@ pub(crate) fn require_type_of(
     let message = format!("the fixture requires {name}");
     require_type(&serde_json::Value::Object(entity.clone()), name, &message)
 }
+
+/// The class [`oracle_version`]'s Java gives a block: before 26.3 the spruce let tinted leaves
+/// fall, and the client keeps the plain leaves class for it.
+pub(crate) fn reference_block_class(
+    block: &photon_data::block::registry::Block,
+) -> photon_data::block::classes::BlockClass {
+    use photon_data::block::classes::BlockClass as C;
+    if block.name.ends_with(":spruce_leaves") && Version::active_before_26_3() {
+        return C::TintedParticleLeavesBlock;
+    }
+    block.class
+}

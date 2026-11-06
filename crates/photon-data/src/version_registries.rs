@@ -328,6 +328,12 @@ impl VersionRegistries {
             .is_some_and(|index| self.items.to_wire(index as u32).is_some())
     }
 
+    /// Whether the block named exists in this version.
+    pub fn has_block(&self, name: &str) -> bool {
+        crate::block::registry::block_index(name)
+            .is_some_and(|index| self.blocks.to_wire(index as u32).is_some())
+    }
+
     /// Every registry's name and map, for checks that cover them all.
     pub fn all(&self) -> [(&'static str, &IdMap); 10] {
         [
