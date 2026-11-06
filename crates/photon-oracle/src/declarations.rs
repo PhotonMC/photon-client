@@ -16,6 +16,28 @@ fn view_blocking(
         .collect()
 }
 
+/// Lists the view blocking of the block's states where its declarations do.
+fn insert_view_blocking(
+    per_state: &mut serde_json::Map<String, Value>,
+    block: &photon_data::block::registry::Block,
+    states: &photon_world::block::state::States,
+) {
+    if lists_view_blocking(block) {
+        per_state.insert("isViewBlocking".into(), json!(view_blocking(block, states)));
+    }
+}
+
+/// Whether the block's declarations list a view blocking rule: 26.3 lists every block's, earlier
+/// versions only an explicit one.
+fn lists_view_blocking(block: &photon_data::block::registry::Block) -> bool {
+    !photon_core::version::Version::active_before_26_3()
+        || !matches!(
+            block.view_blocking,
+            photon_data::block::definition::Rule::Default
+                | photon_data::block::definition::Rule::NearPlane
+        )
+}
+
 /// The block classes with their parent, interfaces and declared methods.
 fn class_declarations() -> Vec<Value> {
     use photon_data::block::classes::BlockClass;
@@ -39,7 +61,7 @@ fn class_declarations() -> Vec<Value> {
                 })
                 .collect();
             json!({
-                "name": format!("{class:?}"),
+                "name": crate::case_ids::reference_class_name(*class),
                 "parent": parent,
                 "interfaces": interfaces,
                 "declares": declares,
@@ -110,10 +132,10 @@ pub(super) fn block_declarations(label: &str) -> Value {
             }
             // The newest version's default view blocking reads the block's own suffocating
             // rule when asked, so every block lists it.
-            per_state.insert("isViewBlocking".into(), json!(view_blocking(block, states)));
+            insert_view_blocking(&mut per_state, block, states);
             let mut described = json!({
                 "name": block.name,
-                "class": format!("{:?}", block.class),
+                "class": crate::case_ids::block_class_name(block),
                 "properties": block.properties.iter().map(|property| field(property)).collect::<Vec<_>>(),
                 "default": block.default,
                 "declared": declared(block),
@@ -327,7 +349,6 @@ pub(super) fn vanilla_tags_of(
 
 /// The `Properties` a block declares, as the reference's own fields read back.
 fn declared(block: &photon_data::block::definition::Block) -> Value {
-    use photon_data::block::definition::PushReaction;
     json!({
         "destroyTime": bits(block.destroy_time),
         "explosionResistance": bits(block.explosion_resistance),
@@ -353,17 +374,40 @@ fn declared(block: &photon_data::block::definition::Block) -> Value {
         photon_data::block::definition::OffsetType::Xyz => "XYZ",
     },
     "instrument": block.instrument,
-    "pushReaction": match block.push_reaction {
-            PushReaction::Normal => "PUSH_PULL",
-            PushReaction::Destroy => "POPPED",
-            PushReaction::Block => "IMMOVEABLE",
-            PushReaction::Ignore => "IGNORE_ENTITY",
-            PushReaction::PushOnly => "PUSH",
-        },
+    "pushReaction": push_reaction_name(block),
     })
 }
 
 /// A float as the hex of its bits.
 pub(crate) fn bits(value: f32) -> String {
     format!("{:08x}", value.to_bits())
+}
+
+/// The name the oracle's Java gives a block's push reaction: 26.3 renamed all five, and moved
+/// the pistons' list of unmovable blocks into the blocks.
+fn push_reaction_name(block: &photon_data::block::registry::Block) -> &'static str {
+    use photon_data::block::definition::PushReaction;
+    const NAMES: [(PushReaction, &str, &str); 5] = [
+        (PushReaction::Normal, "PUSH_PULL", "NORMAL"),
+        (PushReaction::Destroy, "POPPED", "DESTROY"),
+        (PushReaction::Block, "IMMOVEABLE", "BLOCK"),
+        (PushReaction::Ignore, "IGNORE_ENTITY", "IGNORE"),
+        (PushReaction::PushOnly, "PUSH", "PUSH_ONLY"),
+    ];
+    let before = photon_core::version::Version::active_before_26_3();
+    let hard_coded = [
+        "obsidian",
+        "crying_obsidian",
+        "respawn_anchor",
+        "reinforced_deepslate",
+    ];
+    let reaction = match block.name.strip_prefix("minecraft:") {
+        Some(name) if before && hard_coded.contains(&name) => PushReaction::Normal,
+        _ => block.push_reaction,
+    };
+    let (_, newest, oldest) = NAMES
+        .iter()
+        .find(|(kind, ..)| *kind == reaction)
+        .expect("a reaction");
+    if before { oldest } else { newest }
 }

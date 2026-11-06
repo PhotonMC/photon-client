@@ -112,6 +112,9 @@ pub(crate) fn reference_class(
     class: photon_data::item::classes::ItemClass,
 ) -> photon_data::item::classes::ItemClass {
     use photon_data::item::classes::ItemClass as C;
+    if Version::active_before_26_3() {
+        return class;
+    }
     match class {
         C::AxeItem | C::HoeItem | C::ShovelItem => C::Item,
         C::SignItem => C::StandingAndWallBlockItem,
@@ -122,6 +125,9 @@ pub(crate) fn reference_class(
 
 /// Whether [`oracle_version`]'s Java has the class.
 pub(crate) fn reference_has_class(class: photon_data::item::classes::ItemClass) -> bool {
+    if Version::active_before_26_3() {
+        return !matches!(class, photon_data::item::classes::ItemClass::CushionItem);
+    }
     reference_class(class) == class
 }
 
@@ -160,4 +166,24 @@ pub(crate) fn reference_block_class(
         return C::TintedParticleLeavesBlock;
     }
     block.class
+}
+
+/// The name [`oracle_version`]'s Java gives a block class: 26.3 renamed two and split the beds'
+/// shared parent off.
+pub(crate) fn reference_class_name(class: photon_data::block::classes::BlockClass) -> String {
+    let name = format!("{class:?}");
+    if !Version::active_before_26_3() {
+        return name;
+    }
+    match name.as_str() {
+        "AbstractBedBlock" => "BedBlock".to_owned(),
+        "PathBlock" => "DirtPathBlock".to_owned(),
+        "RedstoneWireBlock" => "RedStoneWireBlock".to_owned(),
+        _ => name,
+    }
+}
+
+/// The name [`oracle_version`]'s Java gives a block's class.
+pub(crate) fn block_class_name(block: &photon_data::block::registry::Block) -> String {
+    reference_class_name(reference_block_class(block))
 }

@@ -1,4 +1,5 @@
 use super::*;
+use crate::case_ids::reference_class_name;
 
 pub(super) fn block_case(request: &Value) -> Result<Value, String> {
     match string(request, "operation")? {
@@ -144,14 +145,14 @@ fn block_result(request: &Value) -> Result<Value, String> {
                         .class
                         .lineage()
                         .find(|class| class.declares().contains(&method))
-                        .map_or_else(|| "BlockBehaviour".to_owned(), |class| format!("{class:?}"))
+                        .map_or_else(|| "BlockBehaviour".to_owned(), reference_class_name)
                 };
                 let blocks: Vec<Value> = crate::case_ids::blocks()
                     .map(|block| {
                         let replaceable = if block.replaceable { "1" } else { "0" };
                         json!({
                             "name": block.name,
-                            "class": format!("{:?}", crate::case_ids::reference_block_class(block)),
+                            "class": crate::case_ids::block_class_name(block),
                             "placement": owner(block, Method::GetStateForPlacement),
                             "can_be_replaced": owner(block, Method::CanBeReplaced),
                             "can_survive": owner(block, Method::CanSurvive),
@@ -364,8 +365,8 @@ fn registry_names(request: &Value) -> Result<Value, String> {
         out.push(json!({
             "label": string(row, "label")?,
             "stat_types": photon_data::stat::type_names(),
-            "custom_stats": photon_data::stat::custom_names(),
-            "custom_stat_formatters": photon_data::stat::custom_formatter_names(),
+            "custom_stats": in_version(photon_data::stat::custom_names()),
+            "custom_stat_formatters": formatters_in_version(),
         }));
     }
     Ok(json!({"rows": out}))
@@ -441,4 +442,28 @@ fn creative_operation(operation: &str, label: &str, row: &Value) -> Result<Value
         "hotbar_entry" => crate::creative_op::hotbar_entry(label, row),
         other => Err(format!("unknown block operation: {other}")),
     }
+}
+
+/// The statistic names the oracle's version has: 26.3 added sleeping in a straw bed.
+fn in_version(names: &[&'static str]) -> Vec<&'static str> {
+    names
+        .iter()
+        .copied()
+        .filter(|name| !is_new_stat(name))
+        .collect()
+}
+
+/// The formatters of the custom statistics the oracle's version has, one per statistic.
+fn formatters_in_version() -> Vec<&'static str> {
+    let formatters = photon_data::stat::custom_formatter_names();
+    photon_data::stat::custom_names()
+        .iter()
+        .zip(formatters)
+        .filter(|(name, _)| !is_new_stat(name))
+        .map(|(_, formatter)| *formatter)
+        .collect()
+}
+
+fn is_new_stat(name: &str) -> bool {
+    photon_core::version::Version::active_before_26_3() && name.ends_with("sleep_in_straw_bed")
 }
