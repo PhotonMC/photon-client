@@ -517,8 +517,10 @@ fn face_index(name: &str) -> Result<u8, String> {
 
 /// The protocol's name of a packet; the punch is the swing before 26.3.
 fn packet_type(packet: &photon_game::game_mode::Outgoing) -> &'static str {
-    if matches!(packet, photon_game::game_mode::Outgoing::Punch)
-        && photon_game::game_mode::punch_is_swing()
+    if matches!(
+        packet,
+        photon_game::game_mode::Outgoing::Punch | photon_game::game_mode::Outgoing::Swing { .. }
+    ) && photon_game::game_mode::punch_is_swing()
     {
         return "minecraft:swing";
     }

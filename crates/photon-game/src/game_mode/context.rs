@@ -178,8 +178,12 @@ impl Context<'_> {
 
     /// `LocalPlayer.swing(hand, interactAnimation)`: the arm swings; the server learns of the
     /// use from the use itself.
-    pub(super) fn swing_hand(&mut self, hand: u8) {
+    pub(super) fn swing_hand(&mut self, hand: u8, out: &mut Vec<Outgoing>) {
         self.player.swing_hand(hand != MAIN_HAND);
+        // Before 26.3 every `LocalPlayer.swing` tells the server.
+        if super::outgoing::punch_is_swing() {
+            out.push(Outgoing::Swing { hand });
+        }
     }
 
     /// The inventory menu slot a hand holds.

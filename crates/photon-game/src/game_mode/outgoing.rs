@@ -15,6 +15,8 @@ pub enum Outgoing {
     },
     /// `ServerboundPunchPacket`: the main hand attacked or kept mining.
     Punch,
+    /// `ServerboundSwingPacket` (before 26.3): a hand swung after a use.
+    Swing { hand: u8 },
     /// `ServerboundUseItemOnPacket`: the hit relative to the block.
     UseItemOn {
         hand: u8,
@@ -78,7 +80,7 @@ impl Outgoing {
     pub fn type_name(&self) -> &'static str {
         match self {
             Outgoing::PlayerAction { .. } => "minecraft:player_action",
-            Outgoing::Punch => "minecraft:punch",
+            Outgoing::Punch | Outgoing::Swing { .. } => "minecraft:punch",
             Outgoing::UseItemOn { .. } => "minecraft:use_item_on",
             Outgoing::UseItem { .. } => "minecraft:use_item",
             Outgoing::Attack { .. } => "minecraft:attack",
@@ -110,7 +112,7 @@ impl Outgoing {
                 out.push(face);
                 photon_core::wire::write_varint(sequence, &mut out);
             }
-            Outgoing::Punch => out.extend_from_slice(&punch_body()),
+            Outgoing::Punch | Outgoing::Swing { .. } => out.extend_from_slice(&swing_body(self)),
             Outgoing::UseItemOn {
                 hand,
                 x,
@@ -194,6 +196,18 @@ impl Outgoing {
 /// Before 26.3 the packet is the swing of a hand.
 pub fn punch_is_swing() -> bool {
     photon_core::version::Version::active() < photon_core::version::Version::V26_3
+}
+
+/// The body of a punch or a swing: a hand before 26.3, nothing after.
+fn swing_body(packet: &Outgoing) -> Vec<u8> {
+    match packet {
+        Outgoing::Swing { hand } => {
+            let mut out = Vec::new();
+            photon_core::wire::write_varint(i32::from(*hand), &mut out);
+            out
+        }
+        _ => punch_body(),
+    }
 }
 
 /// The body of the punch packet: none in 26.3, the main hand (`ServerboundSwingPacket`) before.

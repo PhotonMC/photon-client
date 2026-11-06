@@ -45,7 +45,7 @@ pub(super) fn drop_selected(ctx: &mut Context<'_>, all: bool, out: &mut Vec<Outg
         sequence: 0,
     });
     if dropped.is_some() {
-        ctx.swing_hand(MAIN_HAND);
+        ctx.swing_hand(MAIN_HAND, out);
     }
 }
 

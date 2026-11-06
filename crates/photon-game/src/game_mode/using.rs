@@ -65,7 +65,7 @@ impl GameMode {
                 match self.use_item_on(ctx, hand, aim, out) {
                     Some(UseResult::Success { swing }) => {
                         if swing {
-                            ctx.swing_hand(hand);
+                            ctx.swing_hand(hand, out);
                             // The hand dips when the use spent some of the
                             // stack, or the player never runs out.
                             if let Some((_, count)) = ctx.held(hand)
@@ -84,7 +84,7 @@ impl GameMode {
                 && let Some(UseResult::Success { swing }) = self.use_item(ctx, hand, out)
             {
                 if swing {
-                    ctx.swing_hand(hand);
+                    ctx.swing_hand(hand, out);
                 }
                 self.items_used.push(hand);
                 return;
@@ -136,13 +136,13 @@ impl GameMode {
             ctx.can_use_game_master_blocks() && ctx.world.command_minecart_view(id).is_some();
         if opens {
             self.opened_command_minecart = Some(id);
-            ctx.swing_hand(hand);
+            ctx.swing_hand(hand, out);
             return true;
         }
         match ctx.interact_entity(id, hand) {
             EntityUse::Success { swing } => {
                 if swing {
-                    ctx.swing_hand(hand);
+                    ctx.swing_hand(hand, out);
                 }
                 true
             }

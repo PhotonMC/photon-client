@@ -99,7 +99,7 @@ impl PlaySession {
     fn note_sent(&mut self, packet: photon_game::game_mode::Outgoing) -> i32 {
         use photon_game::game_mode::Outgoing;
         match packet {
-            Outgoing::Punch => {
+            Outgoing::Punch | Outgoing::Swing { .. } => {
                 self.local.swings += 1;
                 PLAY_SERVERBOUND_PUNCH_PACKET_ID
             }
