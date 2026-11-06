@@ -67,9 +67,9 @@ impl PlaySession {
     fn note_sent(&mut self, packet: photon_game::game_mode::Outgoing) -> i32 {
         use photon_game::game_mode::Outgoing;
         match packet {
-            Outgoing::Swing { .. } => {
+            Outgoing::Punch => {
                 self.local.swings += 1;
-                PLAY_SERVERBOUND_SWING_PACKET_ID
+                PLAY_SERVERBOUND_PUNCH_PACKET_ID
             }
             Outgoing::PlayerAction {
                 x, y, z, action, ..
@@ -81,6 +81,7 @@ impl PlaySession {
                         | photon_game::game_mode::PlayerAction::Stab
                         | photon_game::game_mode::PlayerAction::DropItem
                         | photon_game::game_mode::PlayerAction::DropAllItems
+                        | photon_game::game_mode::PlayerAction::ChangeDestroyDirection
                 ) {
                     self.mark_block_by_player(x, y, z);
                 }
@@ -566,10 +567,8 @@ impl PlaySession {
         };
         player.swing();
         self.local.swings += 1;
-        self.send(PLAY_SERVERBOUND_SWING_PACKET_ID, |output| {
-            wire::write_varint(0, output);
-            Ok(())
-        })
+        // 26.3: the punch packet has no body (the main hand always).
+        self.send(PLAY_SERVERBOUND_PUNCH_PACKET_ID, |_| Ok(()))
     }
 
     /// How many swings the session has sent.

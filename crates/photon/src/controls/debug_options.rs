@@ -78,10 +78,22 @@ impl Controls {
             &self.debug.entries,
             session.reduced_debug_info(),
         ));
+        self.show_debug_gui_scale(surface, assets);
         self.captured = false;
         self.last_cursor = None;
         surface.set_cursor_captured(false);
         self.release_keys();
+    }
+
+    /// The slider shows the option, with the largest scale the window takes at its top.
+    fn show_debug_gui_scale(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        let largest = surface
+            .scale()
+            .calculate_scale(0, self.options.font.force_unicode);
+        let value = self.options.play.debug_gui_scale;
+        if let Some(screen) = self.debug_options.as_mut() {
+            screen.set_gui_scale(&assets.lang, value, largest);
+        }
     }
 
     /// The screen closes and the mouse is grabbed again.
@@ -109,10 +121,9 @@ impl Controls {
                 let before = self.gui_mouse.1;
                 self.move_gui_mouse((x, y), surface);
                 let mouse = self.gui_mouse;
-                if let Some(screen) = self.debug_options.as_mut() {
-                    screen.dragged(mouse, mouse.1 - before);
-                }
-                None
+                self.debug_options
+                    .as_mut()
+                    .and_then(|screen| screen.dragged(mouse, mouse.1 - before))
             }
             WindowEvent::Key(key, _, Action::Press | Action::Repeat, modifiers) => {
                 return self.debug_options_key(key, modifiers, (session, surface, assets));
@@ -134,7 +145,7 @@ impl Controls {
             }
             _ => None,
         };
-        self.debug_options_asked(asked, surface);
+        self.debug_options_asked(asked, (surface, assets));
         Ok(())
     }
 
@@ -162,7 +173,7 @@ impl Controls {
             .debug_options
             .as_mut()
             .and_then(|screen| screen.key_pressed(key, keys, font, &mut WindowClipboard(surface)));
-        self.debug_options_asked(asked, surface);
+        self.debug_options_asked(asked, (surface, assets));
         Ok(())
     }
 
@@ -171,9 +182,14 @@ impl Controls {
     fn debug_options_asked(
         &mut self,
         asked: Option<DebugOptionsEvent>,
-        surface: &mut WindowSurface,
+        (surface, assets): (&mut WindowSurface, &ScreenAssets),
     ) {
         match asked {
+            Some(DebugOptionsEvent::GuiScale(value)) => {
+                self.options.play.debug_gui_scale = value;
+                self.save_options();
+                self.show_debug_gui_scale(surface, assets);
+            }
             Some(DebugOptionsEvent::Close) => self.close_debug_options(surface),
             Some(DebugOptionsEvent::Status { id, status }) => {
                 self.debug.entries.set_status(id, status);

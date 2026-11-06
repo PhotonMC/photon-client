@@ -36,8 +36,8 @@ impl Context<'_> {
         EntityUse::Success { swing: true }
     }
 
-    /// `WanderingTrader.mobInteract`: a grown trader talks (a swing), a baby falls to
-    /// `AgeableMob`.
+    /// `WanderingTrader.mobInteract`: a grown trader talks (the server swings it; 26.3 gives the
+    /// client no swing), a baby falls to `AgeableMob`.
     pub(super) fn interact_wandering_trader(&mut self, id: EntityId, hand: u8) -> EntityUse {
         let grown = self
             .world
@@ -45,7 +45,7 @@ impl Context<'_> {
             .at(id)
             .is_some_and(|entity| !entity.is_baby());
         if grown {
-            EntityUse::Success { swing: true }
+            EntityUse::Success { swing: false }
         } else {
             self.golden_dandelion_on_baby(id, hand)
         }

@@ -217,15 +217,22 @@ impl ServerboundClientInformationPacket {
     pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
         let language = utf8::read_utf8(input, 16).map_err(ReadError::from)?;
         let view_distance = i8::from_be_bytes([read_byte(input)?]) as i32;
-        let chat_visibility =
-            ChatVisibility::from_id(read_enum(input)?).ok_or(ReadError::DecoderError)?;
+        // 26.3 maps ids out of range instead of refusing them: the chat and particle ids wrap
+        // (`ByIdMap.OutOfBoundsStrategy.WRAP`), the arm's fall to the first value (`ZERO`).
+        let chat_visibility = ChatVisibility::from_id(read_enum(input)?.rem_euclid(3))
+            .ok_or(ReadError::DecoderError)?;
         let chat_colors = read_byte(input)? != 0;
         let model_customisation = i32::from(read_byte(input)?);
-        let main_hand = MainHand::from_id(read_enum(input)?).ok_or(ReadError::DecoderError)?;
+        let main_hand = MainHand::from_id(
+            Some(read_enum(input)?)
+                .filter(|id| (0..2).contains(id))
+                .unwrap_or(0),
+        )
+        .ok_or(ReadError::DecoderError)?;
         let text_filtering_enabled = read_byte(input)? != 0;
         let allows_listing = read_byte(input)? != 0;
-        let particle_status =
-            ParticleStatus::from_id(read_enum(input)?).ok_or(ReadError::DecoderError)?;
+        let particle_status = ParticleStatus::from_id(read_enum(input)?.rem_euclid(3))
+            .ok_or(ReadError::DecoderError)?;
         Ok(Self::new(ClientInformation::new(
             language,
             view_distance,

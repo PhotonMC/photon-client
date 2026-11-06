@@ -113,7 +113,7 @@ impl KeyBindsList {
             if previous != Some(row.category) {
                 previous = Some(row.category);
                 let label = Component::translatable(category_key(row.category));
-                let text = lang.runs(&label, &Style::default());
+                let text = category_runs(lang, &label);
                 let width = font.width_of_runs(&text) + TEXT_PADDING * 2;
                 rows.push(Row::Category { text, width });
             }
@@ -484,4 +484,14 @@ mod focus;
 /// `Category.label`: `key.category.<namespace>.<path>`.
 fn category_key(id: &str) -> String {
     format!("key.category.{}", id.replace(':', "."))
+}
+
+/// A category's name as 26.3 shows it: bold and underlined.
+fn category_runs(lang: &Lang, label: &Component) -> Vec<Run> {
+    let style = Style {
+        bold: Some(true),
+        underlined: Some(true),
+        ..Style::default()
+    };
+    lang.runs(label, &style)
 }

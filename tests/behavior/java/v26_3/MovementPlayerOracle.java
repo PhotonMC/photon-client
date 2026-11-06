@@ -16,7 +16,11 @@ class MovementPlayerOracle extends MovementWorldOracle {
         }
         var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
             io.netty.buffer.Unpooled.wrappedBuffer(bytes), registries);
-        stack.applyComponents(net.minecraft.core.component.DataComponentPatch.STREAM_CODEC.decode(buffer));
+        try {
+            stack.applyComponents(net.minecraft.core.component.DataComponentPatch.STREAM_CODEC.decode(buffer));
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("patch " + hex, e);
+        }
         if (buffer.readableBytes() != 0) {
             throw new IllegalStateException("component patch has trailing bytes");
         }
@@ -77,6 +81,8 @@ class MovementPlayerOracle extends MovementWorldOracle {
 
         boolean breaking = row.has("breaking");
         var rockets = new java.util.ArrayList<net.minecraft.world.entity.Entity>();
+        // Swapping the held item asks the resolver whether the hand plays its swap animation.
+        setField(minecraft, "itemModelResolver", unsafe.allocateInstance(GuiSettingsOracle.NoItems.class));
         if (breaking) {
             // The client's own player is one of its level's entities, and
             // placing a block checks the level's entities for room.
@@ -526,6 +532,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 level.tickBlockEntities();
                 level.setTimeFromServer(level.getGameTime() + 1L);
             }
+            // `Minecraft.tick`: after the entities and block entities, the player syncs its
+            // input, sprinting and position with the server.
+            player.sendChanges();
             tickIndex++;
             var described = describe(player, wire.sent);
             var rocketPositions = new JsonArray();
@@ -817,10 +826,15 @@ class MovementPlayerOracle extends MovementWorldOracle {
         tick.addProperty("using_item", player.isUsingItem());
         tick.addProperty("using_off_hand", player.getUsedItemHand() == net.minecraft.world.InteractionHand.OFF_HAND);
         tick.addProperty("ticks_using_item", Oracle.bits(player.getTicksUsingItem(0.5F)));
-        // The block the screen effects cover the view with (`getViewBlockingState`), as a state number.
-        var viewBlock = Reflect.method(net.minecraft.client.renderer.ScreenEffectRenderer.class, 
-            "getViewBlockingState", net.minecraft.world.entity.player.Player.class);
-        var blocking = (net.minecraft.world.level.block.state.BlockState) viewBlock.invoke(null, player);
+        // The block the screen effects cover the view with (`getViewBlockingState`), as a state number: seen
+        // through a culling frustum of 70 degrees on a 16:9 window looking straight ahead.
+        var viewBlock = Reflect.method(net.minecraft.client.renderer.extract.LevelExtractor.class,
+            "getViewBlockingState", net.minecraft.client.player.LocalPlayer.class,
+            net.minecraft.client.renderer.culling.Frustum.class);
+        var projection = new org.joml.Matrix4f().perspective(70.0F * (float) (Math.PI / 180.0), 16.0F / 9.0F, 0.05F,
+            256.0F, true);
+        var frustum = new net.minecraft.client.renderer.culling.Frustum(new org.joml.Matrix4f(), projection);
+        var blocking = (net.minecraft.world.level.block.state.BlockState) viewBlock.invoke(null, player, frustum);
         tick.addProperty("view_block", blocking == null ? -1 : net.minecraft.world.level.block.Block.getId(blocking));
         var packets = new JsonArray();
         for (var packet : sent) {

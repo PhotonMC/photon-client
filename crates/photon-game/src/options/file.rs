@@ -905,7 +905,7 @@ mod tests {
         options.save(&path).unwrap();
         let text = std::fs::read_to_string(&path).unwrap();
         let lines: Vec<&str> = text.lines().collect();
-        assert_eq!(lines[0], "version:4903");
+        assert_eq!(lines[0], "version:5023");
         let at = |line: &str| lines.iter().position(|known| *known == line).unwrap();
         // The order `processOptions` visits, not the order of the file; a line it never reads goes.
         assert!(at("fov:0.75") < at("guiScale:0"));

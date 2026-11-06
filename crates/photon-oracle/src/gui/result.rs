@@ -303,7 +303,13 @@ fn key_mappings() -> Value {
             })
         })
         .collect();
-    let keys: Vec<Value> = photon_data::keys::named_keys()
+    // 26.3's table is SDL's; the 26.2 one is GLFW's.
+    let named = if crate::jar_version() == "26.2" {
+        photon_data::keys::named_keys()
+    } else {
+        photon_data::keys::sdl_named_keys()
+    };
+    let keys: Vec<Value> = named
         .iter()
         .map(|(kind, code, name)| json!({"type": kind, "code": code, "name": name}))
         .collect();

@@ -238,81 +238,107 @@ pub(crate) fn keep_old_angles_near(
     }
 }
 
-/// How long a swing lasts with an empty hand (`SwingAnimation.DEFAULT`). A held item's own swing
-/// component changes it (a spear's), and so do the effects of haste or mining fatigue, which are
-/// not read for other entities yet.
+/// `SwingAnimation.DEFAULT`'s duration: how long a swing lasts with nothing special in the hand.
 pub const DEFAULT_SWING_DURATION: i32 = 6;
 
-/// A living entity's arm swing (`LivingEntity.swing`, `updateSwingTime`):
-/// how far through it the swing is, as the attack animation the model reads.
+/// `SwingAnimationType`: `whack` is the default swing, `stab` a spear's.
+pub const SWING_WHACK: u8 = 1;
+pub const SWING_STAB: u8 = 2;
+
+/// `LivingEntity.SwingDescription`: the swing under way.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct SwingDescription {
+    off_hand: bool,
+    kind: u8,
+    animation_duration: i32,
+    duration_ticks: i32,
+}
+
+/// A living entity's arm swing (`LivingEntity.SwingState`): what swings, how many ticks it has
+/// run, and how far through it is, as the attack animation the model reads.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct SwingState {
-    swinging: bool,
-    swing_time: i32,
-    off_hand: bool,
-    attack_anim: JavaF32,
-    old_attack_anim: JavaF32,
+    current: Option<SwingDescription>,
+    ticks: i32,
+    old_animation: JavaF32,
+    animation: JavaF32,
 }
 
 impl SwingState {
-    /// `LivingEntity.getCurrentSwingDuration`, of the hand swinging: the main hand's or the off
-    /// hand's, as `durations` gives them.
-    fn duration(&self, durations: [i32; 2]) -> i32 {
-        durations[usize::from(self.off_hand)]
-    }
-
-    /// `LivingEntity.swing`: a swing starts when none is going or the one
-    /// going is at least half through. `durations` is how long each hand's item swings.
-    pub fn swing(&mut self, off_hand: bool, durations: [i32; 2]) {
-        if !self.swinging || self.swing_time >= self.duration(durations) / 2 || self.swing_time < 0
+    /// `SwingState.startIfAble`: a swing starts when none is under way or the one under way is
+    /// not in its first half. `duration_ticks` is the animation's duration as the entity's
+    /// haste or fatigue modify it.
+    pub fn start_if_able(
+        &mut self,
+        off_hand: bool,
+        kind: u8,
+        animation_duration: i32,
+        duration_ticks: i32,
+    ) -> bool {
+        if let Some(current) = self.current
+            && self.ticks <= current.duration_ticks / 2
+            && self.ticks > 0
         {
-            self.swing_time = -1;
-            self.swinging = true;
-            self.off_hand = off_hand;
+            return false;
         }
+        let next = SwingDescription {
+            off_hand,
+            kind,
+            animation_duration,
+            duration_ticks,
+        };
+        if self.current != Some(next) {
+            self.old_animation = JavaF32::new(0.0);
+            self.animation = JavaF32::new(0.0);
+        }
+        self.current = Some(next);
+        self.ticks = 0;
+        true
     }
 
-    /// `LivingEntity.baseTick`: the last tick's attack animation is kept.
-    pub fn begin_tick(&mut self) {
-        self.old_attack_anim = self.attack_anim;
-    }
-
-    /// `LivingEntity.updateSwingTime`, which only players and monsters run.
-    pub fn update(&mut self, durations: [i32; 2]) {
-        let duration = self.duration(durations);
-        if self.swinging {
-            self.swing_time += 1;
-            if self.swing_time >= duration {
-                self.swing_time = 0;
-                self.swinging = false;
-            }
-        } else {
-            self.swing_time = 0;
+    /// `SwingState.tick`, run by `LivingEntity.baseTick`.
+    pub fn tick(&mut self) {
+        self.old_animation = self.animation;
+        let Some(current) = self.current else {
+            self.animation = JavaF32::new(0.0);
+            return;
+        };
+        if current.duration_ticks > 0 {
+            self.animation =
+                JavaF32::new((self.ticks as f32 / current.duration_ticks as f32).min(1.0));
         }
-        self.attack_anim = JavaF32::new(self.swing_time as f32 / duration as f32);
+        let past = self.ticks > current.duration_ticks;
+        self.ticks += 1;
+        if past {
+            self.current = None;
+            self.animation = JavaF32::new(0.0);
+        }
     }
 
     pub fn is_swinging(&self) -> bool {
-        self.swinging
+        self.current.is_some()
     }
 
+    /// The ticks the swing has run.
     pub fn swing_time(&self) -> i32 {
-        self.swing_time
+        self.ticks
     }
 
     /// Whether the arm that swings is the off hand's.
     pub fn is_off_hand(&self) -> bool {
-        self.off_hand
+        self.current.is_some_and(|current| current.off_hand)
     }
 
-    /// `LivingEntity.getAttackAnim`: between the last two ticks, wrapping
-    /// when a new swing began.
+    /// The swing's `SwingAnimationType` id, if one is under way.
+    pub fn kind(&self) -> Option<u8> {
+        self.current.map(|current| current.kind)
+    }
+
+    /// `SwingState.getAnimation`: between the last two ticks, wrapping when a new swing began.
     pub fn attack_anim(&self, partial: f32) -> f32 {
-        let old = self.old_attack_anim.get();
-        let mut difference = self.attack_anim.get() - old;
-        if difference < 0.0 {
-            difference += 1.0;
-        }
-        old + difference * partial
+        let old = self.old_animation.get();
+        let new = self.animation.get();
+        let end = if new >= old { new } else { new + 1.0 };
+        old + partial * (end - old)
     }
 }

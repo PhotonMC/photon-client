@@ -33,12 +33,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
     use photon_world::ClientPlayerGameMode;
     use photon_world::local_player::LocalPlayer;
 
-    fn bits64(row: &Value, key: &str) -> Result<f64, String> {
-        let text = string(row, key)?;
-        u64::from_str_radix(text, 16)
-            .map(f64::from_bits)
-            .map_err(|error| format!("{key}: {error}"))
-    }
+    use crate::living_ticks::bits64;
     fn bits32(row: &Value, key: &str) -> Result<f32, String> {
         let text = string(row, key)?;
         u32::from_str_radix(text, 16)
@@ -319,27 +314,11 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                             ),
                         )
                     }
-                    Some(target) => {
-                        let (x, y, z) = (
-                            i32_field(target, "x")?,
-                            i32_field(target, "y")?,
-                            i32_field(target, "z")?,
-                        );
-                        let location = match target.get("location") {
-                            Some(at) => [bits64(at, "x")?, bits64(at, "y")?, bits64(at, "z")?],
-                            None => [f64::from(x) + 0.5, f64::from(y) + 0.5, f64::from(z) + 0.5],
-                        };
-                        photon_game::game_mode::Aim::Block {
-                            x,
-                            y,
-                            z,
-                            face: face_index(string(target, "face")?)?,
-                            location,
-                            inside: target["inside"].as_bool().unwrap_or(false),
-                        }
-                    }
+                    Some(target) => block_aim(target)?,
                     None => photon_game::game_mode::Aim::Miss,
                 };
+                // The hands are synced before the keys are read.
+                before_tick(&world, &mut player, breaking);
                 let mut ctx = photon_game::game_mode::Context {
                     miner: &photon_game::game_mode::Miner::of(&world, 0),
                     world: &mut world,
@@ -405,8 +384,11 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     }
                 }
             };
-            after_tick(&mut world, &mut player, (row, breaking));
-            failure = failure.or(tick_block_entities(&mut world, &mut player, row).err());
+            let sent = finish_tick(
+                (&mut world, &mut player),
+                (row, breaking),
+                (sent, &mut failure, ridden.is_none()),
+            );
             let position = player.position();
             let motion = player.delta_movement();
             let (y_rot, x_rot) = player.rotation();
@@ -429,24 +411,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                         .or_else(|| event.geyser_sound())
                         .or_else(|| event.wax_sound())
                 }))
-                .map(|sound| {
-                    let source = sound.source.name();
-                    // The swim, splash, hurt and death sounds' pitch is random in Java and is compared by volume only.
-                    let pitch = if crate::view_state::has_random_pitch(sound.event) {
-                        0.0_f32
-                    } else {
-                        sound.pitch
-                    };
-                    format!(
-                        "{},{source},{:08x},{:08x},{:016x},{:016x},{:016x}",
-                        sound.event,
-                        sound.volume.to_bits(),
-                        pitch.to_bits(),
-                        sound.position.0.to_bits(),
-                        sound.position.1.to_bits(),
-                        sound.position.2.to_bits()
-                    )
-                })
+                .map(|sound| crate::movement_view::sound_line(&sound))
                 .collect();
             sounds.sort();
             let mut described = json!({
@@ -488,7 +453,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 "using_item": player.is_using_item(),
                 "using_off_hand": player.used_item_is_off_hand(),
                 "ticks_using_item": format!("{:08x}", player.ticks_using_item(0.5).to_bits()),
-                "view_block": player.view_blocking_state(&world).map_or(-1, crate::case_ids::wire_state),
+                "view_block": player.view_blocking_state(&world, crate::movement_view::viewing_near_plane()).map_or(-1, crate::case_ids::wire_state),
                 "sent": packets,
             });
             if let Some(vehicle_id) = ridden {
@@ -516,6 +481,28 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
 }
 
 /// The wire value of a face name (`Direction.get3DDataValue`).
+/// The block a row's attack aims at: the face, where on it, and whether the hit was inside.
+fn block_aim(target: &Value) -> Result<photon_game::game_mode::Aim, String> {
+    use crate::living_ticks::bits64;
+    let (x, y, z) = (
+        i32_field(target, "x")?,
+        i32_field(target, "y")?,
+        i32_field(target, "z")?,
+    );
+    let location = match target.get("location") {
+        Some(at) => [bits64(at, "x")?, bits64(at, "y")?, bits64(at, "z")?],
+        None => [f64::from(x) + 0.5, f64::from(y) + 0.5, f64::from(z) + 0.5],
+    };
+    Ok(photon_game::game_mode::Aim::Block {
+        x,
+        y,
+        z,
+        face: face_index(string(target, "face")?)?,
+        location,
+        inside: target["inside"].as_bool().unwrap_or(false),
+    })
+}
+
 fn face_index(name: &str) -> Result<u8, String> {
     match name {
         "down" => Ok(0),

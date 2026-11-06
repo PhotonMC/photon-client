@@ -16,14 +16,9 @@ impl LocalPlayer {
         self.set_pos(boat.rider_position);
         self.y_rot += boat.delta_rotation;
         self.y_head_rot += boat.delta_rotation;
-        let (y_rot_old, y_rot) = crate::entity::vanilla_boat_passenger_rotation_clamped_values(
-            self.y_rot,
-            self.view.y_rot_old,
-            boat.y_rot,
-        );
-        self.view.y_rot_old = y_rot_old;
+        let (y_rot, _) =
+            crate::entity::vanilla_boat_passenger_clamped_y_rot(self.y_rot, boat.y_rot);
         self.y_rot = y_rot;
-        self.y_head_rot = self.y_rot;
         self.y_body_rot = boat.y_rot;
     }
 
@@ -48,14 +43,10 @@ impl LocalPlayer {
     /// `AbstractBoat.onPassengerTurned`, after the mouse turned the player: held within a quarter
     /// turn of where the boat faces.
     pub fn clamp_in_boat(&mut self, boat_y_rot: f32) {
-        let (y_rot_old, y_rot) = crate::entity::vanilla_boat_passenger_rotation_clamped_values(
-            self.y_rot,
-            self.view.y_rot_old,
-            boat_y_rot,
-        );
-        self.view.y_rot_old = y_rot_old;
+        let (y_rot, delta) =
+            crate::entity::vanilla_boat_passenger_clamped_y_rot(self.y_rot, boat_y_rot);
         self.y_rot = y_rot;
-        self.y_head_rot = y_rot;
+        self.view.y_rot_old += delta;
         self.y_body_rot = boat_y_rot;
     }
 

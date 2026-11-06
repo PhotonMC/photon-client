@@ -183,13 +183,13 @@ class MovementObjectExtras extends MovementSoundExtras {
         var renderer = unsafe.allocateInstance(rendererClass);
         var base = net.minecraft.client.renderer.entity.EntityRenderer.class;
         var affected = Reflect.method(base, "affectedByCulling", net.minecraft.world.entity.Entity.class);
-        var box = Reflect.method(base, "getBoundingBoxForCulling", net.minecraft.world.entity.Entity.class);
+        var box = Reflect.method(base, "getBoundingBoxForCulling", net.minecraft.world.entity.Entity.class, float.class);
         boolean culled = (boolean) affected.invoke(renderer, entity);
         described.addProperty("culled", culled);
         described.addProperty("culling_position", Oracle.bits(entity.getX()) + "," + Oracle.bits(entity.getY()) + ","
             + Oracle.bits(entity.getZ()));
         if (culled) {
-            var aabb = (net.minecraft.world.phys.AABB) box.invoke(renderer, entity);
+            var aabb = (net.minecraft.world.phys.AABB) box.invoke(renderer, entity, 0.5F);
             described.addProperty("culling_box", Oracle.bits(aabb.minX) + "," + Oracle.bits(aabb.minY) + ","
                 + Oracle.bits(aabb.minZ) + "," + Oracle.bits(aabb.maxX) + "," + Oracle.bits(aabb.maxY) + ","
                 + Oracle.bits(aabb.maxZ));

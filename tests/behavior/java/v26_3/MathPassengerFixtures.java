@@ -472,6 +472,13 @@ class MathPassengerFixtures extends MathOptionOracle {
             super(null, null);
         }
 
+        // The cow carries no passenger, so nobody controls it; the fixture has no synched data
+        // for the no-AI flag the real lookup reads first.
+        @Override
+        protected boolean isLocalClientAuthoritative() {
+            return false;
+        }
+
         static PassengerPositionCowFixture create(
             int entityId, Vec3 position, Vec3 movement,
             float yRot, float xRot, boolean noGravity, Entity vehicle

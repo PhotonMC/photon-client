@@ -242,6 +242,15 @@ pub(crate) fn mth_lerp_steps_case(request: &Value, operation: &str) -> Result<Va
 
 pub(crate) fn mth_smoothstep_pair_case(request: &Value, operation: &str) -> Result<Value, String> {
     let x = f64_field(request, "x")?;
+    // 26.3 narrowed both to float.
+    if crate::jar_version() != "26.2" {
+        let value = if operation == "mth_smoothstep" {
+            math::mth_smoothstep_f32(x as f32)
+        } else {
+            math::mth_smoothstep_derivative_f32(x as f32)
+        };
+        return Ok(json!({"bits": format!("{:08x}", value.to_bits())}));
+    }
     let value = if operation == "mth_smoothstep" {
         math::mth_smoothstep(x)
     } else {

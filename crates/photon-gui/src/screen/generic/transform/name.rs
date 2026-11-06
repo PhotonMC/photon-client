@@ -329,7 +329,9 @@ impl GenericScreen {
                     );
                 }
             }
-            MenuKind::Brewing => brewing_progress(draw, (data(0), data(1)), (left, top)),
+            MenuKind::Brewing => {
+                brewing_progress(draw, ((data(0), data(1)), (data(2), data(3))), (left, top));
+            }
             MenuKind::Cartography => self.cartography_preview(draw, menu, (left, top)),
             MenuKind::Anvil => self.anvil_extras(draw, menu, (left, top)),
             MenuKind::Stonecutter => self.stone_draw(draw, menu, mouse, (left, top)),

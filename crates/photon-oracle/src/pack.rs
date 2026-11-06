@@ -230,6 +230,17 @@ pub(super) fn resource_known_pack_list_codec_result(request: &Value) -> Result<V
 }
 
 pub(super) fn input_with_modifiers_snapshot<T: InputWithModifiers>(input: &T) -> Value {
+    let mut snapshot = input_snapshot(input);
+    // 26.3 dropped the digit lookup.
+    if crate::jar_version() != "26.2" {
+        snapshot
+            .as_object_mut()
+            .map(|fields| fields.remove("digit"));
+    }
+    snapshot
+}
+
+fn input_snapshot<T: InputWithModifiers>(input: &T) -> Value {
     json!({
         "input": input.input(),
         "modifiers": input.modifiers(),
@@ -274,15 +285,38 @@ pub(super) fn input_event_result(request: &Value) -> Result<Value, String> {
     let mut info = input_with_modifiers_snapshot(&button_info);
     info["button"] = json!(button_info.button);
     let mut mouse = input_with_modifiers_snapshot(&mouse_event);
+    if crate::jar_version() == "26.2" {
+        mouse["button"] = json!(mouse_event.button());
+    } else {
+        // 26.3 reads SDL's numbers; the classification above ran on GLFW's, the game's own.
+        let (scancode, keycode) = crate::sdl::event_numbers((key_event.key, 0));
+        key["input"] = json!(scancode);
+        key["key"] = json!(scancode);
+        key["scancode"] = json!(keycode);
+        key["modifiers"] = json!(crate::sdl::modifiers(key_event.modifiers));
+        info["modifiers"] = json!(crate::sdl::modifiers(button_info.modifiers));
+        info["input"] = json!(crate::sdl::button(button_info.button));
+        info["button"] = info["input"].clone();
+        mouse["modifiers"] = info["modifiers"].clone();
+        mouse["input"] = info["input"].clone();
+        mouse["button"] = info["input"].clone();
+    }
     mouse["x"] = json!(format!("{:016x}", mouse_event.x.to_bits()));
     mouse["y"] = json!(format!("{:016x}", mouse_event.y.to_bits()));
-    mouse["button"] = json!(mouse_event.button());
     Ok(json!({"key_event": key, "mouse_button_info": info, "mouse_button_event": mouse}))
 }
 
 pub(super) fn input_key(value: &Value) -> Result<InputKey, String> {
     let kind = string(value, "type")?;
     let number = i32_field(value, "value")?;
+    // 26.3 has one keyboard type, numbered by scancode, and SDL's mouse buttons.
+    if crate::jar_version() != "26.2" {
+        return match kind {
+            "keysym" | "scancode" => Ok(InputKey::Keyboard(number)),
+            "mouse" => Ok(InputKey::Button(number)),
+            _ => Err("unknown input key type".into()),
+        };
+    }
     match kind {
         "keysym" => Ok(InputKey::key_sym(number)),
         "scancode" => Ok(InputKey::scan_code(number)),

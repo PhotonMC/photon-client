@@ -48,12 +48,28 @@ impl DebugOptionsScreen {
             self.set_focus(Focus::Profile(index));
             return Some(self.press_profile(Profile::ALL[index], index));
         }
+        if self.gui_scale.contains(&self.arena, at) {
+            self.set_focus(Focus::GuiScale);
+            return Some(self.cycle_scale());
+        }
         if self.done.contains(&self.arena, at) {
             crate::ui_sound::play_down_sound();
             self.set_focus(Focus::Done);
             return Some(DebugOptionsEvent::Close);
         }
         None
+    }
+
+    /// `CycleButton.onPress`: the option takes the next value, from the largest round to
+    /// `-1` (`ClampingLazyMaxIntRange` lists `-1..=largest`).
+    fn cycle_scale(&mut self) -> DebugOptionsEvent {
+        crate::ui_sound::play_down_sound();
+        let next = if self.scale.0 >= self.scale.1 {
+            -1
+        } else {
+            self.scale.0 + 1
+        };
+        DebugOptionsEvent::GuiScale(next)
     }
 
     /// `addProfileButton`'s action: the profile is loaded, the rows show it, and only its button
@@ -78,13 +94,37 @@ impl DebugOptionsScreen {
             && mouse.0 <= bar + f64::from(SCROLLBAR_WIDTH);
         // A row under the mouse answers the click, a category's too, and the list takes the focus.
         let row = self.row_at(at);
-        if row.is_some() || self.scrolling {
+        // The list takes the screen's focus, and keeps the child it already focuses.
+        let held = matches!(
+            self.focus,
+            Focus::List | Focus::Button(..) | Focus::Category(_)
+        );
+        if (row.is_some() || self.scrolling) && !held {
             self.set_focus(Focus::List);
         }
+        self.focus_label_at(row, at);
         let (id, slot) = self.pressed_button(row?, at)?;
         let event = self.press_entry_button(id, slot);
         self.scroll_if_clipped(row?);
         Some(event)
+    }
+
+    /// A label under the mouse takes the focus itself (`FocusableTextWidget` is a widget).
+    fn focus_label_at(&mut self, row: Option<usize>, at: (i32, i32)) {
+        let Some(index) = row else {
+            return;
+        };
+        let Row::Category(_, width) = &self.rows[index] else {
+            return;
+        };
+        let label = self.label_rectangle(index, *width);
+        let inside = at.0 >= label.x
+            && at.0 < label.x + label.width
+            && at.1 >= label.y
+            && at.1 < label.y + label.height;
+        if inside {
+            self.set_focus(Focus::Category(index));
+        }
     }
 
     /// `AbstractSelectionList.setSelected` after a click: an entry the list's edge cuts is scrolled
@@ -116,16 +156,20 @@ impl DebugOptionsScreen {
     /// focus now (a button of the value an entry has is inactive).
     fn tab_order(&self) -> Vec<(Focus, bool)> {
         let mut order = vec![(Focus::Search, true)];
-        for row in &self.rows {
-            if let Row::Entry { id, buttons, .. } = row {
-                for (slot, button) in buttons.iter().enumerate() {
-                    order.push((Focus::Button(id, slot), button.is_active()));
+        for (index, row) in self.rows.iter().enumerate() {
+            match row {
+                Row::Category(..) => order.push((Focus::Category(index), true)),
+                Row::Entry { id, buttons, .. } => {
+                    for (slot, button) in buttons.iter().enumerate() {
+                        order.push((Focus::Button(id, slot), button.is_active()));
+                    }
                 }
             }
         }
         for (index, profile) in self.profiles.iter().enumerate() {
             order.push((Focus::Profile(index), profile.is_active()));
         }
+        order.push((Focus::GuiScale, self.gui_scale.is_active()));
         order.push((Focus::Done, self.done.is_active()));
         order
     }
@@ -138,7 +182,7 @@ impl DebugOptionsScreen {
         // from its end going back (`ContainerEventHandler.handleTabNavigation` with no focused child).
         let (after, before) = match order.iter().position(|(focus, _)| *focus == self.focus) {
             Some(at) => (at + 1, at),
-            None => (1, order.len() - 3),
+            None => (1, order.len() - 4),
         };
         let takes = |candidate: &&(Focus, bool)| candidate.1;
         let found = if forward {
@@ -155,8 +199,11 @@ impl DebugOptionsScreen {
         });
         if let Some(&(focus, _)) = found {
             self.set_focus(focus);
-            if let Focus::Button(id, _) = focus {
-                self.scroll_to_entry(id);
+            match focus {
+                Focus::Button(id, _) => self.scroll_to_entry(id),
+                Focus::Category(index) => self.scroll_to_row(index),
+                // `setFocused` lets the value change when the last input was the mouse or Tab.
+                _ => {}
             }
         }
     }
@@ -170,6 +217,11 @@ impl DebugOptionsScreen {
         else {
             return;
         };
+        self.scroll_to_row(index);
+    }
+
+    /// `AbstractSelectionList.scrollToEntry` for the row at `index`.
+    pub(super) fn scroll_to_row(&mut self, index: usize) {
         let top_delta = self.row_y(index) - self.place.y - 2;
         if top_delta < 0 {
             self.set_scroll(self.scroll + f64::from(top_delta));
@@ -199,6 +251,7 @@ impl DebugOptionsScreen {
             Focus::Profile(index) if self.profiles[index].is_active() => {
                 Some(self.press_profile(Profile::ALL[index], index))
             }
+            Focus::GuiScale => Some(self.cycle_scale()),
             Focus::Done if self.done.is_active() => {
                 crate::ui_sound::play_down_sound();
                 Some(DebugOptionsEvent::Close)
@@ -231,13 +284,14 @@ impl DebugOptionsScreen {
     }
 
     /// The mouse moved with the primary button down, `dy` further down.
-    pub fn dragged(&mut self, mouse: (f64, f64), dy: f64) {
+    pub fn dragged(&mut self, mouse: (f64, f64), dy: f64) -> Option<DebugOptionsEvent> {
         if self.scrolling {
             let scroll = self
                 .place
                 .dragged_scroll(self.scroll, mouse.1, dy, self.content_height());
             self.set_scroll(scroll);
         }
+        None
     }
 
     /// The primary button went up.
@@ -280,6 +334,11 @@ impl DebugOptionsScreen {
             }
             return None;
         }
+        self.arrow_key(key)
+    }
+
+    /// An arrow key: the focus moves.
+    fn arrow_key(&mut self, key: glfw::Key) -> Option<DebugOptionsEvent> {
         if let Some(direction) = arrow_direction(key) {
             self.arrow(direction);
         }

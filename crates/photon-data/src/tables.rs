@@ -22,6 +22,7 @@ pub mod map_colors;
 pub mod map_data;
 pub mod painting_variants;
 pub mod registry_names;
+pub mod sdl_keys;
 pub mod sheep_colors;
 pub mod sound_events;
 pub mod villager_registries;

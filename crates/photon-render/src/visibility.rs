@@ -191,6 +191,63 @@ impl FrustumIntersection {
     }
 }
 
+/// `Matrix4f.invertGeneric`, with the same fused multiply-adds.
+fn invert_generic(m: &[[f32; 4]; 4]) -> [[f32; 4]; 4] {
+    let at = |column: usize, row: usize| m[column][row];
+    let (m00, m01, m02, m03) = (at(0, 0), at(0, 1), at(0, 2), at(0, 3));
+    let (m10, m11, m12, m13) = (at(1, 0), at(1, 1), at(1, 2), at(1, 3));
+    let (m20, m21, m22, m23) = (at(2, 0), at(2, 1), at(2, 2), at(2, 3));
+    let (m30, m31, m32, m33) = (at(3, 0), at(3, 1), at(3, 2), at(3, 3));
+    let a = m00 * m11 - m01 * m10;
+    let b = m00 * m12 - m02 * m10;
+    let c = m00 * m13 - m03 * m10;
+    let d = m01 * m12 - m02 * m11;
+    let e = m01 * m13 - m03 * m11;
+    let f = m02 * m13 - m03 * m12;
+    let g = m20 * m31 - m21 * m30;
+    let h = m20 * m32 - m22 * m30;
+    let i = m20 * m33 - m23 * m30;
+    let j = m21 * m32 - m22 * m31;
+    let k = m21 * m33 - m23 * m31;
+    let l = m22 * m33 - m23 * m32;
+    let det = 1.0 / (a * l - b * k + c * j + d * i - e * h + f * g);
+    let fma = f32::mul_add;
+    [
+        [
+            fma(m11, l, fma(-m12, k, m13 * j)) * det,
+            fma(-m01, l, fma(m02, k, -m03 * j)) * det,
+            fma(m31, f, fma(-m32, e, m33 * d)) * det,
+            fma(-m21, f, fma(m22, e, -m23 * d)) * det,
+        ],
+        [
+            fma(-m10, l, fma(m12, i, -m13 * h)) * det,
+            fma(m00, l, fma(-m02, i, m03 * h)) * det,
+            fma(-m30, f, fma(m32, c, -m33 * b)) * det,
+            fma(m20, f, fma(-m22, c, m23 * b)) * det,
+        ],
+        [
+            fma(m10, k, fma(-m11, i, m13 * g)) * det,
+            fma(-m00, k, fma(m01, i, -m03 * g)) * det,
+            fma(m30, e, fma(-m31, c, m33 * a)) * det,
+            fma(-m20, e, fma(m21, c, -m23 * a)) * det,
+        ],
+        [
+            fma(-m10, j, fma(m11, h, -m12 * g)) * det,
+            fma(m00, j, fma(-m01, h, m02 * g)) * det,
+            fma(-m30, d, fma(m31, b, -m32 * a)) * det,
+            fma(m20, d, fma(-m21, b, m22 * a)) * det,
+        ],
+    ]
+}
+
+/// `Vector3f.mulProjectGeneric`.
+fn project(m: &[[f32; 4]; 4], [x, y, z]: [f32; 3]) -> [f32; 3] {
+    let fma = f32::mul_add;
+    let inverse_w = 1.0 / fma(m[0][3], x, fma(m[1][3], y, fma(m[2][3], z, m[3][3])));
+    let row = |r: usize| fma(m[0][r], x, fma(m[1][r], y, fma(m[2][r], z, m[3][r]))) * inverse_w;
+    [row(0), row(1), row(2)]
+}
+
 /// `Frustum`: the camera's view cone, planes in the camera's own frame and
 /// the camera's place in the world.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -199,6 +256,8 @@ pub struct Frustum {
     /// The view direction, `matrix.transformTranspose(0, 0, 1, 0)`.
     view: [f32; 3],
     camera: [f64; 3],
+    /// `Frustum.matrix`: the projection times the view rotation.
+    clip: [[f32; 4]; 4],
 }
 
 impl Frustum {
@@ -215,7 +274,30 @@ impl Frustum {
             // `transformTranspose(0, 0, 1, 0)`: the clip matrix's z row.
             view: [clip[0][2], clip[1][2], clip[2][2]],
             camera,
+            clip,
         }
+    }
+
+    /// `getNearPlaneBounds`: the box round the four corners of the near plane, as an offset from
+    /// the camera (low corner, high corner).
+    pub fn near_plane_bounds(&self) -> ([f64; 3], [f64; 3]) {
+        let inverse = invert_generic(&self.clip);
+        let corners = [
+            [-1.0, -1.0, -1.0],
+            [1.0, -1.0, -1.0],
+            [1.0, 1.0, -1.0],
+            [-1.0, 1.0, -1.0],
+        ];
+        let mut low = [f64::INFINITY; 3];
+        let mut high = [f64::NEG_INFINITY; 3];
+        for corner in corners {
+            let point = project(&inverse, corner);
+            for axis in 0..3 {
+                low[axis] = low[axis].min(f64::from(point[axis]));
+                high[axis] = high[axis].max(f64::from(point[axis]));
+            }
+        }
+        (low, high)
     }
 
     /// `offsetToFullyIncludeCameraCube`: back the camera away along the view

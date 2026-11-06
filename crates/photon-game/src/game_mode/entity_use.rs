@@ -52,7 +52,8 @@ impl Context<'_> {
         };
         let secondary = self.player.is_shift_key_down();
         match name {
-            // `Minecart.interact`: a rider gets on unless sneaking or the cart is taken.
+            // `Minecart.interact`: a rider gets on unless sneaking or the cart is taken; the client
+            // consumes the click, and the server swings.
             "minecraft:minecart" => {
                 let taken = self
                     .world
@@ -61,7 +62,7 @@ impl Context<'_> {
                 if secondary || taken {
                     EntityUse::Pass
                 } else {
-                    EntityUse::Success { swing: true }
+                    EntityUse::Success { swing: false }
                 }
             }
             // `AbstractMinecartContainer.interact` and `MinecartFurnace.interact` always succeed.

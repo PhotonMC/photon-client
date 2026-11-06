@@ -86,6 +86,7 @@ pub struct StateInfo {
     /// places in the shape pool ([`States::outline`], [`States::collision`]).
     outline: u16,
     collision: u16,
+    occlusion: u16,
 }
 
 impl StateInfo {
@@ -162,6 +163,11 @@ impl States {
     /// block's random offset.
     pub fn outline(&self, state: &StateInfo) -> &VoxelShape {
         &self.shapes[usize::from(state.outline)]
+    }
+
+    /// `getOcclusionShape` of a state, with no level and no entity.
+    pub fn occlusion(&self, state: &StateInfo) -> &VoxelShape {
+        &self.shapes[usize::from(state.occlusion)]
     }
 
     /// `getCollisionShape` of a state, with no level and no entity.

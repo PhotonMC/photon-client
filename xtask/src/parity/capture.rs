@@ -72,6 +72,7 @@ pub fn capture(oracle: &Oracle, cases: &[&Case]) -> Result<Vec<(String, String, 
         let second = &runs[&(family.to_owned(), 1)];
         for ((case, one), two) in batch.iter().zip(first).zip(second) {
             if let Some(difference) = first_difference(&one["result"], &two["result"], "result") {
+                keep_runs(&case.id, [one, two]);
                 return Err(format!(
                     "Java is not repeatable for {}: {difference}",
                     case.id
@@ -81,4 +82,19 @@ pub fn capture(oracle: &Oracle, cases: &[&Case]) -> Result<Vec<(String, String, 
         }
     }
     Ok(captured)
+}
+
+/// Keeps the two answers of a case Java did not repeat in `.data/parity/unrepeatable`, so the
+/// difference can be read.
+fn keep_runs(id: &str, runs: [&Value; 2]) {
+    let directory = crate::process::root().join(".data/parity/unrepeatable");
+    let name = id.replace('/', "-");
+    if std::fs::create_dir_all(&directory).is_ok() {
+        for (number, run) in runs.iter().enumerate() {
+            let _ = std::fs::write(
+                directory.join(format!("{name}-{number}.json")),
+                run.to_string(),
+            );
+        }
+    }
 }

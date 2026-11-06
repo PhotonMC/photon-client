@@ -17,6 +17,11 @@ pub fn mth_length_f32_2(x: f32, y: f32) -> f32 {
     mth_length_squared_f64_2(f64::from(x), f64::from(y)).sqrt() as f32
 }
 
+/// Return Java 26.3 `Mth.length(float, float)`: the squares are summed as floats now.
+pub fn mth_length_f32_2_v26_3(x: f32, y: f32) -> f32 {
+    f64::from(x * x + y * y).sqrt() as f32
+}
+
 /// Return Java `Mth.lengthSquared(double, double, double)` in source order.
 pub fn mth_length_squared_f64_3(x: f64, y: f64, z: f64) -> f64 {
     let x_squared = x * x;

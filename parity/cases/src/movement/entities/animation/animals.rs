@@ -4,13 +4,17 @@ use crate::movement::entities::prelude::*;
 
 fn animals_1() -> Vec<Value> {
     vec![
-        living("zombie-swings", "zombie", 14, vec![animate(1, 0)]).extras(swing()).row(),
-        living("zombie-swings-the-off-hand", "zombie", 14, vec![animate(1, 3)]).extras(swing()).row(),
-        living("zombie-swings-again-too-early", "zombie", 14, vec![animate(1, 0), animate(2, 3)]).extras(swing()).row(),
-        living("zombie-swings-again-halfway", "zombie", 16, vec![animate(1, 0), animate(5, 3)]).extras(swing()).row(),
-        living("skeleton-swings", "skeleton", 14, vec![animate(2, 0)]).extras(swing()).row(),
-        living("piglin-swings", "piglin", 14, vec![animate(2, 0)]).extras(swing()).row(),
-        living("pig-is-told-to-swing", "pig", 14, vec![animate(1, 0)]).extras(swing()).row(),
+        living("zombie-swings", "zombie", 14, vec![swing_arm(1, 0, 1, 6)]).extras(swing()).row(),
+        living("zombie-swings-the-off-hand", "zombie", 14, vec![swing_arm(1, 1, 1, 6)]).extras(swing()).row(),
+        living("zombie-swings-again-too-early", "zombie", 14, vec![swing_arm(1, 0, 1, 6), swing_arm(2, 1, 1, 6)])
+            .extras(swing())
+            .row(),
+        living("zombie-swings-again-halfway", "zombie", 16, vec![swing_arm(1, 0, 1, 6), swing_arm(5, 1, 1, 6)])
+            .extras(swing())
+            .row(),
+        living("skeleton-swings", "skeleton", 14, vec![swing_arm(2, 0, 1, 6)]).extras(swing()).row(),
+        living("piglin-swings", "piglin", 14, vec![swing_arm(2, 0, 1, 6)]).extras(swing()).row(),
+        living("pig-is-told-to-swing", "pig", 14, vec![swing_arm(1, 0, 1, 6)]).extras(swing()).row(),
         living("quiet-zombie", "zombie", 4, vec![]).extras(swing()).row(),
     ]
 }

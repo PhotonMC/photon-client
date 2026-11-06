@@ -2,15 +2,42 @@ use super::*;
 
 impl ClientEntity {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// One place the stepped handler passes through (`SteppedInterpolationHandler.Step`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SteppedStep {
+    position: DVec3,
+    y_rot: JavaF32,
+    x_rot: JavaF32,
+    tick_offset: i32,
+}
+
+/// What the stepped handler keeps besides the end point (`SteppedInterpolationHandler.InterpolationData`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SteppedData {
+    remaining_steps: std::collections::VecDeque<SteppedStep>,
+    last_position: DVec3,
+    last_y_rot: JavaF32,
+    last_x_rot: JavaF32,
+    current_step_ticks: JavaF32,
+    remaining_ticks: JavaF32,
+    speed: JavaF32,
+}
+
+/// An entity's handler of the server's positions: the stepped one of the living and the linear
+/// one of the rest (`InterpolationHandler`).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct EntityInterpolationState {
+    /// Where the easing ends (`interpolationData`).
     pub(crate) target: DVec3,
     pub(crate) target_y_rot: JavaF32,
     pub(crate) target_x_rot: JavaF32,
+    /// Where the entity was after the last step (`lastPositionAndRotation`).
     pub(crate) previous: DVec3,
     pub(crate) previous_y_rot: JavaF32,
     pub(crate) previous_x_rot: JavaF32,
+    /// The linear handler's remaining steps.
     pub(crate) steps: u8,
+    stepped: Option<SteppedData>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -21,7 +48,15 @@ pub(crate) struct ResolvedEntityPosition {
 }
 
 impl EntityInterpolationState {
-    pub(crate) fn target_position(self) -> (f64, f64, f64) {
+    /// Whether this is still easing to exactly this target.
+    fn is_heading_to(&self, end: DVec3, (y_rot, x_rot): (JavaF32, JavaF32)) -> bool {
+        self.active()
+            && self.target == end
+            && self.target_y_rot == y_rot
+            && self.target_x_rot == x_rot
+    }
+
+    pub(crate) fn target_position(&self) -> (f64, f64, f64) {
         (
             self.target.x.get(),
             self.target.y.get(),
@@ -29,8 +64,142 @@ impl EntityInterpolationState {
         )
     }
 
-    pub(crate) fn target_rotation(self) -> (f32, f32) {
+    pub(crate) fn target_rotation(&self) -> (f32, f32) {
         (self.target_y_rot.get(), self.target_x_rot.get())
+    }
+
+    /// `hasActiveInterpolation`.
+    pub(crate) fn active(&self) -> bool {
+        match &self.stepped {
+            Some(stepped) => !stepped.remaining_steps.is_empty(),
+            None => self.steps > 0,
+        }
+    }
+
+    /// The ticks still to go, rounded up: the linear steps, or the stepped handler's remaining
+    /// ticks.
+    fn remaining(&self) -> u8 {
+        match &self.stepped {
+            Some(stepped) => stepped.remaining_ticks.get().ceil().clamp(0.0, 255.0) as u8,
+            None => self.steps,
+        }
+    }
+
+    /// `addDelta` on the end point and, for the stepped handler, on every step.
+    fn add_delta(&mut self, delta: (f64, f64, f64)) {
+        let add = |position: &mut DVec3| {
+            position.x = JavaF64::new(position.x.get() + delta.0);
+            position.y = JavaF64::new(position.y.get() + delta.1);
+            position.z = JavaF64::new(position.z.get() + delta.2);
+        };
+        add(&mut self.target);
+        if let Some(stepped) = self.stepped.as_mut() {
+            for step in &mut stepped.remaining_steps {
+                add(&mut step.position);
+            }
+            add(&mut stepped.last_position);
+        }
+    }
+
+    /// `addRotation` on the end point and, for the stepped handler, on every step.
+    fn add_rotation(&mut self, y_rot: f32, x_rot: f32) {
+        self.target_y_rot = JavaF32::new(self.target_y_rot.get() + y_rot);
+        self.target_x_rot = JavaF32::new(self.target_x_rot.get() + x_rot);
+        if let Some(stepped) = self.stepped.as_mut() {
+            for step in &mut stepped.remaining_steps {
+                step.y_rot = JavaF32::new(step.y_rot.get() + y_rot);
+                step.x_rot = JavaF32::new(step.x_rot.get() + x_rot);
+            }
+            stepped.last_y_rot = JavaF32::new(stepped.last_y_rot.get() + y_rot);
+            stepped.last_x_rot = JavaF32::new(stepped.last_x_rot.get() + x_rot);
+        }
+    }
+}
+
+impl SteppedData {
+    /// `SteppedInterpolationHandler.interpolateTo`: a queue that ran dry starts over from where
+    /// the entity is, then the step is added.
+    fn queue_step(
+        &mut self,
+        current: DVec3,
+        current_rotation: (f32, f32),
+        (end, y_rot, x_rot, steps): (DVec3, f32, f32, i32),
+    ) {
+        if self.remaining_steps.is_empty() {
+            // `setStartingPoint`.
+            self.last_position = current;
+            self.last_y_rot = JavaF32::new(current_rotation.0);
+            self.last_x_rot = JavaF32::new(current_rotation.1);
+            self.current_step_ticks = JavaF32::new(1.0);
+        }
+        self.add_step(end, y_rot, x_rot, steps);
+    }
+
+    fn new(position: DVec3, y_rot: JavaF32, x_rot: JavaF32) -> Self {
+        Self {
+            remaining_steps: std::collections::VecDeque::new(),
+            last_position: position,
+            last_y_rot: y_rot,
+            last_x_rot: x_rot,
+            current_step_ticks: JavaF32::new(1.0),
+            remaining_ticks: JavaF32::new(0.0),
+            speed: JavaF32::new(1.0),
+        }
+    }
+
+    fn add_step(&mut self, position: DVec3, y_rot: f32, x_rot: f32, ticks: i32) {
+        self.remaining_steps.push_back(SteppedStep {
+            position,
+            y_rot: JavaF32::new(y_rot),
+            x_rot: JavaF32::new(x_rot),
+            tick_offset: ticks,
+        });
+        self.remaining_ticks = JavaF32::new(self.remaining_ticks.get() + ticks as f32);
+    }
+
+    /// `InterpolationData.advance`.
+    fn advance(&mut self, ticks: f32, interpolation_steps: i32) {
+        let steps = interpolation_steps as f32;
+        let remaining = self.remaining_ticks.get();
+        let target_speed = (remaining / steps).max(1.0);
+        let mut speed = mth_lerp_f32(1.0 / steps, self.speed.get(), target_speed);
+        let ticks = if ticks * speed < remaining {
+            ticks * speed
+        } else {
+            speed = 1.0;
+            remaining
+        };
+        self.speed = JavaF32::new(speed);
+        self.current_step_ticks = JavaF32::new(self.current_step_ticks.get() + ticks);
+        self.remaining_ticks = JavaF32::new(remaining - ticks);
+    }
+
+    /// `getNewPositionAndRotation`: where the entity is along the steps, dropping the ones
+    /// passed; the end point once none is left.
+    fn new_position(&mut self, end: (DVec3, f32, f32)) -> (DVec3, f32, f32) {
+        while let Some(step) = self.remaining_steps.front() {
+            let offset = step.tick_offset;
+            if self.current_step_ticks.get() < offset as f32 {
+                let alpha = self.current_step_ticks.get() / offset as f32;
+                let (a, b) = (self.last_position, step.position);
+                let position = DVec3::new(
+                    mth_lerp_f64(f64::from(alpha), a.x.get(), b.x.get()),
+                    mth_lerp_f64(f64::from(alpha), a.y.get(), b.y.get()),
+                    mth_lerp_f64(f64::from(alpha), a.z.get(), b.z.get()),
+                );
+                return (
+                    position,
+                    mth_rot_lerp_f32(alpha, self.last_y_rot.get(), step.y_rot.get()),
+                    mth_lerp_f32(alpha, self.last_x_rot.get(), step.x_rot.get()),
+                );
+            }
+            self.current_step_ticks = JavaF32::new(self.current_step_ticks.get() - offset as f32);
+            self.last_position = step.position;
+            self.last_y_rot = step.y_rot;
+            self.last_x_rot = step.x_rot;
+            self.remaining_steps.pop_front();
+        }
+        end
     }
 }
 
@@ -38,7 +207,8 @@ impl EntityView<'_> {
     pub(crate) fn interpolation_rotation(&self) -> (f32, f32) {
         self.lerp
             .interpolation
-            .filter(|interpolation| interpolation.steps > 0)
+            .as_ref()
+            .filter(|interpolation| interpolation.active())
             .map_or_else(
                 || self.rotation.body_rotation(),
                 EntityInterpolationState::target_rotation,
@@ -78,29 +248,53 @@ impl EntityViewMut<'_> {
             self.lerp.interpolation = None;
             return;
         }
-        let target_matches = self.lerp.interpolation.is_some_and(|interpolation| {
-            interpolation.steps > 0
-                && interpolation.target.x == JavaF64::new(position.0)
-                && interpolation.target.y == JavaF64::new(position.1)
-                && interpolation.target.z == JavaF64::new(position.2)
-                && interpolation.target_y_rot == JavaF32::new(y_rot)
-                && interpolation.target_x_rot == JavaF32::new(x_rot)
-        });
-        if target_matches {
+        let end = DVec3::new(position.0, position.1, position.2);
+        let (y_rot_value, x_rot_value) = (JavaF32::new(y_rot), JavaF32::new(x_rot));
+        if self
+            .lerp
+            .interpolation
+            .as_ref()
+            .is_some_and(|interpolation| {
+                interpolation.is_heading_to(end, (y_rot_value, x_rot_value))
+            })
+        {
             return;
         }
-
         let current_position = self.position();
         let current_rotation = self.rotation.body_rotation();
-        self.lerp.interpolation = Some(EntityInterpolationState {
-            target: DVec3::new(position.0, position.1, position.2),
-            target_y_rot: JavaF32::new(y_rot),
-            target_x_rot: JavaF32::new(x_rot),
-            previous: DVec3::new(current_position.0, current_position.1, current_position.2),
-            previous_y_rot: JavaF32::new(current_rotation.0),
-            previous_x_rot: JavaF32::new(current_rotation.1),
-            steps: steps.clamp(0, 255) as u8,
-        });
+        let current = DVec3::new(current_position.0, current_position.1, current_position.2);
+        let stepped = self.uses_stepped_interpolation();
+        let state = self
+            .lerp
+            .interpolation
+            .get_or_insert_with(|| EntityInterpolationState {
+                target: end,
+                target_y_rot: y_rot_value,
+                target_x_rot: x_rot_value,
+                previous: current,
+                previous_y_rot: JavaF32::new(current_rotation.0),
+                previous_x_rot: JavaF32::new(current_rotation.1),
+                steps: 0,
+                stepped: None,
+            });
+        if stepped {
+            let data = state.stepped.get_or_insert_with(|| {
+                SteppedData::new(
+                    current,
+                    JavaF32::new(current_rotation.0),
+                    JavaF32::new(current_rotation.1),
+                )
+            });
+            data.queue_step(current, current_rotation, (end, y_rot, x_rot, steps));
+        } else {
+            state.steps = steps.clamp(0, 255) as u8;
+        }
+        state.target = end;
+        state.target_y_rot = y_rot_value;
+        state.target_x_rot = x_rot_value;
+        state.previous = current;
+        state.previous_y_rot = JavaF32::new(current_rotation.0);
+        state.previous_x_rot = JavaF32::new(current_rotation.1);
     }
 
     /// `Entity.absSnapTo(x, y, z, yRot, xRot)`: the place held inside the world's limits and the
@@ -124,6 +318,11 @@ impl EntityViewMut<'_> {
     pub(crate) fn cancel_interpolation(&mut self) {
         if let Some(interpolation) = self.lerp.interpolation.as_mut() {
             interpolation.steps = 0;
+            if let Some(stepped) = interpolation.stepped.as_mut() {
+                stepped.remaining_steps.clear();
+                stepped.remaining_ticks = JavaF32::new(0.0);
+                stepped.speed = JavaF32::new(1.0);
+            }
         }
     }
 
@@ -163,51 +362,32 @@ impl EntityViewMut<'_> {
         }
     }
 
+    /// `InterpolationHandler.interpolate`: one tick of the easing.
     pub(crate) fn tick_position_interpolation(&mut self) {
         let current_position = self.position();
         let current_rotation = self.rotation.body_rotation();
+        let steps = self.interpolation_length();
         let Some(interpolation) = self
             .lerp
             .interpolation
             .as_mut()
-            .filter(|interpolation| interpolation.steps > 0)
+            .filter(|interpolation| interpolation.active())
         else {
             return;
         };
-
-        let alpha = 1.0 / f64::from(interpolation.steps);
         interpolation.follow_movement(current_position, current_rotation);
-
-        let target_position = interpolation.target_position();
-        let target_rotation = interpolation.target_rotation();
-        let new_position = (
-            mth_lerp_f64(alpha, current_position.0, target_position.0),
-            mth_lerp_f64(alpha, current_position.1, target_position.1),
-            mth_lerp_f64(alpha, current_position.2, target_position.2),
-        );
-        let new_rotation = (
-            mth_rot_lerp_f64(
-                alpha,
-                f64::from(current_rotation.0),
-                f64::from(target_rotation.0),
-            ) as f32,
-            mth_lerp_f64(
-                alpha,
-                f64::from(current_rotation.1),
-                f64::from(target_rotation.1),
-            ) as f32,
-        );
-        interpolation.steps -= 1;
-        interpolation.previous.x = JavaF64::new(new_position.0);
-        interpolation.previous.y = JavaF64::new(new_position.1);
-        interpolation.previous.z = JavaF64::new(new_position.2);
-        interpolation.previous_y_rot = JavaF32::new(new_rotation.0);
-        interpolation.previous_x_rot = JavaF32::new(new_rotation.1);
-        self.pos.position.x = JavaF64::new(new_position.0);
-        self.pos.position.y = JavaF64::new(new_position.1);
-        self.pos.position.z = JavaF64::new(new_position.2);
-        self.rotation.y_rot = JavaF32::new(new_rotation.0 % 360.0);
-        self.rotation.x_rot = JavaF32::new((new_rotation.1 % 360.0).clamp(-90.0, 90.0));
+        let (position, y_rot, x_rot) =
+            interpolation.ease(current_position, current_rotation, steps);
+        interpolation.previous = DVec3::new(position.0, position.1, position.2);
+        let (y_rot, x_rot) = (y_rot % 360.0, (x_rot % 360.0).clamp(-90.0, 90.0));
+        // `setLastPositionAndRotation` reads the entity back, after the turn was wrapped.
+        interpolation.previous_y_rot = JavaF32::new(y_rot);
+        interpolation.previous_x_rot = JavaF32::new(x_rot);
+        self.pos.position.x = JavaF64::new(position.0);
+        self.pos.position.y = JavaF64::new(position.1);
+        self.pos.position.z = JavaF64::new(position.2);
+        self.rotation.y_rot = JavaF32::new(y_rot);
+        self.rotation.x_rot = JavaF32::new(x_rot);
     }
 }
 
@@ -215,27 +395,57 @@ impl EntityInterpolationState {
     /// `InterpolationHandler.interpolate`: the target moves by what the entity moved on its own
     /// since the last step.
     fn follow_movement(&mut self, position: (f64, f64, f64), rotation: (f32, f32)) {
-        let previous_position = (
-            self.previous.x.get(),
-            self.previous.y.get(),
-            self.previous.z.get(),
-        );
         let delta_position = (
-            position.0 - previous_position.0,
-            position.1 - previous_position.1,
-            position.2 - previous_position.2,
+            position.0 - self.previous.x.get(),
+            position.1 - self.previous.y.get(),
+            position.2 - self.previous.z.get(),
         );
-        self.target.x = JavaF64::new(self.target.x.get() + delta_position.0);
-        self.target.y = JavaF64::new(self.target.y.get() + delta_position.1);
-        self.target.z = JavaF64::new(self.target.z.get() + delta_position.2);
+        let length_squared = delta_position.0 * delta_position.0
+            + delta_position.1 * delta_position.1
+            + delta_position.2 * delta_position.2;
+        if length_squared > f64::from(1.0e-5_f32) {
+            self.add_delta(delta_position);
+        }
+        self.add_rotation(
+            rotation.0 - self.previous_y_rot.get(),
+            rotation.1 - self.previous_x_rot.get(),
+        );
+    }
 
-        let previous_rotation = (self.previous_y_rot.get(), self.previous_x_rot.get());
-        let delta_rotation = (
-            rotation.0 - previous_rotation.0,
-            rotation.1 - previous_rotation.1,
-        );
-        self.target_y_rot = JavaF32::new(self.target_y_rot.get() + delta_rotation.0);
-        self.target_x_rot = JavaF32::new(self.target_x_rot.get() + delta_rotation.1);
+    /// `doInterpolate`: the place the handler puts the entity at, and one step used.
+    fn ease(
+        &mut self,
+        position: (f64, f64, f64),
+        rotation: (f32, f32),
+        interpolation_steps: i32,
+    ) -> ((f64, f64, f64), f32, f32) {
+        if let Some(stepped) = self.stepped.as_mut() {
+            let end = (
+                self.target,
+                self.target_y_rot.get(),
+                self.target_x_rot.get(),
+            );
+            let (target, y_rot, x_rot) = stepped.new_position(end);
+            stepped.advance(1.0, interpolation_steps);
+            return (
+                (target.x.get(), target.y.get(), target.z.get()),
+                y_rot,
+                x_rot,
+            );
+        }
+        let alpha = 1.0 / f64::from(self.steps);
+        let target = self.target_position();
+        let target_rotation = self.target_rotation();
+        self.steps -= 1;
+        (
+            (
+                mth_lerp_f64(alpha, position.0, target.0),
+                mth_lerp_f64(alpha, position.1, target.1),
+                mth_lerp_f64(alpha, position.2, target.2),
+            ),
+            mth_rot_lerp_f64(alpha, f64::from(rotation.0), f64::from(target_rotation.0)) as f32,
+            mth_lerp_f64(alpha, f64::from(rotation.1), f64::from(target_rotation.1)) as f32,
+        )
     }
 }
 
@@ -279,7 +489,8 @@ impl EntityView<'_> {
     pub(crate) fn interpolation_position(&self) -> (f64, f64, f64) {
         self.lerp
             .interpolation
-            .filter(|interpolation| interpolation.steps > 0)
+            .as_ref()
+            .filter(|interpolation| interpolation.active())
             .map_or_else(
                 || self.position(),
                 EntityInterpolationState::target_position,
@@ -302,22 +513,29 @@ impl EntityView<'_> {
     pub fn interpolation_target_position(&self) -> Option<(f64, f64, f64)> {
         self.lerp
             .interpolation
-            .filter(|interpolation| interpolation.steps > 0)
+            .as_ref()
+            .filter(|interpolation| interpolation.active())
             .map(EntityInterpolationState::target_position)
     }
 
     pub fn interpolation_target_rotation(&self) -> Option<(f32, f32)> {
         self.lerp
             .interpolation
-            .filter(|interpolation| interpolation.steps > 0)
+            .as_ref()
+            .filter(|interpolation| interpolation.active())
             .map(EntityInterpolationState::target_rotation)
     }
 
     pub fn interpolation_steps(&self) -> u8 {
         self.lerp
             .interpolation
-            .filter(|interpolation| interpolation.steps > 0)
-            .map_or(0, |interpolation| interpolation.steps)
+            .as_ref()
+            .map_or(0, EntityInterpolationState::remaining)
+    }
+
+    /// `hasActiveInterpolation`.
+    pub fn interpolation_active(&self) -> bool {
+        self.is_interpolating()
     }
 
     /// Whether a position interpolation is still under way
@@ -326,7 +544,7 @@ impl EntityView<'_> {
         self.lerp
             .interpolation
             .as_ref()
-            .is_some_and(|interpolation| interpolation.steps > 0)
+            .is_some_and(EntityInterpolationState::active)
     }
 }
 
@@ -343,13 +561,25 @@ impl EntityView<'_> {
             || vanilla_projectile_kind(self.type_id) == Some(VanillaProjectileKind::ExperienceOrb)
     }
 
-    /// The length of the handler's easing (`InterpolationHandler.interpolationSteps`): three, or
-    /// a display's own.
+    /// Whether the handler is the stepped one: every living entity but the shulker
+    /// (`LivingEntity.makeInterpolationHandler`).
+    pub(crate) fn uses_stepped_interpolation(&self) -> bool {
+        self.living_kind().is_some() && !self.is_shulker()
+    }
+
+    /// The length of the handler's easing (`AbstractInterpolationHandler.interpolationSteps`): a
+    /// display's own, the type's update interval for the stepped handler, three for the rest.
     pub(super) fn interpolation_length(&self) -> i32 {
-        self.kind
-            .display()
-            .map_or(i32::from(LIVING_ENTITY_POSITION_LERP_STEPS), |display| {
-                display.pos_rot_duration()
-            })
+        use photon_data::entity_type::ids;
+        if let Some(display) = self.kind.display() {
+            return display.pos_rot_duration();
+        }
+        if self.uses_stepped_interpolation() {
+            return match self.type_id {
+                ids::PLAYER | ids::ALLAY | ids::MANNEQUIN => 2,
+                _ => i32::from(LIVING_ENTITY_POSITION_LERP_STEPS),
+            };
+        }
+        i32::from(LIVING_ENTITY_POSITION_LERP_STEPS)
     }
 }

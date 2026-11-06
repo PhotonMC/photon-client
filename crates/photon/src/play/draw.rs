@@ -65,6 +65,7 @@ impl Play {
             view_bobbing: options.view_bobbing,
             damage_tilt: options.damage_tilt_strength,
             spectating,
+            near_plane: frame.frustum.near_plane_bounds(),
         }
     }
 
@@ -184,6 +185,7 @@ impl Play {
                 &self.session,
                 player,
                 (&self.block_renderer, darken),
+                view.near_plane,
             );
             self.backend.set_screen_effects(
                 (&effects.block, &effects.water, &effects.fire),

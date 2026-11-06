@@ -135,7 +135,7 @@ const fn renderer(id: &'static str) -> Entry {
 }
 
 /// Every registered entry, in the order `DebugScreenEntries` registers them.
-pub const ENTRIES: [Entry; 45] = [
+pub const ENTRIES: [Entry; 46] = [
     text("game_version", true),
     text("fps", true),
     text("tps", true),
@@ -155,6 +155,7 @@ pub const ENTRIES: [Entry; 45] = [
     text("chunk_source_stats", true),
     text("player_position", false),
     text("player_section_position", true),
+    text("player_speed", false),
     text("light_levels", false),
     text("heightmap", false),
     text("biome", false),
@@ -163,7 +164,7 @@ pub const ENTRIES: [Entry; 45] = [
     text("entity_spawn_counts", false),
     text("sound_mood", false),
     text("sound_cache", true),
-    text("post_effect", false),
+    text("post_effects", false),
     renderer("entity_hitboxes"),
     renderer("chunk_borders"),
     renderer("3d_crosshair"),

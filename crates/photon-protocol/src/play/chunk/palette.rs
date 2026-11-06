@@ -68,6 +68,11 @@ fn read_palette_ids(
     Ok(palette_ids)
 }
 
+/// The bits a global palette stores each id in, for a registry of `size` entries.
+fn global_bits(size: usize) -> u8 {
+    (usize::BITS - size.saturating_sub(1).leading_zeros()) as u8
+}
+
 pub(super) fn parse_palette_container(
     input: &mut &[u8],
     entry_count: usize,
@@ -84,7 +89,12 @@ pub(super) fn parse_palette_container(
         return Err(ConnectionError::Codec(labels.bits));
     }
 
-    let (palette_capacity, storage_bits) = palette_layout(bits_per_entry, block_states);
+    let (palette_capacity, mut storage_bits) = palette_layout(bits_per_entry, block_states);
+    if block_states && palette_capacity.is_none() {
+        // Ids stored directly take as many bits as the version's states need, whatever byte the
+        // server sent.
+        storage_bits = global_bits(registries.block_states.wire_len());
+    }
     let palette_ids = read_palette_ids(input, bits_per_entry, palette_capacity, labels)?;
 
     let storage_word_count = if storage_bits == 0 {

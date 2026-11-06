@@ -287,7 +287,16 @@ fn argument(
         // values (blocks, items, particles, sounds, dimensions, slots,
         // criteria, resources, dialogs) are the client's own in the
         // reference, the server's here.
-        12..=15 | 24 | 25 | 27 | 34 | 35 | 41 | 44..=48 | 52..=55 => Argument::asks(),
+        12..=15 | 24 | 25 | 27 | 34 | 35 | 41 | 44..=48 | 52..=59 => Argument::asks(),
+        _ => later_argument(type_id, remaining, start),
+    }
+}
+
+/// The types of the newest versions: what they suggest.
+fn later_argument(type_id: u8, remaining: &str, start: usize) -> Argument {
+    match type_id {
+        // `SwingAnimationArgument.listSuggestions`: the type's names.
+        60 => Argument::here(suggest_values(&["none", "whack", "stab"], remaining), start),
         _ => Argument::here(Vec::new(), start),
     }
 }

@@ -20,6 +20,8 @@ pub struct CullView<'a> {
     pub render_distance: i32,
     /// `Options.entityDistanceScaling`.
     pub distance_scaling: f64,
+    /// The partial tick the entities are drawn at.
+    pub partial_tick: f32,
 }
 
 /// `Entity.viewScale` as `LevelExtractor.extractVisibleEntities` sets it: the render distance
@@ -84,7 +86,7 @@ fn should_render(world: &ClientWorld, entity: EntityView<'_>, view: &CullView, s
     if !entity.should_render(view.camera, scale) {
         return false;
     }
-    let Some(culling) = entity.culling_box() else {
+    let Some(culling) = entity.culling_box(view.partial_tick) else {
         return true;
     };
     let mut aabb = culling.inflate_all(0.5);
@@ -101,7 +103,7 @@ fn should_render(world: &ClientWorld, entity: EntityView<'_>, view: &CullView, s
         .and_then(|id| world.entities().get(&id))
     {
         let held = holder
-            .culling_box()
+            .culling_box(view.partial_tick)
             .unwrap_or_else(|| holder.bounding_box());
         if visible(view.frustum, held) || visible(view.frustum, aabb.minmax(held)) {
             return true;
@@ -178,6 +180,7 @@ impl super::Play {
                     camera: (frame.camera.x, frame.camera.y, frame.camera.z),
                     render_distance: frame.render_distance,
                     distance_scaling: self.controls.options.quality.entity_distance_scaling,
+                    partial_tick: frame.partial as f32,
                 },
             )
         } else {

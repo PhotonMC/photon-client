@@ -81,11 +81,13 @@ impl ClientboundUpdateTagsPacket {
             for _ in 0..tag_count {
                 let id = identifier::read_identifier(input)?;
                 let value_count = wire::read_varint(input).map_err(ReadError::from)?;
+                // 26.3 sizes the list from the count, which refuses a negative one.
+                if value_count < 0 {
+                    return Err(ReadError::DecoderError);
+                }
                 let mut values = Vec::new();
-                if value_count >= 0 {
-                    for _ in 0..value_count {
-                        values.push(wire::read_varint(input).map_err(ReadError::from)?);
-                    }
+                for _ in 0..value_count {
+                    values.push(wire::read_varint(input).map_err(ReadError::from)?);
                 }
                 tags.push(TagEntry::new(id, values));
             }

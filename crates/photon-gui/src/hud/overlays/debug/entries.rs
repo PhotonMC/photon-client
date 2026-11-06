@@ -35,6 +35,8 @@ pub struct CameraEntity {
     /// The client chunk's `WORLD_SURFACE`, `MOTION_BLOCKING` and `MOTION_BLOCKING_NO_LEAVES`
     /// heights at the feet's column; none where the chunk is not loaded.
     pub heights: Option<[i32; 3]>,
+    /// `Entity.getKnownSpeed().length()`: the blocks the entity moved in the tick before.
+    pub speed: f64,
 }
 
 /// A block position and what the level holds there (`DebugEntryLookingAt`).
@@ -112,6 +114,8 @@ pub struct FrameStats {
     pub limit: i32,
     /// The surface's mode, none without a configuration.
     pub present_mode: Option<PresentMode>,
+    /// The active video mode's refresh rate in hertz, none without one (`VideoMode.refreshRateLabel`; GLFW gives whole rates).
+    pub refresh_rate: Option<i32>,
 }
 
 /// What the connection says of the server.
@@ -204,13 +208,21 @@ fn at_camera(id: &str, camera: &CameraEntity) -> Vec<Line> {
     match id {
         "player_position" => position(camera),
         "player_section_position" => section(camera),
-        "biome" => biome(camera).into_iter().collect(),
-        "light_levels" => light(camera),
-        "heightmap" => heightmaps(camera),
+        "player_speed" => speed(camera),
         "looking_at_block_state" => looking_at_block(camera),
         "looking_at_block_tags" => looking_at_tags(camera),
         "looking_at_fluid_state" => looking_at_fluid(camera),
         "looking_at_fluid_tags" => looking_at_fluid_tags(camera),
+        _ => at_feet(id, camera),
+    }
+}
+
+/// The entries that describe the feet's block and column.
+fn at_feet(id: &str, camera: &CameraEntity) -> Vec<Line> {
+    match id {
+        "biome" => biome(camera).into_iter().collect(),
+        "light_levels" => light(camera),
+        "heightmap" => heightmaps(camera),
         _ => Vec::new(),
     }
 }
@@ -372,7 +384,8 @@ fn fps_line(frame: &FrameStats) -> String {
         frame.limit.to_string()
     };
     let mode = frame.present_mode.map_or("", PresentMode::name);
-    format!("{} fps T: {limit}{mode}", frame.fps)
+    let rate = frame.refresh_rate.unwrap_or(0);
+    format!("{} fps T: {limit}{mode} @{rate}Hz", frame.fps)
 }
 
 /// `DebugEntryTps` for a server that is not the integrated one: its brand, whether the tick rate is
@@ -403,6 +416,14 @@ const LOOKING_AT_FLUID_GROUP: &str = "minecraft:looking_at_fluid";
 fn feet(camera: &CameraEntity) -> (i32, i32, i32) {
     let (x, y, z) = camera.position;
     (floor_f64(x), floor_f64(y), floor_f64(z))
+}
+
+/// `DebugEntryPlayerSpeed`: the speed joins the position's group.
+fn speed(camera: &CameraEntity) -> Vec<Line> {
+    vec![Line::Group(
+        POSITION_GROUP,
+        vec![format!("Speed: {} blocks/tick", fixed(camera.speed, 3))],
+    )]
 }
 
 /// `DebugEntryPosition`: the coordinates, the block, the chunk and its region file, the facing

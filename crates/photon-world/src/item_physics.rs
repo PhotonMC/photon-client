@@ -58,6 +58,51 @@ pub(crate) fn square_dimensions(size: f32) -> ClientEntityDimensions {
     ClientEntityDimensions::scalable(size, size)
 }
 
+/// `Entity.restituteMovementAfterCollisions` for an item (26.3): a bump keeps none of its speed
+/// unless the block it lands on bounces.
+pub(crate) fn restitute(
+    effect: &super::local_player::StateInfo,
+    (x_collision, z_collision, below): (bool, bool, bool),
+    (current, movement, vertical): (Vec3, Vec3, bool),
+    (gravity, air_drag): (f64, f32),
+) -> Vec3 {
+    use super::local_player::flag;
+    let mut restitution = 0.0_f64;
+    let mut after = current;
+    if x_collision {
+        after = Vec3::new(-current.x * restitution, after.y, after.z);
+    }
+    if z_collision {
+        after = Vec3::new(after.x, after.y, -current.z * restitution);
+    }
+    if vertical {
+        if below {
+            let slow = -current.y <= gravity;
+            restitution = if !slow && effect.flags & flag::SUPPRESSES_BOUNCE == 0 {
+                // `getBlockBounciness`: what is not a living thing bounces a fifth less.
+                f64::from(effect.bounce * 0.8_f32).max(restitution)
+            } else {
+                0.0
+            };
+        }
+        let (compensation, drag) = if restitution > 0.0 {
+            let portion = movement.y / current.y;
+            (
+                portion * gravity,
+                1.0 + portion * (f64::from(air_drag) - 1.0),
+            )
+        } else {
+            (0.0, 1.0)
+        };
+        after = Vec3::new(
+            after.x,
+            (compensation - current.y) * drag * restitution,
+            after.z,
+        );
+    }
+    after
+}
+
 /// `Entity.applyEffectsFromBlocks`'s `stepOn` for an item on the ground: a
 /// slime block slows what slides over it. (The block effects of being inside
 /// a block, as a cobweb's, are not carried yet.)
@@ -118,6 +163,108 @@ fn fluid_movement(delta: Vec3, multiplier: f32) -> Vec3 {
     Vec3::new(delta.x * multiplier, delta.y + lift, delta.z * multiplier)
 }
 
+/// The block's speed factor, the step-on effect, then drag and ground friction on a moved item.
+fn item_drag(
+    level: &Level<'_>,
+    (position, main_supporting_block, on_ground): (Vec3, Option<BlockPos>, bool),
+    mut delta: Vec3,
+) -> Vec3 {
+    let here = BlockPos::new(
+        floor_f64(position.x),
+        floor_f64(position.y),
+        floor_f64(position.z),
+    );
+    let below_pos = level.on_pos(main_supporting_block, position, BELOW_OFFSET);
+    let speed_factor = f64::from(level.block_speed_factor(here, below_pos));
+    delta = Vec3::new(delta.x * speed_factor, delta.y, delta.z * speed_factor);
+    delta = step_on(level, (position, main_supporting_block), on_ground, delta);
+
+    let mut friction = AIR_DRAG;
+    if on_ground {
+        friction *= level.info(below_pos).friction;
+    }
+    delta = Vec3::new(
+        delta.x * f64::from(friction),
+        delta.y * f64::from(AIR_DRAG),
+        delta.z * f64::from(friction),
+    );
+    if on_ground && delta.y < 0.0 {
+        delta = Vec3::new(delta.x, delta.y * -0.5, delta.z);
+    }
+    delta
+}
+
+/// 26.3: what a dropped item runs into keeps none of its speed
+/// (`restituteMovementAfterCollisions`).
+fn restitute_item(
+    level: &Level<'_>,
+    (no_gravity, main_supporting_block, position, on_ground): (bool, Option<BlockPos>, Vec3, bool),
+    (delta, movement): (Vec3, Vec3),
+) -> Vec3 {
+    let vertical_collision = delta.y.abs() > 0.0 && delta.y != movement.y;
+    let x_collision = !photon_core::math::equal_f64(delta.x, movement.x);
+    let z_collision = !photon_core::math::equal_f64(delta.z, movement.z);
+    if !(vertical_collision || x_collision || z_collision) {
+        return delta;
+    }
+    let effect_pos = level.on_pos(main_supporting_block, position, STEP_ON_OFFSET);
+    restitute(
+        &level.info(effect_pos),
+        (x_collision, z_collision, vertical_collision && on_ground),
+        (delta, movement, vertical_collision),
+        (if no_gravity { 0.0 } else { GRAVITY }, AIR_DRAG),
+    )
+}
+
+/// The movement of a dropped item that is not at rest: `Entity.move` against the blocks, the
+/// bounce, the block's speed factor, then drag and ground friction.
+fn item_move(level: &Level<'_>, state: &ItemState, mut delta: Vec3) -> Option<ItemStep> {
+    let mut position = state.position;
+    let mut on_ground = state.on_ground;
+    let mut main_supporting_block = state.main_supporting_block;
+    let mut on_ground_no_blocks = state.on_ground_no_blocks;
+    let bounding_box = item_box(position);
+    let movement = if delta.length_squared() == 0.0 {
+        delta
+    } else {
+        let colliders = level
+            .colliders(bounding_box.expand_towards_vec3(delta), 0.0, position)
+            .ok()?;
+        collide_entity_movement(delta, bounding_box, &colliders)
+    };
+    let moved = movement.length_squared();
+    if moved > 1.0e-7 || delta.length_squared() - moved < 1.0e-7 {
+        position = position.add_vec3(movement);
+    }
+    let moved_vertically = delta.y.abs() > 0.0;
+    let vertical_collision = moved_vertically && delta.y != movement.y;
+    if moved_vertically {
+        let below = vertical_collision && delta.y < 0.0;
+        on_ground = below;
+        level
+            .check_supporting_block(
+                (&mut main_supporting_block, &mut on_ground_no_blocks),
+                (item_box(position), position, 0.0),
+                on_ground,
+                Some(movement),
+            )
+            .ok()?;
+    }
+    delta = restitute_item(
+        level,
+        (state.no_gravity, main_supporting_block, position, on_ground),
+        (delta, movement),
+    );
+    delta = item_drag(level, (position, main_supporting_block, on_ground), delta);
+    Some(ItemStep {
+        position,
+        delta,
+        on_ground,
+        main_supporting_block,
+        on_ground_no_blocks,
+    })
+}
+
 /// `ItemEntity.tick` after `baseTick`, with the branches the client runs:
 /// the fluids' current and buoyancy, or gravity, `Entity.move` (collision
 /// with the blocks, the flags it sets, the block's speed factor), then drag,
@@ -143,53 +290,10 @@ fn item_step(level: &Level<'_>, state: &ItemState) -> Option<ItemStep> {
     if resting {
         delta = step_on(level, (position, main_supporting_block), on_ground, delta);
     } else {
-        let bounding_box = item_box(position);
-        let movement = if delta.length_squared() == 0.0 {
-            delta
-        } else {
-            let colliders = level
-                .colliders(bounding_box.expand_towards_vec3(delta), 0.0, position)
-                .ok()?;
-            collide_entity_movement(delta, bounding_box, &colliders)
-        };
-        let moved = movement.length_squared();
-        if moved > 1.0e-7 || delta.length_squared() - moved < 1.0e-7 {
-            position = position.add_vec3(movement);
-        }
-        if delta.y.abs() > 0.0 {
-            let below = delta.y != movement.y && delta.y < 0.0;
-            on_ground = below;
-            level
-                .check_supporting_block(
-                    (&mut main_supporting_block, &mut on_ground_no_blocks),
-                    (item_box(position), position, 0.0),
-                    on_ground,
-                    Some(movement),
-                )
-                .ok()?;
-        }
-        let here = BlockPos::new(
-            floor_f64(position.x),
-            floor_f64(position.y),
-            floor_f64(position.z),
-        );
-        let below_pos = level.on_pos(main_supporting_block, position, BELOW_OFFSET);
-        let speed_factor = f64::from(level.block_speed_factor(here, below_pos));
-        delta = Vec3::new(delta.x * speed_factor, delta.y, delta.z * speed_factor);
-        delta = step_on(level, (position, main_supporting_block), on_ground, delta);
-
-        let mut friction = AIR_DRAG;
-        if on_ground {
-            friction *= level.info(below_pos).friction;
-        }
-        delta = Vec3::new(
-            delta.x * f64::from(friction),
-            delta.y * f64::from(AIR_DRAG),
-            delta.z * f64::from(friction),
-        );
-        if on_ground && delta.y < 0.0 {
-            delta = Vec3::new(delta.x, delta.y * -0.5, delta.z);
-        }
+        let moved = item_move(level, state, delta)?;
+        (position, delta, on_ground) = (moved.position, moved.delta, moved.on_ground);
+        main_supporting_block = moved.main_supporting_block;
+        on_ground_no_blocks = moved.on_ground_no_blocks;
     }
     // The pass at the end of the tick, which the next tick's movement feels.
     let (_, delta) = fluid_pass(level, ITEM_SIZE, (position, delta))?;

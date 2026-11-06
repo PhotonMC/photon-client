@@ -60,6 +60,9 @@ pub struct SystemSpecs {
     pub cpu: String,
     /// The framebuffer's size in pixels (`Window.getWidth` and `getHeight`).
     pub display: (i32, i32),
+    /// The window's size in screen units and its pixel density (`Window.getScreenWidth`,
+    /// `getScreenHeight`, `getPixelDensity`, in hundredths).
+    pub window: (i32, i32, i32),
     pub vendor: String,
     pub device_name: String,
     pub device_type: DeviceType,
@@ -82,6 +85,13 @@ pub fn display(specs: &SystemSpecs) -> Vec<Line> {
             format!(
                 "Display: {}x{} ({})",
                 specs.display.0, specs.display.1, specs.vendor
+            ),
+            format!(
+                "Window: {}x{} ({}.{:02}x pixel density)",
+                specs.window.0,
+                specs.window.1,
+                specs.window.2 / 100,
+                specs.window.2 % 100
             ),
             format!("{}{}", specs.device_name, specs.device_type.suffix()),
             format!("{} {driver}", specs.backend),

@@ -1,15 +1,4 @@
-use super::*;
-
 pub(super) type Matrix = [[f32; 4]; 4];
-
-pub(super) fn unpack(colour: u32) -> [f32; 4] {
-    [
-        channel(colour, 16) as f32 / 255.0,
-        channel(colour, 8) as f32 / 255.0,
-        channel(colour, 0) as f32 / 255.0,
-        channel(colour, 24) as f32 / 255.0,
-    ]
-}
 
 /// `left * right`, both row-major as `m[row][column]`.
 pub(super) fn mul(left: Matrix, right: Matrix) -> Matrix {

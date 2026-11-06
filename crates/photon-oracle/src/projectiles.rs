@@ -1,31 +1,31 @@
 use super::*;
 
 pub(super) fn client_world_entity_snowball_tick_result(request: &Value) -> Result<Value, String> {
-    client_world_entity_tick_result(request, 120)
+    client_world_entity_tick_result(request, "minecraft:snowball")
 }
 
 pub(super) fn client_world_entity_arrow_tick_result(request: &Value) -> Result<Value, String> {
-    client_world_entity_tick_result(request, 6)
+    client_world_entity_tick_result(request, "minecraft:arrow")
 }
 
 pub(super) fn client_world_entity_experience_orb_tick_result(
     request: &Value,
 ) -> Result<Value, String> {
-    client_world_entity_tick_result(request, 49)
+    client_world_entity_tick_result(request, "minecraft:experience_orb")
 }
 
 pub(super) fn client_world_entity_primed_tnt_tick_result(request: &Value) -> Result<Value, String> {
-    client_world_entity_tick_result(request, 133)
+    client_world_entity_tick_result(request, "minecraft:tnt")
 }
 
 pub(super) fn client_world_entity_falling_block_tick_result(
     request: &Value,
 ) -> Result<Value, String> {
-    client_world_entity_tick_result(request, 51)
+    client_world_entity_tick_result(request, "minecraft:falling_block")
 }
 
 pub(super) fn client_world_entity_firework_tick_result(request: &Value) -> Result<Value, String> {
-    client_world_entity_tick_result(request, 53)
+    client_world_entity_tick_result(request, "minecraft:firework_rocket")
 }
 
 fn event_bits64(row: &Value, key: &str) -> Result<f64, String> {

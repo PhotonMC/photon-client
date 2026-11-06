@@ -351,31 +351,26 @@ fn a_swing_lasts_as_long_as_the_held_spears_and_a_kinetic_hit_kicks_for_ten_tick
             .swing_state()
             .is_swinging()
     };
-    // An empty hand swings over six ticks, the first of which only starts it.
-    world.entities_mut().apply_animate(EntityId(9), 0);
-    for _ in 0..6 {
+    // The swing packet carries how long it lasts; a swing of `n` is under way for `n + 1`
+    // ticks (`SwingState.tick` clears it once `ticks > n`).
+    assert!(
+        world
+            .entities_mut()
+            .apply_swing_animation(EntityId(9), false, 1, 6)
+    );
+    for _ in 0..7 {
         world.tick_entities(false);
     }
     assert!(swinging(&world));
     world.tick_entities(false);
     assert!(!swinging(&world));
-    // An iron spear's stab lasts nineteen.
-    let iron_spear = photon_data::item::items::ITEMS
-        .iter()
-        .position(|item| item.name == "minecraft:iron_spear")
-        .unwrap();
-    world.entities_mut().apply_equipment(
-        EntityId(9),
-        crate::EquipmentSlot::MainHand,
-        Some(ClientItemStackState::from_wire(
-            1,
-            photon_core::ids::ItemId(iron_spear as i32),
-            vec![],
-            vec![],
-        )),
+    // An iron spear's stab lasts nineteen (one more under way).
+    assert!(
+        world
+            .entities_mut()
+            .apply_swing_animation(EntityId(9), false, 2, 19)
     );
-    world.entities_mut().apply_animate(EntityId(9), 0);
-    for _ in 0..19 {
+    for _ in 0..20 {
         world.tick_entities(false);
     }
     assert!(swinging(&world));
@@ -470,7 +465,7 @@ fn a_wake_up_animation_empties_a_remote_players_sleeping_position() {
         .unwrap()
         .vitals
         .sleeping_pos = Some(bed);
-    assert!(world.entities_mut().apply_animate(EntityId(9), 2));
+    assert!(world.entities_mut().apply_animate(EntityId(9), 0));
     let player = world.entities().at(EntityId(9)).unwrap();
     assert_eq!(player.sleeping_pos(), None);
 }

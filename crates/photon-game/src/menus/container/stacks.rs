@@ -171,9 +171,14 @@ pub(super) fn inventory_to_menu(index: usize) -> usize {
 pub(super) fn write_hashed_stack(
     out: &mut Vec<u8>,
     stack: Option<&Stack>,
-    enchantments: &[String],
+    (enchantments, versions): (
+        &[String],
+        Option<&photon_data::version_registries::VersionRegistries>,
+    ),
 ) {
     use photon_world::item_components::hash::component_hash;
+    let wire =
+        |id: i32| versions.map_or(id, |versions| versions.component_types.wire_or_unknown(id));
     let Some(stack) = stack else {
         out.push(0);
         return;
@@ -191,12 +196,12 @@ pub(super) fn write_hashed_stack(
         .collect();
     photon_core::wire::write_varint(added.len() as i32, out);
     for (id, hash) in added {
-        photon_core::wire::write_varint(id, out);
+        photon_core::wire::write_varint(wire(id), out);
         out.extend_from_slice(&hash.to_be_bytes());
     }
     photon_core::wire::write_varint(patch.removed.len() as i32, out);
     for id in patch.removed {
-        photon_core::wire::write_varint(id, out);
+        photon_core::wire::write_varint(wire(id), out);
     }
 }
 

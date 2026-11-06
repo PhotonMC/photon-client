@@ -250,10 +250,9 @@ impl EntityViewMut<'_> {
         self.vel.motion.z = JavaF64::new(motion.2);
     }
 
-    /// `ExperienceOrb.tick`'s start: the position eases to the server's, and the first tick does
-    /// nothing else. Whether the orb moves on this tick.
+    /// `ExperienceOrb.tick`'s start: the first tick does nothing else. Whether the orb moves on
+    /// this tick.
     pub(crate) fn begin_experience_orb_tick(&mut self) -> bool {
-        self.tick_position_interpolation();
         !std::mem::replace(&mut self.first_tick, false)
     }
 

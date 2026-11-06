@@ -1,8 +1,7 @@
 //! The fog a frame is drawn with (`FogRenderer.setupFog`): which environment applies, the distances
 //! it sets, the colour it gives and how that colour is darkened and brightened.
 
-use super::lerp::{channel, srgb_lerp};
-use crate::block::tint::argb;
+use super::lerp::srgb_lerp_vec;
 use photon_core::math::{mth_lerp_f32, mth_sin_f64};
 
 /// What the camera is in (`Camera.getFluidInCamera`, the air being atmospheric).
@@ -24,7 +23,7 @@ impl FogType {
 /// What the atmospheric environment makes of the sky's attributes: its colour and distances.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AtmosphericFog {
-    pub colour: u32,
+    pub colour: [f32; 3],
     pub start: f32,
     pub end: f32,
     pub sky_end: f32,
@@ -36,7 +35,7 @@ impl AtmosphericFog {
     /// in by the rain, and the sky's and the clouds' ends held to the render distance and the cloud
     /// range, in chunks.
     pub fn of(
-        colour: u32,
+        colour: [f32; 3],
         (start, end, sky_end, cloud_end): (f32, f32, f32, f32),
         (rain_fog, render_distance, cloud_range): (f32, i32, i32),
     ) -> Self {
@@ -53,7 +52,7 @@ impl AtmosphericFog {
 /// What the water environment reads of the attributes: its colour and distances.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WaterFog {
-    pub colour: u32,
+    pub colour: [f32; 3],
     pub start: f32,
     pub end: f32,
 }
@@ -106,10 +105,20 @@ pub struct FogData {
     pub cloud_end: f32,
 }
 
+/// `ARGB.vector3fFromRGB24`.
+fn rgb24(color: u32) -> [f32; 3] {
+    [16, 8, 0].map(|shift| ((color >> shift) & 0xff) as f32 / 255.0)
+}
+
 /// `LavaFogEnvironment.COLOR`.
-const LAVA_COLOUR: u32 = 0xFF99_1900;
+fn lava_colour() -> [f32; 3] {
+    rgb24(0xFF99_1900)
+}
+
 /// `PowderedSnowFogEnvironment.COLOR`.
-const POWDER_SNOW_COLOUR: u32 = 0xFF9F_BBCC;
+fn powder_snow_colour() -> [f32; 3] {
+    rgb24(0xFF9F_BBCC)
+}
 
 /// Which environment sets the distances (the first that applies, in `FogRenderer`'s order).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -131,11 +140,6 @@ fn environment_of(view: &FogView) -> Environment {
         FogType::Water => Environment::Water,
         FogType::Atmospheric => Environment::Atmospheric,
     }
-}
-
-/// `ARGB.redFloat` and the like.
-fn floats(colour: u32) -> [f32; 3] {
-    [16, 8, 0].map(|shift| channel(colour, shift) as f32 / 255.0)
 }
 
 /// How dark the fog is: the void's, raised by the first environment that modifies the darkness
@@ -165,8 +169,8 @@ fn brighten_factor(view: &FogView) -> f32 {
 
 /// `FogRenderer.computeFogColor` after the base colour is chosen: the void's darkness, the effects',
 /// the bosses', and the brightening of the night vision and the water vision.
-fn finish_colour(base: u32, view: &FogView) -> [f32; 4] {
-    let [mut red, mut green, mut blue] = floats(base);
+fn finish_colour(base: [f32; 3], view: &FogView) -> [f32; 4] {
+    let [mut red, mut green, mut blue] = base;
     let darkness = darkness_of(view);
     if darkness > 0.0 && !matches!(view.fog_type, FogType::Lava | FogType::PowderSnow) {
         let brightness = (1.0 - darkness) * (1.0 - darkness);
@@ -181,13 +185,10 @@ fn finish_colour(base: u32, view: &FogView) -> [f32; 4] {
     }
     let brighten = brighten_factor(view);
     if red != 0.0 && green != 0.0 && blue != 0.0 {
-        let max = red.max(green.max(blue));
-        let target = 1.0 / max.clamp(0.07, 1.0);
-        let target_max = 1.0 / max;
-        let scale = |own: f32| if max == own { target_max } else { target };
-        red = mth_lerp_f32(brighten, red, red * scale(red));
-        green = mth_lerp_f32(brighten, green, green * scale(green));
-        blue = mth_lerp_f32(brighten, blue, blue * scale(blue));
+        let target = 1.0 / red.max(green.max(blue));
+        red = mth_lerp_f32(brighten, red, red * target);
+        green = mth_lerp_f32(brighten, green, green * target);
+        blue = mth_lerp_f32(brighten, blue, blue * target);
     }
     [red, green, blue, 1.0]
 }
@@ -260,8 +261,8 @@ pub fn fog_data(view: &FogView, atmosphere: &AtmosphericFog, water: &WaterFog) -
     let render_blocks = (view.render_distance * 16) as f32;
     let environment = environment_of(view);
     let base = match view.fog_type {
-        FogType::Lava => LAVA_COLOUR,
-        FogType::PowderSnow => POWDER_SNOW_COLOUR,
+        FogType::Lava => lava_colour(),
+        FogType::PowderSnow => powder_snow_colour(),
         FogType::Water => water.colour,
         FogType::Atmospheric => atmosphere.colour,
     };
@@ -282,9 +283,10 @@ pub fn fog_data(view: &FogView, atmosphere: &AtmosphericFog, water: &WaterFog) -
 /// The attributes `AtmosphericFogEnvironment.getBaseColor` reads.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AtmosphereAttributes {
-    pub fog_colour: u32,
-    pub sunrise: u32,
-    pub sky_colour: u32,
+    pub fog_colour: [f32; 3],
+    /// The sunrise colour with its alpha.
+    pub sunrise: [f32; 4],
+    pub sky_colour: [f32; 3],
     /// The sun's angle in degrees.
     pub sun_angle: f32,
     pub sky_fog_end: f32,
@@ -298,8 +300,10 @@ pub fn atmospheric_colour(
     attributes: &AtmosphereAttributes,
     (forward_x, render_distance): (f32, i32),
     (rain, thunder): (f32, f32),
-) -> u32 {
-    let mut fog = attributes.fog_colour;
+) -> [f32; 3] {
+    let vec4 = |colour: [f32; 3]| [colour[0], colour[1], colour[2], 1.0];
+    let vec3 = |colour: [f32; 4]| [colour[0], colour[1], colour[2]];
+    let mut fog = vec4(attributes.fog_colour);
     if render_distance >= 4 {
         let sun_angle = attributes.sun_angle * (std::f64::consts::PI / 180.0) as f32;
         let sun_x = if mth_sin_f64(f64::from(sun_angle)) > 0.0 {
@@ -309,9 +313,15 @@ pub fn atmospheric_colour(
         };
         let looking = forward_x * sun_x;
         if looking > 0.0 {
-            let alpha = channel(attributes.sunrise, 24) as f32 / 255.0;
+            let alpha = attributes.sunrise[3];
             if alpha > 0.0 {
-                fog = srgb_lerp(looking * alpha, fog, attributes.sunrise | 0xFF00_0000);
+                let sunrise = [
+                    attributes.sunrise[0],
+                    attributes.sunrise[1],
+                    attributes.sunrise[2],
+                    1.0,
+                ];
+                fog = srgb_lerp_vec(looking * alpha, fog, sunrise);
             }
         }
     }
@@ -325,16 +335,17 @@ pub fn atmospheric_colour(
         0.25 + delta * 0.75
     };
     let mix = 1.0 - (f64::from(mix)).powf(0.25) as f32;
-    // The sky colour the fog blends towards is darkened by the weather.
-    let scale = |colour: u32, red: f32, green: f32, blue: f32| {
-        argb(
-            channel(colour, 24),
-            ((channel(colour, 16) as f32 * red) as i32).clamp(0, 255),
-            ((channel(colour, 8) as f32 * green) as i32).clamp(0, 255),
-            ((channel(colour, 0) as f32 * blue) as i32).clamp(0, 255),
-        )
+    // The sky colour the fog blends towards is darkened by the weather
+    // (`AtmosphericFogEnvironment.applyWeatherDarken`).
+    let scale = |colour: [f32; 4], red: f32, green: f32, blue: f32| {
+        [
+            (colour[0] * red).clamp(0.0, 1.0),
+            (colour[1] * green).clamp(0.0, 1.0),
+            (colour[2] * blue).clamp(0.0, 1.0),
+            1.0,
+        ]
     };
-    let mut darkened = attributes.sky_colour;
+    let mut darkened = vec4(attributes.sky_colour);
     if rain > 0.0 {
         let modifier = 1.0 - rain * 0.5;
         darkened = scale(darkened, modifier, modifier, 1.0 - rain * 0.4);
@@ -343,5 +354,5 @@ pub fn atmospheric_colour(
         let modifier = 1.0 - thunder * 0.5;
         darkened = scale(darkened, modifier, modifier, modifier);
     }
-    srgb_lerp(mix, fog, darkened)
+    vec3(srgb_lerp_vec(mix, fog, darkened))
 }

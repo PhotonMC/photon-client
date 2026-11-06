@@ -111,15 +111,7 @@ impl PlaySession {
         self.set_rider_controls(main_hand);
         let ridden = self.world.ridden_vehicle_of_local_player();
         if ridden.is_some() {
-            if let Some(player) = self.local.player.as_ref() {
-                let position = player.position();
-                self.world.set_local_player_chunk(position.x, position.z);
-            }
-            self.world
-                .tick_entities(!self.level_info.tick_rate.runs_normally());
-            for (left, right) in self.world.take_paddle_packets() {
-                self.send_movement(ServerboundMovement::PaddleBoat { left, right })?;
-            }
+            self.tick_ridden_vehicle()?;
         }
         if self.local.loaded
             && let hands = self.hand_state()
@@ -152,7 +144,35 @@ impl PlaySession {
         self.tell_world_where_the_player_is();
         self.tick_level_entities(ridden.is_none());
         self.tick_level_rest();
+        self.player_sync(ridden.is_none())?;
         self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))
+    }
+
+    /// The level ticks the vehicle the player rides before the player sits in it.
+    fn tick_ridden_vehicle(&mut self) -> Result<(), ConnectionError> {
+        if let Some(player) = self.local.player.as_ref() {
+            let position = player.position();
+            self.world.set_local_player_chunk(position.x, position.z);
+        }
+        self.world
+            .tick_entities(!self.level_info.tick_rate.runs_normally());
+        for (left, right) in self.world.take_paddle_packets() {
+            self.send_movement(ServerboundMovement::PaddleBoat { left, right })?;
+        }
+        Ok(())
+    }
+
+    /// `Minecraft.tick`'s `playerSync`: what the player did is told after the level moved it.
+    fn player_sync(&mut self, walking: bool) -> Result<(), ConnectionError> {
+        if self.local.loaded
+            && walking
+            && let Some(player) = self.local.player.as_mut()
+        {
+            for packet in player.send_changes() {
+                self.send_movement(packet)?;
+            }
+        }
+        Ok(())
     }
 
     /// `ClientLevel.tick` after the entities: the border, the block entities and (`tickTime`) the

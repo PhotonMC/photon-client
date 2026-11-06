@@ -7,12 +7,18 @@ impl Gui {
     pub(super) fn draw_light_screen(
         frame: &mut photon_render::gui::GuiFrame,
         (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
-        (session, controls, gui_size): (&PlaySession, &mut Controls, (i32, i32)),
+        (session, controls, gui_size, window): (
+            &PlaySession,
+            &mut Controls,
+            (i32, i32),
+            &photon_render::window::scale::WindowScale,
+        ),
     ) {
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
         let blurriness = controls.options.menu_background_blurriness;
         let columns = Self::debug_columns(session, controls);
         let charts = Self::debug_charts(session, controls);
+        let pose = Self::debug_pose(window, &controls.options);
         if let Some(options) = controls.debug_options.as_mut() {
             if options.size() != gui_size {
                 options.resize(gui_size);
@@ -20,7 +26,7 @@ impl Gui {
             // `DebugOptionsScreen.extractBlurredBackground`: the overlay sits under the widgets.
             let overlay = |frame: &mut photon_render::gui::GuiFrame| {
                 if let Some(columns) = columns.as_ref() {
-                    Self::draw_debug_overlay(frame, (atlas, font), (columns, &charts), gui_size);
+                    Self::draw_debug_overlay(frame, (atlas, font), (columns, &charts), pose);
                 }
             };
             options.draw(frame, (atlas, font), mouse, (blurriness, overlay));

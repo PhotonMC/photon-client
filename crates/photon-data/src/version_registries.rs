@@ -117,7 +117,7 @@ impl IdMap {
 /// list without what the version lacks, with the window `patch` names put in the version's order
 /// (empty when the version orders them like the union list). A patch that does not describe a
 /// window of exactly its names is left unapplied; a test of every version catches that.
-fn wire_order<'a>(entries: impl Iterator<Item = (&'a str, bool)>, patch: &[&str]) -> Vec<u32> {
+fn wire_order<'a>(entries: impl Iterator<Item = (&'a str, bool)>, patches: &[&[&str]]) -> Vec<u32> {
     let entries: Vec<_> = entries
         .enumerate()
         .filter(|(_, (_, present))| *present)
@@ -126,6 +126,14 @@ fn wire_order<'a>(entries: impl Iterator<Item = (&'a str, bool)>, patch: &[&str]
         .iter()
         .map(|(canonical, _)| *canonical as u32)
         .collect();
+    for patch in patches {
+        apply_window(&entries, &mut order, patch);
+    }
+    order
+}
+
+/// Puts the window `patch` names in the version's order inside `order`.
+fn apply_window(entries: &[(usize, (&str, bool))], order: &mut [u32], patch: &[&str]) {
     let bare = |name: &str| {
         name.split_once(':')
             .map_or(name, |(_, bare)| bare)
@@ -133,22 +141,21 @@ fn wire_order<'a>(entries: impl Iterator<Item = (&'a str, bool)>, patch: &[&str]
     };
     let in_patch = |name: &str| patch.contains(&bare(name).as_str());
     let Some(start) = entries.iter().position(|(_, (name, _))| in_patch(name)) else {
-        return order;
+        return;
     };
     let Some(window) = entries.get(start..start + patch.len()) else {
-        return order;
+        return;
     };
     if !window.iter().all(|(_, (name, _))| in_patch(name)) {
-        return order;
+        return;
     }
     for (place, name) in patch.iter().enumerate() {
         let found = window.iter().find(|(_, (n, _))| bare(n) == *name);
         let Some((canonical, _)) = found else {
-            return order;
+            return;
         };
         order[start + place] = *canonical as u32;
     }
-    order
 }
 
 /// The block states in the order a version numbers its blocks: each block's states stay

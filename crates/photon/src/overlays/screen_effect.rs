@@ -47,13 +47,14 @@ pub fn screen_effects(
     session: &PlaySession,
     player: &LocalPlayer,
     (renderer, sky_darken): (&BlockRenderer, i32),
+    near_plane: ([f64; 3], [f64; 3]),
 ) -> ScreenEffects {
     let mut effects = ScreenEffects::default();
     if player.pose() == ClientEntityPose::Sleeping {
         return effects;
     }
     let world = session.world();
-    if let Some(state) = player.view_blocking_state(world)
+    if let Some(state) = player.view_blocking_state(world, near_plane)
         && let Some(sprite) = renderer
             .particle_sprite(state)
             .and_then(|name| corners(renderer, name))

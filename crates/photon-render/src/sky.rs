@@ -25,7 +25,7 @@ use photon_core::math::{mth_cos_f64, mth_sin_f64};
 use photon_core::random::RandomSource;
 use photon_world::particles::AmbientParticle;
 
-use crate::block::tint::{argb, multiply};
+use crate::block::tint::argb;
 
 mod ambience;
 pub use ambience::SkyAmbience;
@@ -81,9 +81,7 @@ mod tests {
     }
 
     #[test]
-    fn a_colour_multiply_keeps_white_as_identity() {
-        assert_eq!(multiply(0xFFFF_FFFF, 0xFF78_A7FF), 0xFF78_A7FF);
-        assert_eq!(multiply(0xFF78_A7FF, 0xFF00_0000), 0xFF00_0000);
+    fn a_packed_colour_lerp_truncates_each_channel() {
         assert_eq!(srgb_lerp(0.5, 0xFF00_0000, 0xFFFF_FFFF), 0xFF7F_7F7F);
     }
 
@@ -145,10 +143,7 @@ mod tests {
             Attribute::CreakingActive.name(),
             "minecraft:gameplay/creaking_active"
         );
-        assert_eq!(
-            Attribute::WaterFogColor.default_value(),
-            Value::Color(0xFF05_0533)
-        );
+        assert_eq!(Attribute::WaterFogColor.default_value(), rgb24(0xFF05_0533));
         assert_eq!(
             Attribute::CreakingActive.default_value(),
             Value::Bool(false)

@@ -7,21 +7,56 @@ impl ClientEntity {
     }
 }
 
-pub(crate) fn vanilla_boat_passenger_rotation_clamped_values(
+/// `AbstractBoat.clampRotation` for a passenger that is not a `Mob`: its yaw held within a quarter
+/// turn of where its body is made to face, and how far that moved it.
+pub(crate) fn vanilla_boat_passenger_clamped_y_rot(
     passenger_y_rot: f32,
-    passenger_old_y_rot: f32,
-    vehicle_y_rot: f32,
+    body_y_rot: f32,
 ) -> (f32, f32) {
-    let delta = wrap_degrees_f32(passenger_y_rot - vehicle_y_rot);
+    let delta = wrap_degrees_f32(passenger_y_rot - body_y_rot);
     let target_delta = clamp_f32(
         delta,
         -VANILLA_BOAT_PASSENGER_MAX_ROTATION,
         VANILLA_BOAT_PASSENGER_MAX_ROTATION,
     );
-    (
-        passenger_old_y_rot + target_delta - delta,
-        passenger_y_rot + target_delta - delta,
-    )
+    (passenger_y_rot + target_delta - delta, target_delta - delta)
+}
+
+/// `Mob.clampHeadRotationToBody`: the head held within `limit` degrees of the body.
+pub(crate) fn vanilla_clamped_head_y_rot(head_y_rot: f32, body_y_rot: f32, limit: f32) -> f32 {
+    let delta = wrap_degrees_f32(body_y_rot - head_y_rot);
+    let target_delta = clamp_f32(wrap_degrees_f32(body_y_rot - head_y_rot), -limit, limit);
+    head_y_rot + delta - target_delta
+}
+
+/// `Mob.getMaxHeadYRot`: how far a mob's head may turn from its body.
+pub(crate) fn vanilla_max_head_y_rot(type_id: EntityTypeId) -> f32 {
+    use photon_data::entity_type::ids;
+    let limits = [
+        (ids::AXOLOTL, 1.0),
+        (ids::DOLPHIN, 1.0),
+        (ids::FROG, 5.0),
+        (ids::GOAT, 15.0),
+        (ids::CAMEL, 30.0),
+        (ids::CAMEL_HUSK, 30.0),
+        (ids::BREEZE, 30.0),
+        (ids::ARMADILLO, 32.0),
+        (ids::RAVAGER, 45.0),
+        (ids::SNIFFER, 50.0),
+        (ids::SHULKER, 180.0),
+    ];
+    limits
+        .iter()
+        .find(|&&(known, _)| known == type_id)
+        .map_or(75.0, |&(_, limit)| limit)
+}
+
+/// Whether the type is a `Mob` (a living entity that is not a player, an armor stand or a
+/// mannequin).
+pub(crate) fn vanilla_passenger_is_mob(passenger_type_id: EntityTypeId) -> bool {
+    use photon_data::entity_type::ids;
+    vanilla_passenger_is_living(passenger_type_id)
+        && ![ids::PLAYER, ids::ARMOR_STAND, ids::MANNEQUIN].contains(&passenger_type_id)
 }
 
 pub(crate) fn vanilla_passenger_can_turn_in_boat(passenger_type_id: EntityTypeId) -> bool {
@@ -92,36 +127,27 @@ impl BoatInput {
 }
 
 impl EntityViewMut<'_> {
-    pub(crate) fn clamp_vanilla_boat_passenger_rotation(
-        &mut self,
-        vehicle_y_rot: f32,
-        animal_rotation_offset: Option<f32>,
-    ) {
-        let (old_y_rot, y_rot) = vanilla_boat_passenger_rotation_clamped_values(
-            self.rotation.y_rot.get(),
-            self.rotation.old_y_rot.get(),
-            vehicle_y_rot,
-        );
-        self.rotation.old_y_rot = JavaF32::new(old_y_rot);
+    /// `AbstractBoat.clampRotation`: the body turned to face `body_y_rot`, a mob's yaw made its
+    /// body's and its head held to it, anyone else's yaw held within a quarter turn of it. How far
+    /// the yaw moved.
+    pub(crate) fn clamp_vanilla_boat_passenger_rotation(&mut self, body_y_rot: f32) -> f32 {
+        if vanilla_passenger_is_living(self.type_id) {
+            self.rotation.y_body_rot = JavaF32::new(body_y_rot);
+        }
+        if vanilla_passenger_is_mob(self.type_id) {
+            self.rotation.y_rot = JavaF32::new(body_y_rot);
+            let head = vanilla_clamped_head_y_rot(
+                self.rotation.y_head_rot.get(),
+                body_y_rot,
+                vanilla_max_head_y_rot(self.type_id),
+            );
+            self.rotation.y_head_rot = JavaF32::new(head);
+            return wrap_degrees_f32(body_y_rot - self.rotation.y_rot.get());
+        }
+        let (y_rot, delta) =
+            vanilla_boat_passenger_clamped_y_rot(self.rotation.y_rot.get(), body_y_rot);
         self.rotation.y_rot = JavaF32::new(y_rot);
-        if vanilla_passenger_is_living(self.type_id) {
-            self.rotation.y_head_rot = self.rotation.y_rot;
-            self.rotation.y_body_rot = JavaF32::new(vehicle_y_rot);
-        }
-        if let Some(rotation_offset) = animal_rotation_offset {
-            self.rotation.y_body_rot =
-                JavaF32::new(self.rotation.y_body_rot.get() + rotation_offset);
-            self.rotation.y_head_rot =
-                JavaF32::new(self.rotation.y_head_rot.get() + rotation_offset);
-        }
-    }
-
-    pub(crate) fn add_vanilla_boat_passenger_rotation(&mut self, delta_rotation: f32) {
-        self.rotation.y_rot = JavaF32::new(self.rotation.y_rot.get() + delta_rotation);
-        if vanilla_passenger_is_living(self.type_id) {
-            self.rotation.y_head_rot =
-                JavaF32::new(self.rotation.y_head_rot.get() + delta_rotation);
-        }
+        delta
     }
 
     /// `AbstractBoat.tick` on the client, at the start of the tick (`under_water` is
@@ -130,8 +156,6 @@ impl EntityViewMut<'_> {
         let Some(under_water) = under_water else {
             return;
         };
-        // `AbstractBoat.tick`: the easing runs after `super.tick`, before the boat moves.
-        self.tick_position_interpolation();
         let paddling = [
             self.as_view().boat_paddle_rows(0),
             self.as_view().boat_paddle_rows(1),
@@ -144,7 +168,6 @@ impl EntityViewMut<'_> {
 
     /// The part of a ridden boat's tick before its own movement.
     pub(crate) fn tick_boat_start(&mut self) {
-        self.tick_position_interpolation();
         self.kind.boat_state().tick_start(false);
     }
 }

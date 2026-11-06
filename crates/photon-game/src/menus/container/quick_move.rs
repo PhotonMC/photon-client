@@ -497,7 +497,7 @@ impl ContainerMenu {
         let clicked = original.copy_with_count(original.item_count());
         let mut stack = self.slots[index].take().expect("checked above");
         let keeps_going = if index >= 5 {
-            if self.in_tag(&clicked, "minecraft:brewing_fuel") {
+            if self.is_brewing_fuel(&clicked) {
                 let fueled = self.move_item_stack_to(&mut stack, 4, 5, false);
                 !(fueled
                     || self.may_place(3, &stack)

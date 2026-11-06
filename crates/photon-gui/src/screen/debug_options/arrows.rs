@@ -12,7 +12,10 @@ impl DebugOptionsScreen {
     /// An arrow key the search box does not take: what the focused widget offers, or else the
     /// widget that lies next to it.
     pub(super) fn arrow(&mut self, direction: Direction) {
-        let in_list = matches!(self.focus, Focus::List | Focus::Button(..));
+        let in_list = matches!(
+            self.focus,
+            Focus::List | Focus::Button(..) | Focus::Category(_)
+        );
         let target = if in_list {
             self.list_target(direction, self.focused_button())
         } else {
@@ -21,16 +24,21 @@ impl DebugOptionsScreen {
         let target = target.or_else(|| self.screen_target(direction));
         if let Some(focus) = target {
             self.set_focus(focus);
-            if let Focus::Button(id, _) = focus {
-                self.scroll_to_entry(id);
+            match focus {
+                Focus::Button(id, _) => self.scroll_to_entry(id),
+                Focus::Category(index) => self.scroll_to_row(index),
+                _ => {}
             }
         }
     }
 
-    /// The row and slot of the button that has the focus.
+    /// The row and slot of the widget that has the focus in the list: a category's label is the
+    /// first and only child of its row.
     fn focused_button(&self) -> Option<(usize, usize)> {
-        let Focus::Button(id, slot) = self.focus else {
-            return None;
+        let (id, slot) = match self.focus {
+            Focus::Button(id, slot) => (id, slot),
+            Focus::Category(index) => return Some((index, 0)),
+            _ => return None,
         };
         let row = self
             .rows
@@ -39,15 +47,19 @@ impl DebugOptionsScreen {
         Some((row, slot))
     }
 
-    /// Whether the button `slot` of the row `row` can take the focus.
+    /// Whether the child `slot` of the row `row` can take the focus; the index is clamped to the
+    /// row's children, so a label takes it whatever the slot.
     fn takes_focus(&self, (row, slot): (usize, usize)) -> bool {
-        matches!(&self.rows[row], Row::Entry { buttons, .. } if buttons[slot].is_active())
+        match &self.rows[row] {
+            Row::Category(..) => true,
+            Row::Entry { buttons, .. } => buttons[slot].is_active(),
+        }
     }
 
     fn focus_of(&self, (row, slot): (usize, usize)) -> Option<Focus> {
         match &self.rows[row] {
             Row::Entry { id, .. } => Some(Focus::Button(id, slot)),
-            Row::Category(_) => None,
+            Row::Category(..) => Some(Focus::Category(row)),
         }
     }
 
@@ -58,7 +70,8 @@ impl DebugOptionsScreen {
             Direction::Down => 1,
             _ => return None,
         };
-        let has_buttons = |row: usize| matches!(self.rows[row], Row::Entry { .. });
+        // Every row has a child to take the focus.
+        let has_buttons = |_row: usize| true;
         let mut index = match start {
             Some(row) => row as isize + delta,
             None if delta > 0 => 0,
@@ -102,6 +115,9 @@ impl DebugOptionsScreen {
 
     /// `OptionEntry.nextFocusPath` for Left and Right: the next button of the entry that takes it.
     fn along_entry(&self, direction: Direction, row: usize, slot: usize) -> Option<Focus> {
+        if matches!(self.rows[row], Row::Category(..)) {
+            return None;
+        }
         let delta: isize = if direction == Direction::Left { -1 } else { 1 };
         let mut index = (slot as isize + delta).clamp(0, SLOTS as isize - 1);
         while (0..SLOTS as isize).contains(&index) {
@@ -111,6 +127,16 @@ impl DebugOptionsScreen {
             index += delta;
         }
         None
+    }
+
+    /// The label widget of the category row `index`: the text, four pixels round it, centred.
+    pub(super) fn label_rectangle(&self, index: usize, width: i32) -> Rectangle {
+        Rectangle {
+            x: self.row_left() + 2 + (ROW_WIDTH - 4) / 2 - width / 2 - 4,
+            y: self.row_y(index) + 2,
+            width: width + 8,
+            height: 17,
+        }
     }
 
     fn rectangle(&self, rect: usize) -> Rectangle {
@@ -150,20 +176,24 @@ impl DebugOptionsScreen {
                 self.rectangle(self.profiles[1].rect),
                 self.profiles[1].is_active(),
             ),
+            candidate(
+                self.rectangle(self.gui_scale.rect),
+                self.gui_scale.is_active(),
+            ),
             candidate(self.rectangle(self.done.rect), self.done.is_active()),
         ];
-        let focused = match self.focus {
-            Focus::Search => 1,
-            Focus::List | Focus::Button(..) => 3,
-            Focus::Profile(index) => 4 + index,
-            Focus::Done => 6,
-        };
+        let focused = focus_child(self.focus);
         // A button of the list gives the border: the list asks the entry, and it the button.
         let mut children = children;
         if let Some((row, slot)) = self.focused_button()
             && let Row::Entry { buttons, .. } = &self.rows[row]
         {
             children[3].rectangle = self.rectangle(buttons[slot].rect);
+        }
+        if let Focus::Category(index) = self.focus
+            && let Row::Category(_, width) = &self.rows[index]
+        {
+            children[3].rectangle = self.label_rectangle(index, *width);
         }
         let container = Rectangle {
             x: 0,
@@ -175,9 +205,28 @@ impl DebugOptionsScreen {
             match next_in_direction(&children, Some(focused), direction, container)? {
                 1 => Focus::Search,
                 3 => list_target?,
-                index @ (4 | 5) => Focus::Profile(index - 4),
-                _ => Focus::Done,
+                index => child_focus(index),
             },
         )
+    }
+}
+
+/// The screen child a focus belongs to: the search box, the list, a footer button.
+fn focus_child(focus: Focus) -> usize {
+    match focus {
+        Focus::Search => 1,
+        Focus::List | Focus::Button(..) | Focus::Category(_) => 3,
+        Focus::Profile(index) => 4 + index,
+        Focus::GuiScale => 6,
+        Focus::Done => 7,
+    }
+}
+
+/// The focus of a footer child.
+fn child_focus(index: usize) -> Focus {
+    match index {
+        4 | 5 => Focus::Profile(index - 4),
+        6 => Focus::GuiScale,
+        _ => Focus::Done,
     }
 }

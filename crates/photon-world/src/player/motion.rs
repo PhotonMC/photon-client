@@ -135,16 +135,13 @@ impl ClientPlayerState {
         self.old_y_body_rot.get()
     }
 
-    pub(crate) fn clamp_vanilla_boat_passenger_rotation(&mut self, vehicle_y_rot: f32) {
-        let (old_y_rot, y_rot) = vanilla_boat_passenger_rotation_clamped_values(
-            self.y_rot.get(),
-            self.old_y_rot.get(),
-            vehicle_y_rot,
-        );
-        self.old_y_rot = JavaF32::new(old_y_rot);
+    /// `AbstractBoat.clampRotation` for a player: the body turned to face `body_y_rot`, the yaw
+    /// held within a quarter turn of it (the previous yaw stays). How far the yaw moved.
+    pub(crate) fn clamp_vanilla_boat_passenger_rotation(&mut self, body_y_rot: f32) -> f32 {
+        let (y_rot, delta) = vanilla_boat_passenger_clamped_y_rot(self.y_rot.get(), body_y_rot);
         self.y_rot = JavaF32::new(y_rot);
-        self.y_head_rot = self.y_rot;
-        self.y_body_rot = JavaF32::new(vehicle_y_rot);
+        self.y_body_rot = JavaF32::new(body_y_rot);
+        delta
     }
 
     pub fn previous_head_rotation(&self) -> f32 {

@@ -38,6 +38,8 @@ pub struct Impactors {
     pub filtering: Filtering,
     /// `Options.maxAnisotropyValue`: the option's power of two, held to what the device supports.
     pub anisotropy: i32,
+    /// `LevelRenderer.isChunkRenderingUsingMultiDrawIndirect`.
+    pub multi_draw_indirect: bool,
 }
 
 pub fn display(impactors: &Impactors) -> Vec<Line> {
@@ -67,5 +69,13 @@ pub fn display(impactors: &Impactors) -> Vec<Line> {
             impactors.biome_blend
         )),
         Line::Regular(second),
+        Line::Regular(format!(
+            "Terrain Rendering: {}",
+            if impactors.multi_draw_indirect {
+                "multidrawindirect"
+            } else {
+                "naive"
+            }
+        )),
     ]
 }

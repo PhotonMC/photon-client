@@ -142,11 +142,18 @@ pub(super) fn sky_flash_result(request: &Value) -> Result<Value, String> {
         };
         rows.push(json!({
             "label": row["label"],
-            "sky_color": colour as i32,
+            // `ARGB.colorFromFloat(1.0F, ...)`: the row keeps the colour packed.
+            "sky_color": packed(colour),
             "sky_light_factor": format!("{:08x}", factor.to_bits()),
         }));
     }
     Ok(json!({"rows": rows}))
+}
+
+/// `ARGB.colorFromFloat(1.0F, red, green, blue)` as the signed int the rows hold.
+fn packed(colour: [f32; 4]) -> i32 {
+    let channel = |value: f32| (value * 255.0).floor() as u32;
+    (0xFF00_0000 | channel(colour[0]) << 16 | channel(colour[1]) << 8 | channel(colour[2])) as i32
 }
 
 /// The sky operations of the movement family, by name; none for another kind.

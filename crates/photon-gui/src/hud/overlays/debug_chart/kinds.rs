@@ -120,8 +120,8 @@ impl Kind {
         match self {
             Self::Ping => shaded(frame, fonts, "500 ms", (left + 1, top + 1)),
             Self::Fps { limit } => {
-                shaded(frame, fonts, "30 FPS", (left + 1, top + 1));
-                shaded(frame, fonts, "60 FPS", (left + 1, bottom - 30 + 1));
+                shaded(frame, fonts, "30 fps", (left + 1, top + 1));
+                shaded(frame, fonts, "60 fps", (left + 1, bottom - 30 + 1));
                 horizontal(frame, atlas, across(bottom - 30), WHITE);
                 if limit > 0 && limit <= 250 {
                     let y = bottom - self.bar_height(1.0e9 / f64::from(limit)) - 1;
@@ -130,7 +130,7 @@ impl Kind {
             }
             Self::Tps { mspt } => {
                 let tps = 1000.0_f32 / mspt;
-                let text = format!("{} TPS", fixed(f64::from(tps), 1));
+                let text = format!("{} tps", fixed(f64::from(tps), 1));
                 shaded(frame, fonts, &text, (left + 1, top + 1));
             }
             Self::Bandwidth => {

@@ -213,9 +213,7 @@ pub(super) fn client_world_entity_passenger_boat_family_position_result(
             .ok_or("boat family vehicle must be an object")?;
         let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
         let vehicle_type_id = i32_field(&Value::Object(vehicle.clone()), "type_id")?;
-        if !matches!(vehicle_type_id, 8 | 9 | 89 | 90) {
-            return Err("unknown boat family position vehicle type".into());
-        }
+        require_boat_family(vehicle_type_id)?;
         let vehicle_position = f64_vec3(
             vehicle
                 .get("position")
@@ -254,9 +252,7 @@ pub(super) fn client_world_entity_passenger_boat_family_position_result(
             .and_then(Value::as_object)
             .ok_or("boat family passenger must be an object")?;
         let passenger_id = entity_id_field(&Value::Object(passenger.clone()), "entity_id")?;
-        if i32_field(&Value::Object(passenger.clone()), "type_id")? != 120 {
-            return Err("boat family position fixture requires snowball passengers".into());
-        }
+        crate::case_ids::require_type_of(passenger, "minecraft:snowball")?;
         let passenger_position = f64_vec3(
             passenger
                 .get("position")
@@ -332,4 +328,23 @@ pub(super) fn client_world_entity_passenger_boat_family_position_result(
         )?);
     }
     Ok(json!({"states": states}))
+}
+
+/// Checks that a case's vehicle type id is one of the boats and rafts the family cases use.
+fn require_boat_family(vehicle_type_id: i32) -> Result<(), String> {
+    let vehicle_type = crate::case_ids::entity_type(vehicle_type_id);
+    let known = [
+        "minecraft:bamboo_chest_raft",
+        "minecraft:bamboo_raft",
+        "minecraft:oak_boat",
+        "minecraft:oak_chest_boat",
+    ];
+    if known
+        .iter()
+        .any(|name| photon_data::entity_type::named(name) == vehicle_type)
+    {
+        Ok(())
+    } else {
+        Err("unknown boat family position vehicle type".into())
+    }
 }

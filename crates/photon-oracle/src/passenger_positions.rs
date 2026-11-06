@@ -132,9 +132,7 @@ pub(super) fn client_world_entity_passenger_position_result(
     let vehicle = request["vehicle"]
         .as_object()
         .ok_or("vehicle must be an object")?;
-    if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
-        return Err("passenger position fixture requires an oak boat".into());
-    }
+    crate::case_ids::require_type_of(vehicle, "minecraft:oak_boat")?;
     let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
     let vehicle_position = f64_vec3(
         vehicle
@@ -151,9 +149,11 @@ pub(super) fn client_world_entity_passenger_position_result(
         .ok_or("passengers must be an array")?
     {
         let passenger_id = entity_id_field(passenger, "entity_id")?;
-        if i32_field(passenger, "type_id")? != 120 {
-            return Err("passenger position fixture requires snowball passengers".into());
-        }
+        crate::case_ids::require_type(
+            passenger,
+            "minecraft:snowball",
+            "passenger position fixture requires snowball passengers",
+        )?;
         let position = f64_vec3(
             passenger
                 .get("position")
@@ -287,9 +287,7 @@ pub(super) fn client_world_entity_passenger_player_position_result(
     let vehicle = request["vehicle"]
         .as_object()
         .ok_or("vehicle must be an object")?;
-    if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
-        return Err("passenger player position fixture requires an oak boat".into());
-    }
+    crate::case_ids::require_type_of(vehicle, "minecraft:oak_boat")?;
     let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
     let vehicle_position = f64_vec3(
         vehicle
@@ -327,9 +325,7 @@ pub(super) fn client_world_entity_passenger_player_position_result(
     let passenger = request["passenger"]
         .as_object()
         .ok_or("passenger must be an object")?;
-    if i32_field(&Value::Object(passenger.clone()), "type_id")? != 156 {
-        return Err("passenger player position fixture requires a Player passenger".into());
-    }
+    crate::case_ids::require_type_of(passenger, "minecraft:player")?;
     let passenger_id = entity_id_field(&Value::Object(passenger.clone()), "entity_id")?;
     let passenger_position = f64_vec3(
         passenger

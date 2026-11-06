@@ -230,7 +230,7 @@ pub(super) fn math_result(request: &Value) -> Result<Value, String> {
         }
         "local_player_travel_dispatch" => local_player_travel_dispatch_case(request),
         "character_event" => character_event_result(request),
-        "preedit_event" => preedit_event_result(request),
+        "preedit_event" | "preedit_sdl_event" => preedit_event_result(request),
         "option_values" => option_values_result(request),
         "sliderable_enum" => sliderable_enum_result(request),
         "cycleable_enum" => cycleable_enum_result(request),

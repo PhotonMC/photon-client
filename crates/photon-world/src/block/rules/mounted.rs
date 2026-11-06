@@ -39,6 +39,7 @@ pub(super) fn survives(
         BlockClass::WallTorchBlock
         | BlockClass::RedstoneWallTorchBlock
         | BlockClass::LadderBlock
+        | BlockClass::ShelfMushroomBlock
         | BlockClass::TripWireHookBlock
         | BlockClass::BaseCoralWallFanBlock => {
             let (at, facing) = behind(state, pos);
@@ -85,6 +86,23 @@ fn waterlogged(state: Option<BlockStateId>, ctx: &PlaceContext<'_>) -> Option<Bl
     let water = is_water_source(ctx.state(ctx.clicked_pos()));
     with_property(state?, "waterlogged", flag(water))
 }
+
+/// The classes that place as a wall torch does: `facing` away from the first side the player
+/// looks along that can carry them.
+pub(super) const PLACEMENTS: &[(BlockClass, super::placement::Placement)] = &[
+    (BlockClass::TripWireHookBlock, |_, default, ctx| {
+        wall_torch(default, ctx)
+    }),
+    (BlockClass::ShelfMushroomBlock, |_, default, ctx| {
+        wall_torch(default, ctx)
+    }),
+    (BlockClass::WallTorchBlock, |_, default, ctx| {
+        wall_torch(default, ctx)
+    }),
+    (BlockClass::RedstoneWallTorchBlock, |_, default, ctx| {
+        wall_torch(default, ctx)
+    }),
+];
 
 /// `WallTorchBlock.getStateForPlacement`, which the redstone one asks of the plain wall torch.
 pub(super) fn wall_torch(

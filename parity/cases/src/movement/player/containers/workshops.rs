@@ -138,8 +138,8 @@ fn workshops_rows_3() -> Vec<Clicks> {
 fn workshops_rows_4() -> Vec<Clicks> {
     vec![
         clicks("enchanting table number keys", stacks("0 iron_sword 1, 1 lapis_lazuli 10"), taps("0 2 SW, 1 3 SW")).menu("enchantment"),
-        clicks("brewing stand slots take potions, one ingredient kind and fuel", stacks("30 potion 3, 31 glass_bottle 5, 32 blaze_powder 20, 33 nether_wart 8, 34 stone 4, 35 water_bucket 1"), taps("30 0 P, 0 0 P, 1 0 P, 31 0 P, 2 0 P, 31 0 P, 32 0 P, 4 0 P, 32 0 P, 3 0 P, 4 0 P, 33 1 P, 3 0 P, 34 0 P, 3 0 P, 4 0 P, 35 0 P, 1 0 P")).menu("brewing_stand"),
-        clicks("brewing stand quick move", stacks("5 blaze_powder 4, 6 nether_wart 6, 7 potion 1, 8 splash_potion 1, 9 glass_bottle 2, 10 stone 3, 36 glass_bottle 1, 0 potion 1, 3 nether_wart 2, 4 blaze_powder 5"), taps("5 0 Q, 5 0 Q, 6 0 Q, 7 0 Q, 8 0 Q, 9 0 Q, 10 0 Q, 36 0 Q, 0 0 Q, 3 0 Q, 4 0 Q")).menu("brewing_stand"),
+        clicks("brewing stand slots take potions, one ingredient kind and fuel", stacks("30 potion 3, 31 glass_bottle 5, 32 blaze_powder 20, 33 nether_wart 8, 34 stone 4, 35 water_bucket 1"), taps("30 0 P, 0 0 P, 1 0 P, 31 0 P, 2 0 P, 31 0 P, 32 0 P, 4 0 P, 32 0 P, 3 0 P, 4 0 P, 33 1 P, 3 0 P, 34 0 P, 3 0 P, 4 0 P, 35 0 P, 1 0 P")).menu("brewing_stand").extra(brewing_sets()),
+        clicks("brewing stand quick move", stacks("5 blaze_powder 4, 6 nether_wart 6, 7 potion 1, 8 splash_potion 1, 9 glass_bottle 2, 10 stone 3, 36 glass_bottle 1, 0 potion 1, 3 nether_wart 2, 4 blaze_powder 5"), taps("5 0 Q, 5 0 Q, 6 0 Q, 7 0 Q, 8 0 Q, 9 0 Q, 10 0 Q, 36 0 Q, 0 0 Q, 3 0 Q, 4 0 Q")).menu("brewing_stand").extra(brewing_sets()),
         clicks("beacon payment slot holds one payment item", stacks("5 iron_ingot 3, 6 emerald 1, 7 stone 2, 30 diamond 4"), taps("5 0 P, 0 0 P, 0 0 P, 6 0 P, 0 0 P, 7 0 P, 0 0 P, 30 1 P, 0 0 P, 0 0 P")).menu("beacon"),
         clicks("beacon quick move", stacks("5 iron_ingot 3, 6 emerald 1, 7 stone 2, 30 diamond 4, 8 netherite_ingot 1, 0 gold_ingot 1"), taps("5 0 Q, 6 0 Q, 7 0 Q, 30 0 Q, 8 0 Q, 0 0 Q, 6 0 Q, 8 0 Q")).menu("beacon"),
         clicks("crafter disabled slot takes nothing", stacks("20 stone 10, 21 stick 3, 2 stone 2"), taps("20 0 P, 1 0 P, 0 0 P, 1 1 P, 21 0 P, 1 0 P, 4 0 P, 2 0 P")).menu("crafter_3x3").extra(json!({"data": [0, 1, 0, 0, 1, 0, 0, 0, 0, 0]})),
@@ -198,7 +198,8 @@ fn workshops_rows_5() -> Vec<Clicks> {
             stacks("0 potion 1, 4 blaze_powder 6, 30 glass_bottle 1, 31 stone 1"),
             taps("0 2 SW, 4 3 SW, 2 5 SW, 3 6 SW"),
         )
-        .menu("brewing_stand"),
+        .menu("brewing_stand")
+        .extra(brewing_sets()),
     ]
 }
 

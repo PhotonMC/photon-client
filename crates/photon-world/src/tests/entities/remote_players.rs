@@ -2,7 +2,7 @@ use super::super::*;
 use photon_core::ids::EntityId;
 
 #[test]
-fn remote_player_position_interpolation_follows_java_three_step_handler() {
+fn remote_player_position_interpolation_follows_java_stepped_handler() {
     let mut world = ClientWorld::default();
     let (blocks, biomes) = section(0, 0);
     world.replace_chunk(
@@ -64,38 +64,42 @@ fn remote_player_position_interpolation_follows_java_three_step_handler() {
         Some((10.0, 20.0))
     );
 
+    // The player's handler eases over its update interval of two ticks per step; the position
+    // and the turn arrived as two targets, so two steps queue up and speed the easing.
     world.tick();
     let first = world
         .entities()
         .at(EntityId(37))
         .expect("first interpolation step");
-    assert_eq!(first.interpolation_steps(), 2);
-    assert_eq!(
-        first.position(),
-        (2.0, 80.66666666666667, -35.166666666666664)
-    );
-    assert_eq!(first.rotation(), (356.666_66_f32, -6.6666665_f32, 350.0));
+    assert_eq!(first.interpolation_steps(), 3);
+    assert_eq!(first.position(), (2.5, 81.0, -35.0));
+    assert_eq!(first.rotation(), (350.0, -20.0, 350.0));
 
     world.tick();
     let second = world
         .entities()
         .at(EntityId(37))
         .expect("second interpolation step");
-    assert_eq!(second.interpolation_steps(), 1);
-    assert_eq!(
-        second.position(),
-        (3.0, 81.33333333333334, -34.83333333333333)
-    );
-    assert_eq!(second.rotation(), (3.333313_f32, 6.666667_f32, 350.0));
+    assert_eq!(second.interpolation_steps(), 2);
+    assert_eq!(second.position(), (4.0, 82.0, -34.5));
+    assert_eq!(second.rotation(), (355.0, -10.0, 350.0));
 
     world.tick();
     let third = world
         .entities()
         .at(EntityId(37))
-        .expect("final interpolation step");
+        .expect("third interpolation step");
     assert_eq!(third.interpolation_steps(), 0);
-    assert_eq!(third.position(), (4.0, 82.0, -34.5));
-    assert_eq!(third.rotation(), (10.0, 20.0, 350.0));
+    assert_eq!(third.rotation(), (8.75, 17.5, 350.0));
+
+    world.tick();
+    let fourth = world
+        .entities()
+        .at(EntityId(37))
+        .expect("final interpolation step");
+    assert!(!fourth.interpolation_active());
+    assert_eq!(fourth.position(), (4.0, 82.0, -34.5));
+    assert_eq!(fourth.rotation(), (10.0, 20.0, 350.0));
 }
 
 #[test]
@@ -371,7 +375,7 @@ fn remote_player_position_sync_snaps_when_distance_exceeds_java_threshold() {
         Some((130.0, 80.0, -35.5))
     );
     assert_eq!(entity.interpolation_target_rotation(), Some((30.0, 10.0)));
-    assert_eq!(entity.interpolation_steps(), 3);
+    assert_eq!(entity.interpolation_steps(), 2);
 
     assert!(world.apply_entity_position_and_rotation(
         EntityPositionInput {

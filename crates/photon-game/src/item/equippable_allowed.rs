@@ -77,9 +77,9 @@ mod tests {
     fn matches_the_reference_dump() {
         const PATCHES: &str =
             include_str!("../../../../tests/behavior/fixtures/item-default-patches.txt");
-        // The dump was captured from 26.2, so its ids are that version's wire ids.
+        // The dump was captured from 26.3, so its ids are that version's wire ids.
         let dump_registries = photon_data::version_registries::VersionRegistries::of(
-            photon_core::version::Version::V26_2,
+            photon_core::version::Version::V26_3,
         );
         for line in PATCHES.lines() {
             let (name, wire) = line.split_once(' ').expect("a name and its bytes");

@@ -38,6 +38,15 @@ impl Play {
             present_mode: photon_gui::hud::debug::PresentMode::from_vulkan(
                 self.backend.description().present_mode.as_raw(),
             ),
+            refresh_rate: self
+                .surface
+                .preferred_video_mode()
+                .or_else(|| {
+                    self.surface
+                        .video_modes()
+                        .and_then(|modes| modes.first().copied())
+                })
+                .map(|mode| mode.refresh_rate),
         };
         self.controls.debug.gpu.frame(
             self.backend.gpu_timings().map(|timings| timings.scene_ms),

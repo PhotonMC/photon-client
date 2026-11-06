@@ -7,6 +7,12 @@ import java.util.List;
 import net.minecraft.world.entity.Entity;
 
 class MathPassengerOracle extends MathEntityTickOracle {
+    /** The wire id of the oak boat in the version under test. */
+    static int oakBoatId() {
+        return net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE
+            .getId(net.minecraft.world.entity.EntityTypes.OAK_BOAT);
+    }
+
     static JsonObject clientWorldEntityPassengersResult(JsonObject request) {
         var entities = new ArrayList<PassengerRelationFixtureEntity>();
         for (JsonElement entityEntry : request.getAsJsonArray("entities")) {

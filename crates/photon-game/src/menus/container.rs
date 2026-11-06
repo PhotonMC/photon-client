@@ -48,6 +48,9 @@ pub struct ContainerMenu {
     /// The enchantment registry's entries by network id, which the click
     /// packet's component hashes name.
     pub enchantments: std::sync::Arc<Vec<String>>,
+    /// How the connection's version numbers component types, for the click packet's hashes
+    /// (the canonical ids of a stack are written as the server numbers them).
+    pub versions: Option<std::sync::Arc<photon_data::version_registries::VersionRegistries>>,
     /// What the menu reads of each enchantment, by network id.
     pub enchantment_traits: std::sync::Arc<Vec<EnchantmentTraits>>,
     /// Whether the last click was made with infinite materials (creative).
@@ -150,6 +153,7 @@ impl Default for ContainerMenu {
             options: Vec::new(),
             xp_level: 0,
             enchantments: std::sync::Arc::default(),
+            versions: None,
             enchantment_traits: std::sync::Arc::default(),
             infinite_materials: false,
             mount: None,

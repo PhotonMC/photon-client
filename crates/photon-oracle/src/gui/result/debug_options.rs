@@ -24,10 +24,9 @@ pub(super) fn debug_options_screen_case(
     if let Some(dy) = row["scroll"].as_f64() {
         screen.scrolled((f64::from(size.0) / 2.0, f64::from(size.1) / 2.0), dy);
     }
-    let blurriness = row["blurriness"].as_i64().unwrap_or(5) as i32;
-    let mouse = (
-        row["mouse"][0].as_i64().unwrap_or(0) as i32,
-        row["mouse"][1].as_i64().unwrap_or(0) as i32,
+    let (blurriness, mouse) = (
+        row["blurriness"].as_i64().unwrap_or(5) as i32,
+        mouse_of(row),
     );
     let mut asked = Asked::default();
     for step in row["steps"]
@@ -35,7 +34,8 @@ pub(super) fn debug_options_screen_case(
         .map(Vec::as_slice)
         .unwrap_or_default()
     {
-        asked.record(run_step(&mut screen, step, ctx)?, &mut entries);
+        let event = run_step(&mut screen, step, ctx)?;
+        asked.record(event, (&mut entries, &mut screen, &lang));
         screen.draw(
             &mut GuiFrame::default(),
             (&ctx.atlas, &ctx.font),
@@ -64,6 +64,14 @@ pub(super) fn debug_options_screen_case(
         out["file"] = serde_json::from_str(&text).map_err(|error| error.to_string())?;
     }
     Ok(out)
+}
+
+/// Where the row's mouse stands.
+fn mouse_of(row: &Value) -> (i32, i32) {
+    (
+        row["mouse"][0].as_i64().unwrap_or(0) as i32,
+        row["mouse"][1].as_i64().unwrap_or(0) as i32,
+    )
 }
 
 /// The entry list a row starts from: its profile, then its statuses.
@@ -95,7 +103,15 @@ struct Asked {
 
 impl Asked {
     /// One answer of the screen, done to the entry list as the game does.
-    fn record(&mut self, event: Option<DebugOptionsEvent>, entries: &mut EntryList) {
+    fn record(
+        &mut self,
+        event: Option<DebugOptionsEvent>,
+        (entries, screen, lang): (
+            &mut EntryList,
+            &mut DebugOptionsScreen,
+            &photon_game::text::Lang,
+        ),
+    ) {
         match event {
             Some(DebugOptionsEvent::Close) => self.events.push("close"),
             Some(DebugOptionsEvent::Status { id, status }) => {
@@ -106,6 +122,9 @@ impl Asked {
                 entries.load_profile(profile);
                 self.saved = true;
             }
+            // The option takes the value, as the game's handler does; the largest scale the window
+            // allows is one here.
+            Some(DebugOptionsEvent::GuiScale(value)) => screen.set_gui_scale(lang, value, 1),
             None => {}
         }
     }
@@ -127,10 +146,7 @@ fn run_step(
             screen.released();
             None
         }
-        "drag" => {
-            screen.dragged(at, step["dy"].as_f64().unwrap_or(0.0));
-            None
-        }
+        "drag" => screen.dragged(at, step["dy"].as_f64().unwrap_or(0.0)),
         "type" => {
             screen.type_search(step["text"].as_str().unwrap_or_default(), &ctx.font);
             None

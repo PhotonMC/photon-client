@@ -30,19 +30,31 @@ class MovementFireOracle extends MovementPickupOracle {
         return entry;
     }
 
-    /** Every item a composter takes, in registry order: its name and the chance it fills a layer. */
-    @SuppressWarnings("unchecked")
+    /**
+     * Every item a composter takes, in registry order: its name and the chance it fills a layer.
+     * The chance is the item's `compostable` component, which names a context int provider
+     * (a 30, 50, 65 or 85 percent draw, or a layer always).
+     */
     static JsonObject compostables(JsonObject row) throws Exception {
-        var chances = (it.unimi.dsi.fastutil.objects.Object2FloatMap<net.minecraft.world.level.ItemLike>)
-            getStaticField(net.minecraft.world.level.block.ComposterBlock.class, "COMPOSTABLES");
         var items = new com.google.gson.JsonArray();
         for (var item : net.minecraft.core.registries.BuiltInRegistries.ITEM) {
-            if (!chances.containsKey(item)) {
+            var compostable = item.components().get(net.minecraft.core.component.DataComponents.COMPOSTABLE);
+            if (compostable == null) {
                 continue;
             }
+            var reference = (net.minecraft.world.level.storage.loot.providers.number.ints.ResolvableInt.Reference)
+                compostable.layers();
+            float chance = switch (reference.key().identifier().getPath()) {
+                case "compostable/low" -> 0.3F;
+                case "compostable/low_medium" -> 0.5F;
+                case "compostable/medium" -> 0.65F;
+                case "compostable/medium_high" -> 0.85F;
+                case "compostable/always_add_one" -> 1.0F;
+                default -> throw new IllegalStateException("unknown compost provider " + reference.key());
+            };
             var entry = new JsonObject();
             entry.addProperty("name", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString());
-            entry.addProperty("chance", Oracle.bits(chances.getFloat(item)));
+            entry.addProperty("chance", Oracle.bits(chance));
             items.add(entry);
         }
         var entry = new JsonObject();
@@ -171,7 +183,7 @@ class MovementFireOracle extends MovementPickupOracle {
     static JsonObject leafParticles(JsonObject row) throws Exception {
         var blocks = new com.google.gson.JsonArray();
         for (var block : net.minecraft.core.registries.BuiltInRegistries.BLOCK) {
-            if (!(block instanceof net.minecraft.world.level.block.LeavesBlock)) {
+            if (!(block instanceof net.minecraft.world.level.block.FallingParticlesLeavesBlock)) {
                 continue;
             }
             var entry = new JsonObject();

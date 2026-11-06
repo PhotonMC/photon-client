@@ -6,7 +6,7 @@ use photon_core::aabb::Aabb;
 use photon_core::binary::BlockPos;
 use photon_core::ids::EntityId;
 use photon_core::java_float::JavaF64;
-use photon_core::math::{Vec3, floor_f64};
+use photon_core::math::{Vec3, equal_f64, floor_f64};
 use photon_core::random::RandomSource;
 
 use crate::ClientWorld;
@@ -148,7 +148,7 @@ fn hook_step(
         delta = clip_flight(level, position, delta);
     }
     if !level.info(pos).is_water() && !on_ground && state.hooked == 0 {
-        delta = delta.add_vec3(Vec3::new(0.0, -0.03, 0.0));
+        delta = delta.add_vec3(Vec3::new(0.0, -f64::from(0.03_f32), 0.0));
     }
     move_hook(
         level,
@@ -173,7 +173,7 @@ fn move_hook(
     flying: bool,
     (position, mut delta, on_ground): (Vec3, Vec3, bool),
 ) -> HookStep {
-    let moved_with = Some(delta);
+    let mut moved_with = Some(delta);
     let movement = collide_hook(level, position, delta);
     let moved = movement.length_squared();
     let position = if moved > 1.0e-7 || delta.length_squared() - moved < 1.0e-7 {
@@ -188,6 +188,10 @@ fn move_hook(
         on_ground
     };
     let horizontal = delta.x != movement.x || delta.z != movement.z;
+    if let Some(restituted) = restitute_hook(level, position, delta, movement) {
+        delta = restituted;
+        moved_with = Some(delta);
+    }
     if flying && (on_ground || horizontal) {
         delta = Vec3::ZERO;
     }
@@ -199,6 +203,24 @@ fn move_hook(
         on_ground,
         moved_with,
     }
+}
+
+/// `Entity.restituteMovementAfterCollisions` (26.3): a bobber keeps no speed into what it hit;
+/// `None` when it hit nothing.
+fn restitute_hook(level: &Level<'_>, position: Vec3, delta: Vec3, movement: Vec3) -> Option<Vec3> {
+    let vertical = delta.y != movement.y;
+    let x_collision = !equal_f64(delta.x, movement.x);
+    let z_collision = !equal_f64(delta.z, movement.z);
+    if !((delta.y.abs() > 0.0 && vertical) || x_collision || z_collision) {
+        return None;
+    }
+    let effect = level.info(level.on_pos(None, position, 0.2));
+    Some(crate::item_physics::restitute(
+        &effect,
+        (x_collision, z_collision, vertical && delta.y < 0.0),
+        (delta, movement, vertical),
+        (f64::from(0.03_f32), 0.98),
+    ))
 }
 
 /// `Entity.collide` of the bobber's box through the blocks.

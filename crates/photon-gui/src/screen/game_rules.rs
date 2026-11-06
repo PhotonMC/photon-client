@@ -125,7 +125,7 @@ enum Control {
 
 enum Row {
     /// A category's label (`CategoryRuleEntry`).
-    Category(Vec<Run>),
+    Category(Vec<Run>, i32),
     /// A rule's label and control, and the entry it belongs to.
     Rule {
         entry: usize,
@@ -142,6 +142,8 @@ enum Focus {
     Cancel,
     /// The control of the rule at this index of the entries.
     Control(usize),
+    /// A category's label, by its row (`FocusableTextWidget` takes the focus).
+    Category(usize),
 }
 
 pub struct GameRulesScreen {
@@ -341,7 +343,7 @@ impl GameRulesScreen {
                     control: Control::Input { rect, .. },
                     ..
                 } => *rect,
-                Row::Category(_) => continue,
+                Row::Category(..) => continue,
             };
             let rect = &mut self.arena.0[rect];
             rect.x = left;
@@ -372,9 +374,9 @@ impl GameRulesScreen {
             if current != Some(category) {
                 current = Some(category);
                 let label = self.categories.iter().find(|(name, _)| *name == category);
-                rows.push(Row::Category(
-                    label.map(|(_, runs)| runs.clone()).unwrap_or_default(),
-                ));
+                let runs = label.map(|(_, runs)| runs.clone()).unwrap_or_default();
+                let width = font.width_of_runs(&runs);
+                rows.push(Row::Category(runs, width));
             }
             rows.push(self.row_of(index, font));
         }
@@ -504,11 +506,12 @@ fn entry_of(
     }
 }
 
-/// The label of each category the entries have: bold and yellow.
+/// The label of each category the entries have: bold, yellow and underlined.
 fn categories_of(entries: &[Entry], lang: &Lang) -> Vec<(&'static str, Vec<Run>)> {
     let style = Style {
         colour: Some(YELLOW),
         bold: Some(true),
+        underlined: Some(true),
         ..Style::default()
     };
     let mut seen: Vec<(&'static str, Vec<Run>)> = Vec::new();

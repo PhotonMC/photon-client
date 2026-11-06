@@ -12,3 +12,12 @@ pub(crate) fn jar_root() -> PathBuf {
     }
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.data/minecraft/assets/jar")
 }
+
+/// The release the reference jar is: the folder's `jar-<version>` suffix, 26.2 for the plain one.
+pub(crate) fn jar_version() -> String {
+    let root = jar_root();
+    let name = root.file_name().and_then(|name| name.to_str());
+    name.and_then(|name| name.strip_prefix("jar-"))
+        .unwrap_or("26.2")
+        .to_owned()
+}

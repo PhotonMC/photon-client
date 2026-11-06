@@ -1,6 +1,6 @@
 //! `BundleItem.onUseTick`: what a bundle in use does on a client.
 
-use super::{Context, MAIN_HAND, OFF_HAND, Outgoing};
+use super::{Context, MAIN_HAND, OFF_HAND};
 use photon_data::item::classes::ItemClass;
 use photon_world::block::rules;
 use photon_world::local_player::{LocalSound, LocalSoundSource};
@@ -11,7 +11,7 @@ const USE_DURATION: i32 = 200;
 /// The first tick of a use takes one stack out of the bundle, and so does every second tick from
 /// the eleventh on: the stack leaves the bundle with its sound, and `Player.drop` on a client only
 /// swings the main hand.
-pub(super) fn use_tick(ctx: &mut Context<'_>, out: &mut Vec<Outgoing>) {
+pub(super) fn use_tick(ctx: &mut Context<'_>) {
     if !ctx.player.is_using_item() {
         return;
     }
@@ -58,7 +58,6 @@ pub(super) fn use_tick(ctx: &mut Context<'_>, out: &mut Vec<Outgoing>) {
         (at.x, at.y, at.z),
     ));
     ctx.player.swing_for_drop();
-    ctx.send_drop_swings(out);
 }
 
 #[cfg(test)]
@@ -103,8 +102,7 @@ mod tests {
             profile_id: None,
             creaking_active: false,
         };
-        let mut out = Vec::new();
-        use_tick(&mut ctx, &mut out);
+        use_tick(&mut ctx);
         let after = ctx
             .world
             .local_player()
@@ -113,7 +111,6 @@ mod tests {
             after.is_some_and(|stack| crate::menus::container::bundle_fullness(&stack) == 0.0);
         assert!(emptied);
         assert!(ctx.player.is_swinging());
-        assert!(matches!(out[..], [Outgoing::Swing { hand: MAIN_HAND }]));
         assert!(!ctx.world.take_sounds().is_empty());
     }
 }

@@ -47,7 +47,7 @@ const BUTTON_STATUSES: [Status; 3] = [Status::Never, Status::InOverlay, Status::
 /// A row of the list.
 enum Row {
     /// A group's label (`CategoryEntry`).
-    Category(Vec<Run>),
+    Category(Vec<Run>, i32),
     /// An entry (`OptionEntry`): its name, whether reduced debug info allows it, and its buttons.
     Entry {
         id: &'static str,
@@ -91,7 +91,11 @@ fn header_texts(font: &Font, lang: &Lang) -> (Vec<Run>, Vec<Vec<Run>>) {
 }
 
 /// The footer's buttons: the two profiles (the one in use cannot be pressed) and Done.
-fn footer_buttons(arena: &mut Arena, lang: &Lang, entries: &EntryList) -> ([Widget; 2], Widget) {
+fn footer_buttons(
+    arena: &mut Arena,
+    lang: &Lang,
+    entries: &EntryList,
+) -> ([Widget; 2], Widget, Widget) {
     let mut button = |key: &str, wide: i32| Widget {
         rect: arena.add(wide, 20),
         active: true,
@@ -104,7 +108,8 @@ fn footer_buttons(arena: &mut Arena, lang: &Lang, entries: &EntryList) -> ([Widg
         widget.active = !entries.is_using_profile(profile);
         widget
     });
-    (profiles, button("gui.done", 60))
+    let scale = button("options.guiScale", 110);
+    (profiles, scale, button("gui.done", 60))
 }
 
 /// What the screen asks of the game when it is pressed.
@@ -116,6 +121,9 @@ pub enum DebugOptionsEvent {
     Status { id: &'static str, status: Status },
     /// A profile's button loaded it; the entry list saves.
     Profile(Profile),
+    /// The GUI scale slider took a value (`debugGuiScale`); the screen shows it once the game
+    /// has set it ([`DebugOptionsScreen::set_gui_scale`]).
+    GuiScale(i32),
 }
 
 /// Where the focus is: the search box at first, then whichever widget was pressed last.
@@ -126,7 +134,11 @@ enum Focus {
     List,
     /// A profile button, by its index.
     Profile(usize),
+    /// The GUI scale button.
+    GuiScale,
     Done,
+    /// A group's label, by its row (`FocusableTextWidget` takes the focus).
+    Category(usize),
     /// A button of an entry, by the entry's id and its place among the three.
     Button(&'static str, usize),
 }
@@ -147,6 +159,9 @@ pub struct DebugOptionsScreen {
     subtitle: Vec<Vec<Run>>,
     subtitle_rect: usize,
     profiles: [Widget; 2],
+    gui_scale: Widget,
+    /// The option's value and the largest it can take (a cycle button over `-1..=largest`).
+    scale: (i32, i32),
     done: Widget,
     entries: EntryList,
     reduced: bool,
@@ -155,7 +170,8 @@ pub struct DebugOptionsScreen {
     /// The three values' texts: the label of a button that is the current value, by button, and
     /// that of one that is not.
     values: [[Vec<Run>; 2]; 3],
-    categories: [Vec<Run>; 2],
+    /// The two group labels and their widths.
+    categories: [(Vec<Run>, i32); 2],
     place: Place,
     scroll: f64,
     size: (i32, i32),
@@ -178,7 +194,7 @@ impl DebugOptionsScreen {
         let search_rect = arena.add(ROW_WIDTH / 3, 20);
         let widest = subtitle.iter().map(|line| font.width_of_runs(line)).max();
         let subtitle_rect = arena.add(widest.unwrap_or(0), subtitle.len() as i32 * 9);
-        let (profiles, done) = footer_buttons(&mut arena, lang, entries);
+        let (profiles, gui_scale, done) = footer_buttons(&mut arena, lang, entries);
         let mut screen = Self {
             title: Widget {
                 rect: title_rect,
@@ -192,24 +208,20 @@ impl DebugOptionsScreen {
             focused_at: Instant::now(),
             focus: Focus::Search,
             not_allowed: styled(lang, "debug.options.notAllowed.tooltip", None),
-            search_hint: lang.runs(
-                &Component::translatable("debug.options.search")
-                    .with_colour("gray")
-                    .italic(),
-                &Style::default(),
-            ),
+            search_hint: search_hint(lang),
             scrolling: false,
             subtitle,
             subtitle_rect,
             profiles,
+            gui_scale,
+            scale: (0, i32::MAX),
             done,
             entries: entries.clone(),
             reduced,
             last_search: String::new(),
             rows: Vec::new(),
             values: value_texts(lang),
-            categories: [Category::ScreenText, Category::Renderer]
-                .map(|category| styled(lang, category.translation_key(), None)),
+            categories: category_labels(font, lang),
             place: Place {
                 y: HEADER_HEIGHT,
                 width,
@@ -222,7 +234,24 @@ impl DebugOptionsScreen {
         };
         screen.arrange();
         screen.update_search();
+        screen.set_gui_scale(lang, 0, 1);
         screen
+    }
+
+    /// The `debugGuiScale` slider's value and its upper end (`OptionInstance.ClampingLazyMaxIntRange`),
+    /// with its caption: `GUI Scale: ` and the value's name.
+    pub fn set_gui_scale(&mut self, lang: &Lang, value: i32, max: i32) {
+        self.scale = (value, max.max(-1));
+        let name = match value {
+            -1 => Component::translatable("options.debugGuiScale.unchanged"),
+            0 => Component::translatable("options.guiScale.auto"),
+            _ => Component::literal(value.to_string()),
+        };
+        let caption = Component::translatable("options.guiScale");
+        let label = Component::translatable_with("options.generic_value", vec![caption, name]);
+        self.gui_scale.kind = Kind::Button {
+            label: lang.runs(&label, &Style::default()),
+        };
     }
 
     /// The header's title row and subtitle and the footer's buttons, placed in their frames.
@@ -255,8 +284,13 @@ impl DebugOptionsScreen {
             (0, 0, width, HEADER_HEIGHT),
             (0.5, 0.5),
         );
-        let leaves = [self.profiles[0].rect, self.profiles[1].rect, self.done.rect];
-        let mut footer = horizontal(&self.arena, &leaves, 8);
+        let leaves = [
+            self.profiles[0].rect,
+            self.profiles[1].rect,
+            self.gui_scale.rect,
+            self.done.rect,
+        ];
+        let mut footer = horizontal(&self.arena, &leaves, 4);
         footer.arrange(&mut self.arena);
         place_in_frame(
             &mut self.arena,
@@ -298,7 +332,8 @@ impl DebugOptionsScreen {
             if current != Some(entry.category) {
                 current = Some(entry.category);
                 let index = usize::from(entry.category == Category::Renderer);
-                rows.push(Row::Category(self.categories[index].clone()));
+                let (label, width) = self.categories[index].clone();
+                rows.push(Row::Category(label, width));
             }
             let allowed = !self.reduced || entry.allowed_when_reduced;
             let style = Style {
@@ -407,4 +442,28 @@ impl DebugOptionsScreen {
     fn row_y(&self, index: usize) -> i32 {
         self.place.y + 2 - self.scroll as i32 + index as i32 * ITEM_HEIGHT
     }
+}
+
+/// The group labels, bold and underlined as 26.3 draws them.
+fn category_labels(font: &Font, lang: &Lang) -> [(Vec<Run>, i32); 2] {
+    let style = Style {
+        bold: Some(true),
+        underlined: Some(true),
+        ..Style::default()
+    };
+    [Category::ScreenText, Category::Renderer].map(|category| {
+        let runs = lang.runs(&Component::translatable(category.translation_key()), &style);
+        let width = font.width_of_runs(&runs);
+        (runs, width)
+    })
+}
+
+/// The search box's hint: grey and italic.
+fn search_hint(lang: &Lang) -> Vec<Run> {
+    lang.runs(
+        &Component::translatable("debug.options.search")
+            .with_colour("gray")
+            .italic(),
+        &Style::default(),
+    )
 }

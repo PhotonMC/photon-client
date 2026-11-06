@@ -87,6 +87,31 @@ fn draws_sky(skybox: Skybox, view: &SkyView) -> bool {
     skybox == Skybox::Overworld && !view.fog.hides_sky()
 }
 
+/// The fog the air makes (`FogRenderer.setupFog`): its colour from the blended attributes and the
+/// distances it starts and ends at.
+fn atmosphere_of(attributes: &Attributes, view: &SkyView, sunrise: [f32; 4]) -> AtmosphericFog {
+    AtmosphericFog::of(
+        super::fog::atmospheric_colour(
+            &super::fog::AtmosphereAttributes {
+                fog_colour: rgb_of(attributes.get(Attribute::FogColor)),
+                sunrise,
+                sky_colour: rgb_of(attributes.get(Attribute::SkyColor)),
+                sun_angle: attributes.get(Attribute::SunAngle).float(),
+                sky_fog_end: attributes.get(Attribute::SkyFogEndDistance).float(),
+            },
+            (view.forward[0], view.render_distance),
+            (view.weather.rain, view.weather.thunder),
+        ),
+        (
+            attributes.get(Attribute::FogStartDistance).float(),
+            attributes.get(Attribute::FogEndDistance).float(),
+            attributes.get(Attribute::SkyFogEndDistance).float(),
+            attributes.get(Attribute::CloudFogEndDistance).float(),
+        ),
+        (view.rain_fog, view.render_distance, view.cloud_range),
+    )
+}
+
 /// Build one frame of sky from the blended attributes.
 pub fn build_frame(
     attributes: &Attributes,
@@ -104,34 +129,15 @@ pub fn build_frame(
     let moon_phase = usize::from(attributes.get(Attribute::MoonPhase).phase()).min(7);
 
     // FogRenderer.setupFog: the environment the camera is in, the colour it gives and the distances.
-    let atmosphere = AtmosphericFog::of(
-        super::fog::atmospheric_colour(
-            &super::fog::AtmosphereAttributes {
-                fog_colour: attributes.get(Attribute::FogColor).color(),
-                sunrise,
-                sky_colour,
-                sun_angle: attributes.get(Attribute::SunAngle).float(),
-                sky_fog_end: attributes.get(Attribute::SkyFogEndDistance).float(),
-            },
-            (view.forward[0], view.render_distance),
-            (view.weather.rain, view.weather.thunder),
-        ),
-        (
-            attributes.get(Attribute::FogStartDistance).float(),
-            attributes.get(Attribute::FogEndDistance).float(),
-            attributes.get(Attribute::SkyFogEndDistance).float(),
-            attributes.get(Attribute::CloudFogEndDistance).float(),
-        ),
-        (view.rain_fog, view.render_distance, view.cloud_range),
-    );
+    let atmosphere = atmosphere_of(attributes, view, sunrise);
     let water = WaterFog {
-        colour: attributes.get(Attribute::WaterFogColor).color(),
+        colour: rgb_of(attributes.get(Attribute::WaterFogColor)),
         start: attributes.get(Attribute::WaterFogStartDistance).float(),
         end: attributes.get(Attribute::WaterFogEndDistance).float(),
     };
     let fog = fog_data(&view.fog, &atmosphere, &water);
     let (fog_colour, sky_fog_end, cloud_fog_end) = (fog.colour, fog.sky_end, fog.cloud_end);
-    let cloud_colour = unpack(attributes.get(Attribute::CloudColor).color());
+    let cloud_colour = attributes.get(Attribute::CloudColor).color();
     let terrain_fog = [
         fog.environmental_start,
         fog.environmental_end,
@@ -214,11 +220,15 @@ pub fn build_frame(
     push_batch(
         &mut frame,
         SkyBlend::Translucent,
-        disc(16.0, unpack(sky_colour | 0xFF00_0000), 0.0),
+        disc(
+            16.0,
+            [sky_colour[0], sky_colour[1], sky_colour[2], 1.0],
+            0.0,
+        ),
     );
 
     // The sunrise fan, stretched by its colour's alpha.
-    let sunrise_alpha = channel(sunrise, 24) as f32 / 255.0;
+    let sunrise_alpha = sunrise[3];
     if sunrise_alpha > 0.001 {
         let flip = if mth_sin_f64(f64::from(sun_angle)) < 0.0 {
             180.0_f32
@@ -232,7 +242,7 @@ pub fn build_frame(
             ),
             scale(1.0, 1.0, sunrise_alpha),
         );
-        let [r, g, b, a] = unpack(sunrise);
+        let [r, g, b, a] = sunrise;
         let point = |position: [f32; 3], alpha: f32| SkyVertex {
             position: transform(pose, position),
             uv: untextured,

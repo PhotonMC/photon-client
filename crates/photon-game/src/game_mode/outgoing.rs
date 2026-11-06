@@ -13,8 +13,8 @@ pub enum Outgoing {
         face: u8,
         sequence: i32,
     },
-    /// `ServerboundSwingPacket`.
-    Swing { hand: u8 },
+    /// `ServerboundPunchPacket`: the main hand attacked or kept mining.
+    Punch,
     /// `ServerboundUseItemOnPacket`: the hit relative to the block.
     UseItemOn {
         hand: u8,
@@ -62,13 +62,15 @@ pub enum Outgoing {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerAction {
     StartDestroyBlock = 0,
-    AbortDestroyBlock = 1,
-    StopDestroyBlock = 2,
-    DropAllItems = 3,
-    DropItem = 4,
-    ReleaseUseItem = 5,
-    SwapItemWithOffhand = 6,
-    Stab = 7,
+    /// New in 26.3: the face under the cursor changed while a block is being broken.
+    ChangeDestroyDirection = 1,
+    AbortDestroyBlock = 2,
+    StopDestroyBlock = 3,
+    DropAllItems = 4,
+    DropItem = 5,
+    ReleaseUseItem = 6,
+    SwapItemWithOffhand = 7,
+    Stab = 8,
 }
 
 impl Outgoing {
@@ -76,7 +78,7 @@ impl Outgoing {
     pub fn type_name(&self) -> &'static str {
         match self {
             Outgoing::PlayerAction { .. } => "minecraft:player_action",
-            Outgoing::Swing { .. } => "minecraft:swing",
+            Outgoing::Punch => "minecraft:punch",
             Outgoing::UseItemOn { .. } => "minecraft:use_item_on",
             Outgoing::UseItem { .. } => "minecraft:use_item",
             Outgoing::Attack { .. } => "minecraft:attack",
@@ -108,7 +110,7 @@ impl Outgoing {
                 out.push(face);
                 photon_core::wire::write_varint(sequence, &mut out);
             }
-            Outgoing::Swing { hand } => photon_core::wire::write_varint(i32::from(hand), &mut out),
+            Outgoing::Punch => {}
             Outgoing::UseItemOn {
                 hand,
                 x,

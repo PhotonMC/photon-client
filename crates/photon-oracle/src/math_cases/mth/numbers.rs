@@ -282,10 +282,16 @@ pub(crate) fn mth_length_case(request: &Value) -> Result<Value, String> {
             "{:016x}",
             math::mth_length_f64_2(f64_field(request, "x")?, f64_field(request, "y")?,).to_bits()
         ),
-        ("f32_2", "length") => format!(
-            "{:08x}",
-            math::mth_length_f32_2(f32_field(request, "x")?, f32_field(request, "y")?,).to_bits()
-        ),
+        ("f32_2", "length") => {
+            let (x, y) = (f32_field(request, "x")?, f32_field(request, "y")?);
+            // 26.3 added the float `lengthSquared` this one calls.
+            let length = if crate::jar_version() == "26.2" {
+                math::mth_length_f32_2(x, y)
+            } else {
+                math::mth_length_f32_2_v26_3(x, y)
+            };
+            format!("{:08x}", length.to_bits())
+        }
         ("f64_3", "length_squared") => format!(
             "{:016x}",
             math::mth_length_squared_f64_3(

@@ -102,36 +102,60 @@ impl Track {
     }
 }
 
+/// A colour attribute's value: a `#RRGGBB` or `#AARRGGBB` text, the channels as an array, or a
+/// packed number.
+fn parse_colour(kind: Kind, value: &JsonValue) -> Option<Value> {
+    let packed = |color: u32| match kind {
+        Kind::Rgb => rgb24(color),
+        _ => argb32(color),
+    };
+    match value {
+        JsonValue::String(text) => {
+            let text = String::from_utf16(text).ok()?;
+            let hex = text.strip_prefix('#')?;
+            let parsed = u32::from_str_radix(hex, 16).ok()?;
+            match hex.len() {
+                6 => Some(packed(0xFF00_0000 | parsed)),
+                8 => Some(packed(parsed)),
+                _ => None,
+            }
+        }
+        // `ExtraCodecs.VECTOR3F` / `VECTOR4F`: the channels as they are.
+        JsonValue::Array(channels) => {
+            let mut color = [1.0_f32; 4];
+            if channels.len() != if kind == Kind::Rgb { 3 } else { 4 } {
+                return None;
+            }
+            for (slot, channel) in color.iter_mut().zip(channels) {
+                *slot = channel.as_f32()?;
+            }
+            Some(Value::Color(color))
+        }
+        other => Some(packed(other.as_i64()? as u32)),
+    }
+}
+
+/// A moon phase attribute's value: the phase's name.
+fn parse_phase(value: &JsonValue) -> Option<Value> {
+    let JsonValue::String(text) = value else {
+        return None;
+    };
+    let text = String::from_utf16(text).ok()?;
+    MOON_PHASES
+        .iter()
+        .position(|phase| *phase == text)
+        .map(|index| Value::Phase(index as u8))
+}
+
 pub(super) fn parse_value(kind: Kind, value: &JsonValue) -> Option<Value> {
     match kind {
-        Kind::Rgb | Kind::Argb => match value {
-            JsonValue::String(text) => {
-                let text = String::from_utf16(text).ok()?;
-                let hex = text.strip_prefix('#')?;
-                let parsed = u32::from_str_radix(hex, 16).ok()?;
-                match hex.len() {
-                    6 => Some(Value::Color(0xFF00_0000 | parsed)),
-                    8 => Some(Value::Color(parsed)),
-                    _ => None,
-                }
-            }
-            other => Some(Value::Color(other.as_i64()? as u32)),
-        },
+        Kind::Rgb | Kind::Argb => parse_colour(kind, value),
         Kind::Float | Kind::Angle => Some(Value::Float(value.as_f32()?)),
         Kind::Bool => match value {
             JsonValue::Bool(flag) => Some(Value::Bool(*flag)),
             _ => None,
         },
-        Kind::Phase => match value {
-            JsonValue::String(text) => {
-                let text = String::from_utf16(text).ok()?;
-                MOON_PHASES
-                    .iter()
-                    .position(|phase| *phase == text)
-                    .map(|index| Value::Phase(index as u8))
-            }
-            _ => None,
-        },
+        Kind::Phase => parse_phase(value),
     }
 }
 

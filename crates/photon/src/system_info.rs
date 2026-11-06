@@ -36,6 +36,12 @@ pub fn system_specs(backend: &BackendDescription) -> SystemSpecs {
         runtime: ("Rust".to_owned(), env!("PHOTON_RUSTC_VERSION").to_owned()),
         cpu: cpu_info().to_owned(),
         display: (backend.extent.width as i32, backend.extent.height as i32),
+        // The window is not told apart from its framebuffer here: a density of one.
+        window: (
+            backend.extent.width as i32,
+            backend.extent.height as i32,
+            100,
+        ),
         vendor: vendor_name(backend.vendor_id),
         device_name: backend.device_name.clone(),
         device_type: DeviceType::from_vulkan(backend.device_type),

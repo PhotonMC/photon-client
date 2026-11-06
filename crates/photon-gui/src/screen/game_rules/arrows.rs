@@ -35,15 +35,18 @@ impl GameRulesScreen {
         Arrow::of(key).is_some_and(|arrow| self.arrow(arrow))
     }
 
-    /// The rule entries, in list order, and whether each is a toggle.
-    fn control_entries(&self) -> Vec<(usize, bool)> {
+    /// The focusable rows, in list order, and whether each is a toggle: a category's label is
+    /// the only child of its row.
+    fn control_entries(&self) -> Vec<(Focus, bool)> {
         self.rows
             .iter()
-            .filter_map(|row| match row {
-                Row::Rule { entry, control, .. } => {
-                    Some((*entry, matches!(control, Control::Toggle(_))))
-                }
-                Row::Category { .. } => None,
+            .enumerate()
+            .map(|(index, row)| match row {
+                Row::Rule { entry, control, .. } => (
+                    Focus::Control(*entry),
+                    matches!(control, Control::Toggle(_)),
+                ),
+                Row::Category(..) => (Focus::Category(index), false),
             })
             .collect()
     }
@@ -53,43 +56,37 @@ impl GameRulesScreen {
     pub(super) fn arrow(&mut self, arrow: Arrow) -> bool {
         let entries = self.control_entries();
         let target = match (self.focus, arrow) {
-            (Some(Focus::Search), Arrow::Down) => entries.first().map(|e| Focus::Control(e.0)),
+            (Some(Focus::Search), Arrow::Down) => entries.first().map(|e| e.0),
             (Some(Focus::Search), _) => None,
-            (Some(Focus::Control(entry)), _) => self.control_target(&entries, entry, arrow),
+            (Some(inside @ (Focus::Control(_) | Focus::Category(_))), _) => {
+                self.control_target(&entries, inside, arrow)
+            }
             (Some(Focus::Done), Arrow::Right) => Some(Focus::Cancel),
             (Some(Focus::Cancel), Arrow::Left) if self.done.is_active() => Some(Focus::Done),
-            (Some(Focus::Done | Focus::Cancel), Arrow::Up) => {
-                entries.last().map(|e| Focus::Control(e.0))
-            }
+            (Some(Focus::Done | Focus::Cancel), Arrow::Up) => entries.last().map(|e| e.0),
             _ => None,
         };
         let Some(target) = target else {
             return false;
         };
         self.set_focus(Some(target));
-        if let Focus::Control(entry) = target {
-            self.scroll_to_entry(entry);
-        }
+        self.scroll_to_focus(target);
         true
     }
 
-    /// The arrow from a control: the neighbour entries, the search box above the first, the
+    /// The arrow from a row's child: the neighbour rows, the search box above the first, the
     /// button under the list column below the last, and the left button from a toggle.
     fn control_target(
         &self,
-        entries: &[(usize, bool)],
-        entry: usize,
+        entries: &[(Focus, bool)],
+        focus: Focus,
         arrow: Arrow,
     ) -> Option<Focus> {
-        let at = entries.iter().position(|e| e.0 == entry)?;
+        let at = entries.iter().position(|e| e.0 == focus)?;
         match arrow {
             Arrow::Up if at == 0 => Some(Focus::Search),
-            Arrow::Up => Some(Focus::Control(entries[at - 1].0)),
-            Arrow::Down => Some(
-                entries
-                    .get(at + 1)
-                    .map_or(Focus::Cancel, |e| Focus::Control(e.0)),
-            ),
+            Arrow::Up => Some(entries[at - 1].0),
+            Arrow::Down => Some(entries.get(at + 1).map_or(Focus::Cancel, |e| e.0)),
             Arrow::Left if entries[at].1 && self.done.is_active() => Some(Focus::Done),
             Arrow::Left | Arrow::Right => None,
         }

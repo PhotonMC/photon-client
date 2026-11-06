@@ -55,7 +55,7 @@ pub fn footer(
             keys.profiler,
             state(profiler),
             keys.fps,
-            if has_server { "FPS + TPS" } else { "FPS" },
+            if has_server { "fps + tps" } else { "fps" },
             state(fps)
         ),
         format!(

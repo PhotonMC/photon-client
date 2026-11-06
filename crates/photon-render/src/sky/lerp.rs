@@ -114,7 +114,7 @@ pub(super) fn lerp_int(alpha: f32, from: i32, to: i32) -> i32 {
     from + (alpha * (to - from) as f32).floor() as i32
 }
 
-/// `ARGB.srgbLerp`: each channel on its own, truncated as integers are.
+/// `ARGB.srgbLerp` on packed colours: each channel on its own, truncated as integers are.
 pub fn srgb_lerp(alpha: f32, from: u32, to: u32) -> u32 {
     argb(
         lerp_int(alpha, channel(from, 24), channel(to, 24)),
@@ -122,6 +122,17 @@ pub fn srgb_lerp(alpha: f32, from: u32, to: u32) -> u32 {
         lerp_int(alpha, channel(from, 8), channel(to, 8)),
         lerp_int(alpha, channel(from, 0), channel(to, 0)),
     )
+}
+
+/// `ARGB.srgbLerp` on the float vectors: each component by a fused multiply-add (`Vector4f.lerp`).
+pub fn srgb_lerp_vec(alpha: f32, from: [f32; 4], to: [f32; 4]) -> [f32; 4] {
+    [0, 1, 2, 3].map(|i| (to[i] - from[i]).mul_add(alpha, from[i]))
+}
+
+/// The red, green and blue of an RGB attribute's value.
+pub(super) fn rgb_of(value: Value) -> [f32; 3] {
+    let colour = value.color();
+    [colour[0], colour[1], colour[2]]
 }
 
 pub(super) fn lerp_f32(alpha: f32, from: f32, to: f32) -> f32 {
@@ -144,31 +155,43 @@ pub(super) fn apply(kind: Kind, operation: Operation, subject: Value, argument: 
         return argument;
     }
     match kind {
-        Kind::Rgb | Kind::Argb => apply_colour(operation, subject.color(), argument.color()),
+        Kind::Rgb | Kind::Argb => apply_colour(
+            kind == Kind::Argb,
+            operation,
+            subject.color(),
+            argument.color(),
+        ),
         Kind::Float | Kind::Angle => apply_float(operation, subject.float(), argument.float()),
         Kind::Bool => Value::Bool(apply_bool(operation, subject.bool(), argument.bool())),
         Kind::Phase => subject,
     }
 }
 
-/// The modifiers of a colour: each channel on its own, the alpha kept (`ColorModifier`).
-fn apply_colour(operation: Operation, s: u32, a: u32) -> Value {
-    let sum = |sign: i32, floor: i32, ceiling: i32| {
-        let channel_of =
-            |shift: u32| (channel(s, shift) + sign * channel(a, shift)).clamp(floor, ceiling);
-        Value::Color(argb(
-            channel(s, 24),
-            channel_of(16),
-            channel_of(8),
-            channel_of(0),
-        ))
-    };
-    match operation {
-        Operation::Multiply => Value::Color(multiply(s, a)),
-        Operation::Add => sum(1, 0, 255),
-        Operation::Subtract => sum(-1, 0, 255),
-        _ => Value::Color(s),
-    }
+/// The modifiers of a colour (`ColorModifier`, `ARGB.multiply`, `addRgb`, `subtractRgb`): each
+/// channel on its own, the alpha kept unless an ARGB colour multiplies it.
+fn apply_colour(argb: bool, operation: Operation, s: [f32; 4], a: [f32; 4]) -> Value {
+    let alpha = if argb { s[3] } else { 1.0 };
+    Value::Color(match operation {
+        Operation::Multiply => [
+            s[0] * a[0],
+            s[1] * a[1],
+            s[2] * a[2],
+            if argb { s[3] * a[3] } else { 1.0 },
+        ],
+        Operation::Add => [
+            (s[0] + a[0]).min(1.0),
+            (s[1] + a[1]).min(1.0),
+            (s[2] + a[2]).min(1.0),
+            alpha,
+        ],
+        Operation::Subtract => [
+            (s[0] - a[0]).max(0.0),
+            (s[1] - a[1]).max(0.0),
+            (s[2] - a[2]).max(0.0),
+            alpha,
+        ],
+        _ => s,
+    })
 }
 
 /// The modifiers of a number (`FloatModifier`).
@@ -207,7 +230,7 @@ fn apply_bool(operation: Operation, subject: bool, argument: bool) -> bool {
 /// The lerp a keyframe track and a biome blend use.
 pub(super) fn lerp(kind: Kind, alpha: f32, from: Value, to: Value) -> Value {
     match kind {
-        Kind::Rgb | Kind::Argb => Value::Color(srgb_lerp(alpha, from.color(), to.color())),
+        Kind::Rgb | Kind::Argb => Value::Color(srgb_lerp_vec(alpha, from.color(), to.color())),
         Kind::Float | Kind::Angle => Value::Float(lerp_f32(alpha, from.float(), to.float())),
         // Not interpolated: a keyframe switches when its segment ends.
         Kind::Phase | Kind::Bool => {
@@ -237,70 +260,78 @@ pub(super) fn partial_tick_lerp(kind: Kind, alpha: f32, from: Value, to: Value) 
     }
 }
 
+/// How the weather changes one attribute.
+#[derive(Clone, Copy)]
+enum WeatherEffect {
+    /// Blend to the colour's grey at this brightness, by this factor.
+    Grey(f32, f32),
+    /// Multiply the colour by these channels.
+    Multiply(f32, f32, f32),
+    /// Blend the night sky light colour in at this alpha.
+    NightLight(f32),
+    /// Blend the float towards the target by the alpha.
+    Blend(f32, f32),
+    /// Take the value to nothing.
+    Dark,
+}
+
+/// What rain (or thunder) does to an attribute, in `WeatherAttributes`.
+fn weather_effect(attribute: Attribute, thunder: bool) -> Option<WeatherEffect> {
+    use WeatherEffect::{Blend, Dark, Grey, Multiply, NightLight};
+    let [rain, storm] = match attribute {
+        Attribute::SkyColor => [Grey(0.6, 0.75), Grey(0.24, 0.94)],
+        Attribute::FogColor | Attribute::SunriseSunsetColor => {
+            [Multiply(0.5, 0.5, 0.6), Multiply(0.25, 0.25, 0.3)]
+        }
+        Attribute::CloudColor => [Grey(0.24, 0.5), Grey(0.095, 0.94)],
+        Attribute::SkyLightColor => [NightLight(0.3125), NightLight(0.527_343_75)],
+        Attribute::SkyLightFactor => [Blend(0.24, 0.3125), Blend(0.24, 0.527_343_75)],
+        Attribute::StarBrightness => [Dark, Dark],
+        _ => return None,
+    };
+    Some(if thunder { storm } else { rain })
+}
+
 /// `WeatherAttributes`: how rain and thunder change one attribute's value,
 /// or nothing for an attribute they leave alone.
 pub(super) fn weather_modifier(attribute: Attribute, thunder: bool, value: Value) -> Option<Value> {
-    // BlendToGray: the greyscale of the colour, scaled, blended in.
+    let argb = attribute.kind() == Kind::Argb;
+    // `ColorModifier.BlendToGray`: the greyscale of the colour, scaled, blended in.
     let blend_to_grey = |brightness: f32, factor: f32| {
         let colour = value.color();
-        let grey = (channel(colour, 16) as f32 * 0.3
-            + channel(colour, 8) as f32 * 0.59
-            + channel(colour, 0) as f32 * 0.11) as i32;
-        let scaled = ((grey as f32 * brightness) as i32).clamp(0, 255);
-        let grey = argb(channel(colour, 24), scaled, scaled, scaled);
-        Value::Color(srgb_lerp(factor, colour, grey))
+        let grey = colour[0] * 0.3 + colour[1] * 0.59 + colour[2] * 0.11;
+        let scaled = (grey * brightness).clamp(0.0, 1.0);
+        let grey = [scaled, scaled, scaled, colour[3]];
+        Value::Color(srgb_lerp_vec(factor, colour, grey))
     };
     let float_blend =
         |target: f32, alpha: f32| Value::Float(lerp_f32(alpha, value.float(), target));
-    // The night sky light colour, at the alpha the weather blends it in by.
+    // `ColorModifier.ALPHA_BLEND_RGB` with the night sky light colour at the alpha the weather
+    // blends it in by.
     let night_sky_light = |alpha: f32| {
-        let colour = argb(
-            (alpha * 255.0).floor() as i32,
-            (0.48_f32 * 255.0).floor() as i32,
-            (0.48_f32 * 255.0).floor() as i32,
-            255,
-        );
-        Value::Color(alpha_blend(value.color(), colour))
+        let colour = value.color();
+        let source = [
+            (0.48_f32 * 255.0).floor() / 255.0,
+            (0.48_f32 * 255.0).floor() / 255.0,
+            1.0,
+            (alpha * 255.0).floor() / 255.0,
+        ];
+        if source[3] == 0.0 {
+            return Value::Color(colour);
+        }
+        let blended = srgb_lerp_vec(source[3], colour, source);
+        Value::Color([blended[0], blended[1], blended[2], colour[3]])
     };
+    // `ColorModifier.MULTIPLY_RGB` and `MULTIPLY_ARGB`, by a colour made of floats.
     let multiply_by = |red: f32, green: f32, blue: f32| {
-        let by = argb(
-            255,
-            (red * 255.0).floor() as i32,
-            (green * 255.0).floor() as i32,
-            (blue * 255.0).floor() as i32,
-        );
-        Value::Color(multiply(value.color(), by))
+        let by = [red, green, blue, 1.0].map(|channel| (channel * 255.0).floor() / 255.0);
+        apply_colour(argb, Operation::Multiply, value.color(), by)
     };
-    Some(match (attribute, thunder) {
-        (Attribute::SkyColor, false) => blend_to_grey(0.6, 0.75),
-        (Attribute::SkyColor, true) => blend_to_grey(0.24, 0.94),
-        (Attribute::FogColor | Attribute::SunriseSunsetColor, false) => multiply_by(0.5, 0.5, 0.6),
-        (Attribute::FogColor | Attribute::SunriseSunsetColor, true) => multiply_by(0.25, 0.25, 0.3),
-        (Attribute::CloudColor, false) => blend_to_grey(0.24, 0.5),
-        (Attribute::CloudColor, true) => blend_to_grey(0.095, 0.94),
-        (Attribute::SkyLightColor, false) => night_sky_light(0.3125),
-        (Attribute::SkyLightColor, true) => night_sky_light(0.527_343_75),
-        (Attribute::SkyLightFactor, false) => float_blend(0.24, 0.3125),
-        (Attribute::SkyLightFactor, true) => float_blend(0.24, 0.527_343_75),
-        (Attribute::StarBrightness, _) => Value::Float(0.0),
-        _ => return None,
+    Some(match weather_effect(attribute, thunder)? {
+        WeatherEffect::Grey(brightness, factor) => blend_to_grey(brightness, factor),
+        WeatherEffect::Multiply(red, green, blue) => multiply_by(red, green, blue),
+        WeatherEffect::NightLight(alpha) => night_sky_light(alpha),
+        WeatherEffect::Blend(target, alpha) => float_blend(target, alpha),
+        WeatherEffect::Dark => Value::Float(0.0),
     })
-}
-
-/// `ARGB.alphaBlend`: the source over the destination by the source's alpha.
-pub(super) fn alpha_blend(destination: u32, source: u32) -> u32 {
-    let source_alpha = channel(source, 24);
-    if source_alpha == 255 {
-        return source;
-    }
-    if source_alpha == 0 {
-        return destination;
-    }
-    let alpha = source_alpha + channel(destination, 24) * (255 - source_alpha) / 255;
-    let blend = |shift: u32| {
-        (channel(source, shift) * source_alpha
-            + channel(destination, shift) * (alpha - source_alpha))
-            / alpha
-    };
-    argb(alpha, blend(16), blend(8), blend(0))
 }

@@ -255,8 +255,9 @@ struct Rewrite<'a> {
     flag: Flag,
 }
 
-/// What a rewrite does with the teleport effect's `directional_particles` flag, which only
-/// 26.3 and later send: the canonical form has it.
+/// What a rewrite does with the fields only 26.3 and later send (the teleport effect's
+/// `directional_particles` flag, an instrument's `durability_damage`): the canonical form
+/// has them.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Flag {
     /// The bytes already have it, or are not translated.
@@ -296,13 +297,33 @@ impl<'a> Cursor<'a> {
     /// The teleport effect's `directional_particles` flag (26.3 and later); a rewrite for an
     /// older version adds or drops it.
     pub fn directional_particles(&mut self) -> R {
+        self.added_field(Cursor::boolean_unit, &[1])
+    }
+
+    /// The instrument's `durability_damage` (26.3 and later); a rewrite for an older version
+    /// adds it as zero or drops it.
+    pub fn durability_damage(&mut self) -> R {
+        self.added_field(Cursor::varint_unit, &[0])
+    }
+
+    fn boolean_unit(&mut self) -> R {
+        self.boolean().map(|_| ())
+    }
+
+    fn varint_unit(&mut self) -> R {
+        self.varint().map(|_| ())
+    }
+
+    /// A field only the newest versions send: read where the bytes have it, and where a
+    /// rewrite is for an older version, added as `default` or dropped.
+    fn added_field(&mut self, read: fn(&mut Self) -> R, default: &[u8]) -> R {
         let before = self.data;
         let flag = self
             .rewrite
             .as_ref()
             .map_or(Flag::Keep, |rewrite| rewrite.flag);
         if flag != Flag::Insert {
-            self.boolean()?;
+            read(self)?;
         }
         let Some(rewrite) = &mut self.rewrite else {
             return Ok(());
@@ -313,7 +334,7 @@ impl<'a> Cursor<'a> {
                 rewrite
                     .out
                     .extend_from_slice(&rewrite.mark[..rewrite.mark.len() - before.len()]);
-                rewrite.out.push(1);
+                rewrite.out.extend_from_slice(default);
                 rewrite.mark = self.data;
             }
             Flag::Drop => {

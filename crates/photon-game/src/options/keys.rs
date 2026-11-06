@@ -2,7 +2,7 @@ use super::*;
 
 /// The data version `options.txt` is written for (`version:` in the file),
 /// the pinned client's `world_version`.
-pub const DATA_VERSION: i32 = 4903;
+pub const DATA_VERSION: i32 = 5023;
 
 /// An option of the file, in the order `processOptions` goes through them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,7 +66,7 @@ pub(super) enum Key {
     Play(PlayKey),
 }
 
-pub(super) const KEYS: [(&str, Key); 109] = [
+pub(super) const KEYS: [(&str, Key); 110] = [
     ("ao", Key::AmbientOcclusion),
     (
         "biomeBlendRadius",
@@ -97,6 +97,7 @@ pub(super) const KEYS: [(&str, Key); 109] = [
     ),
     ("gamma", Key::Gamma),
     ("guiScale", Key::GuiScale),
+    ("debugGuiScale", Key::Play(PlayKey::DebugGuiScale)),
     (
         "maxAnisotropyBit",
         Key::Quality(QualityKey::MaxAnisotropyBit),
@@ -256,7 +257,7 @@ pub(super) const KEYS: [(&str, Key); 109] = [
 /// The names `Options.processOptions` visits, in the order `save` writes them (the options of
 /// `processDumpedOptions` first). `key_`, `soundCategory_` and `modelPart_` stand for their
 /// groups, and `fullscreenResolution` follows them all.
-pub(super) const WRITE_ORDER: [&str; 115] = [
+pub(super) const WRITE_ORDER: [&str; 116] = [
     "ao",
     "biomeBlendRadius",
     "chunkSectionFadeInTime",
@@ -278,6 +279,7 @@ pub(super) const WRITE_ORDER: [&str; 115] = [
     "exclusiveFullscreen",
     "gamma",
     "guiScale",
+    "debugGuiScale",
     "maxAnisotropyBit",
     "textureFiltering",
     "maxFps",

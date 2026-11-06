@@ -17,6 +17,8 @@ pub struct Instrument {
     pub use_ticks: i32,
     /// `range / 16`: the volume of the sound.
     pub volume: f32,
+    /// What a use costs the stack (`durability_damage`, 26.3).
+    pub durability_damage: i32,
 }
 
 /// The instruments by registry id; one the data pack does not describe is `None`.
@@ -33,6 +35,7 @@ pub fn instruments_of(registries: &Registries) -> Vec<Option<Instrument>> {
                 sound,
                 use_ticks: (entry.use_duration? * 20.0).floor() as i32,
                 volume: entry.range? / 16.0,
+                durability_damage: entry.durability_damage,
             })
         })
         .collect()
@@ -81,7 +84,8 @@ pub fn direct_description(values: &crate::item::values::Values) -> Option<crate:
     crate::text::Component::from_nbt(&tag)
 }
 
-/// `Instrument.DIRECT_STREAM_CODEC`: the sound, the use duration and the range, leaving the
+/// `Instrument.DIRECT_STREAM_CODEC`: the sound, the use duration, the range and the durability
+/// damage, leaving the
 /// description to read.
 fn direct(data: &mut &[u8]) -> Option<Instrument> {
     let sound = match read_varint(data).ok()? {
@@ -97,11 +101,13 @@ fn direct(data: &mut &[u8]) -> Option<Instrument> {
     };
     let use_duration = read_float(data)?;
     let range = read_float(data)?;
+    let durability_damage = read_varint(data).ok()?;
     Some(Instrument {
         name: String::new(),
         sound,
         use_ticks: (use_duration * 20.0).floor() as i32,
         volume: range / 16.0,
+        durability_damage,
     })
 }
 

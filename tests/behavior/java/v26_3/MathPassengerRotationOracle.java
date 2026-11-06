@@ -19,7 +19,7 @@ class MathPassengerRotationOracle extends MathPassengerPositionOracle {
         for (JsonElement rowEntry : request.getAsJsonArray("rows")) {
             JsonObject row = rowEntry.getAsJsonObject();
             JsonObject vehicleInput = row.getAsJsonObject("vehicle");
-            if (vehicleInput.get("type_id").getAsInt() != 89) {
+            if (vehicleInput.get("type_id").getAsInt() != oakBoatId()) {
                 throw new IllegalArgumentException(
                     "Passenger rotation fixture requires an oak boat");
             }
@@ -31,7 +31,7 @@ class MathPassengerRotationOracle extends MathPassengerPositionOracle {
             JsonObject passengerInput = row.getAsJsonObject("passenger");
             int passengerTypeId = passengerInput.get("type_id").getAsInt();
             Entity passenger;
-            if (passengerTypeId == 120) {
+            if (passengerTypeId == wireId(net.minecraft.world.entity.EntityTypes.SNOWBALL)) {
                 passenger = TickSnowballFixture.create(
                     passengerInput.get("entity_id").getAsInt(),
                     vec3(passengerInput.getAsJsonObject("position")),
@@ -39,7 +39,7 @@ class MathPassengerRotationOracle extends MathPassengerPositionOracle {
                     Oracle.f32(passengerInput.getAsJsonObject("rotation"), "y"),
                     Oracle.f32(passengerInput.getAsJsonObject("rotation"), "x"),
                     passengerInput.get("no_gravity").getAsBoolean());
-            } else if (passengerTypeId == 156) {
+            } else if (passengerTypeId == wireId(net.minecraft.world.entity.EntityTypes.PLAYER)) {
                 passenger = PassengerPositionPlayerFixture.create(
                     passengerInput.get("entity_id").getAsInt(),
                     vec3(passengerInput.getAsJsonObject("position")),
@@ -106,7 +106,7 @@ class MathPassengerRotationOracle extends MathPassengerPositionOracle {
         bindBreezeCanTurnInBoatsTag();
 
         JsonObject vehicleInput = request.getAsJsonObject("vehicle");
-        if (vehicleInput.get("type_id").getAsInt() != 89) {
+        if (vehicleInput.get("type_id").getAsInt() != oakBoatId()) {
             throw new IllegalArgumentException(
                 "Passenger boat turn exemption fixture requires an oak boat");
         }
@@ -117,7 +117,7 @@ class MathPassengerRotationOracle extends MathPassengerPositionOracle {
             vehicleInput.get("no_gravity").getAsBoolean());
 
         JsonObject passengerInput = request.getAsJsonObject("passenger");
-        if (passengerInput.get("type_id").getAsInt() != 17) {
+        if (passengerInput.get("type_id").getAsInt() != wireId(net.minecraft.world.entity.EntityTypes.BREEZE)) {
             throw new IllegalArgumentException(
                 "Passenger boat turn exemption fixture requires a Breeze");
         }
@@ -175,7 +175,7 @@ class MathPassengerRotationOracle extends MathPassengerPositionOracle {
         for (JsonElement rowEntry : request.getAsJsonArray("rows")) {
             JsonObject row = rowEntry.getAsJsonObject();
             JsonObject vehicleInput = row.getAsJsonObject("vehicle");
-            if (vehicleInput.get("type_id").getAsInt() != 89) {
+            if (vehicleInput.get("type_id").getAsInt() != oakBoatId()) {
                 throw new IllegalArgumentException(
                     "Passenger animal rotation fixture requires an oak boat");
             }
@@ -186,7 +186,7 @@ class MathPassengerRotationOracle extends MathPassengerPositionOracle {
                 vehicleInput.get("no_gravity").getAsBoolean());
 
             JsonObject animalInput = row.getAsJsonObject("animal");
-            if (animalInput.get("type_id").getAsInt() != 30) {
+            if (animalInput.get("type_id").getAsInt() != wireId(net.minecraft.world.entity.EntityTypes.COW)) {
                 throw new IllegalArgumentException(
                     "Passenger animal rotation fixture requires a Cow");
             }
@@ -200,7 +200,7 @@ class MathPassengerRotationOracle extends MathPassengerPositionOracle {
                 vehicle);
 
             JsonObject fillerInput = row.getAsJsonObject("filler");
-            if (fillerInput.get("type_id").getAsInt() != 120) {
+            if (fillerInput.get("type_id").getAsInt() != wireId(net.minecraft.world.entity.EntityTypes.SNOWBALL)) {
                 throw new IllegalArgumentException(
                     "Passenger animal rotation fixture requires a Snowball filler");
             }
@@ -263,7 +263,7 @@ class MathPassengerRotationOracle extends MathPassengerPositionOracle {
         for (JsonElement rowEntry : request.getAsJsonArray("rows")) {
             JsonObject row = rowEntry.getAsJsonObject();
             JsonObject vehicleInput = row.getAsJsonObject("vehicle");
-            if (vehicleInput.get("type_id").getAsInt() != 89) {
+            if (vehicleInput.get("type_id").getAsInt() != oakBoatId()) {
                 throw new IllegalArgumentException(
                     "Passenger turn fixture requires an oak boat");
             }
@@ -276,7 +276,7 @@ class MathPassengerRotationOracle extends MathPassengerPositionOracle {
             JsonObject passengerInput = row.getAsJsonObject("passenger");
             int passengerTypeId = passengerInput.get("type_id").getAsInt();
             Entity passenger;
-            if (passengerTypeId == 156) {
+            if (passengerTypeId == wireId(net.minecraft.world.entity.EntityTypes.PLAYER)) {
                 passenger = PassengerPositionPlayerFixture.create(
                     passengerInput.get("entity_id").getAsInt(),
                     vec3(passengerInput.getAsJsonObject("position")),
@@ -285,7 +285,7 @@ class MathPassengerRotationOracle extends MathPassengerPositionOracle {
                     Oracle.f32(passengerInput.getAsJsonObject("rotation"), "x"),
                     passengerInput.get("no_gravity").getAsBoolean(),
                     vehicle);
-            } else if (passengerTypeId == 17) {
+            } else if (passengerTypeId == wireId(net.minecraft.world.entity.EntityTypes.BREEZE)) {
                 passenger = PassengerPositionBreezeFixture.create(
                     passengerInput.get("entity_id").getAsInt(),
                     vec3(passengerInput.getAsJsonObject("position")),

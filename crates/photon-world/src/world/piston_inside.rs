@@ -23,6 +23,7 @@ struct PushedBody {
     dimensions: ClientEntityDimensions,
     fall_distance: f64,
     stuck: Vec3,
+    simulates: bool,
 }
 
 impl InsideBody for PushedBody {
@@ -51,6 +52,7 @@ impl InsideBody for PushedBody {
                 on_ground: self.on_ground,
                 width: self.dimensions.width(),
                 block_pos,
+                simulates: self.simulates,
             },
         );
     }
@@ -71,6 +73,8 @@ impl ClientWorld {
             dimensions: entity.dimensions(),
             fall_distance: 0.0,
             stuck: Vec3::ZERO,
+            // 26.3: items, orbs and primed TNT move themselves on the client.
+            simulates: crate::constants::simulates_own_movement(entity.type_id),
         };
         let movement = Movement {
             from,

@@ -231,16 +231,29 @@ struct Answer {
     players: bool,
 }
 
+thread_local! {
+    /// The release the cases are being made for: its name and protocol, which the servers it
+    /// accepts answer with.
+    static RELEASE: std::cell::Cell<(&'static str, i64)> = const { std::cell::Cell::new(("26.2", 776)) };
+}
+
+/// A case made once for each release, with that release's name and protocol in the answers of
+/// the servers that match it, and naming the release it is captured from.
+pub fn per_release(make: fn() -> Value) -> Vec<Value> {
+    [("26.2", 776), ("26.3", 777)]
+        .into_iter()
+        .map(|release| {
+            RELEASE.set(release);
+            let mut case = make();
+            case["version"] = release.0.into();
+            case
+        })
+        .collect()
+}
+
 fn answer(description: impl Into<Ordered>) -> Answer {
-    Answer {
-        description: description.into(),
-        online: 2,
-        max: 20,
-        sample: vec![],
-        version: "26.2",
-        protocol: 776,
-        players: true,
-    }
+    let (version, protocol) = RELEASE.get();
+    Answer { description: description.into(), online: 2, max: 20, sample: vec![], version, protocol, players: true }
 }
 
 impl Answer {
@@ -341,7 +354,7 @@ pub fn server_list_icons() -> Value {
     let ping = |icon: Option<String>| {
         let mut status = object(vec![
             ("description", "icon".into()),
-            ("version", object(vec![("name", "26.2".into()), ("protocol", 776i64.into())])),
+            ("version", object(vec![("name", RELEASE.get().0.into()), ("protocol", RELEASE.get().1.into())])),
             ("players", object(vec![("max", 20i64.into()), ("online", 1i64.into())])),
         ]);
         if let Some(icon) = icon {

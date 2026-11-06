@@ -618,6 +618,12 @@ class MovementEntityOracle extends MovementSupport {
         public com.mojang.blaze3d.platform.Transparency transparency() {
             return transparency;
         }
+
+        /** Fluid models check that their sprites come from the block atlas. */
+        @Override
+        public net.minecraft.resources.Identifier atlasLocation() {
+            return net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS;
+        }
     }
 
     /**

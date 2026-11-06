@@ -25,6 +25,9 @@ pub(crate) struct LivingEffects<'a> {
     pub(crate) width: f32,
     /// The block the body's feet are in.
     pub(crate) block_pos: BlockPos,
+    /// `Entity.canSimulateMovement`: whether this side moves the body (26.3); a bubble column
+    /// only lifts or drags what it does.
+    pub(crate) simulates: bool,
 }
 
 impl StateInfo {

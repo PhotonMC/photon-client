@@ -70,10 +70,14 @@ impl ContainerMenu {
             write_hashed_stack(
                 &mut body,
                 self.slots[key as usize].as_ref(),
-                &self.enchantments,
+                (&self.enchantments, self.versions.as_deref()),
             );
         }
-        write_hashed_stack(&mut body, self.carried.as_ref(), &self.enchantments);
+        write_hashed_stack(
+            &mut body,
+            self.carried.as_ref(),
+            (&self.enchantments, self.versions.as_deref()),
+        );
         (self.swings, body)
     }
 

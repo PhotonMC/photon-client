@@ -456,3 +456,13 @@ pub const ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 /// before them).
 pub const ITEM_FRAME_ITEM_DATA_ID: u8 = 9;
 pub const ITEM_FRAME_ROTATION_DATA_ID: u8 = 10;
+
+/// 26.3: items, experience orbs and primed TNT simulate their own movement on the client.
+pub(crate) fn simulates_own_movement(type_id: EntityTypeId) -> bool {
+    [
+        VANILLA_ITEM_ENTITY_TYPE_ID,
+        VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID,
+        VANILLA_PRIMED_TNT_ENTITY_TYPE_ID,
+    ]
+    .contains(&type_id)
+}

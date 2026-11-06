@@ -12,15 +12,15 @@ pub(super) fn key_mapping_result(request: &Value) -> Result<Value, String> {
     let primary = registry.register(format!("{prefix}.primary"), primary_key);
     let secondary = registry.register(format!("{prefix}.secondary"), secondary_key);
     let other = registry.register(format!("{prefix}.other"), other_key);
-    let key_event = (
+    let key_event = crate::sdl::event_numbers((
         i32_field(&request["key_event"], "key")?,
         i32_field(&request["key_event"], "scancode")?,
-    );
-    let unknown_key_event = (
+    ));
+    let unknown_key_event = crate::sdl::event_numbers((
         i32_field(&request["unknown_key_event"], "key")?,
         i32_field(&request["unknown_key_event"], "scancode")?,
-    );
-    let mouse_button = i32_field(request, "mouse_button")?;
+    ));
+    let mouse_button = crate::sdl::mouse_button(i32_field(request, "mouse_button")?);
     let initial = key_mapping_state(&registry, primary, secondary, other)?;
     let initial_properties = key_mapping_properties(
         &registry,
@@ -158,15 +158,15 @@ pub(super) fn toggle_key_mapping_result(request: &Value) -> Result<Value, String
             .as_bool()
             .ok_or("other_should_restore must be a boolean")?,
     );
-    let key_event = (
+    let key_event = crate::sdl::event_numbers((
         i32_field(&request["key_event"], "key")?,
         i32_field(&request["key_event"], "scancode")?,
-    );
-    let unknown_key_event = (
+    ));
+    let unknown_key_event = crate::sdl::event_numbers((
         i32_field(&request["unknown_key_event"], "key")?,
         i32_field(&request["unknown_key_event"], "scancode")?,
-    );
-    let mouse_button = i32_field(request, "mouse_button")?;
+    ));
+    let mouse_button = crate::sdl::mouse_button(i32_field(request, "mouse_button")?);
     let initial = key_mapping_state(&registry, primary, secondary, other)?;
     let initial_properties = key_mapping_properties(
         &registry,

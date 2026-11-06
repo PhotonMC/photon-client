@@ -8,6 +8,10 @@ pub enum InputKey {
     KeySym(i32),
     ScanCode(i32),
     Mouse(i32),
+    /// 26.3's keyboard key: an SDL scancode, 0 for none.
+    Keyboard(i32),
+    /// 26.3's mouse button: SDL numbers them from 1, with the right button 3 and the middle 2.
+    Button(i32),
 }
 
 impl InputKey {
@@ -25,6 +29,9 @@ impl InputKey {
         Self::Mouse(value)
     }
 
+    /// The key 26.3 binds nothing to.
+    pub const NONE: Self = Self::Keyboard(0);
+
     /// Return the serialized name used by `InputConstants.Key`.
     pub fn name(self) -> String {
         match self {
@@ -32,6 +39,12 @@ impl InputKey {
             Self::KeySym(value) => keysym_name(value),
             Self::ScanCode(value) => format!("scancode.{value}"),
             Self::Mouse(value) => mouse_name(value),
+            Self::Keyboard(value) => super::scancode_names::scancode_name(value)
+                .map_or_else(|| format!("key.keyboard.{value}"), str::to_owned),
+            Self::Button(1) => "key.mouse.left".to_owned(),
+            Self::Button(3) => "key.mouse.right".to_owned(),
+            Self::Button(2) => "key.mouse.middle".to_owned(),
+            Self::Button(value) => format!("key.mouse.{value}"),
         }
     }
 }
@@ -216,7 +229,7 @@ impl KeyMapping {
     }
 
     pub fn is_unbound(&self) -> bool {
-        self.key == InputKey::UNKNOWN
+        self.key == InputKey::UNKNOWN || self.key == InputKey::NONE
     }
 
     pub fn save_string(&self) -> String {
@@ -228,7 +241,9 @@ impl KeyMapping {
     }
 
     pub fn matches_key(&self, key: InputKey) -> bool {
-        self.key == key
+        // 26.3 never matches a key that is not bound.
+        let is_26_3 = matches!(self.key, InputKey::Keyboard(_) | InputKey::Button(_));
+        self.key == key && !(is_26_3 && self.is_unbound())
     }
 
     pub fn matches_key_event(&self, key: i32, scancode: i32) -> bool {
@@ -237,12 +252,14 @@ impl KeyMapping {
                 expected == scancode
             }
             InputKey::KeySym(expected) if key != InputKey::UNKNOWN.value() => expected == key,
+            // 26.3 reads the scancode as the key.
+            InputKey::Keyboard(expected) => expected == key && !self.is_unbound(),
             _ => false,
         }
     }
 
     pub fn matches_mouse(&self, button: i32) -> bool {
-        matches!(self.key, InputKey::Mouse(expected) if expected == button)
+        matches!(self.key, InputKey::Mouse(expected) | InputKey::Button(expected) if expected == button)
     }
 
     pub fn should_restore_state_on_screen_closed(&mut self) -> bool {
@@ -251,7 +268,7 @@ impl KeyMapping {
         };
         let should_restore = toggle.should_restore
             && toggle.needs_toggle
-            && matches!(self.key, InputKey::KeySym(_))
+            && matches!(self.key, InputKey::KeySym(_) | InputKey::Keyboard(_))
             && toggle.released_by_screen_when_down;
         toggle.released_by_screen_when_down = false;
         should_restore
@@ -281,7 +298,11 @@ impl KeyMapping {
 impl InputKey {
     const fn value(self) -> i32 {
         match self {
-            Self::KeySym(value) | Self::ScanCode(value) | Self::Mouse(value) => value,
+            Self::KeySym(value)
+            | Self::ScanCode(value)
+            | Self::Mouse(value)
+            | Self::Keyboard(value)
+            | Self::Button(value) => value,
         }
     }
 }

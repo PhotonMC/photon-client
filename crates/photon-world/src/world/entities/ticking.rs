@@ -141,6 +141,22 @@ impl ClientWorld {
         })
     }
 
+    /// `Entity.commonTick`: the old transform is kept, the position eases before the entity's own
+    /// tick, an avatar's cloak follows it, and the tick count advances.
+    fn common_tick(&mut self, entity_id: EntityId) {
+        let mut entity = self
+            .entities
+            .at_mut(entity_id)
+            .expect("entity position was checked above");
+        entity.capture_old_transform();
+        entity.tick_position_interpolation();
+        // `AbstractClientPlayer.tick` and `ClientMannequin.tick`: an avatar's cloak follows it.
+        if entity.is_avatar() {
+            entity.tick_cloak();
+        }
+        entity.tick_count = entity.tick_count.wrapping_add(1);
+    }
+
     pub(crate) fn tick_entity_once(&mut self, entity_id: EntityId) {
         // One read of the entity decides every branch below; the reference
         // evaluates these conditions against the pre-tick state, so they are
@@ -168,18 +184,7 @@ impl ClientWorld {
         let in_water = self.mob_in_water(entity_id);
         let targets = self.targets_of(entity_id);
         let boat_under_water = self.boat_under_water_of(entity_id);
-        {
-            let mut entity = self
-                .entities
-                .at_mut(entity_id)
-                .expect("entity position was checked above");
-            entity.capture_old_transform();
-            // `AbstractClientPlayer.tick` and `ClientMannequin.tick`: an avatar's cloak follows it.
-            if entity.is_avatar() {
-                entity.tick_cloak();
-            }
-            entity.tick_count = entity.tick_count.wrapping_add(1);
-        }
+        self.common_tick(entity_id);
         // The level ticks a mount's physics (`super.tick`) before its own `tick` counts its
         // rearing and eases its animations.
         if ridden_mount {

@@ -207,25 +207,28 @@ impl ClientWorld {
         let Some(max_passenger_count) = vanilla_boat_max_passengers(vehicle_type_id) else {
             return;
         };
-        let animal_rotation_offset = (vanilla_passenger_is_animal(passenger_type_id)
-            && passenger_count == max_passenger_count)
-            .then_some({
+        let body_y_rot = vehicle_y_rot
+            + if vanilla_passenger_is_animal(passenger_type_id)
+                && passenger_count == max_passenger_count
+            {
                 if passenger_id.0 % 2 == 0 {
                     90.0_f32
                 } else {
                     270.0_f32
                 }
-            });
+            } else {
+                0.0_f32
+            };
+        // Only the local player's own turning is carried along; the others follow the server.
         if let Some(mut passenger) = self.entities.at_mut(passenger_id) {
-            passenger.add_vanilla_boat_passenger_rotation(delta_rotation);
-            passenger.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot, animal_rotation_offset);
+            passenger.clamp_vanilla_boat_passenger_rotation(body_y_rot);
         } else if let Some(player) = self
             .local_player
             .as_mut()
             .filter(|player| player.id == passenger_id)
         {
             player.add_vanilla_boat_passenger_rotation(delta_rotation);
-            player.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot);
+            player.clamp_vanilla_boat_passenger_rotation(body_y_rot);
         }
     }
 
@@ -414,27 +417,49 @@ impl ClientWorld {
 }
 
 impl ClientWorld {
+    /// `AbstractBoat.onPassengerTurned`: the passenger held to the boat, its previous yaw moved
+    /// along with the yaw.
     pub(crate) fn clamp_entity_passenger_rotation_after_turn(
         &mut self,
         vehicle_id: EntityId,
         passenger_id: EntityId,
     ) {
-        let Some(vehicle_y_rot) = self.entities.get(&vehicle_id).and_then(|vehicle| {
-            VANILLA_BOAT_PASSENGER_GEOMETRY
-                .iter()
-                .any(|&(type_id, _, _)| type_id == vehicle.type_id.0)
-                .then(|| vehicle.rotation.y_rot.get())
-        }) else {
+        let Some((vehicle_type_id, vehicle_y_rot, passenger_count)) =
+            self.entities.get(&vehicle_id).map(|vehicle| {
+                (
+                    vehicle.type_id,
+                    vehicle.rotation.y_rot.get(),
+                    vehicle.passenger_ids().len(),
+                )
+            })
+        else {
             return;
         };
+        let Some(max_passenger_count) = vanilla_boat_max_passengers(vehicle_type_id) else {
+            return;
+        };
+        let at_capacity = passenger_count == max_passenger_count;
+        let body_y_rot = |type_id| {
+            vehicle_y_rot
+                + match (
+                    vanilla_passenger_is_animal(type_id) && at_capacity,
+                    passenger_id.0 % 2 == 0,
+                ) {
+                    (false, _) => 0.0_f32,
+                    (true, true) => 90.0_f32,
+                    (true, false) => 270.0_f32,
+                }
+        };
         if let Some(mut passenger) = self.entities.at_mut(passenger_id) {
-            passenger.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot, None);
+            let delta =
+                passenger.clamp_vanilla_boat_passenger_rotation(body_y_rot(passenger.type_id));
+            passenger.rotation.old_y_rot = JavaF32::new(passenger.rotation.old_y_rot.get() + delta);
         } else if let Some(player) = self
             .local_player
             .as_mut()
             .filter(|player| player.id == passenger_id)
         {
-            player.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot);
+            player.clamp_vanilla_boat_passenger_rotation(body_y_rot(VANILLA_PLAYER_ENTITY_TYPE_ID));
         }
     }
 

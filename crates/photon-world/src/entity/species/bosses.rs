@@ -59,7 +59,6 @@ impl EntityViewMut<'_> {
         let (motion, no_ai, y) = (self.motion(), self.as_view().is_no_ai(), self.position().1);
         self.ender_dragon_mut().fly(motion, no_ai, (y, y_rot));
         if !no_ai {
-            self.tick_position_interpolation();
             self.rotation.y_body_rot = self.rotation.y_rot;
             let (at, y_rot) = (self.position(), self.rotation.y_rot.get());
             self.ender_dragon_mut().tick_parts(at, y_rot);

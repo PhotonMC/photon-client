@@ -60,10 +60,7 @@ impl GameMode {
             return done;
         }
         if let Aim::Entity { id, .. } = aim {
-            // `MultiPlayerGameMode.attack`: the server decides what it does.
-            out.push(Outgoing::Attack { entity_id: id });
-            ctx.player.reset_attack_strength();
-            ctx.swing(out);
+            self.attack_entity(ctx, id, out);
             return false;
         }
         let mut end_attack = false;
@@ -84,6 +81,22 @@ impl GameMode {
         }
         ctx.swing(out);
         end_attack
+    }
+
+    /// `MultiPlayerGameMode.attack`: the server decides what it does.
+    fn attack_entity(
+        &mut self,
+        ctx: &mut Context<'_>,
+        id: photon_core::ids::EntityId,
+        out: &mut Vec<Outgoing>,
+    ) {
+        out.push(Outgoing::Attack { entity_id: id });
+        ctx.player.reset_attack_strength();
+        if ctx.instabuild() {
+            // 26.3: an attack in creative waits out the next break.
+            self.destroy_delay = 5;
+        }
+        ctx.swing(out);
     }
 
     /// `Minecraft.continueAttack`.
@@ -108,10 +121,6 @@ impl GameMode {
                 if !is_air(ctx.state_at((x, y, z)))
                     && self.continue_destroy_block(ctx, (x, y, z), face, out)
                 {
-                    ctx.world.add_breaking_block_effect(
-                        (x, y, z),
-                        photon_core::direction::Direction::from_3d_data_value(i32::from(face)),
-                    );
                     ctx.swing(out);
                 }
             }
@@ -172,10 +181,17 @@ impl GameMode {
                 } else {
                     game_mode.is_destroying = true;
                     game_mode.destroy_pos = pos;
+                    game_mode.destroy_direction = Some(face);
                     game_mode.destroying_item = ctx.miner.main_hand.clone();
                     game_mode.destroy_progress = 0.0;
                     game_mode.destroy_ticks = 0.0;
                     game_mode.crack(ctx);
+                    // `ClientLevel.addBreakingBlockEffects` with its sound.
+                    ctx.world.play_hit_sound(pos, state);
+                    ctx.world.add_breaking_block_effect(
+                        pos,
+                        photon_core::direction::Direction::from_3d_data_value(i32::from(face)),
+                    );
                 }
                 Self::action(PlayerAction::StartDestroyBlock, pos, face, sequence)
             });
@@ -233,9 +249,6 @@ impl GameMode {
             return false;
         }
         self.destroy_progress += ctx.miner.destroy_progress(ctx.world, ctx.player, state);
-        if self.destroy_ticks % 4.0 == 0.0 {
-            ctx.world.play_hit_sound(pos, state);
-        }
         self.destroy_ticks += 1.0;
         self.destroyed
             .push((state, self.destroy_progress.clamp(0.0, 1.0)));
@@ -245,9 +258,18 @@ impl GameMode {
                 destroy_block(ctx, pos);
                 Self::action(PlayerAction::StopDestroyBlock, pos, face, sequence)
             });
+            self.destroy_direction = None;
             self.destroy_progress = 0.0;
             self.destroy_ticks = 0.0;
             self.destroy_delay = 5;
+        } else if self.destroy_direction != Some(face) {
+            self.destroy_direction = Some(face);
+            out.push(Self::action(
+                PlayerAction::ChangeDestroyDirection,
+                pos,
+                face,
+                0,
+            ));
         }
         self.crack(ctx);
         true

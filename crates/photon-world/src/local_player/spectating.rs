@@ -43,12 +43,15 @@ mod tests {
     fn a_spectating_player_sends_its_keys_but_no_position_and_takes_no_input() {
         let world = ClientWorld::default();
         let mut own = player(true);
-        let sent = own.tick(&world, forward()).expect("tick");
+        own.tick(&world, forward()).expect("tick");
+        // The packets go out at the end of the client tick (26.3 `sendChanges`).
+        let sent = own.send_changes();
         assert!(moves(&sent) > 0 && own.zza > 0.9);
 
         let mut watching = player(false);
         watching.zza = 1.0;
-        let sent = watching.tick(&world, forward()).expect("tick");
+        watching.tick(&world, forward()).expect("tick");
+        let sent = watching.send_changes();
         assert_eq!(moves(&sent), 0);
         assert!(
             sent.iter()

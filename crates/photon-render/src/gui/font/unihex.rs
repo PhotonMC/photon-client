@@ -25,9 +25,9 @@ impl UnihexGlyph {
         self.right - self.left + 1
     }
 
-    /// `Glyph.info().getAdvance`.
+    /// `Glyph.info().getAdvance`: half the width, in whole pixels since 26.3, and one more.
     pub fn advance(&self) -> f32 {
-        self.width() as f32 / 2.0 + 1.0
+        (self.width() / 2 + 1) as f32
     }
 }
 

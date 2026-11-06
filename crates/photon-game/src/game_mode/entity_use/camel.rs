@@ -20,7 +20,8 @@ fn camel_food(name: &str) -> &'static str {
 impl Context<'_> {
     /// A sneaking owner opens the inventory (a swing); food is answered by the server (no
     /// swing, one used up only when it ages a baby); a golden dandelion goes to the age lock;
-    /// everything else, riding included, consumes the click without a swing.
+    /// a grown camel with room is ridden (the click is consumed without a swing); everything else fails
+    /// the click, which goes on to the held item.
     pub(super) fn interact_camel(&mut self, name: &str, id: EntityId, hand: u8) -> EntityUse {
         let Some(entity) = self.world.entities().at(id) else {
             return EntityUse::Pass;
@@ -29,20 +30,38 @@ impl Context<'_> {
         // `use-baby-camel-husk-*`): it never ages.
         let baby = entity.is_baby() && !is_husk(name);
         let locked = entity.is_age_locked();
-        if self.player.is_shift_key_down() && !baby {
-            return EntityUse::Success { swing: true };
-        }
-        if self.equips_on_interact(id, hand) {
+        if self.camel_click_swings(id, hand, baby) {
             return EntityUse::Success { swing: true };
         }
         if self.holds_tagged(hand, camel_food(name)) {
             self.eat_camel_food(id, hand, baby && !locked);
             return EntityUse::Success { swing: false };
         }
+        if self.camel_ridden_by_click(id, baby) {
+            return EntityUse::Success { swing: false };
+        }
         if baby && self.holds_golden_dandelion() {
             return self.golden_dandelion_on_baby(id, hand);
         }
-        EntityUse::Success { swing: false }
+        // 26.3 fails the click, which goes on to the held item.
+        EntityUse::Pass
+    }
+
+    /// A sneaking owner opens the inventory, or the click equips a saddle or armor: a swing.
+    fn camel_click_swings(&mut self, id: EntityId, hand: u8, baby: bool) -> bool {
+        if self.player.is_shift_key_down() && !baby {
+            return true;
+        }
+        self.equips_on_interact(id, hand)
+    }
+
+    /// `doPlayerRide`: a grown camel with a free seat takes the rider, and the click is consumed.
+    fn camel_ridden_by_click(&self, id: EntityId, baby: bool) -> bool {
+        let riders = self
+            .world
+            .entity_passengers(id)
+            .map_or(0, |riders| riders.len());
+        riders < 2 && !baby
     }
 
     /// `Camel.handleEating`: the food heals a hurt camel by two, and is used up when it heals or

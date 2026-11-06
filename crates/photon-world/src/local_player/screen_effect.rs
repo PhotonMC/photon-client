@@ -3,13 +3,19 @@
 
 use super::{Level, LocalPlayer};
 use crate::ClientWorld;
+use photon_core::aabb::Aabb;
 use photon_core::binary::BlockPos;
 use photon_core::ids::BlockStateId;
 
 impl LocalPlayer {
     /// `ScreenEffectRenderer.getViewBlockingState`: the first of eight points around the eyes
-    /// that is inside a block that blocks the view, as a block state number.
-    pub fn view_blocking_state(&self, world: &ClientWorld) -> Option<BlockStateId> {
+    /// that is inside a block that blocks the view, as a block state number. `near_plane` is the
+    /// box round the camera's near plane, as an offset from the eyes.
+    pub fn view_blocking_state(
+        &self,
+        world: &ClientWorld,
+        near_plane: ([f64; 3], [f64; 3]),
+    ) -> Option<BlockStateId> {
         if self.no_physics {
             return None;
         }
@@ -28,11 +34,45 @@ impl LocalPlayer {
                 continue;
             };
             let state = crate::block::state_or_air(id);
-            if !crate::shadow::is_invisible_render_shape(state.block().name) && state.view_blocking
-            {
+            if crate::shadow::is_invisible_render_shape(state.block().name) {
+                continue;
+            }
+            let blocks = if state.near_plane_view_blocking {
+                let eyes = [self.position.x, eye_y, self.position.z];
+                near_plane_meets_outline(state, pos, near_plane, eyes)
+            } else {
+                state.view_blocking
+            };
+            if blocks {
                 return Some(id);
             }
         }
         None
     }
+}
+
+/// `NEAR_PLANE_INTERSECTS_OUTLINE`: whether any box of the state's occlusion shape, placed at
+/// `pos`, overlaps the near plane's box moved to the eyes.
+fn near_plane_meets_outline(
+    state: &crate::block::StateInfo,
+    pos: BlockPos,
+    (low, high): ([f64; 3], [f64; 3]),
+    eyes: [f64; 3],
+) -> bool {
+    let near = Aabb::new(
+        low[0] + eyes[0],
+        low[1] + eyes[1],
+        low[2] + eyes[2],
+        high[0] + eyes[0],
+        high[1] + eyes[1],
+        high[2] + eyes[2],
+    );
+    crate::block::states()
+        .occlusion(state)
+        .to_aabbs()
+        .into_iter()
+        .any(|part| {
+            part.move_by(f64::from(pos.x), f64::from(pos.y), f64::from(pos.z))
+                .intersects(near)
+        })
 }

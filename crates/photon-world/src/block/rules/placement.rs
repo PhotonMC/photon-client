@@ -61,15 +61,6 @@ const PLACEMENTS: &[(BlockClass, Placement)] = &[
         Rule::Known(diode_facing(default, ctx))
     }),
     (BlockClass::RepeaterBlock, repeater_placement),
-    (BlockClass::TripWireHookBlock, |_, default, ctx| {
-        super::mounted::wall_torch(default, ctx)
-    }),
-    (BlockClass::WallTorchBlock, |_, default, ctx| {
-        super::mounted::wall_torch(default, ctx)
-    }),
-    (BlockClass::RedstoneWallTorchBlock, |_, default, ctx| {
-        super::mounted::wall_torch(default, ctx)
-    }),
     (BlockClass::LadderBlock, |_, default, ctx| {
         super::mounted::ladder(default, ctx)
     }),
@@ -194,7 +185,8 @@ pub(super) fn state_for_placement(
         .chain(super::dripleaf::PLACEMENTS)
         .chain(super::speleothem::PLACEMENTS)
         .chain(super::note::PLACEMENTS)
-        .chain(super::sulfur::PLACEMENTS);
+        .chain(super::sulfur::PLACEMENTS)
+        .chain(super::mounted::PLACEMENTS);
     match tables.into_iter().find(|(class, _)| Some(*class) == owner) {
         Some((_, placement)) => placement(block, default_state(block), ctx),
         None => Rule::Unported,

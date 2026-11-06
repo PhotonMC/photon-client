@@ -97,6 +97,7 @@ impl Cursor<'_> {
                 cursor.sound()?;
                 cursor.float()?;
                 cursor.float()?;
+                cursor.durability_damage()?;
                 cursor.tag()
             }),
             ids::PROVIDES_TRIM_MATERIAL => self.holder(|cursor| {

@@ -33,7 +33,7 @@ pub(super) fn key_binds_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         size,
         in_world,
         options.key_bindings(),
-        |_| None,
+        us_layout_name,
     );
     let mut last = (0.0, 0.0);
     let mut clock = 0_u64;
@@ -101,4 +101,17 @@ pub(super) fn key_binds_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         "scroll": screen.scroll_amount(),
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
     }))
+}
+
+/// `SDL_GetKeyName` on a US layout, as far as it is one character: the name the key binds list
+/// shows for a letter, a digit or a punctuation key (the others show their translated name).
+fn us_layout_name(key: photon_data::keys::InputKey) -> Option<String> {
+    let photon_data::keys::InputKey::Keysym(code) = key else {
+        return None;
+    };
+    let character = match code {
+        39 | 44..=47 | 59 | 61 | 91..=93 | 96 | 48..=57 | 65..=90 => char::from_u32(code as u32)?,
+        _ => return None,
+    };
+    Some(character.to_string())
 }

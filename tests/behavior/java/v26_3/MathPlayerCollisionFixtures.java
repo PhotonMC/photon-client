@@ -35,6 +35,13 @@ class MathPlayerCollisionFixtures extends MathPassengerFixtures {
             return true;
         }
 
+        // The fixture has no chunks or dimension: every block is air, so a bed is never found.
+        @Override
+        public net.minecraft.world.level.block.state.BlockState getBlockState(
+            net.minecraft.core.BlockPos position) {
+            return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+        }
+
         @Override
         public net.minecraft.world.flag.FeatureFlagSet enabledFeatures() {
             return net.minecraft.world.flag.FeatureFlagSet.of();

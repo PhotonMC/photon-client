@@ -82,28 +82,32 @@ impl EntityView<'_> {
     /// `EntityRenderer.getBoundingBoxForCulling` with its renderer's overrides, or none when the
     /// renderer is not `affectedByCulling` (a bolt, the dragon, a fishing hook, a display with no
     /// width or height).
-    pub fn culling_box(&self) -> Option<Aabb> {
+    pub fn culling_box(&self, partial_tick: f32) -> Option<Aabb> {
         let name = photon_data::entity_type::name(self.type_id).unwrap_or_default();
-        let bounds = self.bounding_box();
+        let bounds = self.interpolated(self.bounding_box(), partial_tick);
         Some(match name {
             "minecraft:lightning_bolt" | "minecraft:ender_dragon" | "minecraft:fishing_bobber" => {
                 return None;
             }
             "minecraft:block_display" | "minecraft:item_display" | "minecraft:text_display" => {
-                // `Display.updateCulling`: the box stands on the position.
+                // `Display.updateCulling`: the box stands on the position, and moves as the
+                // position does (`Display.getInterpolatedBoundingBox`).
                 let (width, height) = self.display().map_or((0.0, 0.0), |display| display.size());
                 if width == 0.0 || height == 0.0 {
                     return None;
                 }
                 let half = f64::from(width / 2.0);
                 let (x, y, z) = self.position();
-                Aabb::new(
-                    x - half,
-                    y,
-                    z - half,
-                    x + half,
-                    y + f64::from(height),
-                    z + half,
+                self.interpolated(
+                    Aabb::new(
+                        x - half,
+                        y,
+                        z - half,
+                        x + half,
+                        y + f64::from(height),
+                        z + half,
+                    ),
+                    partial_tick,
                 )
             }
             "minecraft:illusioner" => bounds.inflate(3.0, 0.0, 3.0),
@@ -133,6 +137,19 @@ impl EntityView<'_> {
 }
 
 impl EntityView<'_> {
+    /// `Entity.getInterpolatedBoundingBox`: the box moved to where the entity is drawn between
+    /// its last position and this one.
+    fn interpolated(&self, bounds: Aabb, partial_tick: f32) -> Aabb {
+        let (x, y, z) = self.position();
+        let (old_x, old_y, old_z) = self.previous_position();
+        if old_x == x && old_y == y && old_z == z {
+            return bounds;
+        }
+        let partial = f64::from(partial_tick);
+        let lerp = |old: f64, new: f64| old + partial * (new - old) - new;
+        bounds.move_by(lerp(old_x, x), lerp(old_y, y), lerp(old_z, z))
+    }
+
     /// `Entity.shouldRenderAtSqrDistance` with the overrides of its type (`view_scale` is
     /// `Entity.viewScale`). An attached firework is never drawn this way, and an end crystal with a
     /// beam always is.

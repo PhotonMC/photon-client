@@ -4,7 +4,7 @@
 
 /// Name, category, default key and order, in `Options.keyMappings` order.
 #[rustfmt::skip]
-pub static KEY_MAPPINGS: [(&str, &str, &str, i32); 61] = [
+pub static KEY_MAPPINGS: [(&str, &str, &str, i32); 62] = [
     ("key.attack", "minecraft:gameplay", "key.mouse.left", 0),
     ("key.use", "minecraft:gameplay", "key.mouse.right", 0),
     ("key.forward", "minecraft:movement", "key.keyboard.w", 0),
@@ -66,6 +66,7 @@ pub static KEY_MAPPINGS: [(&str, &str, &str, i32); 61] = [
     ("key.debug.fpsCharts", "minecraft:debug", "key.keyboard.2", 2),
     ("key.debug.networkCharts", "minecraft:debug", "key.keyboard.3", 3),
     ("key.debug.lightmapTexture", "minecraft:debug", "key.keyboard.4", 4),
+    ("key.debug.improvedTransparency", "minecraft:debug", "key.keyboard.x", 0),
 ];
 
 /// `KeyMapping.Category.SORT_ORDER`.

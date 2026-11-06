@@ -99,7 +99,7 @@ pub(super) fn stab(
     if let Some(sound) = piercing_sound(values, item) {
         ctx.player.play_own_sound(sound, (1.0, 1.0));
     }
-    ctx.swing(out);
+    ctx.swing_local();
     true
 }
 

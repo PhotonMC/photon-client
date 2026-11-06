@@ -106,11 +106,7 @@ impl LocalPlayer {
             y_bob: 0.0,
             x_bob_old: 0.0,
             y_bob_old: 0.0,
-            swinging: false,
-            swing_time: 0,
-            swinging_off_hand: false,
-            attack_anim: 0.0,
-            attack_anim_old: 0.0,
+            swing: crate::living::SwingState::default(),
             attack_strength_ticker: 0,
             elytra: crate::elytra::ElytraState::default(),
             main_hand_item: AIR_ITEM,
@@ -321,7 +317,3 @@ pub(crate) trait InsideBody {
     /// What the block does to the body.
     fn inside_block_effect(&mut self, level: &Level<'_>, visit: &InsideVisit);
 }
-
-/// `SwingAnimation.DEFAULT`'s duration: an empty hand's swing, in ticks.
-/// How long a swing lasts with nothing special in the hand (`SwingAnimation.DEFAULT`).
-pub(super) const SWING_DURATION: i32 = 6;

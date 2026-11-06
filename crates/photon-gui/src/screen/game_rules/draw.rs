@@ -5,6 +5,7 @@ use crate::{FontRuns, FrameRuns};
 
 use super::*;
 use crate::screen::stats::loading_dots;
+use crate::widgets::navigation::Rectangle;
 use crate::widgets::scroll_area::SCROLLBAR_WIDTH;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
@@ -108,7 +109,7 @@ impl GameRulesScreen {
             self.draw_row(
                 frame,
                 (atlas, font),
-                row,
+                (index, row),
                 (self.row_left() + 2, y + 2),
                 mouse,
             );
@@ -128,15 +129,28 @@ impl GameRulesScreen {
         &self,
         frame: &mut GuiFrame,
         (atlas, font): (&GuiAtlas, &Font),
-        row: &Row,
+        (index, row): (usize, &Row),
         (x, y): (i32, i32),
         mouse: (i32, i32),
     ) {
         let white = 0xFFFF_FFFF;
         match row {
-            Row::Category(label) => {
-                let at = x + (ROW_WIDTH - 4) / 2 - font.width_of_runs(label) / 2;
-                frame.styled_text(atlas, font, label, (at, y + 5), white, true);
+            Row::Category(label, width) => {
+                let at = x + (ROW_WIDTH - 4) / 2 - width / 2;
+                if self.focus == Some(Focus::Category(index)) {
+                    // `FocusableTextWidget`: black from its second column, outlined in white.
+                    let rect = self.label_rect(index, *width);
+                    let (right, bottom) = (rect.x + rect.width, rect.y + rect.height);
+                    frame.fill(atlas, (rect.x + 1, rect.y, right, bottom), 0xFF00_0000);
+                    let outline = Rectangle {
+                        x: rect.x,
+                        y: rect.y,
+                        width: rect.width,
+                        height: rect.height,
+                    };
+                    crate::screen::dialog_body::outline(frame, atlas, outline);
+                }
+                frame.styled_text(atlas, font, label, (at, y + 6), white, true);
             }
             Row::Rule { entry, control, .. } => {
                 let lines = &self.entries[*entry].lines;

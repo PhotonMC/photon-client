@@ -76,10 +76,10 @@ impl Decode for CustomChatCompletions {
     ) -> Result<Self, ConnectionError> {
         let input = &mut payload;
         let action = match read_varint(input, "completion action")? {
-            0 => CompletionAction::Add,
             1 => CompletionAction::Remove,
             2 => CompletionAction::Set,
-            _ => return Err(ConnectionError::Codec("completion action")),
+            // 26.3 reads an id out of range as the first action (`OutOfBoundsStrategy.ZERO`).
+            _ => CompletionAction::Add,
         };
         let count = read_count(input, "completion count")?;
         let mut entries = Vec::with_capacity(count.min(1024));

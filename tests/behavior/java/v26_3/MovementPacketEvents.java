@@ -42,6 +42,16 @@ class MovementPacketEvents extends MovementLivingRow {
                 entity, event.get("action").getAsInt()));
     }
 
+    static void eventSwing(LivingRow ctx, JsonObject event) throws Exception {
+        var listener = ctx.listener();
+        var entity = ctx.entity();
+        var hand = event.get("hand").getAsInt() == 1
+            ? net.minecraft.world.InteractionHand.OFF_HAND : net.minecraft.world.InteractionHand.MAIN_HAND;
+        var type = net.minecraft.world.item.SwingAnimationType.values()[event.get("swing_type").getAsInt()];
+        listener.handleSwingAnimation(new net.minecraft.network.protocol.game.ClientboundSwingAnimationPacket(
+            entity, hand, new net.minecraft.world.item.component.SwingAnimation(type, event.get("duration").getAsInt())));
+    }
+
     static void eventSync(LivingRow ctx, JsonObject event) throws Exception {
         var listener = ctx.listener();
         var entityId = ctx.entityId();

@@ -71,7 +71,9 @@ pub(super) enum Kind {
 /// One attribute value.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Value {
-    Color(u32),
+    /// A colour as the float vector it is in 26.3: red, green, blue and alpha (one for an RGB
+    /// attribute, whose vector has no alpha).
+    Color([f32; 4]),
     Float(f32),
     Phase(u8),
     Bool(bool),
@@ -108,8 +110,33 @@ pub(super) enum Operation {
     Xnor,
 }
 
-/// `ARGB.color(204, 204, 255)`, what a lightning flash lerps the sky colour towards.
-pub(super) const FLASH_COLOUR: u32 = 0xFFCC_CCFF;
+/// The `Vector3f(0.8, 0.8, 1.0)` a lightning flash lerps the sky colour towards.
+pub(super) const FLASH_COLOUR: [f32; 4] = [0.8, 0.8, 1.0, 1.0];
+
+/// `ARGB.from8BitChannel`.
+const fn from_8_bit(channel: u32) -> f32 {
+    channel as f32 / 255.0
+}
+
+/// `ARGB.vector3fFromRGB24`: the colour of an RGB attribute (alpha one).
+pub(super) const fn rgb24(color: u32) -> Value {
+    Value::Color([
+        from_8_bit((color >> 16) & 0xff),
+        from_8_bit((color >> 8) & 0xff),
+        from_8_bit(color & 0xff),
+        1.0,
+    ])
+}
+
+/// `ARGB.vector4fFromARGB32`: the colour of an ARGB attribute.
+pub(super) const fn argb32(color: u32) -> Value {
+    Value::Color([
+        from_8_bit((color >> 16) & 0xff),
+        from_8_bit((color >> 8) & 0xff),
+        from_8_bit(color & 0xff),
+        from_8_bit((color >> 24) & 0xff),
+    ])
+}
 
 /// One entry of an attribute map: a value, or a modifier and its argument.
 #[derive(Clone, Copy, Debug)]
@@ -186,12 +213,12 @@ const fn definition(name: &'static str, kind: Kind, default: Value) -> Definitio
 
 /// `EnvironmentAttributes`, for the attributes carried, in the order of `Attribute`.
 const DEFINITIONS: [Definition; 25] = [
-    definition("minecraft:visual/sky_color", Kind::Rgb, Value::Color(0)),
-    definition("minecraft:visual/fog_color", Kind::Rgb, Value::Color(0)),
+    definition("minecraft:visual/sky_color", Kind::Rgb, rgb24(0)),
+    definition("minecraft:visual/fog_color", Kind::Rgb, rgb24(0)),
     definition(
         "minecraft:visual/sunrise_sunset_color",
         Kind::Argb,
-        Value::Color(0),
+        argb32(0),
     ),
     definition("minecraft:visual/sun_angle", Kind::Angle, Value::Float(0.0)),
     definition(
@@ -228,7 +255,7 @@ const DEFINITIONS: [Definition; 25] = [
     definition(
         "minecraft:visual/water_fog_color",
         Kind::Rgb,
-        Value::Color(-16_448_205_i32 as u32),
+        rgb24(-16_448_205_i32 as u32),
     ),
     definition(
         "minecraft:visual/water_fog_start_distance",
@@ -240,7 +267,7 @@ const DEFINITIONS: [Definition; 25] = [
         Kind::Float,
         Value::Float(96.0),
     ),
-    definition("minecraft:visual/cloud_color", Kind::Argb, Value::Color(0)),
+    definition("minecraft:visual/cloud_color", Kind::Argb, argb32(0)),
     definition(
         "minecraft:visual/cloud_height",
         Kind::Float,
@@ -254,7 +281,7 @@ const DEFINITIONS: [Definition; 25] = [
     definition(
         "minecraft:visual/sky_light_color",
         Kind::Rgb,
-        Value::Color(0xFFFF_FFFF),
+        rgb24(0xFFFF_FFFF),
     ),
     definition(
         "minecraft:visual/sky_light_factor",
@@ -264,17 +291,17 @@ const DEFINITIONS: [Definition; 25] = [
     definition(
         "minecraft:visual/block_light_tint",
         Kind::Rgb,
-        Value::Color(-10_100_i32 as u32),
+        rgb24(-10_100_i32 as u32),
     ),
     definition(
         "minecraft:visual/night_vision_color",
         Kind::Rgb,
-        Value::Color(0xFF99_9999),
+        rgb24(0xFF99_9999),
     ),
     definition(
         "minecraft:visual/ambient_light_color",
         Kind::Rgb,
-        Value::Color(0xFF00_0000),
+        rgb24(0xFF00_0000),
     ),
     definition(
         "minecraft:audio/firefly_bush_sounds",
@@ -329,10 +356,10 @@ impl Attribute {
 }
 
 impl Value {
-    pub(super) fn color(self) -> u32 {
+    pub(super) fn color(self) -> [f32; 4] {
         match self {
             Self::Color(color) => color,
-            _ => 0,
+            _ => [0.0; 4],
         }
     }
 

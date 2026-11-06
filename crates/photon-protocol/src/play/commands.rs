@@ -159,7 +159,7 @@ pub(super) fn read_argument_kind(
             read_byte(input, name)?;
             K::ScoreHolder
         }
-        12..=15 | 18 | 19 | 21..=23 | 37 | 52..=55 => K::Balanced,
+        12..=15 | 18 | 19 | 21..=23 | 37 | 52..=59 => K::Balanced,
         8 => K::BlockPos,
         9 => K::ColumnPos,
         10 => K::Vec3,
@@ -168,7 +168,7 @@ pub(super) fn read_argument_kind(
         17 => K::HexColor,
         20 => K::Greedy,
         24 | 33 => K::Unquoted,
-        25 | 27 | 34 | 35 | 39 | 40 | 49..=51 => K::Word,
+        25 | 27 | 34 | 35 | 39 | 40 | 49..=51 | 60 => K::Word,
         26 => K::Operation,
         28 => K::Angle,
         29 => K::Rotation,
@@ -185,7 +185,7 @@ pub(super) fn read_argument_kind(
             read_chat_string(input, 32767, name)?;
             K::Word
         }
-        56 => K::Uuid,
+        61 => K::Uuid,
         _ => return Err(ConnectionError::Codec("command argument type")),
     })
 }

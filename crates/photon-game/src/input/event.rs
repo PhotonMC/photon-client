@@ -98,6 +98,47 @@ impl PreeditEvent {
         })
     }
 
+    /// 26.3 `PreeditEvent.fromSdlTextEditing`: the text SDL is composing, with the selection it
+    /// marks (a start in code points, negative for the end) cut into the blocks before, in and
+    /// after it; the caret is a UTF-16 index.
+    pub fn from_sdl_text_editing(text: &str, start: i32, length: i32) -> Option<Self> {
+        if text.is_empty() {
+            return None;
+        }
+        let total = text.chars().count() as i32;
+        let caret_codepoint = if start < 0 { total } else { start.min(total) };
+        let units_before = |codepoints: i32| -> usize {
+            text.chars()
+                .take(codepoints as usize)
+                .map(char::len_utf16)
+                .sum()
+        };
+        let units = |from: usize, to: usize| -> Vec<u16> {
+            text.encode_utf16().skip(from).take(to - from).collect()
+        };
+        let full_text: Vec<u16> = text.encode_utf16().collect();
+        let caret = units_before(caret_codepoint);
+        let single = || Self::new(full_text.clone(), caret as i32, vec![full_text.clone()], 0).ok();
+        if length <= 0 {
+            return single();
+        }
+        let end = units_before(caret_codepoint.saturating_add(length).min(total));
+        if end <= caret {
+            return single();
+        }
+        let mut blocks = Vec::new();
+        let mut focused = 0;
+        if caret > 0 {
+            blocks.push(units(0, caret));
+            focused = 1;
+        }
+        blocks.push(units(caret, end));
+        if end < full_text.len() {
+            blocks.push(units(end, full_text.len()));
+        }
+        Self::new(full_text, caret as i32, blocks, focused).ok()
+    }
+
     /// Build the record from the arrays read by Java's native callback bridge.
     pub fn create_from_callback(
         preedit_size: i32,

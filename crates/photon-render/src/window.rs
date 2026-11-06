@@ -10,7 +10,8 @@ pub mod surface;
 pub mod video_mode;
 
 pub use scale::{
-    BASE_HEIGHT, BASE_WIDTH, WindowScale, allowed_window_min_size, framebuffer_extent,
+    BASE_HEIGHT, BASE_WIDTH, MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, WindowScale,
+    allowed_window_min_size, framebuffer_extent,
 };
 pub use surface::{DisplayData, WindowSurface, WindowSurfaceError};
 pub use video_mode::VideoMode;

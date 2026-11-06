@@ -64,7 +64,7 @@ impl Motion {
 
 /// How an entity eases toward what the server last sent: its position and turn (`interpolation`)
 /// and its head.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
+#[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
 pub struct Interpolation {
     pub(crate) head_rotation_target: JavaF32,
     pub(crate) head_lerp_steps: u8,

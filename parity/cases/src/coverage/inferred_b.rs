@@ -98,6 +98,7 @@ pub const INFERRED: &[(&str, &str, &str)] = &[
     ("math", "mth_ray_intersects_aabb", "world/phys/AABB"),
     ("math", "option_values", "client/OptionInstance"),
     ("math", "preedit_event", "client/input/PreeditEvent"),
+    ("math", "preedit_sdl_event", "client/input/PreeditEvent"),
     ("math", "random_positional", "util/RandomSource, world/level/levelgen/PositionalRandomFactory"),
     ("math", "scroll_wheel", "client/ScrollWheelHandler"),
     ("math", "section_relative", "core/SectionPos"),

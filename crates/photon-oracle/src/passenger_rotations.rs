@@ -29,9 +29,7 @@ pub(super) fn client_world_entity_passenger_turn_result(request: &Value) -> Resu
             .and_then(Value::as_object)
             .ok_or("passenger turn vehicle must be an object")?;
         let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
-        if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
-            return Err("passenger turn fixture requires an oak boat".into());
-        }
+        crate::case_ids::require_type_of(vehicle, "minecraft:oak_boat")?;
         let vehicle_position = f64_vec3(
             vehicle
                 .get("position")
@@ -71,7 +69,7 @@ pub(super) fn client_world_entity_passenger_turn_result(request: &Value) -> Resu
             .ok_or("passenger turn passenger must be an object")?;
         let passenger_id = entity_id_field(&Value::Object(passenger.clone()), "entity_id")?;
         let passenger_type_id = i32_field(&Value::Object(passenger.clone()), "type_id")?;
-        if !matches!(passenger_type_id, 17 | 156) {
+        if !is_one_of(passenger_type_id, &["minecraft:breeze", "minecraft:player"]) {
             return Err("passenger turn fixture requires a Player or Breeze passenger".into());
         }
         let passenger_position = f64_vec3(
@@ -188,9 +186,7 @@ pub(super) fn client_world_entity_passenger_rotation_result(
             .and_then(Value::as_object)
             .ok_or("passenger rotation vehicle must be an object")?;
         let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
-        if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
-            return Err("passenger rotation fixture requires an oak boat".into());
-        }
+        crate::case_ids::require_type_of(vehicle, "minecraft:oak_boat")?;
         let vehicle_position = f64_vec3(
             vehicle
                 .get("position")
@@ -230,7 +226,7 @@ pub(super) fn client_world_entity_passenger_rotation_result(
             .ok_or("passenger rotation passenger must be an object")?;
         let passenger_id = entity_id_field(&Value::Object(passenger.clone()), "entity_id")?;
         let passenger_type_id = i32_field(&Value::Object(passenger.clone()), "type_id")?;
-        if !matches!(passenger_type_id, 120 | 156) {
+        if !is_one_of(passenger_type_id, SNOWBALL_OR_PLAYER) {
             return Err("passenger rotation fixture requires snowball or Player passengers".into());
         }
         let passenger_position = f64_vec3(
@@ -333,9 +329,7 @@ pub(super) fn client_world_entity_passenger_boat_turn_exemption_result(
     let vehicle = request["vehicle"]
         .as_object()
         .ok_or("vehicle must be an object")?;
-    if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
-        return Err("passenger boat turn exemption fixture requires an oak boat".into());
-    }
+    crate::case_ids::require_type_of(vehicle, "minecraft:oak_boat")?;
     let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
     let vehicle_position = f64_vec3(
         vehicle
@@ -373,9 +367,7 @@ pub(super) fn client_world_entity_passenger_boat_turn_exemption_result(
     let passenger = request["passenger"]
         .as_object()
         .ok_or("passenger must be an object")?;
-    if i32_field(&Value::Object(passenger.clone()), "type_id")? != 17 {
-        return Err("passenger boat turn exemption fixture requires a Breeze passenger".into());
-    }
+    crate::case_ids::require_type_of(passenger, "minecraft:breeze")?;
     let passenger_id = entity_id_field(&Value::Object(passenger.clone()), "entity_id")?;
     let passenger_position = f64_vec3(
         passenger
@@ -423,7 +415,7 @@ pub(super) fn client_world_entity_passenger_boat_turn_exemption_result(
     }
 
     let entity_ids = [vehicle_id, passenger_id];
-    let passenger_type_ids = [17];
+    let passenger_type_ids = [i32_field(&Value::Object(passenger.clone()), "type_id")?];
     let mut states = vec![client_world_entity_passenger_rotation_state(
         "initial",
         &entity_ids,
@@ -451,4 +443,15 @@ pub(super) fn client_world_entity_passenger_boat_turn_exemption_result(
         )?);
     }
     Ok(json!({"states": states}))
+}
+
+/// The passengers the rotation fixture accepts.
+const SNOWBALL_OR_PLAYER: &[&str] = &["minecraft:snowball", "minecraft:player"];
+
+/// Whether a case's entity type id (the reference's) is one of the named types.
+fn is_one_of(wire: i32, names: &[&str]) -> bool {
+    let entity = crate::case_ids::entity_type(wire);
+    names
+        .iter()
+        .any(|name| photon_data::entity_type::named(name) == entity)
 }

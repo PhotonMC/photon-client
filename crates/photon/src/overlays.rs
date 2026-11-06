@@ -51,6 +51,8 @@ pub struct FrameView {
     pub damage_tilt: f64,
     /// The local player is a spectator, who sees invisible entities as ghosts.
     pub spectating: bool,
+    /// The box round the culling frustum's near plane, as an offset from the eyes.
+    pub near_plane: ([f64; 3], [f64; 3]),
 }
 
 impl FrameView {

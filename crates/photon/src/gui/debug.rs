@@ -27,7 +27,12 @@ impl Gui {
         let camera = session.player().map(|player| {
             let eye = crate::view::eye_position(player, 0.0);
             let targets = debug::targets(session.world(), eye, player.rotation());
-            Self::camera_entity(session, player.position(), player.rotation(), targets)
+            let (now, before) = (player.position(), player.old_position());
+            // `Entity.getKnownSpeed`, from the tick that last ran.
+            let speed = now.subtract_vec3(before).length();
+            let mut entity = Self::camera_entity(session, now, player.rotation(), targets);
+            entity.speed = speed;
+            entity
         });
         let input = Input {
             system: controls.debug.system.clone(),
@@ -70,10 +75,39 @@ impl Gui {
         frame: &mut photon_render::gui::GuiFrame,
         (atlas, font): (&GuiAtlas, &Font),
         ((left, right), charts): (&DebugColumns, &[ChartDraw]),
-        size: (i32, i32),
+        (factor, size): (f32, (i32, i32)),
     ) {
+        let mark = frame.mark();
         debug::draw(frame, atlas, font, size.0, (left, right));
         Self::draw_chart_set(frame, (atlas, font), charts, size);
+        if factor != 1.0 {
+            frame.transform_from(mark, [factor, 0.0, 0.0, factor, 0.0, 0.0]);
+        }
+    }
+
+    /// `DebugScreenOverlay.extractRenderState`'s scale: the factor the overlay is posed by and
+    /// the size it lays out in, from the `debugGuiScale` option (-1 the gui's, 0 half the
+    /// largest that fits, else that scale or the largest below it).
+    pub(super) fn debug_pose(
+        window: &photon_render::window::scale::WindowScale,
+        options: &photon_game::options::Options,
+    ) -> (f32, (i32, i32)) {
+        let (option, unicode) = (options.play.debug_gui_scale, options.font.force_unicode);
+        let standard = window.gui_scale();
+        let scale = match option {
+            -1 => standard,
+            0 => window.calculate_scale(0, unicode) / 2,
+            wanted => window.calculate_scale(wanted, unicode),
+        };
+        if scale < standard && scale > 0 {
+            let size = (
+                window.framebuffer_width() / scale,
+                window.framebuffer_height() / scale,
+            );
+            (scale as f32 / standard as f32, size)
+        } else {
+            (1.0, (window.gui_scaled_width(), window.gui_scaled_height()))
+        }
     }
 
     /// The charts that show (`DebugScreenOverlay.extractRenderState`): the frame and tick time
@@ -155,6 +189,7 @@ impl Gui {
             ),
             biome: Self::feet_biome(session, position),
             heights: Self::feet_heights(session, [x, z]),
+            speed: 0.0,
         }
     }
 
@@ -209,6 +244,8 @@ fn impactors(quality: &photon_game::options::QualityOptions) -> Impactors {
             TextureFiltering::Anisotropic => Filtering::Anisotropic,
         },
         anisotropy: 1 << quality.max_anisotropy_bit.clamp(1, 3),
+        // The terrain is drawn one chunk at a time.
+        multi_draw_indirect: false,
     }
 }
 

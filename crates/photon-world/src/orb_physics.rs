@@ -78,7 +78,13 @@ fn orb_step(level: &Level<'_>, state: &OrbState) -> Option<OrbStep> {
         delta = delta.add_vec3(pull(target.subtract_vec3(position)));
     }
     let fall_speed = delta.y;
-    let (position, on_ground, support, landed, _) = move_orb(level, state, delta)?;
+    let (position, on_ground, support, landed, movement) = move_orb(level, state, delta)?;
+    let delta = restitute_orb(
+        level,
+        (position, on_ground, support),
+        (delta, movement),
+        gravity,
+    );
     let delta = drag(
         level,
         (position, on_ground, support),
@@ -91,6 +97,28 @@ fn orb_step(level: &Level<'_>, state: &OrbState) -> Option<OrbStep> {
         on_ground,
         support,
     })
+}
+
+/// 26.3: a bump keeps none of the orb's speed (`restituteMovementAfterCollisions`).
+fn restitute_orb(
+    level: &Level<'_>,
+    (position, on_ground, support): (Vec3, bool, Support),
+    (delta, movement): (Vec3, Vec3),
+    gravity: f64,
+) -> Vec3 {
+    let vertical = delta.y.abs() > 0.0 && delta.y != movement.y;
+    let x = !photon_core::math::equal_f64(delta.x, movement.x);
+    let z = !photon_core::math::equal_f64(delta.z, movement.z);
+    if !(vertical || x || z) {
+        return delta;
+    }
+    let effect = level.on_pos(support.main_block, position, 0.2);
+    crate::item_physics::restitute(
+        &level.info(effect),
+        (x, z, vertical && on_ground),
+        (delta, movement, vertical),
+        (gravity, 0.98),
+    )
 }
 
 /// `Entity.move` of the orb against the blocks: where it ends up, the ground flags and whether it

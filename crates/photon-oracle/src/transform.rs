@@ -2,7 +2,7 @@ use super::*;
 
 pub(super) fn client_world_entity_tick_result(
     request: &Value,
-    entity_type_id: i32,
+    entity_type: &str,
 ) -> Result<Value, String> {
     let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
     let blocks = vec![0; 4_096];
@@ -32,7 +32,7 @@ pub(super) fn client_world_entity_tick_result(
         if !world.apply_entity(EntityInput {
             entity_id,
             uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-            type_id: crate::case_ids::entity_type(entity_type_id),
+            type_id: photon_data::entity_type::named(entity_type),
             x: position.x,
             y: position.y,
             z: position.z,

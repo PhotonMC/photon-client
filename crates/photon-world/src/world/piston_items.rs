@@ -166,6 +166,11 @@ impl ClientWorld {
         let Some(entity) = self.entities.at_mut(id) else {
             return;
         };
+        // 26.3: only what simulates its own movement on the client is sent along; the rest waits
+        // for the server.
+        if !crate::constants::simulates_own_movement(entity.type_id) {
+            return;
+        }
         let (sx, sy, sz) = movement.step();
         match movement {
             Direction::East | Direction::West => {
@@ -296,9 +301,40 @@ impl ClientWorld {
         entity.set_position((step.position.x, step.position.y, step.position.z));
         entity.on_ground = step.on_ground;
         entity.tracking.support = step.support;
+        if let Some(after) = step.restituted {
+            entity.vel.motion = photon_core::java_float::DVec3::new(after.x, after.y, after.z);
+        }
         if let Some(from) = before {
             self.apply_effects_after_push(id, from);
         }
+    }
+
+    /// 26.3: what a push runs into keeps none of the item's speed
+    /// (`restituteMovementAfterCollisions`).
+    fn restitute_piston_item(
+        &self,
+        entity: crate::entity::EntityView<'_>,
+        level: &Level<'_>,
+        (main_block, position, on_ground): (Option<BlockPos>, Vec3, bool),
+        (by, moved): (Vec3, Vec3),
+    ) -> Option<Vec3> {
+        if entity.type_id != crate::constants::VANILLA_ITEM_ENTITY_TYPE_ID {
+            return None;
+        }
+        let vertical = by.y.abs() > 0.0 && by.y != moved.y;
+        let x = !photon_core::math::equal_f64(by.x, moved.x);
+        let z = !photon_core::math::equal_f64(by.z, moved.z);
+        if !(vertical || x || z) {
+            return None;
+        }
+        let (mx, my, mz) = entity.vel.motion.get();
+        let effect = level.on_pos(main_block, position, 0.2);
+        Some(crate::item_physics::restitute(
+            &level.info(effect),
+            (x, z, vertical && on_ground),
+            (Vec3::new(mx, my, mz), moved, vertical),
+            (if entity.status.no_gravity { 0.0 } else { 0.04 }, 0.98),
+        ))
     }
 
     /// `Entity.move`'s collision and ground flags for an item a piston moves by `by`.
@@ -338,10 +374,17 @@ impl ClientWorld {
                 )
                 .ok()?;
         }
+        let restituted = self.restitute_piston_item(
+            entity,
+            &level,
+            (support.main_block, position, on_ground),
+            (by, moved),
+        );
         Some(PistonStep {
             position,
             on_ground,
             support,
+            restituted,
         })
     }
 }
@@ -387,4 +430,5 @@ struct PistonStep {
     position: Vec3,
     on_ground: bool,
     support: crate::entity::Support,
+    restituted: Option<Vec3>,
 }

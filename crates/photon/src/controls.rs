@@ -588,6 +588,7 @@ impl DebugKeys {
             | Key::Num2
             | Key::Num3
             | Key::Num4
+            | Key::X
             | Key::Escape => true,
             _ => false,
         }

@@ -102,6 +102,12 @@ impl ContainerMenu {
         self.item_tags.contains(stack.item_registry_id().0, tag)
     }
 
+    /// What fuels a brewing stand: 26.3 asks for the item's `brewing_fuel` component, earlier
+    /// versions for the tag.
+    pub(super) fn is_brewing_fuel(&self, stack: &Stack) -> bool {
+        has_component(stack, ids::BREWING_FUEL) || self.in_tag(stack, "minecraft:brewing_fuel")
+    }
+
     /// `Slot.mayPlace` of these menus' slots; `None` for another menu's.
     pub(super) fn transform_may_place(&self, index: usize, stack: &Stack) -> Option<bool> {
         if self.kind.result_slot() == Some(index)
@@ -140,8 +146,12 @@ impl ContainerMenu {
                     || is_item(stack, "minecraft:lingering_potion")
                     || is_item(stack, "minecraft:glass_bottle")
             }
-            (MenuKind::Brewing, 3) => stacking(stack).is_some_and(|item| item.brewing_ingredient),
-            (MenuKind::Brewing, 4) => self.in_tag(stack, "minecraft:brewing_fuel"),
+            // 26.3 reads the ingredients from the server's `brewing_reagent` recipe set.
+            (MenuKind::Brewing, 3) => self
+                .accepted
+                .first()
+                .is_some_and(|items| items.contains(&stack.item_registry_id().0)),
+            (MenuKind::Brewing, 4) => self.is_brewing_fuel(stack),
             // `CrafterSlot.mayPlace`: a switched-off slot (data 1) takes nothing.
             (MenuKind::Crafter, 0..=8) => self.data.get(index) != Some(&1),
             (MenuKind::Beacon, 0) => self.in_tag(stack, "minecraft:beacon_payment_items"),

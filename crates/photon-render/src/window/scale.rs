@@ -12,11 +12,16 @@ pub const BASE_HEIGHT: i32 = 240;
 
 /// Java `Window.allowedWindowMinSize`.
 ///
-/// The reference clamps every requested window extent to at least one pixel
-/// before handing it to GLFW, so a zero or negative request still produces a
-/// creatable window.
-pub fn allowed_window_min_size(size: i32) -> i32 {
-    size.max(1)
+/// The smallest window width the reference creates (`Window.MIN_WINDOW_WIDTH`).
+pub const MIN_WINDOW_WIDTH: i32 = 320;
+
+/// The smallest window height the reference creates (`Window.MIN_WINDOW_HEIGHT`).
+pub const MIN_WINDOW_HEIGHT: i32 = 240;
+
+/// The reference clamps every requested window extent to at least the minimum of its axis
+/// before handing it to the window system.
+pub fn allowed_window_min_size(size: i32, minimum: i32) -> i32 {
+    size.max(minimum)
 }
 
 /// Java `Window.refreshFramebufferSize` clamping.

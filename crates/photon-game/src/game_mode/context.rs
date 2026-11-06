@@ -164,22 +164,22 @@ impl Context<'_> {
         })
     }
 
+    /// `Minecraft.startAttack` and `continueAttack`: the main hand swings as its item attacks,
+    /// then the server is sent the punch.
     pub(super) fn swing(&mut self, out: &mut Vec<Outgoing>) {
-        self.swing_hand(MAIN_HAND, out);
+        self.player.swing();
+        out.push(Outgoing::Punch);
     }
 
-    /// `LocalPlayer.swing`: the arm swings and the server hears of it.
-    pub(super) fn swing_hand(&mut self, hand: u8, out: &mut Vec<Outgoing>) {
+    /// `LocalPlayer.swing` with no packet behind it: the arm swings as its item attacks.
+    pub(super) fn swing_local(&mut self) {
+        self.player.swing();
+    }
+
+    /// `LocalPlayer.swing(hand, interactAnimation)`: the arm swings; the server learns of the
+    /// use from the use itself.
+    pub(super) fn swing_hand(&mut self, hand: u8) {
         self.player.swing_hand(hand != MAIN_HAND);
-        out.push(Outgoing::Swing { hand });
-    }
-
-    /// The swings that drops made while the use ran go out before the use's own packet, as the
-    /// `LocalPlayer.swing` of `LivingEntity.drop` did.
-    pub(super) fn send_drop_swings(&mut self, out: &mut Vec<Outgoing>) {
-        for _ in 0..self.player.take_drop_swings() {
-            out.push(Outgoing::Swing { hand: MAIN_HAND });
-        }
     }
 
     /// The inventory menu slot a hand holds.

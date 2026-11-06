@@ -59,9 +59,10 @@ pub fn sync_to(tick: i64, x: f64, y: f64, z: f64) -> Value {
     sync(tick, (x, y, z), (0.0, 0.0, 0.0), false)
 }
 
-/// The swing of an arm (`Animate`).
-pub fn animate(tick: i64, action: i64) -> Value {
-    json!({"tick": tick, "type": "animate", "action": action})
+/// The swing of an arm (`SwingAnimation`): a hand (0 main, 1 off), an animation type (1 whack,
+/// 2 stab) and how many ticks the animation lasts.
+pub fn swing_arm(tick: i64, hand: i64, swing_type: i64, duration: i64) -> Value {
+    json!({"tick": tick, "type": "swing", "hand": hand, "swing_type": swing_type, "duration": duration})
 }
 
 pub fn passengers(tick: i64, vehicle: i64, riders: &[i64]) -> Value {

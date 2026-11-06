@@ -345,7 +345,7 @@ impl Gui {
             }
         } else if controls.light_screen_open() {
             let assets = (&self.atlas, &self.font, &self.lang);
-            Self::draw_light_screen(&mut frame, assets, (session, controls, gui_size));
+            Self::draw_light_screen(&mut frame, assets, (session, controls, gui_size, &size));
         }
         Self::draw_switcher_and_disconnect(
             (&self.atlas, &self.font, &self.lang),

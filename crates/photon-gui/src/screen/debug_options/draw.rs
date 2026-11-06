@@ -1,6 +1,7 @@
 //! The debug options screen's drawing (`DebugOptionsScreen.extractRenderState`,
 //! `OptionEntry.extractContent`, `CategoryEntry.extractContent`).
 
+use crate::widgets::navigation::Rectangle;
 use crate::{FontRuns, FrameRuns};
 
 use super::*;
@@ -39,6 +40,7 @@ impl DebugOptionsScreen {
         let footer = [
             (&self.profiles[0], Focus::Profile(0)),
             (&self.profiles[1], Focus::Profile(1)),
+            (&self.gui_scale, Focus::GuiScale),
             (&self.done, Focus::Done),
         ];
         for (widget, focus) in footer {
@@ -117,7 +119,13 @@ impl DebugOptionsScreen {
             if y + ITEM_HEIGHT < place.y || y > place.bottom() {
                 continue;
             }
-            self.draw_row(frame, atlas, font, row, (self.row_left() + 2, y + 2));
+            self.draw_row(
+                frame,
+                atlas,
+                font,
+                (index, row),
+                (self.row_left() + 2, y + 2),
+            );
             if let Row::Entry { id, buttons, .. } = row {
                 self.draw_buttons(frame, atlas, font, (id, buttons), mouse);
             }
@@ -133,14 +141,34 @@ impl DebugOptionsScreen {
         frame: &mut GuiFrame,
         atlas: &GuiAtlas,
         font: &Font,
-        row: &Row,
+        (index, row): (usize, &Row),
         (x, y): (i32, i32),
     ) {
         let content_width = ROW_WIDTH - 4;
         match row {
-            Row::Category(text) => {
-                let at = x + content_width / 2 - font.width_of_runs(text) / 2;
-                frame.styled_text(atlas, font, text, (at, y + 5), 0xFFFF_FFFF, true);
+            Row::Category(text, label_width) => {
+                let at = x + content_width / 2 - label_width / 2;
+                if self.focus == Focus::Category(index) {
+                    // `FocusableTextWidget`: the text and four pixels round it, filled black from
+                    // the second column and outlined in white.
+                    let rect = (at - 4, y, label_width + 8, 17);
+                    frame.fill(
+                        atlas,
+                        (rect.0 + 1, rect.1, rect.0 + rect.2, rect.1 + rect.3),
+                        0xFF00_0000,
+                    );
+                    crate::screen::dialog_body::outline(
+                        frame,
+                        atlas,
+                        Rectangle {
+                            x: rect.0,
+                            y: rect.1,
+                            width: rect.2,
+                            height: rect.3,
+                        },
+                    );
+                }
+                frame.styled_text(atlas, font, text, (at, y + 4), 0xFFFF_FFFF, true);
             }
             Row::Entry { name, allowed, .. } => {
                 let colour = if *allowed {

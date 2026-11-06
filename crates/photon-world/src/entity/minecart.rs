@@ -25,9 +25,7 @@ impl EntityViewMut<'_> {
         }
         if self.minecart_track().is_some() {
             self.tick_minecart_track();
-        } else if self.as_view().is_interpolating() {
-            self.tick_position_interpolation();
-        } else {
+        } else if !self.as_view().is_interpolating() {
             let (y_rot, x_rot) = (self.rotation.y_rot.get(), self.rotation.x_rot.get());
             self.rotation.x_rot = JavaF32::new(x_rot % 360.0);
             self.rotation.y_rot = JavaF32::new(y_rot % 360.0);

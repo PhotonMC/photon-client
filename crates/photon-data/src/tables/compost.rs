@@ -3,7 +3,7 @@
 //! This table is maintained by hand; the parity families compare it with the reference.
 
 #[rustfmt::skip]
-pub static COMPOSTABLES: [(&str, f32); 115] = [
+pub static COMPOSTABLES: [(&str, f32); 122] = [
     ("minecraft:oak_sapling", 0.3),
     ("minecraft:spruce_sapling", 0.3),
     ("minecraft:birch_sapling", 0.3),
@@ -13,6 +13,7 @@ pub static COMPOSTABLES: [(&str, f32); 115] = [
     ("minecraft:dark_oak_sapling", 0.3),
     ("minecraft:pale_oak_sapling", 0.3),
     ("minecraft:mangrove_propagule", 0.3),
+    ("minecraft:poplar_sapling", 0.3),
     ("minecraft:mangrove_roots", 0.3),
     ("minecraft:oak_leaves", 0.3),
     ("minecraft:spruce_leaves", 0.3),
@@ -23,11 +24,15 @@ pub static COMPOSTABLES: [(&str, f32); 115] = [
     ("minecraft:dark_oak_leaves", 0.3),
     ("minecraft:pale_oak_leaves", 0.3),
     ("minecraft:mangrove_leaves", 0.3),
+    ("minecraft:red_poplar_leaves", 0.3),
+    ("minecraft:orange_poplar_leaves", 0.3),
+    ("minecraft:yellow_poplar_leaves", 0.3),
     ("minecraft:azalea_leaves", 0.3),
     ("minecraft:flowering_azalea_leaves", 0.5),
     ("minecraft:short_grass", 0.3),
     ("minecraft:fern", 0.65),
     ("minecraft:bush", 0.3),
+    ("minecraft:red_shrub", 0.3),
     ("minecraft:azalea", 0.65),
     ("minecraft:flowering_azalea", 0.85),
     ("minecraft:firefly_bush", 0.3),
@@ -55,6 +60,7 @@ pub static COMPOSTABLES: [(&str, f32); 115] = [
     ("minecraft:spore_blossom", 0.65),
     ("minecraft:brown_mushroom", 0.65),
     ("minecraft:red_mushroom", 0.65),
+    ("minecraft:shelf_mushroom", 0.65),
     ("minecraft:crimson_fungus", 0.65),
     ("minecraft:warped_fungus", 0.65),
     ("minecraft:crimson_roots", 0.65),
@@ -102,6 +108,7 @@ pub static COMPOSTABLES: [(&str, f32); 115] = [
     ("minecraft:dried_kelp_block", 0.5),
     ("minecraft:cocoa_beans", 0.65),
     ("minecraft:cake", 1.0),
+    ("minecraft:straw_bed", 0.85),
     ("minecraft:cookie", 0.85),
     ("minecraft:melon_slice", 0.5),
     ("minecraft:dried_kelp", 0.3),

@@ -94,7 +94,14 @@ impl TrimData {
                 Some((
                     name,
                     TrimMaterial {
-                        base: json.text("asset_name")?,
+                        // 26.3 names the palette picture instead of the material's suffix.
+                        base: if let Some(name) = json.text("asset_name") {
+                            name
+                        } else {
+                            let palette = json.text("palette_id")?;
+                            let path = path_of(&palette);
+                            path.strip_prefix("trim/").unwrap_or(path).to_owned()
+                        },
                         overrides,
                     },
                 ))

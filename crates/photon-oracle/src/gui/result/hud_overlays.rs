@@ -309,6 +309,7 @@ fn debug_impactors(each: &Value) -> photon_gui::hud::debug::Impactors {
             [number("filtering") as usize],
         // `Options.maxAnisotropyValue`.
         anisotropy: (1 << number("bit")).min(number("limit")),
+        multi_draw_indirect: false,
     }
 }
 
@@ -321,6 +322,7 @@ fn debug_system(each: &Value) -> photon_gui::hud::debug::SystemSpecs {
         runtime: ("Java".to_owned(), text("runtime")),
         cpu: text("cpu"),
         display: (number("width"), number("height")),
+        window: (0, 0, 100),
         vendor: text("vendor"),
         device_name: text("name"),
         device_type: DeviceType::from_vulkan(number("type")),
@@ -420,7 +422,7 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
             .get("day")
             .and_then(Value::as_i64)
             .map(|ticks| (ticks / 24000) as i32),
-        version: debug::version_line("26.2", launched),
+        version: debug::version_line(&crate::jar_version(), launched),
         frame: FrameStats {
             fps: int("fps"),
             // `FramerateLimitTracker.getFramerateLimit`: a minimised window draws ten.
@@ -432,6 +434,7 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
                 "FIFO_RELAXED" => Some(PresentMode::FifoRelaxed),
                 _ => None,
             },
+            refresh_rate: None,
         },
         server: Some(ServerInfo {
             brand: row["brand"].as_str().map(str::to_owned),
@@ -455,6 +458,7 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
             light: (int("sky"), int("block")),
             biome: "minecraft:plains".to_owned(),
             heights,
+            speed: 0.0,
         }),
     })
 }

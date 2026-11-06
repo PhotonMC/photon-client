@@ -172,7 +172,7 @@ public final class MathOracle extends MathPlayerInputOracle {
             case "local_player_update_fall_flying_movement" -> localPlayerUpdateFallFlyingMovementResult(request);
             case "local_player_travel_dispatch" -> localPlayerTravelDispatchResult(request);
             case "character_event" -> characterEventCase(request);
-            case "preedit_event" -> preeditEventCase(request);
+            case "preedit_sdl_event" -> preeditSdlEventCase(request);
             case "option_values" -> optionValuesCase(request);
             case "sliderable_enum" -> sliderableEnumCase(request);
             case "cycleable_enum" -> cycleableEnumCase(request);

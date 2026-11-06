@@ -4,7 +4,9 @@ use photon_core::ids::{EntityId, EntityTypeId};
 
 #[test]
 fn passenger_tick_applies_animal_rotation_offset_by_entity_parity_at_capacity() {
-    for (animal_id, expected_offset) in [(38, 90.0_f32), (39, 270.0_f32)] {
+    for (animal_id, expected_offset, expected_head) in
+        [(38, 90.0_f32, 165.0_f32), (39, 270.0_f32, 195.0_f32)]
+    {
         let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
         let (blocks, biomes) = section(0, 0);
         world.replace_chunk(
@@ -42,8 +44,9 @@ fn passenger_tick_applies_animal_rotation_offset_by_entity_parity_at_capacity() 
             .entities()
             .at(EntityId(animal_id))
             .expect("Cow passenger");
-        assert_eq!(passenger.rotation(), (105.0, 0.0, 105.0 + expected_offset));
-        assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 170.0));
+        // A mob's yaw becomes its body's; its head is held within 75 degrees of it.
+        assert_eq!(passenger.rotation(), (expected_offset, 0.0, expected_head));
+        assert_eq!(passenger.previous_rotation(), (170.0, 0.0, 170.0));
         assert_eq!(passenger.body_y_rotation(), expected_offset);
         assert_eq!(passenger.previous_body_y_rotation(), 170.0);
     }

@@ -2,6 +2,7 @@
 //! toggles of the keys, auto jump, the chat's links and suggestions, and the view's extras.
 
 use super::json::{Json, double_value, int_value, java_double};
+use super::sliders::GUI_SCALE_MAX;
 
 /// An option of the group, by its name in the file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,6 +28,7 @@ pub(super) enum PlayKey {
     HideSplashTexts,
     PanoramaSpeed,
     Fullscreen,
+    DebugGuiScale,
 }
 
 /// The flags and the sprint window of the group.
@@ -64,6 +66,8 @@ pub struct PlayOptions {
     pub panorama_speed: f64,
     /// `fullscreen`: the window is fullscreen.
     pub fullscreen: bool,
+    /// `debugGuiScale`: the debug overlay's scale; -1 keeps the game's, 0 is automatic.
+    pub debug_gui_scale: i32,
 }
 
 impl Default for PlayOptions {
@@ -90,6 +94,7 @@ impl Default for PlayOptions {
             hide_splash_texts: false,
             panorama_speed: 1.0,
             fullscreen: false,
+            debug_gui_scale: 0,
         }
     }
 }
@@ -141,6 +146,13 @@ impl PlayOptions {
                     self.sprint_window = value;
                 }
             }
+            // `ClampingLazyMaxIntRange(-1, ..)`: past the largest scale it takes the largest.
+            (PlayKey::DebugGuiScale, Json::Number(number)) => {
+                let value = int_value(number);
+                if value >= -1 {
+                    self.debug_gui_scale = value.min(GUI_SCALE_MAX);
+                }
+            }
             (PlayKey::PanoramaSpeed, Json::Number(number)) => {
                 let value = double_value(number);
                 if (0.0..=1.0).contains(&value) {
@@ -161,6 +173,7 @@ impl PlayOptions {
         match (key, own.flag(key)) {
             (_, Some(flag)) => flag.to_string(),
             (PlayKey::PanoramaSpeed, None) => java_double(self.panorama_speed),
+            (PlayKey::DebugGuiScale, None) => self.debug_gui_scale.to_string(),
             (_, None) => self.sprint_window.to_string(),
         }
     }

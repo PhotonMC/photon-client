@@ -5,4 +5,5 @@ pub mod event;
 pub mod hotbar;
 pub mod key_mapping;
 pub mod pick;
+mod scancode_names;
 pub mod scroll;

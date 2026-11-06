@@ -114,7 +114,28 @@ pub(super) fn preedit_snapshot(event: &PreeditEvent) -> Value {
     })
 }
 
+/// `preedit_sdl_event`: the event SDL's text editing makes, from the code points of its text.
+fn preedit_sdl_event_result(request: &Value) -> Result<Value, String> {
+    let text: String = i32_array_field(request, "codepoints")?
+        .iter()
+        .map(|&codepoint| u32::try_from(codepoint).ok().and_then(char::from_u32))
+        .collect::<Option<_>>()
+        .ok_or("a code point that is not a character")?;
+    let event = PreeditEvent::from_sdl_text_editing(
+        &text,
+        i32_field(request, "selection_start")?,
+        i32_field(request, "selection_length")?,
+    );
+    Ok(match event {
+        None => json!({}),
+        Some(event) => json!({"event": preedit_snapshot(&event)}),
+    })
+}
+
 pub(super) fn preedit_event_result(request: &Value) -> Result<Value, String> {
+    if request["operation"] == "preedit_sdl_event" {
+        return preedit_sdl_event_result(request);
+    }
     let codepoints = i32_array_field(request, "codepoints")?;
     let block_sizes = i32_array_field(request, "block_sizes")?;
     let preedit_size = i32::try_from(codepoints.len())

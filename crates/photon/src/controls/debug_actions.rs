@@ -117,6 +117,7 @@ impl Controls {
                 self.debug_say("debug.reload_chunks.message", assets);
             }
             glfw::Key::N => self.debug_creative_spectator(session, assets)?,
+            glfw::Key::X => self.debug_improved_transparency(assets),
             glfw::Key::F6 => self.toggle_debug_options(session, surface, assets)?,
             _ => return Ok(self.run_debug_toggle(key, (session, surface, assets))),
         }
@@ -212,6 +213,22 @@ impl Controls {
             "debug.advanced_tooltips.on"
         } else {
             "debug.advanced_tooltips.off"
+        };
+        self.debug_say(key, assets);
+        self.save_options();
+    }
+
+    /// F3+X: improved transparency is switched; the chunks are built again and the graphics preset
+    /// is Custom (`Options.improvedTransparency`'s callback).
+    fn debug_improved_transparency(&mut self, assets: &ScreenAssets) {
+        let quality = &mut self.options.quality;
+        quality.improved_transparency = !quality.improved_transparency;
+        quality.graphics_preset = photon_game::options::GraphicsPreset::Custom;
+        self.reload_chunks = true;
+        let key = if quality.improved_transparency {
+            "debug.improvedTransparency.on"
+        } else {
+            "debug.improvedTransparency.off"
         };
         self.debug_say(key, assets);
         self.save_options();

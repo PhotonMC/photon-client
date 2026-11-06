@@ -110,16 +110,33 @@ impl PlaySession {
         }
     }
 
-    /// `LocalPlayer.swing`: the arm, then the packet.
+    /// `LocalPlayer.swing` with no packet behind it: the arm swings.
+    ///
+    /// 26.3 predicts the drop (`Prediction.PREDICTED`), so the swing sends nothing.
     fn swing_hand(&mut self) -> Result<(), ConnectionError> {
         if let Some(player) = self.local.player.as_mut() {
             player.swing();
         }
         self.local.swings += 1;
-        self.send(PLAY_SERVERBOUND_SWING_PACKET_ID, |output| {
-            output.push(0);
-            Ok(())
-        })
+        Ok(())
+    }
+
+    /// `BundleMouseActions.onSlotClicked`: a shift click or a number key on a bundle selects
+    /// none of its items first.
+    fn deselect_bundle_for_click(
+        &mut self,
+        slot: i32,
+        kind: photon_game::menus::container::ClickType,
+    ) -> Result<(), ConnectionError> {
+        if matches!(
+            kind,
+            photon_game::menus::container::ClickType::QuickMove
+                | photon_game::menus::container::ClickType::Swap
+        ) && usize::try_from(slot).is_ok_and(|index| self.active_menu().is_bundle_slot(index))
+        {
+            self.select_bundle_item(slot, -1)?;
+        }
+        Ok(())
     }
 
     /// `AbstractContainerScreen.slotClicked` into the open menu: the player's
@@ -136,16 +153,7 @@ impl PlaySession {
             .world
             .local_player()
             .is_some_and(|player| player.open_container().is_some());
-        // `BundleMouseActions.onSlotClicked`: a shift click or a number key on a bundle selects
-        // none of its items first.
-        if matches!(
-            kind,
-            photon_game::menus::container::ClickType::QuickMove
-                | photon_game::menus::container::ClickType::Swap
-        ) && usize::try_from(slot).is_ok_and(|index| self.active_menu().is_bundle_slot(index))
-        {
-            self.select_bundle_item(slot, -1)?;
-        }
+        self.deselect_bundle_for_click(slot, kind)?;
         let sounds: Vec<&'static str>;
         let (swings, body) = if opened {
             // Synced before the click; `None` when the container is of a kind
@@ -154,6 +162,7 @@ impl PlaySession {
                 return Ok(());
             }
             let menu = self.menus.open_menu.as_mut().expect("synced above");
+            menu.versions = Some(self.registries.clone());
             let clicked = menu.handle_click(slot, button, kind, player);
             sounds = menu.sounds().to_vec();
             let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
@@ -167,6 +176,7 @@ impl PlaySession {
             self.menus.container_menu.enchantments = self.enchantment_names();
             self.menus.container_menu.enchantment_traits = self.menus.enchantment_traits.clone();
             self.menus.container_menu.lang = self.social.lang.clone();
+            self.menus.container_menu.versions = Some(self.registries.clone());
             let clicked = self
                 .menus
                 .container_menu

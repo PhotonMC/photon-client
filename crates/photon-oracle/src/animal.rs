@@ -27,9 +27,7 @@ pub(super) fn client_world_entity_passenger_animal_rotation_result(
             .and_then(Value::as_object)
             .ok_or("passenger animal rotation vehicle must be an object")?;
         let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
-        if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
-            return Err("passenger animal rotation fixture requires an oak boat".into());
-        }
+        crate::case_ids::require_type_of(vehicle, "minecraft:oak_boat")?;
         let vehicle_position = f64_vec3(
             vehicle
                 .get("position")
@@ -68,9 +66,7 @@ pub(super) fn client_world_entity_passenger_animal_rotation_result(
             .and_then(Value::as_object)
             .ok_or("passenger animal rotation animal must be an object")?;
         let animal_id = entity_id_field(&Value::Object(animal.clone()), "entity_id")?;
-        if i32_field(&Value::Object(animal.clone()), "type_id")? != 30 {
-            return Err("passenger animal rotation fixture requires a Cow".into());
-        }
+        crate::case_ids::require_type_of(animal, "minecraft:cow")?;
         let animal_position = f64_vec3(
             animal
                 .get("position")
@@ -114,9 +110,7 @@ pub(super) fn client_world_entity_passenger_animal_rotation_result(
             .and_then(Value::as_object)
             .ok_or("passenger animal rotation filler must be an object")?;
         let filler_id = entity_id_field(&Value::Object(filler.clone()), "entity_id")?;
-        if i32_field(&Value::Object(filler.clone()), "type_id")? != 120 {
-            return Err("passenger animal rotation fixture requires a Snowball filler".into());
-        }
+        crate::case_ids::require_type_of(filler, "minecraft:snowball")?;
         let filler_position = f64_vec3(
             filler
                 .get("position")
@@ -210,9 +204,7 @@ pub(super) fn client_world_entity_passenger_animal_position_result(
         .as_object()
         .ok_or("vehicle must be an object")?;
     let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
-    if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
-        return Err("passenger animal position fixture requires an oak boat".into());
-    }
+    crate::case_ids::require_type_of(vehicle, "minecraft:oak_boat")?;
     let vehicle_position = f64_vec3(
         vehicle
             .get("position")
@@ -250,9 +242,7 @@ pub(super) fn client_world_entity_passenger_animal_position_result(
         .as_object()
         .ok_or("animal must be an object")?;
     let animal_id = entity_id_field(&Value::Object(animal.clone()), "entity_id")?;
-    if i32_field(&Value::Object(animal.clone()), "type_id")? != 30 {
-        return Err("passenger animal position fixture requires a Cow".into());
-    }
+    crate::case_ids::require_type_of(animal, "minecraft:cow")?;
     let animal_position = f64_vec3(
         animal
             .get("position")

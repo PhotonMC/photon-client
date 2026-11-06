@@ -245,11 +245,11 @@ class MovementWorldOracle extends MovementLivingOracle {
         var probe = (FogProbe) unsafe.allocateInstance(FogProbe.class);
         probe.values = new java.util.HashMap<>();
         var attributes = row.getAsJsonObject("attributes");
-        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.BLOCK_LIGHT_TINT, attributes.get("block_light_tint").getAsInt());
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.BLOCK_LIGHT_TINT, net.minecraft.util.ARGB.vector3fFromRGB24(attributes.get("block_light_tint").getAsInt()));
         probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SKY_LIGHT_FACTOR, Oracle.f32(attributes, "sky_light_factor"));
-        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SKY_LIGHT_COLOR, attributes.get("sky_light_color").getAsInt());
-        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.AMBIENT_LIGHT_COLOR, attributes.get("ambient_light_color").getAsInt());
-        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.NIGHT_VISION_COLOR, attributes.get("night_vision_color").getAsInt());
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SKY_LIGHT_COLOR, net.minecraft.util.ARGB.vector3fFromRGB24(attributes.get("sky_light_color").getAsInt()));
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.AMBIENT_LIGHT_COLOR, net.minecraft.util.ARGB.vector3fFromRGB24(attributes.get("ambient_light_color").getAsInt()));
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.NIGHT_VISION_COLOR, net.minecraft.util.ARGB.vector3fFromRGB24(attributes.get("night_vision_color").getAsInt()));
         var camera = (FogCamera) unsafe.allocateInstance(FogCamera.class);
         camera.probe = probe;
         var renderer = (net.minecraft.client.renderer.GameRenderer) unsafe.allocateInstance(
@@ -323,10 +323,10 @@ class MovementWorldOracle extends MovementLivingOracle {
         var probe = (FogProbe) unsafe.allocateInstance(FogProbe.class);
         probe.values = new java.util.HashMap<>();
         var attributes = row.getAsJsonObject("attributes");
-        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.FOG_COLOR, attributes.get("fog_color").getAsInt());
-        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SUNRISE_SUNSET_COLOR, attributes.get("sunrise").getAsInt());
-        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SKY_COLOR, attributes.get("sky_color").getAsInt());
-        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.WATER_FOG_COLOR, attributes.get("water_color").getAsInt());
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.FOG_COLOR, net.minecraft.util.ARGB.vector3fFromRGB24(attributes.get("fog_color").getAsInt()));
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SUNRISE_SUNSET_COLOR, net.minecraft.util.ARGB.vector4fFromARGB32(attributes.get("sunrise").getAsInt()));
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SKY_COLOR, net.minecraft.util.ARGB.vector3fFromRGB24(attributes.get("sky_color").getAsInt()));
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.WATER_FOG_COLOR, net.minecraft.util.ARGB.vector3fFromRGB24(attributes.get("water_color").getAsInt()));
         probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SUN_ANGLE, Oracle.f32(attributes, "sun_angle"));
         probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.FOG_START_DISTANCE, Oracle.f32(attributes, "fog_start"));
         probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.FOG_END_DISTANCE, Oracle.f32(attributes, "fog_end"));

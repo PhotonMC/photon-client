@@ -127,22 +127,39 @@ impl Entities {
 
     /// `LivingEntity.handleEntityEvent(3)` for an entity that is not a
     /// player: it dies (health spent), the sound aside.
-    /// `handleAnimate`: an arm swings (actions 0 and 3), or a player wakes up (2: its sleeping
-    /// position is emptied and it stands). The critical-hit particles are not carried out here.
+    /// `handleAnimate`: a player wakes up (0: its sleeping position is emptied and it stands).
+    /// The critical-hit particles (1 and 2) are not carried out here.
     pub fn apply_animate(&mut self, entity_id: EntityId, action: u8) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
-        if action == 2 && entity.living_kind().is_some() {
+        if action == 0 && entity.living_kind().is_some() {
             entity.vitals.sleeping_pos = None;
             entity.status.pose = ClientEntityPose::Standing;
             return true;
         }
-        if entity.living_kind().is_none() || !matches!(action, 0 | 3) {
+        false
+    }
+
+    /// `ClientPacketListener.handleSwingAnimation`: a living entity's swing, of a hand, a
+    /// `SwingAnimationType` and the animation's duration.
+    pub fn apply_swing_animation(
+        &mut self,
+        entity_id: EntityId,
+        off_hand: bool,
+        kind: u8,
+        duration: i32,
+    ) -> bool {
+        let Some(entity) = self.at_mut(entity_id) else {
+            return false;
+        };
+        if entity.living_kind().is_none() {
             return false;
         }
-        let durations = entity.swing_durations();
-        entity.living.swing.swing(action == 3, durations);
+        entity
+            .living
+            .swing
+            .start_if_able(off_hand, kind, duration, duration);
         true
     }
 

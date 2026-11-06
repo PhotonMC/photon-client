@@ -125,14 +125,8 @@ pub struct LocalPlayer {
     pub(super) y_bob: f32,
     pub(super) x_bob_old: f32,
     pub(super) y_bob_old: f32,
-    /// `LivingEntity`'s arm swing: whether one is under way, how many
-    /// ticks in, and how far through, now and a tick ago.
-    pub(super) swinging: bool,
-    pub(super) swing_time: i32,
-    /// `swingingArm`: the hand that swung last (the main hand until one swings).
-    pub(super) swinging_off_hand: bool,
-    pub(super) attack_anim: f32,
-    pub(super) attack_anim_old: f32,
+    /// `LivingEntity.swingState`: the arm swing, its ticks and how far through it is.
+    pub(super) swing: crate::living::SwingState,
     /// `Player.attackStrengthTicker` and `itemSwapTicker`: ticks since the
     /// last attack or change of held item.
     pub(super) attack_strength_ticker: i32,

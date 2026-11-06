@@ -62,6 +62,14 @@ entity_types! {
     WITHER_SKULL = wither_skull,
     WOLF = wolf,
     ZOMBIE_VILLAGER = zombie_villager,
+    RAVAGER = ravager,
+    PLAYER = player,
+    MANNEQUIN = mannequin,
+    GOAT = goat,
+    FROG = frog,
+    DOLPHIN = dolphin,
+    CAMEL_HUSK = camel_husk,
+    CAMEL = camel,
 }
 
 /// `Attributes.STEP_HEIGHT`, the name the registry gives it.

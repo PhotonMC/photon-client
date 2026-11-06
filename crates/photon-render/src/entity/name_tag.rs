@@ -296,7 +296,10 @@ fn line_submits(
     let y = tag.offset as f32;
     // `ARGB.color(opacity, 0xFF000000)`: the alpha channel of the opacity.
     let background = ((background_opacity * 255.0).floor() as i32) << 24;
-    let translucent = -2_130_706_433;
+    // The text takes half the background's opacity plus three eighths, at least a half
+    // (`Math.max((alpha + 0.75F) * 0.5F, 0.5F)`), over white.
+    let text_alpha = ((background_opacity + 0.75) * 0.5).max(0.5);
+    let translucent = (((text_alpha * 255.0).floor() as i32) << 24) | 0x00FF_FFFF;
     let submit = |light, color, background, mode| Submit {
         pose: pose.pose,
         x,

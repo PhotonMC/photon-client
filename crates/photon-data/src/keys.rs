@@ -99,3 +99,9 @@ pub fn key_of(name: &str) -> Option<InputKey> {
 pub fn named_keys() -> &'static [(&'static str, i32, &'static str)] {
     &NAMED_KEYS
 }
+
+/// Every key `InputConstants` names in 26.3, whose keyboard codes are SDL scancodes and whose
+/// mouse buttons count from one: its type (`KEYBOARD` or `MOUSE`), code and name.
+pub fn sdl_named_keys() -> &'static [(&'static str, i32, &'static str)] {
+    &crate::tables::sdl_keys::SDL_KEYS
+}

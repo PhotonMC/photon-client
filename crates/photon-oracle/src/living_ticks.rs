@@ -90,7 +90,7 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                     "death" => death_event(&mut world, entity_id)?,
                     "move" => move_event(&mut world, entity_id, event)?,
                     "creeper_data" => creeper_data_event(&mut world, entity_id, event)?,
-                    "animate" => animate_event(&mut world, entity_id, event)?,
+                    "animate" | "swing" => animate_event(&mut world, entity_id, event)?,
                     "bee_data" => bee_data_event(&mut world, entity_id, event)?,
                     "sync" => sync_event(&mut world, entity_id, event)?,
                     "wolf_data" => wolf_data_event(&mut world, entity_id, event)?,

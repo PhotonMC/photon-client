@@ -98,6 +98,7 @@ class MovementLivingOracle extends MovementObjectExtras {
                     case "death" -> eventDeath(ctx, event);
                     case "move" -> eventMove(ctx, event);
                     case "animate" -> eventAnimate(ctx, event);
+                    case "swing" -> eventSwing(ctx, event);
                     case "creeper_data" -> eventCreeperData(ctx, event);
                     case "sync" -> eventSync(ctx, event);
                     case "game_time" -> eventGameTime(ctx, event);

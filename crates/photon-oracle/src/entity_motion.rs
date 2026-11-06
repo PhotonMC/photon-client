@@ -12,7 +12,7 @@ pub(super) fn client_world_entity_player_interpolation_state(
     let previous_position = entity.previous_position();
     let rotation = entity.rotation();
     let previous_rotation = entity.previous_rotation();
-    let interpolation_active = entity.interpolation_steps() > 0;
+    let interpolation_active = entity.interpolation_active();
     let mut state = json!({
         "label": label,
         "accepted": true,

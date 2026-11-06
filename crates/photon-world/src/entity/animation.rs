@@ -3,20 +3,6 @@ use super::*;
 impl ClientEntity {}
 
 impl EntityViewMut<'_> {
-    /// `ItemStack.getSwingAnimation().duration()` of what each hand holds, the main hand's first.
-    pub(crate) fn swing_durations(&self) -> [i32; 2] {
-        [EquipmentSlot::MainHand, EquipmentSlot::OffHand].map(|slot| {
-            self.equipment(slot)
-                .and_then(|stack| crate::block::rules::item(stack.item_registry_id()))
-                .and_then(|item| photon_data::spear::spear_of(item.name))
-                .map_or(crate::living::DEFAULT_SWING_DURATION, |spear| {
-                    spear.swing_ticks
-                })
-        })
-    }
-}
-
-impl EntityViewMut<'_> {
     /// What a living entity does each tick besides moving: hurt and death,
     /// its pose, its swing, and what its kind does of its own.
     pub(crate) fn tick_living(&mut self, kind: LivingKind, tick_death: bool, game_time: u64) {
@@ -40,7 +26,7 @@ impl EntityViewMut<'_> {
         self.living.elytra.tick(elytra_input);
         self.tick_hurt_and_death(tick_death);
         self.tick_living_pose(kind);
-        self.tick_swing(kind);
+        self.tick_swing();
         self.tick_animal(game_time);
     }
 }
@@ -155,16 +141,9 @@ impl EntityView<'_> {
 }
 
 impl EntityViewMut<'_> {
-    /// What a living entity's swing does each tick: the last tick's attack
-    /// animation is kept, and the swing runs on for a player and a monster
-    /// (`Player.aiStep`, `Monster.aiStep`).
-    pub(crate) fn tick_swing(&mut self, kind: LivingKind) {
-        self.living.swing.begin_tick();
-        let monster = photon_data::entity_type::pick(self.type_id).is_some_and(|pick| pick.monster);
-        if kind == LivingKind::Player || monster {
-            let durations = self.swing_durations();
-            self.living.swing.update(durations);
-        }
+    /// What a living entity's swing does each tick (`LivingEntity.baseTick`).
+    pub(crate) fn tick_swing(&mut self) {
+        self.living.swing.tick();
     }
 
     /// What a living entity's drawn pose follows from its tick: the limbs'
@@ -279,9 +258,6 @@ impl EntityViewMut<'_> {
         }
         if self.is_primed_tnt() {
             self.primed_tnt_mut().tick();
-        }
-        if self.is_fishing_bobber() {
-            self.tick_position_interpolation();
         }
         if self.is_lightning_bolt() {
             let _seed = i64::from(self.net.id.0);

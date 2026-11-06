@@ -11,7 +11,9 @@ use std::fmt;
 
 use glfw::{WindowHint, WindowMode};
 
-use super::scale::{WindowScale, allowed_window_min_size, framebuffer_extent};
+use super::scale::{
+    MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, WindowScale, allowed_window_min_size, framebuffer_extent,
+};
 use super::video_mode::VideoMode;
 
 /// Reference default window size, as shipped in the client's argument parser.
@@ -106,8 +108,8 @@ impl WindowSurface {
         glfw.window_hint(WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
         glfw.window_hint(WindowHint::Visible(false));
 
-        let width = allowed_window_min_size(display.width);
-        let height = allowed_window_min_size(display.height);
+        let width = allowed_window_min_size(display.width, MIN_WINDOW_WIDTH);
+        let height = allowed_window_min_size(display.height, MIN_WINDOW_HEIGHT);
 
         let (mut window, events) = glfw
             .create_window(width as u32, height as u32, title, WindowMode::Windowed)

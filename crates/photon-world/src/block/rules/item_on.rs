@@ -479,8 +479,8 @@ fn chiseled_bookshelf(use_: &Use) -> Option<ItemOn> {
     Some(ItemOn::answer(SUCCESS))
 }
 
-/// `ShelfBlock`: the main hand trades with the slot hit, on the server; the client succeeds when
-/// it holds something.
+/// `ShelfBlock`: the main hand trades with the slot hit, on the server; the client consumes the
+/// click (26.3: with no swing of its own) when it holds something.
 fn shelf(use_: &Use) -> Option<ItemOn> {
     if !use_.user.block_entity || !use_.user.main_hand || slot_hit(use_, (1, 3)).is_none() {
         return pass();
@@ -488,7 +488,7 @@ fn shelf(use_: &Use) -> Option<ItemOn> {
     Some(ItemOn::answer(if use_.held.empty {
         UseResult::Pass
     } else {
-        SUCCESS
+        SERVER
     }))
 }
 

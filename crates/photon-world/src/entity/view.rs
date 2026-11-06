@@ -183,6 +183,10 @@ impl EntityViewMut<'_> {
         self.as_view().has_interpolation_handler()
     }
 
+    pub(crate) fn uses_stepped_interpolation(&self) -> bool {
+        self.as_view().uses_stepped_interpolation()
+    }
+
     pub(crate) fn minecart_track(&self) -> Option<&crate::objects::minecart_track::TrackLerp> {
         self.kind
             .minecart_slot()

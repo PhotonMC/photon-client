@@ -137,7 +137,7 @@ mod tests {
             let patch = crate::item_components::read_wire_patch(
                 &mut bytes.as_slice(),
                 &photon_data::version_registries::VersionRegistries::of(
-                    photon_core::version::Version::V26_2,
+                    photon_core::version::Version::V26_3,
                 ),
             )
             .expect("a patch");

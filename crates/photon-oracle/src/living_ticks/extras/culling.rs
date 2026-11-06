@@ -1,6 +1,9 @@
 use super::super::*;
 use photon_world::EntityView;
 
+/// The partial tick `MovementObjectExtras.extraCull` asks the box at.
+const CULL_PARTIAL: f32 = 0.5;
+
 /// The view scales and squared distances `MovementObjectExtras.extraCull` asks at.
 const VIEW_SCALES: [(&str, f64); 2] = [("1.0", 1.0), ("2.5", 2.5)];
 const DISTANCES: [f64; 20] = [
@@ -11,7 +14,7 @@ const DISTANCES: [f64; 20] = [
 /// Whether the entity is near enough to be drawn, from a camera along x at each distance, and
 /// the box its renderer tests against the view.
 pub(crate) fn cull_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
-    let culling = entity.culling_box();
+    let culling = entity.culling_box(CULL_PARTIAL);
     described["culled"] = json!(culling.is_some());
     if let Some(aabb) = culling {
         described["culling_box"] = json!(

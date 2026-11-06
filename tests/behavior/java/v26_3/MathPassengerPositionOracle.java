@@ -13,7 +13,7 @@ class MathPassengerPositionOracle extends MathPassengerOracle {
         JsonObject vehicleInput = request.getAsJsonObject("vehicle");
         int vehicleId = vehicleInput.get("entity_id").getAsInt();
         int vehicleTypeId = vehicleInput.get("type_id").getAsInt();
-        if (vehicleTypeId != 89) {
+        if (vehicleTypeId != oakBoatId()) {
             throw new IllegalArgumentException("Passenger position fixture requires an oak boat");
         }
         PassengerPositionBoatFixture vehicle = PassengerPositionBoatFixture.create(
@@ -24,7 +24,7 @@ class MathPassengerPositionOracle extends MathPassengerOracle {
         var passengers = new ArrayList<TickSnowballFixture>();
         for (JsonElement passengerEntry : request.getAsJsonArray("passengers")) {
             JsonObject passengerInput = passengerEntry.getAsJsonObject();
-            if (passengerInput.get("type_id").getAsInt() != 120) {
+            if (passengerInput.get("type_id").getAsInt() != wireId(net.minecraft.world.entity.EntityTypes.SNOWBALL)) {
                 throw new IllegalArgumentException(
                     "Passenger position fixture requires snowball passengers");
             }
@@ -64,7 +64,7 @@ class MathPassengerPositionOracle extends MathPassengerOracle {
     static JsonObject clientWorldEntityPassengerPlayerPositionResult(JsonObject request) {
         JsonObject vehicleInput = request.getAsJsonObject("vehicle");
         int vehicleId = vehicleInput.get("entity_id").getAsInt();
-        if (vehicleInput.get("type_id").getAsInt() != 89) {
+        if (vehicleInput.get("type_id").getAsInt() != oakBoatId()) {
             throw new IllegalArgumentException("Passenger player position fixture requires an oak boat");
         }
         PassengerPositionBoatFixture vehicle = PassengerPositionBoatFixture.create(
@@ -73,7 +73,7 @@ class MathPassengerPositionOracle extends MathPassengerOracle {
             Oracle.f32(vehicleInput.getAsJsonObject("rotation"), "y"),
             vehicleInput.get("no_gravity").getAsBoolean());
         JsonObject passengerInput = request.getAsJsonObject("passenger");
-        if (passengerInput.get("type_id").getAsInt() != 156) {
+        if (passengerInput.get("type_id").getAsInt() != wireId(net.minecraft.world.entity.EntityTypes.PLAYER)) {
             throw new IllegalArgumentException(
                 "Passenger player position fixture requires a Player passenger");
         }
@@ -129,7 +129,7 @@ class MathPassengerPositionOracle extends MathPassengerOracle {
                     Oracle.f32(vehicleInput.getAsJsonObject("rotation"), "y"),
                     vehicleInput.get("no_gravity").getAsBoolean());
             JsonObject passengerInput = row.getAsJsonObject("passenger");
-            if (passengerInput.get("type_id").getAsInt() != 120) {
+            if (passengerInput.get("type_id").getAsInt() != wireId(net.minecraft.world.entity.EntityTypes.SNOWBALL)) {
                 throw new IllegalArgumentException(
                     "Boat family position fixture requires snowball passengers");
             }
@@ -174,13 +174,16 @@ class MathPassengerPositionOracle extends MathPassengerOracle {
     static net.minecraft.world.entity.vehicle.boat.AbstractBoat createPassengerPositionBoat(
         int typeId, int entityId, Vec3 position, float yRot, boolean noGravity
     ) {
-        return switch (typeId) {
-            case 8 -> PassengerPositionChestRaftFixture.create(
+        var name = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE
+            .byId(typeId) == null ? "" : net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE
+            .getKey(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.byId(typeId)).getPath();
+        return switch (name) {
+            case "bamboo_chest_raft" -> PassengerPositionChestRaftFixture.create(
                 entityId, position, yRot, noGravity);
-            case 9 -> PassengerPositionRaftFixture.create(entityId, position, yRot, noGravity);
-            case 89 -> PassengerPositionBoatFixture.create(
+            case "bamboo_raft" -> PassengerPositionRaftFixture.create(entityId, position, yRot, noGravity);
+            case "oak_boat" -> PassengerPositionBoatFixture.create(
                 entityId, position, yRot, noGravity);
-            case 90 -> PassengerPositionChestBoatFixture.create(
+            case "oak_chest_boat" -> PassengerPositionChestBoatFixture.create(
                 entityId, position, yRot, noGravity);
             default -> throw new IllegalArgumentException(
                 "Unknown boat family position vehicle type");
@@ -201,7 +204,7 @@ class MathPassengerPositionOracle extends MathPassengerOracle {
         }
 
         JsonObject vehicleInput = request.getAsJsonObject("vehicle");
-        if (vehicleInput.get("type_id").getAsInt() != 89) {
+        if (vehicleInput.get("type_id").getAsInt() != oakBoatId()) {
             throw new IllegalArgumentException(
                 "Passenger animal position fixture requires an oak boat");
         }
@@ -212,7 +215,7 @@ class MathPassengerPositionOracle extends MathPassengerOracle {
             vehicleInput.get("no_gravity").getAsBoolean());
 
         JsonObject animalInput = request.getAsJsonObject("animal");
-        if (animalInput.get("type_id").getAsInt() != 30) {
+        if (animalInput.get("type_id").getAsInt() != wireId(net.minecraft.world.entity.EntityTypes.COW)) {
             throw new IllegalArgumentException(
                 "Passenger animal position fixture requires a Cow");
         }

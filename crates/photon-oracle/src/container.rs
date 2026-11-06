@@ -64,6 +64,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
         menu.enchantments = enchantments.clone();
         menu.enchantment_traits = traits.clone();
         menu.lang = lang.clone();
+        menu.versions = Some(crate::case_ids::registries());
         for slot in row["slots"].as_array().ok_or("slots must be an array")? {
             let index = slot["slot"].as_u64().ok_or("slot must be a number")? as usize;
             menu.set_slot(index, Some(stack(slot)?));
@@ -116,9 +117,8 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
                 player,
             );
             let mut sent = Vec::new();
-            for _ in 0..swings {
-                sent.push(json!({"type": "minecraft:swing", "bytes": "00"}));
-            }
+            // 26.3 predicts the drop, so the swing sends no packet.
+            let _ = swings;
             sent.push(json!({"type": "minecraft:container_click", "bytes": hex(&body)}));
             let slots: Vec<Value> = menu
                 .slots
@@ -168,7 +168,7 @@ fn vanilla_enchantment_traits() -> Vec<photon_game::menus::container::Enchantmen
 /// and the components it removes, by name.
 pub(super) fn component_hashes_result(request: &Value) -> Result<Value, String> {
     use photon_data::item::component_types::NAMES;
-    use photon_game::item_components::{hash::component_hash, read_patch};
+    use photon_game::item_components::hash::component_hash;
     let enchantments = vanilla_enchantments();
     let name = |kind: i32| NAMES[kind as usize].to_owned();
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
@@ -176,8 +176,11 @@ pub(super) fn component_hashes_result(request: &Value) -> Result<Value, String> 
     for row in rows {
         let label = row["label"].as_str().ok_or("label must be a string")?;
         let bytes = hex_bytes(row["patch"].as_str().ok_or("patch must be a string")?)?;
-        let patch =
-            read_patch(&mut bytes.as_slice()).map_err(|_| format!("{label}: malformed patch"))?;
+        let patch = photon_game::item_components::read_wire_patch(
+            &mut bytes.as_slice(),
+            &crate::case_ids::registries(),
+        )
+        .map_err(|_| format!("{label}: malformed patch"))?;
         let added: serde_json::Map<String, Value> = patch
             .added
             .iter()

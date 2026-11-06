@@ -179,33 +179,15 @@ class MathKeyOracle extends MathInterpolationOracle {
         return result;
     }
 
-    static JsonObject preeditEventCase(JsonObject request) {
+    static JsonObject preeditSdlEventCase(JsonObject request) {
         var result = new JsonObject();
-        JsonArray codepointValues = request.getAsJsonArray("codepoints");
-        JsonArray blockSizeValues = request.getAsJsonArray("block_sizes");
-        int preeditSize = codepointValues.size();
-        PreeditEvent event = null;
-        if (preeditSize != 0) {
-            // The game builds it from a text and a selection now (SDL); a row's blocks are cut
-            // from the code points by their sizes, and its caret and focus kept as given.
-            var text = new StringBuilder();
-            for (int i = 0; i < preeditSize; i++) {
-                text.appendCodePoint(codepointValues.get(i).getAsInt());
-            }
-            var blocks = new java.util.ArrayList<String>();
-            int offset = 0;
-            for (var size : blockSizeValues) {
-                int next = Math.min(offset + size.getAsInt(), preeditSize);
-                blocks.add(text.substring(text.offsetByCodePoints(0, offset), text.offsetByCodePoints(0, next)));
-                offset = next;
-            }
-            if (blocks.isEmpty()) {
-                blocks.add(text.toString());
-            }
-            event = new PreeditEvent(
-                text.toString(), request.get("caret").getAsInt(), java.util.List.copyOf(blocks),
-                request.get("focused_block").getAsInt());
+        var text = new StringBuilder();
+        for (JsonElement codepoint : request.getAsJsonArray("codepoints")) {
+            text.appendCodePoint(codepoint.getAsInt());
         }
+        PreeditEvent event = PreeditEvent.fromSdlTextEditing(
+            text.toString(), request.get("selection_start").getAsInt(),
+            request.get("selection_length").getAsInt());
         if (event == null) {
             result.add("event", JsonNull.INSTANCE);
         } else {

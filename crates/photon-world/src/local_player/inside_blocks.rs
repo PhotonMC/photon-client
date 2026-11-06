@@ -87,6 +87,7 @@ impl LocalPlayer {
                 on_ground: self.on_ground,
                 width: self.dimensions.width(),
                 block_pos,
+                simulates: true,
             },
         );
     }
@@ -111,6 +112,46 @@ impl LocalPlayer {
     pub(super) fn get_on_pos(&self, level: &Level<'_>, offset: f32) -> BlockPos {
         level.on_pos(self.main_supporting_block, self.position, offset)
     }
+}
+
+/// `BubbleColumnBlock.entityInside` on a living entity: the column pushes it up or drags it down.
+fn bubble_column_pushes(
+    level: &Level<'_>,
+    (pos, state): (BlockPos, Option<photon_core::ids::BlockStateId>),
+    body: &mut LivingEffects<'_>,
+) {
+    let drag_down = property(state, "drag") == Some("true");
+    let above = pos.offset(0, 1, 0);
+    let above_state = level.state_id(above);
+    let nothing_above = above_state.is_none_or(|above_state| {
+        level
+            .world
+            .block_state_registry
+            .collision_shape(above_state)
+            .is_empty()
+            && crate::block::state_or_air(above_state).fluid.is_empty()
+    });
+    let delta = *body.delta;
+    let y = if !body.simulates {
+        if !nothing_above {
+            *body.fall_distance = 0.0;
+        }
+        delta.y
+    } else if nothing_above {
+        if drag_down {
+            (delta.y - 0.03).max(-0.9)
+        } else {
+            (delta.y + 0.1).min(1.8)
+        }
+    } else {
+        *body.fall_distance = 0.0;
+        if drag_down {
+            (delta.y - 0.03).max(-0.3)
+        } else {
+            (delta.y + 0.06).min(0.7)
+        }
+    };
+    *body.delta = Vec3::new(delta.x, y, delta.z);
 }
 
 /// What a block a living entity is inside does to it: honey slides it, a cobweb or a berry bush
@@ -163,33 +204,7 @@ pub(crate) fn living_inside_effect(
             }
         }
         "minecraft:bubble_column" if precise => {
-            let drag_down = property(state, "drag") == Some("true");
-            let above = pos.offset(0, 1, 0);
-            let above_state = level.state_id(above);
-            let nothing_above = above_state.is_none_or(|above_state| {
-                level
-                    .world
-                    .block_state_registry
-                    .collision_shape(above_state)
-                    .is_empty()
-                    && crate::block::state_or_air(above_state).fluid.is_empty()
-            });
-            let delta = *body.delta;
-            let y = if nothing_above {
-                if drag_down {
-                    (delta.y - 0.03).max(-0.9)
-                } else {
-                    (delta.y + 0.1).min(1.8)
-                }
-            } else {
-                *body.fall_distance = 0.0;
-                if drag_down {
-                    (delta.y - 0.03).max(-0.3)
-                } else {
-                    (delta.y + 0.06).min(0.7)
-                }
-            };
-            *body.delta = Vec3::new(delta.x, y, delta.z);
+            bubble_column_pushes(level, (pos, state), &mut body);
         }
         _ => {}
     }

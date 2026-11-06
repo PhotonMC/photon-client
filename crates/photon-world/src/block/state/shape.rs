@@ -93,6 +93,7 @@ pub(super) fn compute(
     let outline = pool.shapes[usize::from(outline_place)].clone();
     let collision = pool.shapes[usize::from(collision_place)].clone();
     let occlusion = occlusion_shape(block, offset, &outline, &collision);
+    let occlusion_place = pool.intern(occlusion.clone());
     let solid_render = facts.of(&occlusion).full;
     let face_numbers = facts.faces(&occlusion, faces);
     let propagates_skylight_down =
@@ -135,6 +136,7 @@ pub(super) fn compute(
             .unwrap_or(collision_full_block),
         outline: outline_place,
         collision: collision_place,
+        occlusion: occlusion_place,
     }
 }
 

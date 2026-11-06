@@ -17,11 +17,7 @@ impl Attributes {
     pub fn lightmap(&self) -> LightmapInputs {
         let rgb = |attribute: Attribute| {
             let colour = self.get(attribute).color();
-            [
-                channel(colour, 16) as f32 / 255.0,
-                channel(colour, 8) as f32 / 255.0,
-                channel(colour, 0) as f32 / 255.0,
-            ]
+            [colour[0], colour[1], colour[2]]
         };
         LightmapInputs {
             sky_colour: rgb(Attribute::SkyLightColor),

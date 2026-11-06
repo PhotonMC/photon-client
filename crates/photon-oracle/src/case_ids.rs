@@ -104,3 +104,28 @@ pub(crate) fn reference_class(
 pub(crate) fn reference_has_class(class: photon_data::item::classes::ItemClass) -> bool {
     reference_class(class) == class
 }
+
+/// Checks that the entity a case describes (a JSON object with a `type_id`) is of the named type.
+pub(crate) fn require_type(
+    entity: &serde_json::Value,
+    name: &str,
+    message: &str,
+) -> Result<(), String> {
+    let wire = entity["type_id"]
+        .as_i64()
+        .ok_or("entity type_id must be a number")?;
+    if entity_type(wire as i32) == photon_data::entity_type::named(name) {
+        Ok(())
+    } else {
+        Err(message.into())
+    }
+}
+
+/// `require_type` for an entity held as a JSON map.
+pub(crate) fn require_type_of(
+    entity: &serde_json::Map<String, serde_json::Value>,
+    name: &str,
+) -> Result<(), String> {
+    let message = format!("the fixture requires {name}");
+    require_type(&serde_json::Value::Object(entity.clone()), name, &message)
+}

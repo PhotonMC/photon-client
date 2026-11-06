@@ -30,6 +30,11 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import sun.misc.Unsafe;
 
 class MathCollisionFixtures extends MathWorldLevelOracle {
+    /** The wire id of an entity type in the version under test (cases carry it). */
+    static int wireId(net.minecraft.world.entity.EntityType<?> type) {
+        return net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getId(type);
+    }
+
     static final class CollisionFixtureEntity extends Entity {
         boolean spectator;
         boolean collidable;
@@ -99,12 +104,13 @@ class MathCollisionFixtures extends MathWorldLevelOracle {
                 throw new IllegalArgumentException("Unknown entity type id " + typeId);
             }
             AABB boundingBox = entityType.getDimensions().makeBoundingBox(position);
-            Entity entity = switch (typeId) {
-                case 0 -> BoatCollisionFixtureEntity.create(boundingBox, position);
-                case 25, 29, 56, 65, 85, 122, 134
+            Entity entity = switch (BuiltInRegistries.ENTITY_TYPE.getKey(entityType).getPath()) {
+                case "acacia_boat" -> BoatCollisionFixtureEntity.create(boundingBox, position);
+                case "chest_minecart", "command_block_minecart", "furnace_minecart",
+                    "hopper_minecart", "minecart", "spawner_minecart", "tnt_minecart"
                     -> MinecartCollisionFixtureEntity.create(boundingBox, position);
-                case 112 -> ShulkerCollisionFixtureEntity.create(boundingBox, sameVehicle, position);
-                case 156 -> PlayerCollisionFixtureEntity.create(
+                case "shulker" -> ShulkerCollisionFixtureEntity.create(boundingBox, sameVehicle, position);
+                case "player" -> PlayerCollisionFixtureEntity.create(
                     boundingBox, position, spectator, alive, onClimbable, flying,
                     climbableContext);
                 default -> create(boundingBox, spectator, collidable, sameVehicle, position, false);
@@ -134,7 +140,7 @@ class MathCollisionFixtures extends MathWorldLevelOracle {
                 throw new IllegalArgumentException("Unknown entity type id " + typeId);
             }
             Entity entity;
-            if (typeId == 58) {
+            if (typeId == wireId(net.minecraft.world.entity.EntityTypes.HAPPY_GHAST)) {
                 EntityDimensions dimensions = entityType.getDimensions();
                 if (baby) {
                     dimensions = dimensions.scale(0.2375F).withEyeHeight(0.46875F);
@@ -142,13 +148,13 @@ class MathCollisionFixtures extends MathWorldLevelOracle {
                 entity = HappyGhastCollisionFixtureEntity.create(
                     dimensions.makeBoundingBox(position), position, baby, alive,
                     stillTimeout, vehicle);
-            } else if (typeId == 156) {
+            } else if (typeId == wireId(net.minecraft.world.entity.EntityTypes.PLAYER)) {
                 entity = PlayerCollisionFixtureEntity.create(
                     entityType.getDimensions().makeBoundingBox(position), position);
-            } else if (typeId == 0) {
+            } else if (typeId == wireId(net.minecraft.world.entity.EntityTypes.ACACIA_BOAT)) {
                 entity = BoatCollisionFixtureEntity.create(
                     entityType.getDimensions().makeBoundingBox(position), position);
-            } else if (typeId == 112) {
+            } else if (typeId == wireId(net.minecraft.world.entity.EntityTypes.SHULKER)) {
                 entity = ShulkerCollisionFixtureEntity.create(
                     entityType.getDimensions().makeBoundingBox(position), sameVehicle, position);
             } else {

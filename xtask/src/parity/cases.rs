@@ -27,6 +27,7 @@ pub fn generate(
 ) -> Result<Vec<Case>, String> {
     let mut sorted = families.to_vec();
     sorted.sort();
+    let translation = version.and_then(super::translate::Translation::load);
     let mut cases = Vec::new();
     let mut ids = BTreeSet::new();
     for family in &sorted {
@@ -37,6 +38,10 @@ pub fn generate(
             if !applies_to(&line, version) {
                 continue;
             }
+            let line = match &translation {
+                Some(translation) => translation.line(line),
+                None => line,
+            };
             let case = case(family, &family_key, environment, line)?;
             if !ids.insert(case.id.clone()) {
                 return Err(format!("duplicate case id {}", case.id));

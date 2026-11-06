@@ -41,7 +41,17 @@ impl GameRulesScreen {
                 control: Control::Input { rect, .. },
                 ..
             } => Some(self.arena.0[*rect]),
-            Row::Category(_) => None,
+            Row::Category(_, width) => Some(self.label_rect(row, *width)),
+        }
+    }
+
+    /// The label widget of the category row `row`: the text, four pixels round it, centred.
+    pub(super) fn label_rect(&self, row: usize, width: i32) -> crate::layout::Rect {
+        crate::layout::Rect {
+            x: self.row_left() + 2 + (ROW_WIDTH - 4) / 2 - width / 2 - 4,
+            y: self.row_y(row) + 4,
+            width: width + 8,
+            height: 17,
         }
     }
 
@@ -88,7 +98,9 @@ impl GameRulesScreen {
             && at.0 < rect.x + rect.width
             && at.1 >= rect.y
             && at.1 < rect.y + rect.height;
-        if inside {
+        if inside && matches!(self.rows[row], Row::Category(..)) {
+            self.set_focus(Some(Focus::Category(row)));
+        } else if inside {
             self.press_control(row, at.0 - (rect.x + 4), font);
         }
     }
@@ -166,9 +178,10 @@ impl GameRulesScreen {
             (Focus::Done, self.done.is_active()),
             (Focus::Cancel, true),
         ];
-        for row in &self.rows {
-            if let Row::Rule { entry, .. } = row {
-                order.push((Focus::Control(*entry), true));
+        for (index, row) in self.rows.iter().enumerate() {
+            match row {
+                Row::Rule { entry, .. } => order.push((Focus::Control(*entry), true)),
+                Row::Category(..) => order.push((Focus::Category(index), true)),
             }
         }
         order
@@ -196,17 +209,28 @@ impl GameRulesScreen {
         });
         if let Some(&(focus, _)) = found {
             self.set_focus(Some(focus));
-            if let Focus::Control(entry) = focus {
-                self.scroll_to_entry(entry);
-            }
+            self.scroll_to_focus(focus);
+        }
+    }
+
+    /// The list scrolls to the row a focus in it stands on.
+    pub(super) fn scroll_to_focus(&mut self, focus: Focus) {
+        match focus {
+            Focus::Control(entry) => self.scroll_to_entry(entry),
+            Focus::Category(row) => self.scroll_to_row(row),
+            _ => {}
         }
     }
 
     /// `AbstractSelectionList.scrollToEntry`: the list scrolls the least that shows the whole row.
     pub(super) fn scroll_to_entry(&mut self, entry: usize) {
-        let Some(index) = self.row_of_entry(entry) else {
-            return;
-        };
+        if let Some(index) = self.row_of_entry(entry) {
+            self.scroll_to_row(index);
+        }
+    }
+
+    /// `AbstractSelectionList.scrollToEntry` for the row at `index`.
+    pub(super) fn scroll_to_row(&mut self, index: usize) {
         let top_delta = self.row_y(index) - self.place.y - 2;
         if top_delta < 0 {
             self.set_scroll(self.scroll + f64::from(top_delta));

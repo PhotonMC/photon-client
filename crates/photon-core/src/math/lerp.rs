@@ -166,6 +166,16 @@ pub fn mth_smoothstep_derivative(x: f64) -> f64 {
     30.0 * x * x * (x - 1.0) * (x - 1.0)
 }
 
+/// Return Java 26.3 `Mth.smoothstep(float)` in source order.
+pub fn mth_smoothstep_f32(x: f32) -> f32 {
+    x * x * x * (x * (x * 6.0 - 15.0) + 10.0)
+}
+
+/// Return Java 26.3 `Mth.smoothstepDerivative(float)` in source order.
+pub fn mth_smoothstep_derivative_f32(x: f32) -> f32 {
+    30.0 * x * x * (x - 1.0) * (x - 1.0)
+}
+
 /// Return Java `Mth.rotLerp(float, float, float)` in source order.
 pub fn mth_rot_lerp_f32(alpha: f32, from: f32, to: f32) -> f32 {
     from + alpha * wrap_degrees_f32(to - from)

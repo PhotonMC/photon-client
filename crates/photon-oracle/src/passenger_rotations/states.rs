@@ -13,7 +13,11 @@ pub(crate) fn client_world_entity_passenger_rotation_state(
         .as_array_mut()
         .ok_or("passenger rotation state entities must be an array")?;
     for (index, passenger_type_id) in passenger_type_ids.iter().enumerate() {
-        if !matches!(*passenger_type_id, 17 | 156) {
+        let entity_type = crate::case_ids::entity_type(*passenger_type_id);
+        if !["minecraft:breeze", "minecraft:player"]
+            .iter()
+            .any(|name| photon_data::entity_type::named(name) == entity_type)
+        {
             continue;
         }
         let entity_id = entity_ids

@@ -235,6 +235,7 @@ impl InsideBody for MountBody {
                 on_ground: self.on_ground,
                 width: self.dimensions.width(),
                 block_pos,
+                simulates: true,
             },
         );
         self.state.stuck_speed_multiplier = (stuck.x, stuck.y, stuck.z);

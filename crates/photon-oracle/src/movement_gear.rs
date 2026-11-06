@@ -57,6 +57,31 @@ pub(super) fn after_tick(
     }
 }
 
+/// After the level moved the player: the rockets, the block entities, and `Minecraft.tick`'s
+/// `playerSync` (what the player did is told only when it was walking and nothing failed).
+pub(super) fn finish_tick(
+    (world, player): (
+        &mut photon_world::ClientWorld,
+        &mut photon_world::local_player::LocalPlayer,
+    ),
+    (row, breaking): (&Value, Option<&Value>),
+    (sent, failure, walking): (
+        Vec<photon_world::local_player::ServerboundMovement>,
+        &mut Option<String>,
+        bool,
+    ),
+) -> Vec<photon_world::local_player::ServerboundMovement> {
+    after_tick(world, player, (row, breaking));
+    *failure = failure
+        .take()
+        .or(tick_block_entities(world, player, row).err());
+    let mut sent = sent;
+    if walking && failure.is_none() {
+        sent.extend(player.send_changes());
+    }
+    sent
+}
+
 /// Fireworks that fly with the player, as the server's use of a rocket makes them: added after the
 /// player, their data naming it.
 fn add_rockets(
@@ -261,8 +286,10 @@ fn hand_item(world: &photon_world::ClientWorld, slot: i16) -> String {
 pub(super) fn wire_patch(hex: &str) -> Result<photon_world::item_components::Patch, String> {
     let bytes = hex_bytes(hex)?;
     let mut rest = bytes.as_slice();
-    let patch = photon_world::item_components::read_patch(&mut rest)
-        .map_err(|_| format!("malformed component patch {hex}"))?;
+    // The case's ids are the reference's wire ids.
+    let patch =
+        photon_data::item_components::read_wire_patch(&mut rest, &crate::case_ids::registries())
+            .map_err(|_| format!("malformed component patch {hex}"))?;
     if !rest.is_empty() {
         return Err(format!("component patch has trailing bytes {hex}"));
     }

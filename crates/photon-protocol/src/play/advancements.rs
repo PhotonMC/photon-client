@@ -29,8 +29,9 @@ fn read_display(
     let count = read_varint(input, "advancement icon count")?;
     let patch = photon_data::item_components::read_wire_patch(input, registries)
         .map_err(|_| ConnectionError::Codec("advancement icon components"))?;
+    // `ByIdMap.OutOfBoundsStrategy.ZERO`: an id out of range is the first type.
     let frame = AdvancementType::from_ordinal(read_varint(input, "advancement frame")?)
-        .ok_or(ConnectionError::Codec("advancement frame"))?;
+        .unwrap_or(AdvancementType::Task);
     let flags = read_i32(input, "advancement flags")?;
     let background = if flags & 1 != 0 {
         Some(read_identifier_string(input, "advancement background")?)
@@ -45,12 +46,12 @@ fn read_display(
         show_toast: flags & 2 != 0,
         hidden: flags & 4 != 0,
         background,
-        x: read_f32(input, "advancement x")?,
-        y: read_f32(input, "advancement y")?,
+        x: 0.0,
+        y: 0.0,
     })
 }
 
-/// `AdvancementHolder.STREAM_CODEC`.
+/// `PositionedAdvancement.STREAM_CODEC` (26.3): the holder, then where the tab places it.
 fn read_advancement(
     input: &mut &[u8],
     registries: &VersionRegistries,
@@ -72,12 +73,18 @@ fn read_advancement(
         }
         requirements.push(group);
     }
+    let sends_telemetry_event = read_bool(input, "advancement telemetry")?;
+    let (x, y) = (
+        read_f32(input, "advancement x")?,
+        read_f32(input, "advancement y")?,
+    );
+    let display = display.map(|display| DisplayInfo { x, y, ..display });
     Ok(Advancement {
         id,
         parent,
         display,
         requirements,
-        sends_telemetry_event: read_bool(input, "advancement telemetry")?,
+        sends_telemetry_event,
     })
 }
 

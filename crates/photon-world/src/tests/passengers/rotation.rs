@@ -1,4 +1,5 @@
 use super::super::*;
+use crate::entity::{vanilla_max_head_y_rot, vanilla_passenger_is_mob};
 use crate::entity_type_groups::entity_type_id as ty;
 use photon_core::ids::{EntityId, EntityTypeId};
 
@@ -46,8 +47,8 @@ fn passenger_tick_clamps_remote_player_rotation_to_boat_heading() {
         .entities()
         .at(EntityId(38))
         .expect("remote player passenger");
-    assert_eq!(passenger.rotation(), (105.0, 0.0, 105.0));
-    assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 140.0));
+    assert_eq!(passenger.rotation(), (105.0, 0.0, 140.0));
+    assert_eq!(passenger.previous_rotation(), (140.0, 0.0, 140.0));
     assert_eq!(passenger.body_y_rotation(), 0.0);
     assert_eq!(passenger.previous_body_y_rotation(), 140.0);
 }
@@ -130,15 +131,20 @@ fn passenger_tick_clamps_boat_rotation_for_generic_item_passenger() {
         .at(EntityId(38))
         .expect("generic boat passenger");
     assert_eq!(passenger.rotation(), (105.0, 0.0, 170.0));
-    assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 170.0));
+    assert_eq!(passenger.previous_rotation(), (170.0, 0.0, 170.0));
     assert_eq!(passenger.body_y_rotation(), 170.0);
 }
 
 #[test]
 fn passenger_tick_applies_animal_living_rotation_before_capacity_offset() {
-    for (vehicle_type_id, expected_rotation, expected_body) in [
-        (ty("minecraft:oak_boat"), 105.0_f32, 0.0_f32),
-        (ty("minecraft:oak_chest_boat"), 195.0_f32, 90.0_f32),
+    for (vehicle_type_id, expected_yaw, expected_head, expected_body) in [
+        (ty("minecraft:oak_boat"), 0.0_f32, 75.0_f32, 0.0_f32),
+        (
+            ty("minecraft:oak_chest_boat"),
+            90.0_f32,
+            165.0_f32,
+            90.0_f32,
+        ),
     ] {
         let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
         let (blocks, biomes) = section(0, 0);
@@ -173,8 +179,8 @@ fn passenger_tick_applies_animal_living_rotation_before_capacity_offset() {
         world.tick();
 
         let passenger = world.entities().at(EntityId(38)).expect("Cow passenger");
-        assert_eq!(passenger.rotation(), (105.0, 0.0, expected_rotation));
-        assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 170.0));
+        assert_eq!(passenger.rotation(), (expected_yaw, 0.0, expected_head));
+        assert_eq!(passenger.previous_rotation(), (170.0, 0.0, 170.0));
         assert_eq!(passenger.body_y_rotation(), expected_body);
         assert_eq!(passenger.previous_body_y_rotation(), 170.0);
     }
@@ -215,7 +221,7 @@ fn passenger_turn_calls_boat_on_passenger_turned() {
     assert!(world.turn_entity(EntityId(38), -100.0, 0.0));
 
     let passenger = world.entities().at(EntityId(38)).expect("Player passenger");
-    assert_eq!(passenger.rotation(), (105.0, 0.0, 105.0));
+    assert_eq!(passenger.rotation(), (105.0, 0.0, 168.75));
     assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 168.75));
     assert_eq!(passenger.body_y_rotation(), 0.0);
     assert_eq!(passenger.previous_body_y_rotation(), 168.75);
@@ -257,8 +263,8 @@ fn passenger_turn_clamps_breeze_despite_boat_turn_exemption() {
     assert!(world.turn_entity(EntityId(38), -100.0, 0.0));
 
     let passenger = world.entities().at(EntityId(38)).expect("Breeze passenger");
-    assert_eq!(passenger.rotation(), (105.0, 0.0, 105.0));
-    assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 168.75));
+    assert_eq!(passenger.rotation(), (0.0, 0.0, 30.0));
+    assert_eq!(passenger.previous_rotation(), (153.75, 0.0, 168.75));
     assert_eq!(passenger.body_y_rotation(), 0.0);
     assert_eq!(passenger.previous_body_y_rotation(), 168.75);
 }
@@ -305,7 +311,7 @@ fn boat_control_delta_rotation_reaches_passenger_tick() {
         .entities()
         .at(EntityId(38))
         .expect("living boat passenger");
-    assert_eq!(passenger.rotation(), (1.0, 0.0, 1.0));
+    assert_eq!(passenger.rotation(), (1.0, 0.0, 0.0));
     assert_eq!(passenger.previous_rotation(), (0.0, 0.0, 0.0));
     assert_eq!(passenger.body_y_rotation(), 1.0);
     // The boat moved as it ticked, and the passenger is carried to where it now stands.
@@ -421,7 +427,7 @@ fn passenger_turn_clamps_every_vanilla_living_entity_body_and_head() {
             data: 0,
         }));
     }
-    for index in 0..VANILLA_LIVING_ENTITY_TYPE_IDS.len() {
+    for (index, &raw_type_id) in VANILLA_LIVING_ENTITY_TYPE_IDS.iter().enumerate() {
         let passenger_id = 100 + index as i32;
         assert!(world.apply_entity_passengers(EntityId(37), &[EntityId(passenger_id)]));
         assert!(world.turn_entity(EntityId(passenger_id), -100.0, 0.0));
@@ -429,18 +435,23 @@ fn passenger_turn_clamps_every_vanilla_living_entity_body_and_head() {
             .entities()
             .at(EntityId(passenger_id))
             .expect("living passenger");
-        assert_eq!(
-            passenger.rotation(),
-            (
-                VANILLA_BOAT_PASSENGER_MAX_ROTATION,
-                0.0,
-                VANILLA_BOAT_PASSENGER_MAX_ROTATION,
-            )
-        );
-        assert_eq!(
-            passenger.previous_rotation(),
-            (VANILLA_BOAT_PASSENGER_MAX_ROTATION, 0.0, 168.75)
-        );
+        // A mob's yaw becomes its body's and its head is held to its own limit; anyone else
+        // keeps the head and has the yaw held within a quarter turn.
+        let type_id = EntityTypeId(raw_type_id);
+        if vanilla_passenger_is_mob(type_id) {
+            let limit = vanilla_max_head_y_rot(type_id);
+            assert_eq!(passenger.rotation(), (0.0, 0.0, limit.min(168.75)));
+            assert_eq!(passenger.previous_rotation(), (153.75, 0.0, 168.75));
+        } else {
+            assert_eq!(
+                passenger.rotation(),
+                (VANILLA_BOAT_PASSENGER_MAX_ROTATION, 0.0, 168.75)
+            );
+            assert_eq!(
+                passenger.previous_rotation(),
+                (VANILLA_BOAT_PASSENGER_MAX_ROTATION, 0.0, 168.75)
+            );
+        }
         assert_eq!(passenger.body_y_rotation(), 0.0);
     }
 }

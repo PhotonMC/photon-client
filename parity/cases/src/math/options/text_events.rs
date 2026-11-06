@@ -67,11 +67,45 @@ fn character_events() -> Vec<Value> {
         .collect()
 }
 
+/// 26.3's SDL text editing: code points, selection start (code points) and selection length.
+type SdlPreedit = (&'static str, &'static [i64], i64, i64);
+
+const SDL_PREEDITS: [SdlPreedit; 12] = [
+    ("empty", &[], 0, 0),
+    ("no-selection", &[65, 66], 1, 0),
+    ("negative-start-is-end", &[65, 66], -1, 0),
+    ("selection-in-middle", &[65, 66, 67], 1, 1),
+    ("selection-at-start", &[65, 66, 67], 0, 2),
+    ("selection-to-end", &[65, 66, 67], 1, 2),
+    ("selection-past-end", &[65, 66, 67], 2, 9),
+    ("start-past-end", &[65, 66], 5, 1),
+    ("negative-start-with-length", &[65, 66], -1, 2),
+    ("supplementary-before-selection", &[128512, 233, 66], 1, 1),
+    ("supplementary-selected", &[65, 128512, 66], 1, 1),
+    ("negative-length", &[65, 66], 1, -3),
+];
+
+fn sdl_preedit_events() -> Vec<Value> {
+    SDL_PREEDITS
+        .iter()
+        .map(|(label, codepoints, start, length)| {
+            let mut line = case(
+                format!("preedit-sdl-event/{label}"),
+                "math",
+                "preedit_sdl_event",
+                json!({"codepoints": codepoints, "selection_start": start, "selection_length": length}),
+            );
+            line["version"] = json!("26.3");
+            line
+        })
+        .collect()
+}
+
 fn preedit_events() -> Vec<Value> {
     PREEDITS
         .iter()
         .map(|(label, codepoints, block_sizes, focused_block, caret)| {
-            case(
+            let mut line = case(
                 format!("preedit-event/{label}"),
                 "math",
                 "preedit_event",
@@ -81,7 +115,10 @@ fn preedit_events() -> Vec<Value> {
                     "focused_block": focused_block,
                     "caret": caret,
                 }),
-            )
+            );
+            // 26.3 builds the event from SDL's text editing instead.
+            line["version"] = json!("26.2");
+            line
         })
         .collect()
 }
@@ -108,5 +145,5 @@ fn key_presses() -> Vec<Value> {
 }
 
 pub fn cases() -> Vec<Value> {
-    [character_events(), preedit_events(), key_presses()].concat()
+    [character_events(), preedit_events(), sdl_preedit_events(), key_presses()].concat()
 }

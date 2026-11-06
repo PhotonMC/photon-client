@@ -773,6 +773,11 @@ class GuiSettingsOracle extends GuiScreenOracle {
         public void updateForTopItem(net.minecraft.client.renderer.item.ItemStackRenderState output,
                 net.minecraft.world.item.ItemStack item, net.minecraft.world.item.ItemDisplayContext context,
                 net.minecraft.world.level.Level level, net.minecraft.world.entity.ItemOwner owner, int seed) {}
+
+        @Override
+        public boolean shouldPlaySwapAnimation(net.minecraft.world.item.ItemStack stack) {
+            return true;
+        }
     }
 
     /**

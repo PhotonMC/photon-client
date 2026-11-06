@@ -202,6 +202,13 @@ fn smith_sets() -> Value {
     }})
 }
 
+/// What a brewing stand takes in its ingredient slot.
+fn brewing_sets() -> Value {
+    json!({"recipe_sets": {
+        "minecraft:brewing_reagent": ["nether_wart", "redstone", "gunpowder"],
+    }})
+}
+
 /// A stack of one with an enchantments-like component.
 fn enchanted_in(slot: i64, item: &str, levels: &[(i64, i64)], component: i64) -> Value {
     with_patch(st(slot, item, 1), patch(&[(component, enchantments(levels))]))

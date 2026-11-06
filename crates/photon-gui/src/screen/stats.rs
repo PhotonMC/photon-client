@@ -489,8 +489,8 @@ impl StatsScreen {
         if modifiers & EDIT_SHORTCUT_MODIFIER == 0 {
             return false;
         }
-        let digit = key - 48;
-        let target = if (0..=9).contains(&digit) {
+        let digit = numeric_key_value(key);
+        let target = if let Some(digit) = digit {
             (digit - 1).rem_euclid(10) as usize
         } else if key == TAB_KEY {
             self.next_tab(self.selected, modifiers & SHIFT_MODIFIER != 0)
@@ -568,5 +568,15 @@ impl StatsScreen {
                 _ => {}
             }
         }
+    }
+}
+
+/// `InputConstants.Key.getNumericKeyValue`: the digit of a number row key or a keypad key (GLFW's
+/// numbering of them), since 26.3.
+fn numeric_key_value(key: i32) -> Option<i32> {
+    match key {
+        48..=57 => Some(key - 48),
+        320..=329 => Some(key - 320),
+        _ => None,
     }
 }

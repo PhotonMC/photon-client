@@ -186,6 +186,7 @@ impl MenuKind {
                 "minecraft:smithing_base",
                 "minecraft:smithing_addition",
             ],
+            Self::Brewing => &["minecraft:brewing_reagent"],
             _ => &[],
         }
     }

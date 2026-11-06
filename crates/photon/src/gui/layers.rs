@@ -571,7 +571,7 @@ impl Gui {
                 frame,
                 (resources.0, resources.1),
                 (columns, &charts),
-                (view.1.gui_scaled_width(), view.1.gui_scaled_height()),
+                Self::debug_pose(view.1, &controls.options),
             );
         }
         layers.draw_subtitles(frame, resources, view, SubtitlePass::AfterToasts);

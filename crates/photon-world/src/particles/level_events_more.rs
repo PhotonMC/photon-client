@@ -35,9 +35,38 @@ impl ParticleEngine {
             1505 => self.bone_meal(pos, data, context, sounds),
             2011 | 2012 => self.particle_in_block(pos, data, context),
             2013 => self.smash_attack(pos, data, context),
+            2019 | 2020 => self.breaking_block_effects((event, pos, data), context, sounds),
             _ => return self.block_level_event((event, pos, data), context),
         }
         true
+    }
+
+    /// Events 2019 and 2020 (26.3): the effects of a block being broken, from the face named by the
+    /// data; 2020 adds the hit sound.
+    fn breaking_block_effects<F: FnMut() -> RandomSource>(
+        &mut self,
+        (event, pos, data): (i32, (i32, i32, i32), i32),
+        context: &mut LevelEventContext<'_, F>,
+        sounds: &mut Vec<LocalSound>,
+    ) {
+        let state = context.world.block_state_or_air(pos.0, pos.1, pos.2);
+        if crate::block::state_or_air(state).block().air {
+            return;
+        }
+        if event == 2020 {
+            let hit = crate::world::block_sound_of(
+                pos,
+                state,
+                photon_data::block_sound::SoundTypeRow::hit_sound,
+                (|volume| (volume + 1.0) / 8.0, 0.5),
+            );
+            sounds.extend(hit);
+        }
+        let face = photon_core::direction::Direction::from_3d_data_value(data.clamp(0, 5));
+        let at = photon_core::binary::BlockPos::new(pos.0, pos.1, pos.2);
+        let (world, level_random) = (context.world, &mut *context.level_random);
+        let particle_random = &mut context.particle_random;
+        self.add_breaking_block_effect(world, (at, face), level_random, particle_random);
     }
 
     /// `LevelEventHandler`'s event 2004: twenty puffs of smoke and flame about a spawner.

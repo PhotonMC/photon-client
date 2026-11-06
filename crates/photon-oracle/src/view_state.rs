@@ -294,13 +294,20 @@ fn fog_environments(
 > {
     use photon_render::sky::{AtmosphereAttributes, AtmosphericFog, WaterFog, atmospheric_colour};
     let attributes = &row["attributes"];
-    let colour_of = |key: &str| i32_field(attributes, key).map(|colour| colour as u32);
+    // `ARGB.vector3fFromRGB24` and `vector4fFromARGB32`.
+    let channels = |key: &str| {
+        i32_field(attributes, key).map(|colour| {
+            let colour = colour as u32;
+            [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xff) as f32 / 255.0)
+        })
+    };
+    let rgb_of = |key: &str| channels(key).map(|[red, green, blue, _]| [red, green, blue]);
     let render_distance = i32_field(row, "render_distance")?;
     let colour = atmospheric_colour(
         &AtmosphereAttributes {
-            fog_colour: colour_of("fog_color")?,
-            sunrise: colour_of("sunrise")?,
-            sky_colour: colour_of("sky_color")?,
+            fog_colour: rgb_of("fog_color")?,
+            sunrise: channels("sunrise")?,
+            sky_colour: rgb_of("sky_color")?,
             sun_angle: float_of(attributes, "sun_angle")?,
             sky_fog_end: float_of(attributes, "sky_fog_end")?,
         },
@@ -319,7 +326,7 @@ fn fog_environments(
         (0.0, render_distance, 128),
     );
     let water = WaterFog {
-        colour: colour_of("water_color")?,
+        colour: rgb_of("water_color")?,
         start: float_of(attributes, "water_start")?,
         end: float_of(attributes, "water_end")?,
     };

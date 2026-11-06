@@ -284,14 +284,19 @@ impl Extras {
 }
 
 /// `BrewingStandScreen.extractBackground`: the fuel bar, the arrow down the brew and its bubbles,
-/// from the brewing time and the fuel the server sent.
+/// from the brewing time, the fuel and their totals the server sent.
 fn brewing_progress(
     draw: &mut ScreenDraw<'_, '_>,
-    (ticks, fuel): (i32, i32),
+    ((ticks, fuel), (total_ticks, total_fuel)): ((i32, i32), (i32, i32)),
     (left, top): (i32, i32),
 ) {
     const BUBBLE_LENGTHS: [i32; 7] = [29, 24, 20, 16, 11, 6, 0];
-    let fuel_length = ((18 * fuel + 20 - 1) / 20).clamp(0, 18);
+    // `Mth.positiveCeilDiv`, with no bar while the total is unknown.
+    let fuel_length = if total_fuel > 0 {
+        (-(-18 * fuel).div_euclid(total_fuel)).clamp(0, 18)
+    } else {
+        0
+    };
     if fuel_length > 0 {
         draw.frame.sprite_cut(
             draw.atlas,
@@ -301,8 +306,8 @@ fn brewing_progress(
             (left + 60, top + 44, fuel_length, 4),
         );
     }
-    if ticks > 0 {
-        let length = (28.0_f32 * (1.0_f32 - ticks as f32 / 400.0_f32)) as i32;
+    if ticks > 0 && total_ticks > 0 {
+        let length = (28.0_f32 * (1.0_f32 - ticks as f32 / total_ticks as f32)) as i32;
         if length > 0 {
             draw.frame.sprite_cut(
                 draw.atlas,

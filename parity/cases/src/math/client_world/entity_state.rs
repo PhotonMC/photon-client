@@ -190,8 +190,8 @@ fn entity_effect_particles() -> Vec<Value> {
                     "metadata_hex": "0800010a11021c112233441c55667788ff",
                 },
                 {"label": "no-gravity-preserves-effect-particles", "metadata_hex": "050801ff"},
-                // An effect's own simple particle (oozing's `item_slime`, id 59) beside a swirl.
-                {"label": "swirl-and-simple-particle", "metadata_hex": "0a11021c112233443bff"},
+                // A simple particle (`end_rod`, id 27, the same in every version) beside a swirl.
+                {"label": "swirl-and-simple-particle", "metadata_hex": "0a11021c112233441bff"},
                 {"label": "clear-effect-particles", "metadata_hex": "0a1100ff"},
             ],
         }),
@@ -207,7 +207,7 @@ fn entity_effect_particles() -> Vec<Value> {
         )
     };
     let swirl = json!([{"type_id": 28, "color": 0x7F33_EBFF_u32 as i32}]);
-    let mixed = json!([{"type_id": 28, "color": -1}, {"type_id": 59}, {"type_id": 28, "color": 0x2603_0201}]);
+    let mixed = json!([{"type_id": 28, "color": -1}, {"type_id": 27}, {"type_id": 28, "color": 0x2603_0201}]);
     out.push(spawns("swirl", swirl.clone(), (false, false), 7));
     out.push(spawns("ambient", swirl.clone(), (true, false), 11));
     out.push(spawns("invisible", swirl.clone(), (false, true), 13));

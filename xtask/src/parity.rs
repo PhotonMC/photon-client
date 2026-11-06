@@ -14,6 +14,7 @@ pub(crate) mod pins;
 mod records;
 mod report;
 mod store;
+mod translate;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -79,7 +80,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         families = FAMILIES.iter().map(|family| (*family).to_owned()).collect();
     }
     if print_cases {
-        for case in cases::generate(&families, "", &|_| Ok(String::new()), None)? {
+        for case in cases::generate(&families, "", &|_| Ok(String::new()), version.as_deref())? {
             println!("{}", case.line);
         }
         return Ok(());

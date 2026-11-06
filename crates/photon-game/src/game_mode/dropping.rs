@@ -45,7 +45,7 @@ pub(super) fn drop_selected(ctx: &mut Context<'_>, all: bool, out: &mut Vec<Outg
         sequence: 0,
     });
     if dropped.is_some() {
-        ctx.swing_hand(MAIN_HAND, out);
+        ctx.swing_hand(MAIN_HAND);
     }
 }
 
@@ -64,14 +64,14 @@ mod tests {
             face: 0,
             sequence: 0,
         };
-        let mut expected = vec![4];
+        let mut expected = vec![5];
         expected.extend_from_slice(&[0; 8]);
         expected.extend_from_slice(&[0, 0]);
         assert_eq!(packet(PlayerAction::DropItem).encode_body(), expected);
-        expected[0] = 3;
+        expected[0] = 4;
         assert_eq!(packet(PlayerAction::DropAllItems).encode_body(), expected);
-        // The swap hands action is the ordinal 6.
-        expected[0] = 6;
+        // 26.3 numbers the swap hands action 7 (a destroy direction change sits at 1).
+        expected[0] = 7;
         assert_eq!(
             packet(PlayerAction::SwapItemWithOffhand).encode_body(),
             expected

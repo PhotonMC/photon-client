@@ -54,6 +54,8 @@ pub struct DescribedEntry {
     /// An instrument's `use_duration` in seconds and `range` in blocks.
     pub use_duration: Option<f32>,
     pub range: Option<f32>,
+    /// An instrument's `durability_damage` (26.3), zero when it names none.
+    pub durability_damage: i32,
 }
 
 /// `BannerPattern`.
@@ -208,6 +210,9 @@ fn described_entry(data_root: &Path, directory: &str, name: String) -> Described
         sound_event: entry.text("sound_event"),
         use_duration: entry.f32("use_duration"),
         range: entry.f32("range"),
+        durability_damage: entry
+            .f32("durability_damage")
+            .map_or(0, |damage| damage as i32),
         name,
     }
 }

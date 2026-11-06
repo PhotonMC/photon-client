@@ -99,13 +99,21 @@ fn horn_cooldown_rows() -> Vec<Value> {
     rows
 }
 
-/// `Instrument.DIRECT_STREAM_CODEC` after the holder's 0: the sound, the use duration, the range
-/// and the description; the sound itself written out (`SoundEvent.DIRECT_STREAM_CODEC`).
+/// `Instrument.DIRECT_STREAM_CODEC` after the holder's 0: the sound, the use duration, the range,
+/// the durability damage and the description; the sound itself written out (`SoundEvent.DIRECT_STREAM_CODEC`).
 fn direct(sound: &str, fixed_range: Option<f32>, duration: f32, range: f32) -> String {
     let float = |value: f32| value.to_be_bytes().iter().map(|byte| format!("{byte:02x}")).collect::<String>();
     let fixed = fixed_range.map_or("00".to_owned(), |range| format!("01{}", float(range)));
-    let instrument =
-        format!("{}{}{}{fixed}{}{}{}", vi(0), vi(0), text(sound), float(duration), float(range), nbt_text("Horn"));
+    let instrument = format!(
+        "{}{}{}{fixed}{}{}{}{}",
+        vi(0),
+        vi(0),
+        text(sound),
+        float(duration),
+        float(range),
+        vi(0),
+        nbt_text("Horn")
+    );
     patch(&[(INSTRUMENT, instrument)])
 }
 

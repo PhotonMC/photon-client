@@ -485,8 +485,8 @@ mod tests {
             count.0 += 1;
             count.1 += usize::from(known);
         }
-        assert_eq!(plain.0, 939);
-        assert!(plain.1 >= 939, "plain block items predicted: {}", plain.1);
+        assert_eq!(plain.0, 1023);
+        assert!(plain.1 >= 1023, "plain block items predicted: {}", plain.1);
         assert!(other.1 >= 115, "other block items predicted: {}", other.1);
     }
 }

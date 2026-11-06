@@ -24,6 +24,8 @@ use photon_world::{ClientItemStackState, ClientPlayerGameMode, ClientWorld};
 #[derive(Debug, Clone)]
 pub struct GameMode {
     pub(super) destroy_pos: (i32, i32, i32),
+    /// The face the break was last announced for (`MultiPlayerGameMode.destroyDirection`).
+    pub(super) destroy_direction: Option<u8>,
     pub(super) destroying_item: Option<ClientItemStackState>,
     pub(super) destroy_progress: f32,
     pub(super) destroy_ticks: f32,
@@ -57,6 +59,7 @@ impl Default for GameMode {
     fn default() -> Self {
         Self {
             destroy_pos: (-1, -1, -1),
+            destroy_direction: None,
             destroying_item: None,
             destroy_progress: 0.0,
             destroy_ticks: 0.0,

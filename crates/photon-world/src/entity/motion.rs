@@ -131,7 +131,6 @@ impl EntityViewMut<'_> {
         if let Some(display) = self.kind.display_mut() {
             // `Display.tick`'s client half: the notes the data left, then the position's easing.
             display.tick(self.entity.tick_count);
-            self.tick_position_interpolation();
             return;
         }
         self.tick_frog();
@@ -143,9 +142,6 @@ impl EntityViewMut<'_> {
         self.tick_axolotl();
         self.tick_guardian(&targets);
         let was_interpolating = self.as_view().is_interpolating();
-        if living.is_some() {
-            self.tick_position_interpolation();
-        }
         self.tick_head_rotation();
         if matches!(living, Some(LivingKind::Mob | LivingKind::Other)) {
             self.tick_mob_motion(was_interpolating);

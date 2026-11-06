@@ -33,14 +33,29 @@ pub(crate) fn move_event(
     Ok(())
 }
 
+/// An animation packet: the older one with an action, or the swing with its hand, type and
+/// duration.
 pub(crate) fn animate_event(
     world: &mut ClientWorld,
     entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
+    if event["type"] == "swing" {
+        return swing_event(world, entity_id, event);
+    }
     world
         .entities_mut()
         .apply_animate(entity_id, i32_field(event, "action")? as u8);
+    Ok(())
+}
+
+fn swing_event(world: &mut ClientWorld, entity_id: EntityId, event: &Value) -> Result<(), String> {
+    world.entities_mut().apply_swing_animation(
+        entity_id,
+        i32_field(event, "hand")? == 1,
+        i32_field(event, "swing_type")? as u8,
+        i32_field(event, "duration")?,
+    );
     Ok(())
 }
 

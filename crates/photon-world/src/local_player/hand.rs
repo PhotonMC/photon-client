@@ -1,4 +1,5 @@
 use super::*;
+use crate::living::{DEFAULT_SWING_DURATION, SWING_STAB, SWING_WHACK};
 use photon_data::item::definition::UseEffects;
 use photon_data::item::registry::AIR_ITEM;
 
@@ -68,23 +69,33 @@ impl LocalPlayer {
         ((self.attack_strength_ticker as f32 + partial_tick) / delay).clamp(0.0, 1.0)
     }
 
-    /// `LivingEntity.swing` for the main hand: start a swing, unless one is
-    /// in its first half.
+    /// `LocalPlayer.swing(MAIN_HAND, attackAnimation)`: the main hand swings as its item attacks
+    /// (a spear stabs), unless a swing is in its first half.
     pub fn swing(&mut self) {
-        self.swing_hand(false);
+        let (kind, duration) = self.attack_animation();
+        self.swing_with(false, kind, duration);
     }
 
-    /// `LivingEntity.swing(hand)`: start a swing of that hand's arm, unless one is under way and
-    /// still in its first half.
+    /// `LivingEntity.swing(hand, interactAnimation)`: that hand swings the default way, unless a
+    /// swing is in its first half.
     pub fn swing_hand(&mut self, off_hand: bool) {
-        if !self.swinging
-            || self.swing_time >= self.current_swing_duration() / 2
-            || self.swing_time < 0
-        {
-            self.swing_time = -1;
-            self.swinging = true;
-            self.swinging_off_hand = off_hand;
-        }
+        self.swing_with(off_hand, SWING_WHACK, DEFAULT_SWING_DURATION);
+    }
+
+    /// The main hand's `ATTACK_ANIMATION`: a spear's stab, else `SwingAnimation.DEFAULT`.
+    fn attack_animation(&self) -> (u8, i32) {
+        crate::block::rules::item(self.hands.main_item)
+            .and_then(|item| photon_data::spear::spear_of(item.name))
+            .map_or((SWING_WHACK, DEFAULT_SWING_DURATION), |spear| {
+                (SWING_STAB, spear.swing_ticks)
+            })
+    }
+
+    /// `LivingEntity.swing`: the duration is modified by haste, the conduit's power and mining
+    /// fatigue before the swing starts.
+    fn swing_with(&mut self, off_hand: bool, kind: u8, duration: i32) {
+        let modified = self.modified_swing_duration(duration);
+        self.swing.start_if_able(off_hand, kind, duration, modified);
     }
 
     /// `LivingEntity.drop` on a client: `LocalPlayer.swing(MAIN_HAND)`, which tells the server too.
@@ -98,17 +109,9 @@ impl LocalPlayer {
         std::mem::take(&mut self.use_edge.drop_swings)
     }
 
-    /// `LivingEntity.getCurrentSwingDuration`: how long the swinging hand's item swings, less what
-    /// haste or the conduit's power takes off and plus what mining fatigue adds.
-    pub fn current_swing_duration(&self) -> i32 {
-        let item = if self.swinging_off_hand {
-            self.hands.off_item
-        } else {
-            self.hands.main_item
-        };
-        let base = crate::block::rules::item(item)
-            .and_then(|item| photon_data::spear::spear_of(item.name))
-            .map_or(SWING_DURATION, |spear| spear.swing_ticks);
+    /// `LivingEntity.getModifiedSwingDuration`: less what haste or the conduit's power takes off
+    /// and plus what mining fatigue adds.
+    fn modified_swing_duration(&self, base: i32) -> i32 {
         if let Some(amplifier) = self.hands.dig_speed {
             base - (1 + amplifier)
         } else if let Some(amplifier) = self.hands.mining_fatigue {
@@ -120,16 +123,21 @@ impl LocalPlayer {
 
     /// Whether the off hand's arm is the one swinging (or last swung): `attackArm`.
     pub fn swinging_off_hand(&self) -> bool {
-        self.swinging_off_hand
+        self.swing.is_off_hand()
     }
 
     pub fn is_swinging(&self) -> bool {
-        self.swinging
+        self.swing.is_swinging()
     }
 
-    /// `LivingEntity.swingTime`.
+    /// The ticks the swing has run.
     pub fn swing_time(&self) -> i32 {
-        self.swing_time
+        self.swing.swing_time()
+    }
+
+    /// The swing's `SwingAnimationType` id, if one is under way.
+    pub fn swing_kind(&self) -> Option<u8> {
+        self.swing.kind()
     }
 
     /// What the hands hold, the effects and the use of an item, from the world's player state.
@@ -359,14 +367,10 @@ impl LocalPlayer {
         self.attack_strength_ticker = 0;
     }
 
-    /// `LivingEntity.getAttackAnim`: how far through the swing, between the
-    /// last two ticks, wrapping when a new swing began.
+    /// `LivingEntity.getSwingAnimation`: how far through the swing, between the last two ticks,
+    /// wrapping when a new swing began.
     pub fn attack_anim(&self, partial_tick: f32) -> f32 {
-        let mut difference = self.attack_anim - self.attack_anim_old;
-        if difference < 0.0 {
-            difference += 1.0;
-        }
-        self.attack_anim_old + difference * partial_tick
+        self.swing.attack_anim(partial_tick)
     }
 
     /// `Player.getItemSwapScale`: how far the hand has come back up after
