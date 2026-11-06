@@ -143,7 +143,57 @@ impl EntityView<'_> {
 impl EntityViewMut<'_> {
     /// What a living entity's swing does each tick (`LivingEntity.baseTick`).
     pub(crate) fn tick_swing(&mut self) {
+        // 26.2 advances the swing only in players, monsters and mannequins; every other
+        // living entity's swing stays where the packet put it.
+        if self.living.swing.is_legacy() && !self.advances_legacy_swing() {
+            return;
+        }
         self.living.swing.tick();
+    }
+
+    fn advances_legacy_swing(&self) -> bool {
+        /// The entity types whose class extends `Monster` in 26.2.
+        const MONSTERS: &[&str] = &[
+            "blaze",
+            "bogged",
+            "breeze",
+            "cave_spider",
+            "creaking",
+            "creeper",
+            "drowned",
+            "elder_guardian",
+            "enderman",
+            "endermite",
+            "evoker",
+            "giant",
+            "guardian",
+            "husk",
+            "illusioner",
+            "parched",
+            "piglin",
+            "piglin_brute",
+            "pillager",
+            "ravager",
+            "silverfish",
+            "skeleton",
+            "spider",
+            "stray",
+            "vex",
+            "vindicator",
+            "warden",
+            "witch",
+            "wither",
+            "wither_skeleton",
+            "zoglin",
+            "zombie",
+            "zombie_villager",
+            "zombified_piglin",
+            "player",
+            "mannequin",
+        ];
+        photon_data::entity_type::name(self.type_id)
+            .and_then(|name| name.strip_prefix("minecraft:"))
+            .is_some_and(|name| MONSTERS.contains(&name))
     }
 
     /// What a living entity's drawn pose follows from its tick: the limbs'

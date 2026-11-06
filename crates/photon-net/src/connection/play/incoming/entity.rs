@@ -444,7 +444,7 @@ impl PlaySession {
                 );
                 self.world
                     .entities_mut()
-                    .apply_swing_animation(id, off_hand, kind, duration);
+                    .apply_legacy_swing_animation(id, off_hand, kind, duration);
             }
             AnimateAction::Other => {}
         }

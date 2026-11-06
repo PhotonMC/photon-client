@@ -260,6 +260,8 @@ struct SwingDescription {
 pub struct SwingState {
     current: Option<SwingDescription>,
     ticks: i32,
+    legacy: bool,
+    last_off_hand: bool,
     old_animation: JavaF32,
     animation: JavaF32,
 }
@@ -275,10 +277,7 @@ impl SwingState {
         animation_duration: i32,
         duration_ticks: i32,
     ) -> bool {
-        if let Some(current) = self.current
-            && self.ticks <= current.duration_ticks / 2
-            && self.ticks > 0
-        {
+        if self.blocks_restart() {
             return false;
         }
         let next = SwingDescription {
@@ -287,13 +286,38 @@ impl SwingState {
             animation_duration,
             duration_ticks,
         };
-        if self.current != Some(next) {
+        if self.current != Some(next) && !self.legacy {
             self.old_animation = JavaF32::new(0.0);
             self.animation = JavaF32::new(0.0);
         }
         self.current = Some(next);
-        self.ticks = 0;
+        self.ticks = if self.legacy { -1 } else { 0 };
+        self.last_off_hand = off_hand;
         true
+    }
+
+    /// Whether the swing under way is still too early to restart.
+    fn blocks_restart(&self) -> bool {
+        let Some(current) = self.current else {
+            return false;
+        };
+        let half = current.duration_ticks / 2;
+        if self.legacy {
+            // 26.2 blocks until the swing passes half its duration, counting from 0.
+            self.ticks >= 0 && self.ticks < half
+        } else {
+            self.ticks <= half && self.ticks > 0
+        }
+    }
+
+    /// 26.2 counts the swing from -1 and advances it before it reads the animation
+    /// (`LivingEntity.swing`, `updateSwingTime`); set before the swing starts.
+    pub fn is_legacy(&self) -> bool {
+        self.legacy
+    }
+
+    pub fn set_legacy(&mut self, legacy: bool) {
+        self.legacy = legacy;
     }
 
     /// `SwingState.tick`, run by `LivingEntity.baseTick`.
@@ -303,6 +327,15 @@ impl SwingState {
             self.animation = JavaF32::new(0.0);
             return;
         };
+        if self.legacy {
+            self.ticks += 1;
+            if self.ticks >= current.duration_ticks {
+                self.ticks = 0;
+                self.current = None;
+            }
+            self.animation = JavaF32::new(self.ticks as f32 / current.duration_ticks as f32);
+            return;
+        }
         if current.duration_ticks > 0 {
             self.animation =
                 JavaF32::new((self.ticks as f32 / current.duration_ticks as f32).min(1.0));
@@ -326,6 +359,9 @@ impl SwingState {
 
     /// Whether the arm that swings is the off hand's.
     pub fn is_off_hand(&self) -> bool {
+        if self.legacy {
+            return self.last_off_hand;
+        }
         self.current.is_some_and(|current| current.off_hand)
     }
 

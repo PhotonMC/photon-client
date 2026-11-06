@@ -154,6 +154,28 @@ impl Entities {
         kind: u8,
         duration: i32,
     ) -> bool {
+        self.start_swing(entity_id, off_hand, kind, duration, false)
+    }
+
+    /// 26.2's `LivingEntity.swing`: the swing starts one tick early, at -1.
+    pub fn apply_legacy_swing_animation(
+        &mut self,
+        entity_id: EntityId,
+        off_hand: bool,
+        kind: u8,
+        duration: i32,
+    ) -> bool {
+        self.start_swing(entity_id, off_hand, kind, duration, true)
+    }
+
+    fn start_swing(
+        &mut self,
+        entity_id: EntityId,
+        off_hand: bool,
+        kind: u8,
+        duration: i32,
+        legacy: bool,
+    ) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
@@ -169,10 +191,9 @@ impl Entities {
             }
             (haste, conduit) => duration - (1 + haste.unwrap_or(0).max(conduit.unwrap_or(0))),
         };
-        entity
-            .living
-            .swing
-            .start_if_able(off_hand, kind, modified, modified);
+        let swing = &mut entity.living.swing;
+        swing.set_legacy(legacy);
+        swing.start_if_able(off_hand, kind, modified, modified);
         true
     }
 

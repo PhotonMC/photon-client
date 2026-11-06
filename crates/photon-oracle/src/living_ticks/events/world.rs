@@ -52,7 +52,7 @@ pub(crate) fn animate_event(
 fn swing_event(world: &mut ClientWorld, entity_id: EntityId, event: &Value) -> Result<(), String> {
     if !crate::case_ids::registries().has_swing_animation_packet() {
         // Before 26.3 the animate packet swings the hand, the usual way and for the usual time.
-        world.entities_mut().apply_swing_animation(
+        world.entities_mut().apply_legacy_swing_animation(
             entity_id,
             i32_field(event, "hand")? == 1,
             photon_world::living::SWING_WHACK,
