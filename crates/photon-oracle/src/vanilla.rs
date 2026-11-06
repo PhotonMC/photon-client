@@ -360,11 +360,18 @@ pub(super) fn window_result(request: &Value) -> Result<Value, String> {
                 .ok_or("window rows must be an array")?;
             let mut out = Vec::with_capacity(rows.len());
             for row in rows {
-                out.push(json!({
+                let mut entry = json!({
                     "label": string(row, "label")?,
-                    "allowed": window::allowed_window_min_size(i32_field(row, "requested")?, window::MIN_WINDOW_WIDTH),
-                    "allowed_height": window::allowed_window_min_size(i32_field(row, "requested")?, window::MIN_WINDOW_HEIGHT),
-                }));
+                    "allowed": window::allowed_window_min_size(i32_field(row, "requested")?, if crate::case_ids::before_26_3() { 1 } else { window::MIN_WINDOW_WIDTH }),
+                });
+                // 26.3 asks the height as well.
+                if !crate::case_ids::before_26_3() {
+                    entry["allowed_height"] = json!(window::allowed_window_min_size(
+                        i32_field(row, "requested")?,
+                        window::MIN_WINDOW_HEIGHT
+                    ));
+                }
+                out.push(entry);
             }
             Ok(json!({"rows": out}))
         }

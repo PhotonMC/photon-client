@@ -75,6 +75,11 @@ fn assets_beside(
     found.or_else(|| (version.is_newest() && folder_version(&base).is_none()).then_some(base))
 }
 
+/// The game version an assets folder belongs to, by the `version.json` beside it.
+pub fn assets_version(assets: &std::path::Path) -> Option<crate::version::Version> {
+    crate::version::Version::from_name(&folder_version(assets)?)
+}
+
 /// The release name in the `version.json` beside an `assets` folder.
 fn folder_version(assets: &std::path::Path) -> Option<String> {
     let text = std::fs::read_to_string(assets.parent()?.join("version.json")).ok()?;

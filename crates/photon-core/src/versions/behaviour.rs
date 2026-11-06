@@ -13,6 +13,31 @@ pub fn resource_pack_format() -> (i32, i32) {
     }
 }
 
+thread_local! {
+    /// The version of the assets this thread reads, when that is not the version being played
+    /// (a bake of another version's blocks ahead of a join).
+    static ASSET_VERSION: std::cell::Cell<Option<Version>> = const { std::cell::Cell::new(None) };
+}
+
+/// Run `read` with the assets of `version` as the ones this thread reads, whatever version is
+/// being played.
+pub fn with_asset_version<R>(version: Option<Version>, read: impl FnOnce() -> R) -> R {
+    let before = ASSET_VERSION.with(|cell| cell.replace(version));
+    let result = read();
+    ASSET_VERSION.with(|cell| cell.set(before));
+    result
+}
+
+/// Whether block model elements carry the boolean `shade` (before 26.3, which replaced it with
+/// `shade_direction_override`). Follows the assets being read, else the version played.
+pub fn model_shade_is_boolean() -> bool {
+    ASSET_VERSION
+        .with(std::cell::Cell::get)
+        .map_or_else(Version::active_before_26_3, |version| {
+            version < Version::V26_3
+        })
+}
+
 /// The release name the session plays, as the servers and the debug screen show it.
 pub fn game_version_name() -> &'static str {
     Version::active().name()

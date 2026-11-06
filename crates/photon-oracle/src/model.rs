@@ -446,9 +446,7 @@ pub(super) fn model_parse_result(request: &Value) -> Result<Value, String> {
                     "rotation": rotation_json(element.rotation.as_ref()),
                     "faces": described_faces,
                 });
-                if let Some(side) = element.shade_override {
-                    described["shade_direction_override"] = json!(side.name());
-                }
+                describe_shade(&mut described, element.shade_override);
                 described
             })
             .collect();
@@ -498,4 +496,17 @@ pub(super) fn model_parse_result(request: &Value) -> Result<Value, String> {
         }));
     }
     Ok(json!({"rows": out}))
+}
+
+/// How an element's shading shows in a described element: the boolean before 26.3, the
+/// direction override after.
+fn describe_shade(
+    described: &mut serde_json::Value,
+    shade: Option<photon_core::direction::Direction>,
+) {
+    if crate::case_ids::before_26_3() {
+        described["shade"] = json!(shade.is_none());
+    } else if let Some(side) = shade {
+        described["shade_direction_override"] = json!(side.name());
+    }
 }

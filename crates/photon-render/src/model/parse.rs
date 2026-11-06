@@ -215,6 +215,14 @@ fn parse_shade_override(object: &JsonObject) -> Result<Option<Direction>, ModelP
     if object.has("shade_direction_override") {
         return Err(reject("shade_direction_override must be a string"));
     }
+    // Before 26.3 an unshaded element is lit as the top face is, which is full brightness.
+    if photon_core::versions::behaviour::model_shade_is_boolean() {
+        return match (object.has("shade"), object.bool("shade")) {
+            (true, None) => Err(reject("shade must be a boolean")),
+            (_, Some(false)) => Ok(Some(Direction::Up)),
+            _ => Ok(None),
+        };
+    }
     Ok(None)
 }
 

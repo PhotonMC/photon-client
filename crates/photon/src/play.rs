@@ -366,6 +366,12 @@ pub(crate) fn bake_blocks(
 /// The block models baked and the atlas stitched from the stack the loaders read: all CPU work,
 /// so a reload can do it away from the frame loop.
 pub(crate) fn bake_renderer(root: &str) -> Result<BlockRenderer> {
+    // The models are read as the version of these assets writes them, not as the one played.
+    let version = photon_core::content_root::assets_version(std::path::Path::new(root));
+    photon_core::versions::behaviour::with_asset_version(version, || bake_renderer_of(root))
+}
+
+fn bake_renderer_of(root: &str) -> Result<BlockRenderer> {
     let source = StackAssets::new(crate::resources::shared(std::path::Path::new(root)));
     // The stitcher reads the saved options when the atlas is built, as the
     // reference's sprite loader does; a change reloads the textures there, here
