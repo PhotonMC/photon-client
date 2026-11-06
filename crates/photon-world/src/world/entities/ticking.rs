@@ -10,6 +10,22 @@ impl ClientWorld {
         };
     }
 
+    /// `adjustInterpolationPosition`: the target only follows the entity's own move when the
+    /// entity would not stand in a block there. (Other entities' hard shapes are not tested.)
+    fn interpolation_may_follow(&self, entity_id: EntityId) -> bool {
+        let Some(entity) = self.entities.at(entity_id) else {
+            return true;
+        };
+        let Some(adjusted) = entity.interpolation_follow_probe() else {
+            return true;
+        };
+        let area = entity.dimensions().make_bounding_box(adjusted);
+        let (x, y, z) = entity.position();
+        local_player::Level::new(self)
+            .no_collision(area, 0.0, photon_core::math::Vec3::new(x, y, z))
+            .unwrap_or(true)
+    }
+
     /// `ClientLevel.tickEntities`: every entity the server added that is
     /// ticking moves on a tick, its passengers after it (the local player,
     /// who has a tick of its own, is not among them unless it rides one). While the level is
@@ -154,12 +170,13 @@ impl ClientWorld {
     /// tick, an avatar's cloak follows it, and the tick count advances.
     fn common_tick(&mut self, entity_id: EntityId) {
         let tick_speed = self.relative_tick_speed;
+        let follow_position = self.interpolation_may_follow(entity_id);
         let mut entity = self
             .entities
             .at_mut(entity_id)
             .expect("entity position was checked above");
         entity.capture_old_transform();
-        entity.tick_position_interpolation(tick_speed);
+        entity.tick_position_interpolation(tick_speed, follow_position);
         // `AbstractClientPlayer.tick` and `ClientMannequin.tick`: an avatar's cloak follows it.
         if entity.is_avatar() {
             entity.tick_cloak();

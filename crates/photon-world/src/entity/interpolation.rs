@@ -277,7 +277,7 @@ impl EntityViewMut<'_> {
     }
 
     /// `InterpolationHandler.interpolate`: one tick of the easing.
-    pub(crate) fn tick_position_interpolation(&mut self, tick_speed: f32) {
+    pub(crate) fn tick_position_interpolation(&mut self, tick_speed: f32, follow_position: bool) {
         let current_position = self.position();
         let current_rotation = self.rotation.body_rotation();
         let steps = self.interpolation_length();
@@ -289,7 +289,7 @@ impl EntityViewMut<'_> {
         else {
             return;
         };
-        interpolation.follow_movement(current_position, current_rotation);
+        interpolation.follow_movement(current_position, current_rotation, follow_position);
         let (position, y_rot, x_rot) =
             interpolation.ease(current_position, current_rotation, (steps, tick_speed));
         interpolation.previous = DVec3::new(position.0, position.1, position.2);
@@ -308,7 +308,12 @@ impl EntityViewMut<'_> {
 impl EntityInterpolationState {
     /// `InterpolationHandler.interpolate`: the target moves by what the entity moved on its own
     /// since the last step.
-    fn follow_movement(&mut self, position: (f64, f64, f64), rotation: (f32, f32)) {
+    fn follow_movement(
+        &mut self,
+        position: (f64, f64, f64),
+        rotation: (f32, f32),
+        follow_position: bool,
+    ) {
         let delta_position = (
             position.0 - self.previous.x.get(),
             position.1 - self.previous.y.get(),
@@ -317,7 +322,7 @@ impl EntityInterpolationState {
         let length_squared = delta_position.0 * delta_position.0
             + delta_position.1 * delta_position.1
             + delta_position.2 * delta_position.2;
-        if length_squared > f64::from(1.0e-5_f32) {
+        if follow_position && length_squared > f64::from(1.0e-5_f32) {
             self.add_delta(delta_position);
         }
         self.add_rotation(
@@ -400,6 +405,27 @@ impl EntityViewMut<'_> {
 }
 
 impl EntityView<'_> {
+    /// Where `adjustInterpolationPosition` would put the target if the entity moved on its own
+    /// since the last easing: the place to test for a collision before the move is followed.
+    pub(crate) fn interpolation_follow_probe(&self) -> Option<photon_core::math::Vec3> {
+        let interpolation = self.lerp.interpolation.as_ref()?;
+        let (x, y, z) = self.position();
+        let delta = (
+            x - interpolation.previous.x.get(),
+            y - interpolation.previous.y.get(),
+            z - interpolation.previous.z.get(),
+        );
+        if delta.0 * delta.0 + delta.1 * delta.1 + delta.2 * delta.2 <= f64::from(1.0e-5_f32) {
+            return None;
+        }
+        let target = interpolation.target_position();
+        Some(photon_core::math::Vec3::new(
+            target.0 + delta.0,
+            target.1 + delta.1,
+            target.2 + delta.2,
+        ))
+    }
+
     pub(crate) fn interpolation_position(&self) -> (f64, f64, f64) {
         self.lerp
             .interpolation
