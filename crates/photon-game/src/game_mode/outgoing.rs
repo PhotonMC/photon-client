@@ -103,7 +103,7 @@ impl Outgoing {
                 face,
                 sequence,
             } => {
-                photon_core::wire::write_varint(action as i32, &mut out);
+                photon_core::wire::write_varint(action_wire(action), &mut out);
                 out.extend_from_slice(
                     &photon_core::binary::BlockPos::new(x, y, z)
                         .as_long()
@@ -190,6 +190,16 @@ impl Outgoing {
             }
         }
         out
+    }
+}
+
+/// The number a player action goes out under: 26.3 inserted the direction change at 1.
+fn action_wire(action: PlayerAction) -> i32 {
+    let number = action as i32;
+    if punch_is_swing() && number > 1 {
+        number - 1
+    } else {
+        number
     }
 }
 

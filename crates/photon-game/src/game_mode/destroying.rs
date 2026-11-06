@@ -271,12 +271,15 @@ impl GameMode {
             self.destroy_delay = 5;
         } else if self.destroy_direction != Some(face) {
             self.destroy_direction = Some(face);
-            out.push(Self::action(
-                PlayerAction::ChangeDestroyDirection,
-                pos,
-                face,
-                0,
-            ));
+            // 26.2 has no such action; the server keeps the face it was first told.
+            if !super::outgoing::punch_is_swing() {
+                out.push(Self::action(
+                    PlayerAction::ChangeDestroyDirection,
+                    pos,
+                    face,
+                    0,
+                ));
+            }
         }
         self.crack(ctx);
         true
