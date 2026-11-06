@@ -30,7 +30,7 @@ How it works:
 - **Capabilities.** A mod's manifest declares capabilities (`world.read`, `world.write`, `network.server`, `fs.mod_data`, `ui.overlay`, ...). A host function cannot be imported without its capability, and WASI is limited to what was granted.
 - **Signing.** Packages carry an ed25519 signature and a content hash.
 - **Unloading.** Every entity, component, system and resource a mod creates is tagged with its owner, so disabling a mod removes all of it and drops the instance.
-- **Server delivery.** The Photon fork of Pumpkin sends a manifest of mod ids, hashes and capabilities on a custom channel (in the play phase, see [ADR 0024](0024-server-delivered-mods.md)). The client fetches missing content into a content-addressed cache, asks for permissions, and loads the mods. The next join only checks hashes.
+- **Server delivery.** A server (Photon's unmodified Pumpkin, [ADR 0019](0019-photon-server.md), or any other) sends a manifest of mod ids, hashes and capabilities on a custom channel (in the play phase, see [ADR 0024](0024-server-delivered-mods.md)). The client fetches missing content into a content-addressed cache, asks for permissions, and loads the mods. The next join only checks hashes.
 - **Vanilla servers.** Only client-side mods allowed by the server's policy run.
 
 ## Consequences
@@ -63,3 +63,8 @@ Settled after the first code slices of `photon-api`. The mod host itself ([#27])
 - **Server delivery.** Accepted in this shape, to be built after 1.0: a server can only suggest a mod by id and hash on a custom payload channel; the client shows the capabilities and asks, loads nothing without a click, and loads nothing in singleplayer or offline play. It follows the multiplayer-only decision of [ADR 0014](0014-multiplayer-only-first-release.md) and the trust model above.
 
 [#27]: https://github.com/PhotonMC/photon-client/issues/27
+
+## Addendum (2026-11-06): consent model
+
+The server delivery bullet above is out of date. [ADR 0024](0024-server-delivered-mods.md) is the current model: delivery is built, and game-local capabilities (`events.tick`, `hud.text`, `sound.play`) load without a prompt. Anything that touches the player's machine or data, for example writing to disk (`fs.mod_data`), needs an explicit prompt that names the server. A mod that asks for anything else is not loaded. Any server can send `photon:mods`, not only a Photon one.
+

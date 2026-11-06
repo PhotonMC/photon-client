@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/PhotonMC/photon-client/actions/workflows/ci.yml/badge.svg)](https://github.com/PhotonMC/photon-client/actions/workflows/ci.yml)
 ![Status](https://img.shields.io/badge/status-pre--alpha-orange)
-![Java Edition](https://img.shields.io/badge/Java%20Edition-26.2%20(protocol%20776)-3c8527)
+![Java Edition](https://img.shields.io/badge/Java%20Edition-26.3%20(protocol%20777)-3c8527)
 ![Rust](https://img.shields.io/badge/rust-1.97-b7410e?logo=rust)
 ![Vulkan](https://img.shields.io/badge/renderer-Vulkan-a41e22?logo=vulkan)
 [![License](https://img.shields.io/badge/license-MIT%20%2F%20Apache--2.0-blue)](#license)
@@ -29,9 +29,9 @@ Photon is a game platform on a Rust Minecraft: Java Edition client. Below the UI
 
 | | |
 | --- | --- |
-| **Reference** | Java Edition 26.2, protocol 776 |
+| **Reference** | Java Edition 26.3, protocol 777 (the newest); the supported window reaches back to 1.21.x |
 | **Parity cases** | Compared against the Java client before every push (pre-push hook); the count is in [Progress](#progress) |
-| **Code** | ~375k lines of Rust in 13 crates |
+| **Code** | ~430k lines of Rust in 18 crates |
 | **Started** | 2026-09-07 |
 
 ## What works today
@@ -45,7 +45,7 @@ Photon is a game platform on a Rust Minecraft: Java Edition client. Below the UI
 - **Screens.** HUD, chat, every container and inventory with click prediction, recipe book, advancements, statistics, the F3 debug overlay, options screens, toasts, tutorial, dialogs, and the command, structure and jigsaw block screens.
 - **Sound.** Positioned sound, music, subtitles, block, entity and UI sounds.
 
-Not there yet, in the order of the first release ([R1](https://github.com/PhotonMC/photon-client/milestone/16)): Microsoft account sign-in inside the client, secure chat, downloading the game's assets after sign-in, first run and updates inside the client, and packaged releases. Photon is multiplayer-only: there is no Singleplayer or Realms ([ADR 0018](docs/adr/0018-photon-platform.md)). Later: other protocol versions, mods, fallback fonts (unifont, bidi, IME) and the leftovers in the [parity milestone](https://github.com/PhotonMC/photon-client/milestone/15). Each one has an issue.
+Not there yet: older protocol versions (the window is 1.21.x up to the newest, so players can join any Java server), and the platform pieces of [ADR 0018](docs/adr/0018-photon-platform.md) (website integration, social features, server-delivered mods). Photon is multiplayer-only: there is no singleplayer, ever. The first-release work (in-client sign-in, secure chat, asset download, first run and updates, packaging) is paused. Each open item has an issue.
 
 ## Progress
 
@@ -69,8 +69,8 @@ Features finished before the move to GitHub issues (2026-10-10) are summarised i
 ### Where the work stands
 
 - **Done:** the foundation (connection, world, movement, rendering, block actions, items, inventories), containers opened by the server, entities, screens and settings, sound, particles, effects and block entities, and server compatibility (milestones M4, M6, M7, M8 and M9).
-- **Now:** the first release, [R1](https://github.com/PhotonMC/photon-client/milestone/16): sign-in, secure chat, asset download, first run and updates, packaging, and the server resource pack flow. The order of work is in [#171](https://github.com/PhotonMC/photon-client/issues/171).
-- **In parallel:** the architecture line that makes more versions and mods possible: a pure protocol crate, named schedule sets, a version skeleton, and entities as components ([ADR 0003](docs/adr/0003-bevy-ecs.md), [ADR 0004](docs/adr/0004-version-support.md)).
+- **Now:** multi-version support (the window is 1.21.x up to the newest, so players can join any Java server), the version rules and oracle structure that need, and the platform of [ADR 0018](docs/adr/0018-photon-platform.md). All work lands on the `platform` branch.
+- **Paused:** the first release ([R1](https://github.com/PhotonMC/photon-client/milestone/16)): in-client sign-in, secure chat, asset download, first run and updates, and packaging. Asset download and packaging work well enough for now.
 - **Later:** performance work, the mod platform ([ADR 0006](docs/adr/0006-mod-platform.md)) and the [post-1.0 milestone](https://github.com/PhotonMC/photon-client/milestone/17).
 
 ### Issue counts
@@ -101,7 +101,7 @@ Closed and total issues per milestone on GitHub; these are issue counts, not com
 
 ## Priorities
 
-Work is picked by the roadmap order in [#171](https://github.com/PhotonMC/photon-client/issues/171), then by priority label:
+Work is picked by priority label; the R1 order in [#171](https://github.com/PhotonMC/photon-client/issues/171) is paused:
 
 - **[P0](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP0): playable on real servers.**
 - **[P1](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP1): visible bugs, and the infrastructure every new feature is written against.**

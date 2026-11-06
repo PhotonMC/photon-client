@@ -30,3 +30,9 @@ The goal is unchanged: one client that joins servers of the newest version and o
 - The work is split into the version skeleton ([#161](https://github.com/PhotonMC/photon-client/issues/161)), the registry order case ([#162](https://github.com/PhotonMC/photon-client/issues/162)) and retiring the generated tables ([#163](https://github.com/PhotonMC/photon-client/issues/163)). Until they land, protocol 776 is the only version.
 - A version costs hand-written definitions and an override per difference. In exchange there is no data format to maintain and canonical code stays free of version checks.
 - The lowest supported version is bounded by the window, not by the availability of mappings.
+
+## Addendum (2026-11-06): support window and generators
+
+- **Window.** The supported window is Java Edition 1.21.x up to the newest version. It replaces "the newest version plus the two before it": players join any Java server, and many servers run older releases. The floor is the oldest 1.21 release. Releases that share a protocol number are one `Version`; the protocol numbers come from each release's `version.json`. The owner can move the floor.
+- **Generators.** The "code, not data" bullet no longer holds for the reference tables in `photon-data/src/tables/`. They are produced again by generators under `xtask` (`cargo xtask gen`), committed with an `@generated` header and never edited by hand. `cargo xtask gen --check` regenerates them and fails on any difference. Version differences in behaviour stay Rust code in `versions/` modules behind a per-session rules value, not a process-global.
+

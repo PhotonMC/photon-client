@@ -1,6 +1,6 @@
 # ADR 0024: Server-delivered mods
 
-- Status: accepted (2026-11-05); built in the client, server side open; `item_model` naming a registry item works live, definition ids that exist only in a pack (`items/<namespace>/<name>.json`) work live too; an id nothing defines draws the missing model (a full cube with the missing texture on every face), checked live (a cube in the hand, the missing texture in the hotbar), not yet against Java
+- Status: accepted (2026-11-05); built in the client, server side open
 
 ## Context
 
@@ -22,3 +22,9 @@
 - A server delivers mods after the join, so the first seconds of a join run without them.
 - The server side (sending the manifest, the hello check) is a `photon-server` plugin; it needs a wasm toolchain that is not set up here and is not built in this repository.
 - Signing is still open (ADR 0006). Until it exists, a manifest is trusted exactly as far as the connection to the server is, and the hash only guards the file against the host that serves it.
+
+## Addendum (2026-11-06): live-test notes and consent
+
+`item_model` naming a registry item works live, definition ids that exist only in a pack (`items/<namespace>/<name>.json`) work live too; an id nothing defines draws the missing model (a full cube with the missing texture on every face), checked live (a cube in the hand, the missing texture in the hotbar), not yet against Java
+
+Capabilities that touch the player's machine or data (first `fs.mod_data`) need a prompt before the mod loads. The prompt shows the server name, the mod name, its hash and the capability, and the answer is remembered per server and mod hash. Game-local capabilities load without a prompt.

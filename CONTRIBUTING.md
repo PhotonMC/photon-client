@@ -4,7 +4,7 @@ Thanks for looking. Photon is a game platform on a parity client: below the UI t
 
 ## Ground rules
 
-- **Never commit Mojang's code or assets**, or anything derived from them: images, sounds, dumps, traces or golden captures. Everything under `.data/` stays local. Do not use `git add -f` to get around `.gitignore`.
+- **Never commit Mojang's code or assets**, or anything derived from them: images, sounds, dumps, traces or golden captures. Everything under `.data/` stays local. The one exception is the reference tables in `photon-data/src/tables/`, which are committed on purpose and written by `cargo xtask gen`. Do not use `git add -f` to get around `.gitignore`.
 - **Expected values come from the Java oracle**, never from Rust output. See [parity](docs/parity/README.md).
 - **Parity first below the UI.** Do not "fix" quirks of the Java reference, and do not hide server differences with client-side workarounds. Internal structure is free; observable behaviour is not.
 - **Small, reviewable changes.** One behaviour slice per commit, with its parity cases.

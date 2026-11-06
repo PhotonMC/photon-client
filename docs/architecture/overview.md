@@ -86,7 +86,7 @@ State is held in large structs today:
 
 ## Versions
 
-Protocol 776 (Java Edition 26.2) is the newest version; 26.1 (protocol 775) is being added ([#17](https://github.com/PhotonMC/photon-client/issues/17)). The packet ids and tables are version-specific.
+Protocol 777 (Java Edition 26.3) is the newest version; 26.2 (776) and 26.1 (775) are supported, and the window will reach back to 1.21.x ([ADR 0013](../adr/0013-multi-version-content-model.md)). The packet ids and tables are version-specific.
 
 More versions follow [ADR 0013](../adr/0013-multi-version-content-model.md): one binary that picks the version at connect time, content as the union of all supported versions, and version differences as Rust code in `versions/` modules. Game code uses canonical ids; per-version wire ids exist only at the protocol boundary and are translated by a per-session `Registries`. The earlier plan in [ADR 0004](../adr/0004-version-support.md) (data packs, extractor, translation layer) is replaced.
 
