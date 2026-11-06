@@ -67,6 +67,11 @@ pub(crate) fn restitute(
     (gravity, air_drag): (f64, f32),
 ) -> Vec3 {
     use super::local_player::flag;
+    // Before 26.3 the client does not simulate these entities, so a collision leaves their
+    // speed as it was (`canSimulateMovement` guards the restitution).
+    if photon_core::version::Version::active() < photon_core::version::Version::V26_3 {
+        return current;
+    }
     let mut restitution = 0.0_f64;
     let mut after = current;
     if x_collision {
