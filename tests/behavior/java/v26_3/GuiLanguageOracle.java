@@ -13,7 +13,7 @@ class GuiLanguageOracle extends GuiRecorder {
     /** The pack's names of the languages, and the file of a language of the asset index. */
     static java.util.Map<String, com.google.gson.JsonObject> languageIndex() throws Exception {
         var index = com.google.gson.JsonParser.parseReader(java.nio.file.Files.newBufferedReader(
-            assetFolder().resolve("indexes/32.json"))).getAsJsonObject().getAsJsonObject("objects");
+            assetFolder().resolve("indexes/34.json"))).getAsJsonObject().getAsJsonObject("objects");
         var result = new java.util.HashMap<String, com.google.gson.JsonObject>();
         for (var entry : index.entrySet()) {
             result.put(entry.getKey(), entry.getValue().getAsJsonObject());

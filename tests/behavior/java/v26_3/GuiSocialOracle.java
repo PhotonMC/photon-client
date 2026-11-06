@@ -192,6 +192,10 @@ class GuiSocialOracle extends GuiCreditsOracle {
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
             SilentSounds.ASKED.clear();
             set(minecraft, "level", unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class));
+            // A tooltip shows once a millisecond has passed since it was asked for, so the clock stands still.
+            var clockField = Reflect.field(net.minecraft.util.Util.class, "timeSource");
+            var clockBefore = clockField.get(null);
+            clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> 0L);
             minecraft.options.reducedDebugInfo().set(row.get("reduced").getAsBoolean());
             var directory = ScratchDirectory.make("debug-options");
             var list = new net.minecraft.client.gui.components.debug.DebugScreenEntryList(directory,
@@ -280,6 +284,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
             options.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             options.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
+            clockField.set(null, clockBefore);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             var blurField = Reflect.field(net.minecraft.client.renderer.state.gui.GuiRenderState.class, "firstStratumAfterBlur");

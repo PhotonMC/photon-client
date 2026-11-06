@@ -307,7 +307,7 @@ pub(super) fn sound_registry_result(request: &Value) -> Result<Value, String> {
                 .and_then(std::path::Path::parent)
                 .ok_or("assets")?
                 .to_path_buf();
-                let index = photon_core::json::read_object(&assets.join("indexes/32.json"))
+                let index = photon_core::json::read_object(&crate::case_ids::asset_index(&assets))
                     .ok_or("index")?;
                 let objects = index.object("objects").ok_or("objects")?;
                 let hash = objects

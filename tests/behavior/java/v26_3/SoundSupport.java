@@ -147,7 +147,7 @@ class SoundSupport {
         var files = new HashMap<Identifier, Resource>();
         if (row.has("real")) {
             var assets = Path.of(System.getenv("PHOTON_ASSETS")).getParent().getParent();
-            var index = com.google.gson.JsonParser.parseString(Files.readString(assets.resolve("indexes/32.json")))
+            var index = com.google.gson.JsonParser.parseString(Files.readString(assets.resolve("indexes/34.json")))
                 .getAsJsonObject().getAsJsonObject("objects");
             var hash = index.getAsJsonObject("minecraft/sounds.json").get("hash").getAsString();
             text = Files.readString(assets.resolve("objects").resolve(hash.substring(0, 2)).resolve(hash));

@@ -56,8 +56,13 @@ impl LanguageSource {
                     .is_some_and(|extension| extension == "json")
             })
             .collect();
-        indexes.sort();
-        let objects = read_object(indexes.first()?)?;
+        // The newest game's index is the highest number.
+        indexes.sort_by_key(|path| {
+            path.file_stem()
+                .and_then(|stem| stem.to_str())
+                .and_then(|stem| stem.parse::<u32>().ok())
+        });
+        let objects = read_object(indexes.last()?)?;
         let JsonValue::Object(objects) = objects.get_str("objects")? else {
             return None;
         };

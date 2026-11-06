@@ -60,7 +60,7 @@ public final class SoundOracle extends SoundSupport {
      */
     static JsonObject decode(JsonObject request) throws Exception {
         var assets = Path.of(System.getenv("PHOTON_ASSETS")).getParent().getParent();
-        var index = com.google.gson.JsonParser.parseString(Files.readString(assets.resolve("indexes/32.json")))
+        var index = com.google.gson.JsonParser.parseString(Files.readString(assets.resolve("indexes/34.json")))
             .getAsJsonObject().getAsJsonObject("objects");
         var reference = assets.getParent().resolve("reference-pcm");
         Files.createDirectories(reference);

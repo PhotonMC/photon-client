@@ -199,3 +199,14 @@ pub(crate) fn reference_has_block_class(class: photon_data::block::classes::Bloc
     ];
     !Version::active_before_26_3() || !NEW_IN_26_3.contains(&format!("{class:?}").as_str())
 }
+
+/// The asset index file of [`oracle_version`]'s game inside an assets folder: 26.3 moved to
+/// index 34.
+pub(crate) fn asset_index(assets: &std::path::Path) -> std::path::PathBuf {
+    let id = if Version::active_before_26_3() {
+        "32"
+    } else {
+        "34"
+    };
+    assets.join("indexes").join(format!("{id}.json"))
+}
