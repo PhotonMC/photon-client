@@ -277,7 +277,7 @@ impl EntityViewMut<'_> {
     }
 
     /// `InterpolationHandler.interpolate`: one tick of the easing.
-    pub(crate) fn tick_position_interpolation(&mut self) {
+    pub(crate) fn tick_position_interpolation(&mut self, tick_speed: f32) {
         let current_position = self.position();
         let current_rotation = self.rotation.body_rotation();
         let steps = self.interpolation_length();
@@ -291,7 +291,7 @@ impl EntityViewMut<'_> {
         };
         interpolation.follow_movement(current_position, current_rotation);
         let (position, y_rot, x_rot) =
-            interpolation.ease(current_position, current_rotation, steps);
+            interpolation.ease(current_position, current_rotation, (steps, tick_speed));
         interpolation.previous = DVec3::new(position.0, position.1, position.2);
         let (y_rot, x_rot) = (y_rot % 360.0, (x_rot % 360.0).clamp(-90.0, 90.0));
         // `setLastPositionAndRotation` reads the entity back, after the turn was wrapped.
@@ -331,7 +331,7 @@ impl EntityInterpolationState {
         &mut self,
         position: (f64, f64, f64),
         rotation: (f32, f32),
-        interpolation_steps: i32,
+        (interpolation_steps, tick_speed): (i32, f32),
     ) -> ((f64, f64, f64), f32, f32) {
         if let Some(stepped) = self.stepped.as_mut() {
             let end = (
@@ -340,7 +340,7 @@ impl EntityInterpolationState {
                 self.target_x_rot.get(),
             );
             let (target, y_rot, x_rot) = stepped.new_position(end);
-            stepped.advance(1.0, interpolation_steps);
+            stepped.advance(tick_speed, interpolation_steps);
             return (
                 (target.x.get(), target.y.get(), target.z.get()),
                 y_rot,

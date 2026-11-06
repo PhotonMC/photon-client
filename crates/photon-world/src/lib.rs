@@ -109,6 +109,9 @@ pub struct ClientWorld {
     /// Whether the server enabled `minecart_improvements`: the minecarts made from now on use the
     /// new behaviour (`AbstractMinecart.useExperimentalMovement`, read as one is made).
     minecart_improvements: bool,
+    /// `Level.getRelativeTickSpeed`: how much faster than 20 a tick rate over 20 makes the
+    /// stepped interpolation run, else one.
+    relative_tick_speed: f32,
     /// The numbering of the version the session speaks, for the ids that stay inside entity data.
     versions: Arc<photon_data::version_registries::VersionRegistries>,
     /// The stonecutter's recipes, as the server sent them.

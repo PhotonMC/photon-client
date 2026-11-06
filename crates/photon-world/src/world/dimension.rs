@@ -36,6 +36,7 @@ impl ClientWorld {
             block_state_registry: ClientBlockStateRegistry::default(),
             recipe_property_sets: BTreeMap::new(),
             minecart_improvements: false,
+            relative_tick_speed: 1.0,
             versions: photon_data::version_registries::VersionRegistries::of(
                 photon_core::version::Version::NEWEST,
             ),

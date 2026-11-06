@@ -157,6 +157,8 @@ impl PlaySession {
             self.world.set_local_player_chunk(position.x, position.z);
         }
         self.world
+            .set_tick_rate(self.level_info.tick_rate.tick_rate());
+        self.world
             .tick_entities(!self.level_info.tick_rate.runs_normally());
         for (left, right) in self.world.take_paddle_packets() {
             self.send_movement(ServerboundMovement::PaddleBoat { left, right })?;
@@ -221,6 +223,8 @@ impl PlaySession {
         self.refresh_friendly_ghosts();
         if player_ticks_itself {
             self.world.tick_local_player_effects();
+            self.world
+                .set_tick_rate(self.level_info.tick_rate.tick_rate());
             self.world
                 .tick_entities(!self.level_info.tick_rate.runs_normally());
         }

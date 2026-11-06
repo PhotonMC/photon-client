@@ -1,6 +1,15 @@
 use crate::*;
 
 impl ClientWorld {
+    /// `ClientLevel.getRelativeTickSpeed` for a tick rate: faster than 20 speeds the easing up.
+    pub fn set_tick_rate(&mut self, tick_rate: f32) {
+        self.relative_tick_speed = if tick_rate > 20.0 {
+            tick_rate / 20.0
+        } else {
+            1.0
+        };
+    }
+
     /// `ClientLevel.tickEntities`: every entity the server added that is
     /// ticking moves on a tick, its passengers after it (the local player,
     /// who has a tick of its own, is not among them unless it rides one). While the level is
@@ -144,12 +153,13 @@ impl ClientWorld {
     /// `Entity.commonTick`: the old transform is kept, the position eases before the entity's own
     /// tick, an avatar's cloak follows it, and the tick count advances.
     fn common_tick(&mut self, entity_id: EntityId) {
+        let tick_speed = self.relative_tick_speed;
         let mut entity = self
             .entities
             .at_mut(entity_id)
             .expect("entity position was checked above");
         entity.capture_old_transform();
-        entity.tick_position_interpolation();
+        entity.tick_position_interpolation(tick_speed);
         // `AbstractClientPlayer.tick` and `ClientMannequin.tick`: an avatar's cloak follows it.
         if entity.is_avatar() {
             entity.tick_cloak();
