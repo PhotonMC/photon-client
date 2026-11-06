@@ -3,6 +3,7 @@
 //! case goes through here, and every id that leaves for a comparison with the reference's
 //! answer goes back.
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock};
 
 use photon_core::ids::{BlockStateId, EntityTypeId, ItemId};
@@ -10,16 +11,30 @@ use photon_core::version::Version;
 use photon_data::version_registries::VersionRegistries;
 
 /// The version the oracle's Java is (`PHOTON_ORACLE_VERSION`, else the newest version's), `tests/behavior/java/v26_3`.
+/// A run may switch it between batches of cases ([`switch_oracle_version`]), as the client does
+/// between play sessions.
 pub(crate) fn oracle_version() -> Version {
-    static VERSION: OnceLock<Version> = OnceLock::new();
-    *VERSION.get_or_init(|| {
-        let version = std::env::var("PHOTON_ORACLE_VERSION")
-            .ok()
-            .and_then(|name| Version::from_name(&name))
-            .unwrap_or(Version::NEWEST);
-        Version::set_active(version);
-        version
-    })
+    let index = CURRENT.load(Ordering::Relaxed);
+    if let Some(version) = Version::ALL.get(index) {
+        return *version;
+    }
+    let version = std::env::var("PHOTON_ORACLE_VERSION")
+        .ok()
+        .and_then(|name| Version::from_name(&name))
+        .unwrap_or(Version::NEWEST);
+    switch_oracle_version(version);
+    version
+}
+
+/// The version no case has asked for yet.
+static CURRENT: AtomicUsize = AtomicUsize::new(usize::MAX);
+
+/// Make `version` the one the oracle answers for: the active version, the assets the readers see
+/// and the numbering of the cases follow. No case may be running.
+pub(crate) fn switch_oracle_version(version: Version) {
+    CURRENT.store(version.index(), Ordering::Relaxed);
+    Version::set_active(version);
+    photon_core::content_root::select_version(version);
 }
 
 /// Whether the oracle's version is older than 26.3: the one place the oracle asks.
@@ -29,9 +44,11 @@ pub(crate) fn before_26_3() -> bool {
 
 /// The numbering of [`oracle_version`].
 pub(crate) fn registries() -> Arc<VersionRegistries> {
-    static REGISTRIES: OnceLock<Arc<VersionRegistries>> = OnceLock::new();
-    REGISTRIES
-        .get_or_init(|| Arc::new(VersionRegistries::for_version(oracle_version())))
+    static REGISTRIES: [OnceLock<Arc<VersionRegistries>>; Version::ALL.len()] =
+        [const { OnceLock::new() }; Version::ALL.len()];
+    let version = oracle_version();
+    REGISTRIES[version.index()]
+        .get_or_init(|| Arc::new(VersionRegistries::for_version(version)))
         .clone()
 }
 

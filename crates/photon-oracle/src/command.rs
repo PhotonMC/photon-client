@@ -247,12 +247,38 @@ pub(super) fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let _ = crate::case_ids::oracle_version();
     let lines: Vec<String> = io::stdin().lock().lines().collect::<Result<_, _>>()?;
-    let responses = answer_all(&lines).map_err(io::Error::other)?;
     let mut output = io::BufWriter::new(io::stdout().lock());
-    for response in responses {
+    // A `{"switch_version": "26.2"}` line switches the version between batches of cases, the
+    // way the client does between play sessions; it has no answer of its own.
+    let mut batch: Vec<String> = Vec::new();
+    for line in lines {
+        let Some(version) = switch_request(&line) else {
+            batch.push(line);
+            continue;
+        };
+        answer_batch(&batch, &mut output)?;
+        batch.clear();
+        crate::case_ids::switch_oracle_version(version);
+    }
+    answer_batch(&batch, &mut output)?;
+    output.flush()?;
+    Ok(())
+}
+
+/// The version a switch line names.
+fn switch_request(line: &str) -> Option<photon_core::version::Version> {
+    let request: Value = serde_json::from_str(line).ok()?;
+    photon_core::version::Version::from_name(request.get("switch_version")?.as_str()?)
+}
+
+/// Answers a batch of lines in order.
+fn answer_batch(
+    lines: &[String],
+    output: &mut impl Write,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for response in answer_all(lines).map_err(io::Error::other)? {
         writeln!(output, "{response}")?;
     }
-    output.flush()?;
     Ok(())
 }
 

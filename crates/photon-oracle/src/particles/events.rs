@@ -195,9 +195,10 @@ pub(super) fn sound_line(sound: &LocalSound) -> String {
 /// The registries of the vanilla data pack, entries named in the order a vanilla server
 /// synchronises them.
 fn vanilla_registries() -> &'static photon_game::registries::Registries {
-    static REGISTRIES: std::sync::OnceLock<photon_game::registries::Registries> =
-        std::sync::OnceLock::new();
-    REGISTRIES.get_or_init(|| {
+    static REGISTRIES: [std::sync::OnceLock<photon_game::registries::Registries>;
+        photon_core::version::Version::ALL.len()] =
+        [const { std::sync::OnceLock::new() }; photon_core::version::Version::ALL.len()];
+    REGISTRIES[crate::case_ids::oracle_version().index()].get_or_init(|| {
         let data_root = crate::jar_root().join("data");
         photon_game::registries::Registries::vanilla(&data_root)
     })

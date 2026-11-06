@@ -188,13 +188,13 @@ fn fetch_libraries(version: &Version) -> Result<(), String> {
 }
 
 /// What the client reads from the jar: textures, models, shaders, data.
-fn extract_jar(pins: &Pins) -> Result<(), String> {
-    say("jar resources -> .data/minecraft/assets/jar");
-    let jar = runtime().join(format!("client-{}.jar", pins.version));
+fn extract_jar(version: &str, folder: &str) -> Result<(), String> {
+    say(&format!("jar resources -> .data/minecraft/assets/{folder}"));
+    let jar = runtime().join(format!("client-{version}.jar"));
     let file = File::open(&jar).map_err(|error| format!("{}: {error}", jar.display()))?;
     let mut archive =
         zip::ZipArchive::new(file).map_err(|error| format!("{}: {error}", jar.display()))?;
-    let target = assets().join("jar");
+    let target = assets().join(folder);
     for index in 0..archive.len() {
         let mut member = archive.by_index(index).map_err(|error| error.to_string())?;
         let Some(relative) = member.enclosed_name() else {
@@ -321,8 +321,11 @@ pub fn setup(args: &[String]) -> Result<(), String> {
     let version = fetch_version(id)?;
     fetch_jars(id, &version, pins)?;
     fetch_libraries(&version)?;
+    // Each version's resources live in `jar-<id>`, which `assets_for` finds; the newest is
+    // also `jar`, the one a single-version checkout (CI, an installed game) has.
+    extract_jar(id, &format!("jar-{id}"))?;
     if pinned {
-        extract_jar(&newest)?;
+        extract_jar(id, "jar")?;
         if !parsed.flag("--skip-objects") {
             let index = fetch_objects(&version)?;
             if parsed.flag("--named") {

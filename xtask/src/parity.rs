@@ -14,6 +14,7 @@ pub(crate) mod pins;
 mod records;
 mod report;
 mod store;
+mod switch;
 mod translate;
 
 use std::collections::BTreeMap;
@@ -62,30 +63,57 @@ pub fn run(args: &[String]) -> Result<(), String> {
         let all: Vec<String> = FAMILIES.iter().map(|family| (*family).to_owned()).collect();
         return report::run(&all, &args[1..]);
     }
-    let mut recapture = false;
-    let mut print_cases = false;
-    let mut families = Vec::new();
-    let mut version = None;
-    let mut rest = args.iter();
-    while let Some(arg) = rest.next() {
-        match arg.as_str() {
-            "--recapture" => recapture = true,
-            "--print-cases" => print_cases = true,
-            "--version" => version = Some(rest.next().ok_or("--version needs a name")?.clone()),
-            "--family" => families.push(rest.next().ok_or("--family needs a name")?.clone()),
-            other => return Err(format!("unknown parity option `{other}`")),
-        }
+    let options = Options::parse(args)?;
+    let families = if options.families.is_empty() {
+        FAMILIES.iter().map(|family| (*family).to_owned()).collect()
+    } else {
+        options.families
+    };
+    if let Some(versions) = options.switch {
+        return switch::check(&families, &versions);
     }
-    if families.is_empty() {
-        families = FAMILIES.iter().map(|family| (*family).to_owned()).collect();
-    }
-    if print_cases {
-        for case in cases::generate(&families, "", &|_| Ok(String::new()), version.as_deref())? {
+    if options.print_cases {
+        let version = options.version.as_deref();
+        for case in cases::generate(&families, "", &|_| Ok(String::new()), version)? {
             println!("{}", case.line);
         }
         return Ok(());
     }
-    compare(&families, recapture, version.as_deref())
+    compare(&families, options.recapture, options.version.as_deref())
+}
+
+/// The options of `cargo xtask parity`.
+#[derive(Default)]
+struct Options {
+    recapture: bool,
+    print_cases: bool,
+    families: Vec<String>,
+    version: Option<String>,
+    /// The versions one adapter process answers in turn ([`switch::check`]).
+    switch: Option<Vec<String>>,
+}
+
+impl Options {
+    fn parse(args: &[String]) -> Result<Self, String> {
+        let mut options = Self::default();
+        let mut rest = args.iter();
+        while let Some(arg) = rest.next() {
+            let mut value =
+                |name: &str| rest.next().cloned().ok_or(format!("{name} needs a value"));
+            match arg.as_str() {
+                "--recapture" => options.recapture = true,
+                "--print-cases" => options.print_cases = true,
+                "--version" => options.version = Some(value("--version")?),
+                "--switch" => {
+                    let names = value("--switch")?;
+                    options.switch = Some(names.split(',').map(str::to_owned).collect());
+                }
+                "--family" => options.families.push(value("--family")?),
+                other => return Err(format!("unknown parity option `{other}`")),
+            }
+        }
+        Ok(options)
+    }
 }
 
 /// The families whose cases or oracle sources `changed` touches: a file named for one family
