@@ -504,7 +504,11 @@ impl PlaySession {
         player.swing();
         self.local.swings += 1;
         // 26.3: the punch packet has no body (the main hand always).
-        self.send(PLAY_SERVERBOUND_PUNCH_PACKET_ID, |_| Ok(()))
+        let body = photon_game::game_mode::punch_body();
+        self.send(PLAY_SERVERBOUND_PUNCH_PACKET_ID, |output| {
+            output.extend_from_slice(&body);
+            Ok(())
+        })
     }
 
     /// How many swings the session has sent.

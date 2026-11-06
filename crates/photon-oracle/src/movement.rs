@@ -394,7 +394,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
             let (y_rot, x_rot) = player.rotation();
             let mut packets: Vec<Value> = actions
                 .iter()
-                .map(|action| json!({"type": action.type_name(), "bytes": hex(&action.encode_body())}))
+                .map(|action| json!({"type": packet_type(action), "bytes": hex(&action.encode_body())}))
                 .collect();
             packets.extend(sent.iter().map(
                 |packet| json!({"type": packet.type_name(), "bytes": hex(&packet.encode_body())}),
@@ -513,4 +513,14 @@ fn face_index(name: &str) -> Result<u8, String> {
         "east" => Ok(5),
         other => Err(format!("unknown face {other}")),
     }
+}
+
+/// The protocol's name of a packet; the punch is the swing before 26.3.
+fn packet_type(packet: &photon_game::game_mode::Outgoing) -> &'static str {
+    if matches!(packet, photon_game::game_mode::Outgoing::Punch)
+        && photon_game::game_mode::punch_is_swing()
+    {
+        return "minecraft:swing";
+    }
+    packet.type_name()
 }

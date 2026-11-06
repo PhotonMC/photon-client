@@ -110,7 +110,7 @@ impl Outgoing {
                 out.push(face);
                 photon_core::wire::write_varint(sequence, &mut out);
             }
-            Outgoing::Punch => {}
+            Outgoing::Punch => out.extend_from_slice(&punch_body()),
             Outgoing::UseItemOn {
                 hand,
                 x,
@@ -189,4 +189,18 @@ impl Outgoing {
         }
         out
     }
+}
+
+/// Before 26.3 the packet is the swing of a hand.
+pub fn punch_is_swing() -> bool {
+    photon_core::version::Version::active() < photon_core::version::Version::V26_3
+}
+
+/// The body of the punch packet: none in 26.3, the main hand (`ServerboundSwingPacket`) before.
+pub fn punch_body() -> Vec<u8> {
+    let mut out = Vec::new();
+    if punch_is_swing() {
+        photon_core::wire::write_varint(0, &mut out);
+    }
+    out
 }

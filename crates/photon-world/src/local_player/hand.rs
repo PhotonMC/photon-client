@@ -95,6 +95,9 @@ impl LocalPlayer {
     /// fatigue before the swing starts.
     fn swing_with(&mut self, off_hand: bool, kind: u8, duration: i32) {
         let modified = self.modified_swing_duration(duration);
+        self.swing.set_legacy(
+            photon_core::version::Version::active() < photon_core::version::Version::V26_3,
+        );
         self.swing.start_if_able(off_hand, kind, duration, modified);
     }
 
