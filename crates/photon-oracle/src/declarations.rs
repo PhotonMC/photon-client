@@ -26,9 +26,7 @@ fn insert_view_blocking(
         return;
     }
     let name = block.name.strip_prefix("minecraft:").unwrap_or(block.name);
-    let values = if photon_core::version::Version::active_before_26_3()
-        && LEGACY_VIEW_BLOCKING.contains(&name)
-    {
+    let values = if crate::case_ids::before_26_3() && LEGACY_VIEW_BLOCKING.contains(&name) {
         // Their 26.2 declarations name the answer for every state.
         let always = ["farmland", "soul_sand", "dirt_path", "mud"].contains(&name);
         vec![always; block.state_count() as usize]
@@ -59,7 +57,7 @@ const LEGACY_VIEW_BLOCKING: [&str; 13] = [
 /// versions only an explicit one.
 fn lists_view_blocking(block: &photon_data::block::registry::Block) -> bool {
     let name = block.name.strip_prefix("minecraft:").unwrap_or(block.name);
-    !photon_core::version::Version::active_before_26_3()
+    !crate::case_ids::before_26_3()
         || LEGACY_VIEW_BLOCKING.contains(&name)
         || !matches!(
             block.view_blocking,
@@ -392,8 +390,7 @@ pub(super) fn vanilla_tags_of(
 /// does from 26.3.
 fn force_solid_on(block: &photon_data::block::definition::Block) -> bool {
     block.force_solid_on
-        && !(photon_core::version::Version::active_before_26_3()
-            && block.name.ends_with(":resin_brick_wall"))
+        && !(crate::case_ids::before_26_3() && block.name.ends_with(":resin_brick_wall"))
 }
 
 /// The blast resistance the reference declares: before 26.3 three slabs set their own 6.0
@@ -405,7 +402,7 @@ fn explosion_resistance(block: &photon_data::block::definition::Block) -> f32 {
         "cut_red_sandstone_slab",
     ];
     let name = block.name.strip_prefix("minecraft:").unwrap_or(block.name);
-    if photon_core::version::Version::active_before_26_3() && own.contains(&name) {
+    if crate::case_ids::before_26_3() && own.contains(&name) {
         6.0
     } else {
         block.explosion_resistance
@@ -459,7 +456,7 @@ fn push_reaction_name(block: &photon_data::block::registry::Block) -> &'static s
         (PushReaction::Ignore, "IGNORE_ENTITY", "IGNORE"),
         (PushReaction::PushOnly, "PUSH", "PUSH_ONLY"),
     ];
-    let before = photon_core::version::Version::active_before_26_3();
+    let before = crate::case_ids::before_26_3();
     let hard_coded = [
         "obsidian",
         "crying_obsidian",

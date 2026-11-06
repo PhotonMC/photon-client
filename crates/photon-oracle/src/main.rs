@@ -102,7 +102,7 @@ mod glint;
 mod id_translation;
 mod jar;
 use glint::*;
-use jar::{jar_root, jar_version};
+use jar::jar_root;
 mod model_json;
 use model_json::*;
 mod hex;

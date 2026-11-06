@@ -135,7 +135,7 @@ pub(crate) fn button(glfw: i32) -> i32 {
 
 /// The key event a case names, as the jar's version numbers it: GLFW's for 26.2, SDL's after.
 pub(crate) fn event_numbers((key, scancode): (i32, i32)) -> (i32, i32) {
-    if crate::jar_version() == "26.2" {
+    if crate::case_ids::before_26_3() {
         (key, scancode)
     } else {
         (self::scancode(key), keycode(key))
@@ -144,7 +144,7 @@ pub(crate) fn event_numbers((key, scancode): (i32, i32)) -> (i32, i32) {
 
 /// The mouse button a case names, as the jar's version numbers it.
 pub(crate) fn mouse_button(glfw: i32) -> i32 {
-    if crate::jar_version() == "26.2" {
+    if crate::case_ids::before_26_3() {
         glfw
     } else {
         button(glfw)

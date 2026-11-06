@@ -12,20 +12,3 @@ pub(crate) fn jar_root() -> PathBuf {
     }
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.data/minecraft/assets/jar")
 }
-
-/// The release the reference jar is: the `id` of the `version.json` it carries, else the
-/// folder's `jar-<version>` suffix, else 26.2 for the plain folder of an older setup.
-pub(crate) fn jar_version() -> String {
-    let root = jar_root();
-    if let Some(id) = std::fs::read_to_string(root.join("version.json"))
-        .ok()
-        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
-        .and_then(|json| json["id"].as_str().map(str::to_owned))
-    {
-        return id;
-    }
-    let name = root.file_name().and_then(|name| name.to_str());
-    name.and_then(|name| name.strip_prefix("jar-"))
-        .unwrap_or("26.2")
-        .to_owned()
-}

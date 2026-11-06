@@ -8,7 +8,7 @@ pub(super) fn map_data_case() -> Result<Value, String> {
             .collect::<Vec<_>>(),
     })];
     // 26.3 numbers five more structures after the trial chambers.
-    let present = if photon_core::version::Version::active_before_26_3() {
+    let present = if crate::case_ids::before_26_3() {
         photon_data::map::decoration_types().len() - 5
     } else {
         photon_data::map::decoration_types().len()
@@ -20,7 +20,7 @@ pub(super) fn map_data_case() -> Result<Value, String> {
         let mut row = json!({"label": kind.name, "id": id, "asset": kind.asset,
             "show_on_item_frame": kind.show_on_item_frame,
             "track_count": kind.track_count});
-        if photon_core::version::Version::active_before_26_3() {
+        if crate::case_ids::before_26_3() {
             row["map_color"] = json!(legacy_map_color(kind.name));
         }
         rows.push(row);

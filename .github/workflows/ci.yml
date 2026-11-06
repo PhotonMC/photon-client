@@ -127,10 +127,10 @@ jobs:
       # only the verdict reaches the log.
       - name: Fetch the supported releases' registry reports
         run: |
-          cargo xtask server --accept-eula --reports
-          cargo xtask server --accept-eula --reports --version 26.1
-          test -f .data/minecraft/reports/26.1/reports/registries.json
-          test -f .data/minecraft/reports/26.2/reports/registries.json
+          for version in 26.1 26.2 26.3; do
+            cargo xtask server --accept-eula --reports --version "$version"
+            test -f ".data/minecraft/reports/$version/reports/registries.json"
+          done
       - name: Every version numbers its registries like its own server
         run: cargo test -p photon-oracle every_version_numbers_its_registries_like_its_own_server
       - name: README progress block is current

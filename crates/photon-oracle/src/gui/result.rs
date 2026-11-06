@@ -304,7 +304,7 @@ fn key_mappings() -> Value {
         })
         .collect();
     // 26.3's table is SDL's; the 26.2 one is GLFW's.
-    let named = if crate::jar_version() == "26.2" {
+    let named = if crate::case_ids::before_26_3() {
         photon_data::keys::named_keys()
     } else {
         photon_data::keys::sdl_named_keys()

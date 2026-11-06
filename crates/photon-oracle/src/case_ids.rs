@@ -22,6 +22,11 @@ pub(crate) fn oracle_version() -> Version {
     })
 }
 
+/// Whether the oracle's version is older than 26.3: the one place the oracle asks.
+pub(crate) fn before_26_3() -> bool {
+    oracle_version() < Version::V26_3
+}
+
 /// The numbering of [`oracle_version`].
 pub(crate) fn registries() -> Arc<VersionRegistries> {
     static REGISTRIES: OnceLock<Arc<VersionRegistries>> = OnceLock::new();

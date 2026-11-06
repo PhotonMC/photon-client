@@ -422,7 +422,7 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
             .get("day")
             .and_then(Value::as_i64)
             .map(|ticks| (ticks / 24000) as i32),
-        version: debug::version_line(&crate::jar_version(), launched),
+        version: debug::version_line(crate::case_ids::oracle_version().name(), launched),
         frame: FrameStats {
             fps: int("fps"),
             // `FramerateLimitTracker.getFramerateLimit`: a minimised window draws ten.

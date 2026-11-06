@@ -186,5 +186,5 @@ const NEW_IN_26_3: [&str; 3] = ["cushion#main", "boat/poplar#main", "chest_boat/
 /// Whether the oracle's version has the layer.
 fn layer_in_version(id: &str) -> bool {
     let name = id.strip_prefix("minecraft:").unwrap_or(id);
-    !(photon_core::version::Version::active_before_26_3() && NEW_IN_26_3.contains(&name))
+    !(crate::case_ids::before_26_3() && NEW_IN_26_3.contains(&name))
 }

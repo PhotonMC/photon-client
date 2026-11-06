@@ -465,5 +465,5 @@ fn formatters_in_version() -> Vec<&'static str> {
 }
 
 fn is_new_stat(name: &str) -> bool {
-    photon_core::version::Version::active_before_26_3() && name.ends_with("sleep_in_straw_bed")
+    crate::case_ids::before_26_3() && name.ends_with("sleep_in_straw_bed")
 }

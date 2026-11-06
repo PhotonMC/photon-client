@@ -456,7 +456,7 @@ pub(super) fn entity_variant_fields_case() -> Result<Value, String> {
 
 pub(super) fn entity_data_serializers_case() -> Result<Value, String> {
     // 26.3 appends the dye colour serializer.
-    let limit = if photon_core::version::Version::active_before_26_3() {
+    let limit = if crate::case_ids::before_26_3() {
         43
     } else {
         i32::MAX
