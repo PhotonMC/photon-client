@@ -28,6 +28,7 @@ Calling the oracle only to produce constants (registry ids, hashes) is not `clie
 cargo xtask parity                      # compare every family
 cargo xtask parity --family gui         # one family (repeatable)
 cargo xtask parity --recapture          # capture Java again even for known keys
+cargo xtask parity --switch 26.2,26.3   # one Rust adapter process answers each version in turn, twice around; every answer must equal a fresh run's (the client's in-session version switch)
 cargo xtask parity report [--missing]   # coverage per family and operation, no Java needed
 ```
 

@@ -14,11 +14,13 @@ cargo build --workspace
 cargo xtask setup               # pinned game into .data/ from Mojang's servers
 ```
 
-`setup` downloads the pinned 26.2 client and server jars, libraries, the resources inside the jar and the asset objects from Mojang's official distribution into `.data/minecraft/`, and checks every file against its published hash. It stops if the client jar's hash does not match `tests/behavior/reference.json`. Options:
+`setup` downloads the pinned (newest) client and server jars, libraries, the resources inside the jar and the asset objects from Mojang's official distribution into `.data/minecraft/`, and checks every file against its published hash. It stops if the client jar's hash does not match `tests/behavior/reference.json`. Options:
 
 - `--skip-objects` skips sound and language objects.
 - `--named` builds a browsable view of the objects, which the font parity oracles read the unifont from (parity needs it).
 - `--decompile` extracts readable sources with Vineflower into `.data/minecraft/source`.
+
+The resources of each version live in `.data/minecraft/assets/jar-<version>`, which the client's `assets_for` finds when you switch the game version; the newest is also `jar`, the only folder a single-version checkout (CI, an installed game) has. `cargo xtask setup --version 26.2` sets up another release the same way.
 
 `.data/` never enters Git and is never uploaded anywhere.
 
