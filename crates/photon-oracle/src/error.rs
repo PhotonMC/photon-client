@@ -52,38 +52,43 @@ pub(super) fn client_information_result(request: &Value) -> Result<Value, String
             result["hex"] = json!(hex(&buffer));
             Ok(result)
         }
-        "read" => {
-            let bytes = decode_hex(string(request, "hex")?)?;
-            let mut remaining = bytes.as_slice();
-            let mut result = match ServerboundClientInformationPacket::decode(&mut remaining) {
-                Ok(packet) => {
-                    let information = packet.information;
-                    json!({
-                        "language_utf16_hex": information.language.iter()
-                            .map(|unit| format!("{unit:04x}"))
-                            .collect::<String>(),
-                        "view_distance": information.view_distance,
-                        "chat_visibility": client_information_chat_visibility_name(information.chat_visibility),
-                        "chat_colors": information.chat_colors,
-                        "model_customisation": information.model_customisation,
-                        "main_hand": client_information_main_hand_name(information.main_hand),
-                        "text_filtering_enabled": information.text_filtering_enabled,
-                        "allows_listing": information.allows_listing,
-                        "particle_status": client_information_particle_status_name(information.particle_status),
-                        "outcome": "value",
-                    })
-                }
-                Err(error) => json!({
-                    "outcome": "error",
-                    "error": login_read_error(error),
-                }),
-            };
-            result["consumed"] = json!(bytes.len() - remaining.len());
-            result["remaining_hex"] = json!(hex(remaining));
-            Ok(result)
-        }
+        "read" => client_information_read(request),
         _ => Err("unknown client information direction".into()),
     }
+}
+
+fn client_information_read(request: &Value) -> Result<Value, String> {
+    let bytes = decode_hex(string(request, "hex")?)?;
+    let mut remaining = bytes.as_slice();
+    let mut result = match ServerboundClientInformationPacket::decode_for(
+        &mut remaining,
+        crate::case_ids::registries().has_lenient_enums(),
+    ) {
+        Ok(packet) => {
+            let information = packet.information;
+            json!({
+                "language_utf16_hex": information.language.iter()
+                    .map(|unit| format!("{unit:04x}"))
+                    .collect::<String>(),
+                "view_distance": information.view_distance,
+                "chat_visibility": client_information_chat_visibility_name(information.chat_visibility),
+                "chat_colors": information.chat_colors,
+                "model_customisation": information.model_customisation,
+                "main_hand": client_information_main_hand_name(information.main_hand),
+                "text_filtering_enabled": information.text_filtering_enabled,
+                "allows_listing": information.allows_listing,
+                "particle_status": client_information_particle_status_name(information.particle_status),
+                "outcome": "value",
+            })
+        }
+        Err(error) => json!({
+            "outcome": "error",
+            "error": login_read_error(error),
+        }),
+    };
+    result["consumed"] = json!(bytes.len() - remaining.len());
+    result["remaining_hex"] = json!(hex(remaining));
+    Ok(result)
 }
 
 pub(super) fn common_read_error(error: photon_net::common::ReadError) -> &'static str {

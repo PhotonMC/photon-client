@@ -292,6 +292,18 @@ impl VersionRegistries {
         self.version >= Version::V26_3
     }
 
+    /// Whether a wire enum with an id out of range is mapped (wrapped, or to the first value; 26.3
+    /// and later) instead of refused as a decoder error.
+    pub fn has_lenient_enums(&self) -> bool {
+        self.version >= Version::V26_3
+    }
+
+    /// Whether an advancement's place in its tab follows the advancement (26.3 and later) instead
+    /// of sitting in its display.
+    pub fn has_positioned_advancements(&self) -> bool {
+        self.version >= Version::V26_3
+    }
+
     /// Whether the teleport confirmation carries the position it ends at (26.3 and later); before
     /// it was a bare id, followed by a position packet of its own.
     pub fn has_teleport_position(&self) -> bool {

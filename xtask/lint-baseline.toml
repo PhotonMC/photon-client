@@ -652,7 +652,6 @@
 "crates/photon-oracle/src/enum_ops.rs::alt_enum_result" = 62
 "crates/photon-oracle/src/enum_ops.rs::lazy_enum_result" = 68
 "crates/photon-oracle/src/enum_ops.rs::option_values_result" = 83
-"crates/photon-oracle/src/error.rs::client_information_result" = 85
 "crates/photon-oracle/src/error.rs::registry_data_result" = 63
 "crates/photon-oracle/src/error.rs::update_tags_result" = 84
 "crates/photon-oracle/src/frog.rs::airborne_model_result" = 268

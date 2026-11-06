@@ -29,14 +29,27 @@ fn read_display(
     let count = read_varint(input, "advancement icon count")?;
     let patch = photon_data::item_components::read_wire_patch(input, registries)
         .map_err(|_| ConnectionError::Codec("advancement icon components"))?;
-    // `ByIdMap.OutOfBoundsStrategy.ZERO`: an id out of range is the first type.
-    let frame = AdvancementType::from_ordinal(read_varint(input, "advancement frame")?)
-        .unwrap_or(AdvancementType::Task);
+    // 26.3: `ByIdMap.OutOfBoundsStrategy.ZERO`, an id out of range is the first type; before,
+    // `readEnum` refused it.
+    let frame = match AdvancementType::from_ordinal(read_varint(input, "advancement frame")?) {
+        Some(frame) => frame,
+        None if registries.has_lenient_enums() => AdvancementType::Task,
+        None => return Err(ConnectionError::Codec("advancement frame")),
+    };
     let flags = read_i32(input, "advancement flags")?;
     let background = if flags & 1 != 0 {
         Some(read_identifier_string(input, "advancement background")?)
     } else {
         None
+    };
+    // Before 26.3 the place is part of the display.
+    let (x, y) = if registries.has_positioned_advancements() {
+        (0.0, 0.0)
+    } else {
+        (
+            read_f32(input, "advancement x")?,
+            read_f32(input, "advancement y")?,
+        )
     };
     Ok(DisplayInfo {
         title,
@@ -46,8 +59,8 @@ fn read_display(
         show_toast: flags & 2 != 0,
         hidden: flags & 4 != 0,
         background,
-        x: 0.0,
-        y: 0.0,
+        x,
+        y,
     })
 }
 
@@ -74,11 +87,15 @@ fn read_advancement(
         requirements.push(group);
     }
     let sends_telemetry_event = read_bool(input, "advancement telemetry")?;
-    let (x, y) = (
-        read_f32(input, "advancement x")?,
-        read_f32(input, "advancement y")?,
-    );
-    let display = display.map(|display| DisplayInfo { x, y, ..display });
+    let display = if registries.has_positioned_advancements() {
+        let (x, y) = (
+            read_f32(input, "advancement x")?,
+            read_f32(input, "advancement y")?,
+        );
+        display.map(|display| DisplayInfo { x, y, ..display })
+    } else {
+        display
+    };
     Ok(Advancement {
         id,
         parent,

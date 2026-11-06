@@ -213,26 +213,28 @@ impl ServerboundClientInformationPacket {
         Ok(())
     }
 
-    /// Decode the nine ClientInformation fields in Java's order.
+    /// Decode the nine ClientInformation fields in Java's order (the newest version's rules).
     pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
+        Self::decode_for(input, true)
+    }
+
+    /// Decode with the enum rule of a version: from 26.3 an id out of range is mapped (the chat
+    /// and particle ids wrap, the arm's falls to the first value); before, it is refused.
+    pub fn decode_for(input: &mut &[u8], lenient: bool) -> Result<Self, ReadError> {
         let language = utf8::read_utf8(input, 16).map_err(ReadError::from)?;
         let view_distance = i8::from_be_bytes([read_byte(input)?]) as i32;
-        // 26.3 maps ids out of range instead of refusing them: the chat and particle ids wrap
-        // (`ByIdMap.OutOfBoundsStrategy.WRAP`), the arm's fall to the first value (`ZERO`).
-        let chat_visibility = ChatVisibility::from_id(read_enum(input)?.rem_euclid(3))
-            .ok_or(ReadError::DecoderError)?;
+        let chat_visibility =
+            ChatVisibility::from_id(read_ranged(input, 3, lenient, Wrap::Around)?)
+                .ok_or(ReadError::DecoderError)?;
         let chat_colors = read_byte(input)? != 0;
         let model_customisation = i32::from(read_byte(input)?);
-        let main_hand = MainHand::from_id(
-            Some(read_enum(input)?)
-                .filter(|id| (0..2).contains(id))
-                .unwrap_or(0),
-        )
-        .ok_or(ReadError::DecoderError)?;
+        let main_hand = MainHand::from_id(read_ranged(input, 2, lenient, Wrap::First)?)
+            .ok_or(ReadError::DecoderError)?;
         let text_filtering_enabled = read_byte(input)? != 0;
         let allows_listing = read_byte(input)? != 0;
-        let particle_status = ParticleStatus::from_id(read_enum(input)?.rem_euclid(3))
-            .ok_or(ReadError::DecoderError)?;
+        let particle_status =
+            ParticleStatus::from_id(read_ranged(input, 3, lenient, Wrap::Around)?)
+                .ok_or(ReadError::DecoderError)?;
         Ok(Self::new(ClientInformation::new(
             language,
             view_distance,
@@ -306,6 +308,29 @@ fn write_enum(value: i32, output: &mut Vec<u8>) {
 
 fn read_enum(input: &mut &[u8]) -> Result<i32, ReadError> {
     wire::read_varint(input).map_err(ReadError::from)
+}
+
+/// How an enum id out of range is mapped.
+#[derive(Clone, Copy)]
+enum Wrap {
+    /// `OutOfBoundsStrategy.WRAP`.
+    Around,
+    /// `OutOfBoundsStrategy.ZERO`.
+    First,
+}
+
+/// An enum of `count` values: `readEnum` (26.2) refuses an id out of range, a `ByIdMap` (26.3)
+/// maps it.
+fn read_ranged(input: &mut &[u8], count: i32, lenient: bool, wrap: Wrap) -> Result<i32, ReadError> {
+    let id = read_enum(input)?;
+    if (0..count).contains(&id) {
+        return Ok(id);
+    }
+    match (lenient, wrap) {
+        (false, _) => Err(ReadError::DecoderError),
+        (true, Wrap::Around) => Ok(id.rem_euclid(count)),
+        (true, Wrap::First) => Ok(0),
+    }
 }
 
 fn read_byte(input: &mut &[u8]) -> Result<u8, ReadError> {

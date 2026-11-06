@@ -38,9 +38,15 @@ impl Display {
         hex += &varint_hex(self.frame);
         hex += &format!("{:08x}", self.flags);
         hex += &self.background.map(string_frame).unwrap_or_default();
-        hex += &float(self.place.0);
-        hex += &float(self.place.1);
+        // Before 26.3 the place is part of the display.
+        if crate::components::is_26_2() {
+            hex += &self.place_hex();
+        }
         hex
+    }
+
+    fn place_hex(&self) -> String {
+        float(self.place.0) + &float(self.place.1)
     }
 }
 
@@ -53,6 +59,7 @@ fn advancement(
     requirements: &[&[&str]],
     telemetry: bool,
 ) -> String {
+    let place = display.map(|(display, _)| display.place_hex());
     let mut hex = string_frame(id);
     hex += &parent.map_or("00".to_owned(), |parent| format!("01{}", string_frame(parent)));
     hex += &display.map_or("00".to_owned(), |(display, title)| format!("01{}", display.hex(title)));
@@ -64,6 +71,10 @@ fn advancement(
         }
     }
     hex += if telemetry { "01" } else { "00" };
+    // From 26.3 the place follows the advancement (zero when it has no display).
+    if !crate::components::is_26_2() {
+        hex += &place.unwrap_or_else(|| float(0.0) + &float(0.0));
+    }
     hex
 }
 
