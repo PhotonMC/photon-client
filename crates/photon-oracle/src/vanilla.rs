@@ -136,15 +136,27 @@ pub(super) fn trim_sprite_id_result(request: &Value) -> Result<Value, String> {
             .ok_or("no such trim material")?;
         let prefix = format!("trims/entity/{}", string(row, "layer")?);
         // 26.3 draws the pattern's own picture recoloured by the material's palette.
-        let sprite = format!("minecraft:{prefix}/{}", pattern.asset);
+        let sprite = if crate::case_ids::before_26_3() {
+            // Before 26.3 the atlas holds one picture per pattern and material suffix.
+            let equipment = string(row, "equipment")?;
+            let path =
+                photon_render::entity::trim::sprite_path(&prefix, pattern, material, equipment);
+            format!("minecraft:{path}")
+        } else {
+            format!("minecraft:{prefix}/{}", pattern.asset)
+        };
         let palette = format!("minecraft:trim/{}", material.base);
-        out.push(json!({
+        let mut entry = json!({
             "label": row["label"],
             "outcome": "named",
             "sprite": sprite,
-            "palette": palette,
             "decal": pattern.decal,
-        }));
+        });
+        // 26.3's answer names the palette too.
+        if !crate::case_ids::before_26_3() {
+            entry["palette"] = json!(palette);
+        }
+        out.push(entry);
     }
     Ok(json!({"rows": out}))
 }
