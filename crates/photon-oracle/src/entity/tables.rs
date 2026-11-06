@@ -1,20 +1,5 @@
 use super::*;
 
-pub(super) fn map_data_case() -> Result<Value, String> {
-    let mut rows = vec![json!({
-        "label": "colors",
-        "colors": (0..=255u8)
-            .map(|packed| photon_data::map::packed_color(packed) as i32)
-            .collect::<Vec<_>>(),
-    })];
-    for (id, kind) in photon_data::map::decoration_types().iter().enumerate() {
-        rows.push(json!({"label": kind.name, "id": id, "asset": kind.asset,
-            "show_on_item_frame": kind.show_on_item_frame,
-            "track_count": kind.track_count}));
-    }
-    Ok(json!({"rows": rows}))
-}
-
 pub(super) fn painting_variants_case() -> Result<Value, String> {
     let rows: Vec<Value> = photon_data::entity_type::painting_variants()
         .map(|variant| {
@@ -470,7 +455,13 @@ pub(super) fn entity_variant_fields_case() -> Result<Value, String> {
 }
 
 pub(super) fn entity_data_serializers_case() -> Result<Value, String> {
-    let rows: Vec<Value> = (0..)
+    // 26.3 appends the dye colour serializer.
+    let limit = if photon_core::version::Version::active_before_26_3() {
+        43
+    } else {
+        i32::MAX
+    };
+    let rows: Vec<Value> = (0..limit)
         .map_while(|id| photon_data::entity_type::data_serializer(id).map(|name| (id, name)))
         .map(|(id, name)| json!({"label": name, "id": id}))
         .collect();

@@ -167,6 +167,7 @@ pub(super) fn model_layers_result() -> Value {
     }
     let rows: Vec<Value> = layers()
         .iter()
+        .filter(|layer| layer_in_version(layer.id))
         .map(|layer| {
             json!({
                 "label": layer.id,
@@ -177,4 +178,13 @@ pub(super) fn model_layers_result() -> Value {
         })
         .collect();
     json!({"rows": rows})
+}
+
+/// The layers that 26.3 added: the cushion and the poplar boats.
+const NEW_IN_26_3: [&str; 3] = ["cushion#main", "boat/poplar#main", "chest_boat/poplar#main"];
+
+/// Whether the oracle's version has the layer.
+fn layer_in_version(id: &str) -> bool {
+    let name = id.strip_prefix("minecraft:").unwrap_or(id);
+    !(photon_core::version::Version::active_before_26_3() && NEW_IN_26_3.contains(&name))
 }

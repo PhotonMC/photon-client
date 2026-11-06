@@ -5,6 +5,8 @@ use player::*;
 mod data_fields;
 mod spawner_cage;
 use spawner_cage::spawner_cage_pose_result;
+mod map_data;
+use map_data::map_data_case;
 mod tables;
 use tables::*;
 
