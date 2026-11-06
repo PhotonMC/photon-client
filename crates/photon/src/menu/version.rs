@@ -39,7 +39,12 @@ pub(super) fn label(lang: &photon_game::text::Lang) -> String {
 impl Menu {
     /// A press on the version button: the next choice, shown on the button.
     pub(super) fn cycle_version(&mut self) {
-        choose_version(after(chosen_version(), &offered()));
+        let next = after(chosen_version(), &offered());
+        choose_version(next);
+        // The picked version's content is baked while the player is still on the menu.
+        if let Some(version) = next {
+            crate::play::prefetch::start(version);
+        }
         let label = label(self.gui.lang());
         let font = self.gui.text_assets().0;
         if let Screen::Home(home) = &mut self.screen {

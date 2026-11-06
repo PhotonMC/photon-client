@@ -18,7 +18,15 @@ impl Client {
         let root = photon_core::content_root::assets()
             .map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
         if root != self.baked_root {
-            (self.block_renderer, self.animated_atlas) = bake_blocks(&root, &mut self.backend)?;
+            let (stack, renderer) = match super::prefetch::take(&root) {
+                Some(baked) => baked,
+                None => super::prefetch::bake(&root),
+            }?;
+            // Every reader sees this version's assets from here on, with the atlas made from them.
+            crate::resources::replace(stack);
+            (self.block_renderer, self.animated_atlas) =
+                super::upload_blocks(renderer, &mut self.backend)?;
+            super::prefetch::note_in_use(&root);
             self.baked_root = root;
         }
         Ok(())
@@ -30,6 +38,7 @@ impl Client {
             .map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
         let (surface, mut backend, size) = open_window(width, height)?;
         let (block_renderer, animated_atlas) = bake_blocks(&root, &mut backend)?;
+        super::prefetch::note_in_use(&root);
         Ok(Self {
             surface,
             backend,

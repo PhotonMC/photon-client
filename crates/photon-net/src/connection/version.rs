@@ -60,6 +60,27 @@ pub fn remember_protocol(address: SocketAddr, protocol: i32) {
 /// the newest version and leaves it to the server to refuse it, as the reference client does
 /// with its own.
 pub fn select_version(
+    server: (SocketAddr, Option<&str>),
+    timeout: Duration,
+    hint: Option<i32>,
+) -> Version {
+    let version = pick_version(server, timeout, hint);
+    if let Some(announce) = ANNOUNCE.get() {
+        announce(version);
+    }
+    version
+}
+
+/// What the app does the moment a connection has its version, while the login is still to come:
+/// the game starts preparing that version's content.
+static ANNOUNCE: std::sync::OnceLock<fn(Version)> = std::sync::OnceLock::new();
+
+/// Register what happens when a connection has chosen its version. The first call wins.
+pub fn on_version_selected(announce: fn(Version)) {
+    let _ = ANNOUNCE.set(announce);
+}
+
+fn pick_version(
     (address, host): (SocketAddr, Option<&str>),
     timeout: Duration,
     hint: Option<i32>,

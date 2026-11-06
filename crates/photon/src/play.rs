@@ -598,6 +598,7 @@ mod glints;
 mod loading;
 mod own_model;
 mod pacing;
+pub(crate) mod prefetch;
 mod reload;
 mod render_link;
 mod schedule;

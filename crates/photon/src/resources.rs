@@ -51,6 +51,13 @@ pub(crate) fn shared(jar_assets: &Path) -> Arc<ResourceStack> {
     stack
 }
 
+/// A new stack of the game's assets under `jar_assets` with the packs the player selected: what a
+/// version switch puts in use ([`replace`]), as the stack in use belongs to the version it was
+/// made for.
+pub(crate) fn stack_for(jar_assets: &Path) -> Arc<ResourceStack> {
+    Arc::new(ResourceStack::new(selected_packs(jar_assets)))
+}
+
 /// The pack format of the running game (`SharedConstants.getCurrentVersion().packVersion`).
 pub(crate) const PACK_FORMAT: photon_assets::PackFormat = photon_assets::PackFormat::of(97, 1);
 

@@ -95,6 +95,7 @@ fn size_arg(value: Option<String>, default: i32) -> Result<i32> {
 /// Multiplayer button, and the game a server's Join starts; leaving it comes back here. A
 /// scripted run joins `server` at once.
 pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
+    photon_net::connection::on_version_selected(play::prefetch::start);
     let server: SocketAddr = args
         .next()
         .unwrap_or_else(|| play::DEFAULT_SERVER.to_owned())
