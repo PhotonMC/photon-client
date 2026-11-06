@@ -184,7 +184,11 @@ pub(super) fn write_hashed_stack(
         return;
     };
     out.push(1);
-    photon_core::wire::write_varint(stack.item_registry_id().0, out);
+    let item = stack.item_registry_id().0;
+    photon_core::wire::write_varint(
+        versions.map_or(item, |versions| versions.items.wire_or_unknown(item)),
+        out,
+    );
     photon_core::wire::write_varint(stack.item_count(), out);
     let mut patch = stack.patch();
     patch.added.sort_by_key(|(id, _)| *id);

@@ -108,6 +108,21 @@ impl ContainerMenu {
         has_component(stack, ids::BREWING_FUEL) || self.in_tag(stack, "minecraft:brewing_fuel")
     }
 
+    /// The brewing stand's ingredient slot: the server's `brewing_reagent` recipe set in 26.3,
+    /// `PotionBrewing`'s own list before.
+    fn brewing_ingredient(&self, stack: &Stack) -> bool {
+        if photon_core::version::Version::active() < photon_core::version::Version::V26_3 {
+            return stacking(stack).is_some_and(|item| {
+                item.name
+                    .strip_prefix("minecraft:")
+                    .is_some_and(|name| LEGACY_BREWING_INGREDIENTS.contains(&name))
+            });
+        }
+        self.accepted
+            .first()
+            .is_some_and(|items| items.contains(&stack.item_registry_id().0))
+    }
+
     /// `Slot.mayPlace` of these menus' slots; `None` for another menu's.
     pub(super) fn transform_may_place(&self, index: usize, stack: &Stack) -> Option<bool> {
         if self.kind.result_slot() == Some(index)
@@ -146,11 +161,7 @@ impl ContainerMenu {
                     || is_item(stack, "minecraft:lingering_potion")
                     || is_item(stack, "minecraft:glass_bottle")
             }
-            // 26.3 reads the ingredients from the server's `brewing_reagent` recipe set.
-            (MenuKind::Brewing, 3) => self
-                .accepted
-                .first()
-                .is_some_and(|items| items.contains(&stack.item_registry_id().0)),
+            (MenuKind::Brewing, 3) => self.brewing_ingredient(stack),
             (MenuKind::Brewing, 4) => self.is_brewing_fuel(stack),
             // `CrafterSlot.mayPlace`: a switched-off slot (data 1) takes nothing.
             (MenuKind::Crafter, 0..=8) => self.data.get(index) != Some(&1),
@@ -370,3 +381,28 @@ impl ContainerMenu {
         taken
     }
 }
+
+/// The items `PotionBrewing` takes as an ingredient before 26.3 moved them to a recipe set.
+const LEGACY_BREWING_INGREDIENTS: [&str; 21] = [
+    "gunpowder",
+    "dragon_breath",
+    "glowstone_dust",
+    "redstone",
+    "nether_wart",
+    "golden_carrot",
+    "fermented_spider_eye",
+    "turtle_helmet",
+    "pufferfish",
+    "phantom_membrane",
+    "breeze_rod",
+    "slime_block",
+    "stone",
+    "cobweb",
+    "magma_cream",
+    "rabbit_foot",
+    "sugar",
+    "glistering_melon_slice",
+    "spider_eye",
+    "ghast_tear",
+    "blaze_powder",
+];

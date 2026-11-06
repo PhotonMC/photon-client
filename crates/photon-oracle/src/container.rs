@@ -117,8 +117,8 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
                 player,
             );
             let mut sent = Vec::new();
-            // 26.3 predicts the drop, so the swing sends no packet.
-            let _ = swings;
+            // 26.3 predicts the drop, so the swing sends no packet; before it each swing does.
+            sent.extend(swing_packets(swings));
             sent.push(json!({"type": "minecraft:container_click", "bytes": hex(&body)}));
             let slots: Vec<Value> = menu
                 .slots
@@ -294,4 +294,15 @@ pub(super) fn mount_menu(
         entity_tags: std::sync::Arc::new(vanilla_entity_type_tags()?),
     });
     Ok(menu)
+}
+
+/// The swing packets a click sends before 26.3, one per swing.
+fn swing_packets(swings: usize) -> Vec<Value> {
+    if !photon_game::game_mode::punch_is_swing() {
+        return Vec::new();
+    }
+    let body = photon_game::game_mode::Outgoing::Swing { hand: 0 }.encode_body();
+    (0..swings)
+        .map(|_| json!({"type": "minecraft:swing", "bytes": hex(&body)}))
+        .collect()
 }
