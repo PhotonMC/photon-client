@@ -99,6 +99,11 @@ impl Pose {
     /// `PoseStack.Pose.rotate(axis, angle)`.
     pub fn rotate_axis(&mut self, axis: Axis, angle: f32) {
         let (index, sign) = axis.parts();
+        if photon_core::version::Version::active() < photon_core::version::Version::V26_3 {
+            // Before 26.3 `mulPose(Axis.rotation(..))` goes through a quaternion.
+            self.rotate(&Quaternion::rotation_about(index, sign * angle));
+            return;
+        }
         self.pose.rotate_about(index, sign * angle);
         self.normal.rotate_about(index, sign * angle);
     }
@@ -106,5 +111,26 @@ impl Pose {
     /// `PoseStack.Pose.rotateDegrees(axis, angle)`.
     pub fn rotate_degrees(&mut self, axis: Axis, degrees: f32) {
         self.rotate_axis(axis, Axis::radians(degrees));
+    }
+}
+
+impl Quaternion {
+    /// `Quaternionf.rotationX/Y/Z(angle)` for the axis index 0, 1 or 2.
+    pub fn rotation_about(axis: usize, angle: f32) -> Self {
+        let half = angle * 0.5;
+        let s = sin(half);
+        let c = cos_from_sin(s, half);
+        let mut q = Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            w: c,
+        };
+        match axis {
+            0 => q.x = s,
+            1 => q.y = s,
+            _ => q.z = s,
+        }
+        q
     }
 }

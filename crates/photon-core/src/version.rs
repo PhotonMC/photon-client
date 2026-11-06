@@ -75,6 +75,22 @@ impl Version {
     }
 }
 
+static ACTIVE: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(Version::NEWEST.index());
+
+impl Version {
+    /// The version this process plays or checks; the newest until it is set.
+    pub fn active() -> Version {
+        Self::ALL[ACTIVE.load(std::sync::atomic::Ordering::Relaxed)]
+    }
+
+    /// Sets [`Version::active`]. For code whose arithmetic differs by version and has no
+    /// session to ask.
+    pub fn set_active(version: Version) {
+        ACTIVE.store(version.index(), std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
 /// The versions a definition exists in: from `since` and up to and including `until`; with
 /// neither it exists in every version.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

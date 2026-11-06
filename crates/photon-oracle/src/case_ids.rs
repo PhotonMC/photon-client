@@ -13,10 +13,12 @@ use photon_data::version_registries::VersionRegistries;
 pub(crate) fn oracle_version() -> Version {
     static VERSION: OnceLock<Version> = OnceLock::new();
     *VERSION.get_or_init(|| {
-        std::env::var("PHOTON_ORACLE_VERSION")
+        let version = std::env::var("PHOTON_ORACLE_VERSION")
             .ok()
             .and_then(|name| Version::from_name(&name))
-            .unwrap_or(Version::NEWEST)
+            .unwrap_or(Version::NEWEST);
+        Version::set_active(version);
+        version
     })
 }
 

@@ -269,6 +269,7 @@ pub(super) fn respond(request: Value) -> Result<Value, String> {
 /// Answers every input line. Cases are independent, so they are answered in
 /// parallel; the output keeps the input order.
 pub(super) fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let _ = crate::case_ids::oracle_version();
     let lines: Vec<String> = io::stdin().lock().lines().collect::<Result<_, _>>()?;
     let responses = answer_all(&lines).map_err(io::Error::other)?;
     let mut output = io::BufWriter::new(io::stdout().lock());

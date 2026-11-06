@@ -401,6 +401,7 @@ impl PlaySession {
                 opened => {
                     let (stream, compression_threshold) = opened?;
                     stream.set_read_timeout(None)?;
+                    photon_core::version::Version::set_active(state.version);
                     let registries = VersionRegistries::of(state.version);
                     let incoming =
                         spawn_reader(stream.try_clone()?, compression_threshold, registries);
