@@ -3,6 +3,18 @@
 
 use crate::version::Version;
 
+/// Whether a negative element count in a tag list is refused, because the list is sized from
+/// the count (26.3; before it the loop simply reads nothing).
+pub fn negative_tag_counts_fail() -> bool {
+    !Version::active_before_26_3()
+}
+
+/// Whether an enum read by ordinal takes the first constant when the id is out of range
+/// (26.3's `OutOfBoundsStrategy.ZERO`; before it the read fails).
+pub fn out_of_range_enum_ids_read_as_first() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// The resource pack format `(major, minor)` of the game the session plays (26.1 shares 26.2's
 /// until its jar is read).
 pub fn resource_pack_format() -> (i32, i32) {
