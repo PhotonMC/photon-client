@@ -16,6 +16,7 @@ mod parity;
 mod process;
 mod progress;
 mod release;
+mod tables;
 mod workspace;
 
 use std::process::ExitCode;
@@ -60,6 +61,7 @@ usage: cargo xtask <command>
   release-sign --archives <dir> --tag <vX.Y.Z> [--notes <line>]
                             write and sign the manifest of each archive in <dir>; the key is read
                             from the RELEASE_SIGNING_KEY environment variable
+  gen [--check]             write (or verify) the reference tables of photon-data from the local capture
   progress [--check]        rewrite (or verify) the README's computed progress block
   entities                  the reference's renderer types and what the client sources name
   shot <name> <script> [--user <name>] [--address <a>] [--rcon <cmd>]... [--wait <s>]
@@ -84,6 +86,7 @@ const COMMANDS: &[(&str, Command)] = &[
     ("bench", dev::bench),
     ("shot", dev::shot),
     ("entities", entities::run),
+    ("gen", tables::run),
     ("progress", progress::run),
     ("package", package::run),
     ("release-key", release::key),

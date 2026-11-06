@@ -106,7 +106,7 @@ impl Rule {
     fn source_hint(self) -> &'static str {
         match self {
             Self::Generated => {
-                "generated sources; tables are kept by hand (ADR 0013), do not add a generator"
+                "generated sources; only a photon-data table written by `cargo xtask gen` may be generated (ADR 0013)"
             }
             _ => "crate dependency not allowed by the layer table in xtask/lint.toml",
         }

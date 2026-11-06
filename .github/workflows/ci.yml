@@ -120,6 +120,8 @@ jobs:
       - name: Fetch the pinned game from Mojang
         run: cargo xtask setup --named --decompile --version ${{ matrix.version }}
       - run: cargo xtask parity --version ${{ matrix.version }}
+      - name: Generated tables are current
+        run: cargo xtask gen --check
       # Each supported release's own server writes its registry reports; the jars come from
       # Mojang's manifest and are hash-checked like the pinned one, kept on the runner, and
       # only the verdict reaches the log.
