@@ -11,7 +11,7 @@ impl ClientWorld {
     }
 
     /// `adjustInterpolationPosition`: the target only follows the entity's own move when the
-    /// entity would not stand in a block there. (Other entities' hard shapes are not tested.)
+    /// entity would not stand in a block, the border or another entity's hard shape there.
     fn interpolation_may_follow(&self, entity_id: EntityId) -> bool {
         let Some(entity) = self.entities.at(entity_id) else {
             return true;
@@ -21,9 +21,20 @@ impl ClientWorld {
         };
         let area = entity.dimensions().make_bounding_box(adjusted);
         let (x, y, z) = entity.position();
-        local_player::Level::new(self)
-            .no_collision(area, 0.0, photon_core::math::Vec3::new(x, y, z))
-            .unwrap_or(true)
+        let source = photon_core::math::Vec3::new(x, y, z);
+        let type_id = Some(entity.type_id);
+        let candidates =
+            self.indexed_entity_collision_candidates(Some(entity_id), type_id, Some(source), area);
+        let hard = crate::collision::collect_entity_collision_shapes_for_source(
+            type_id,
+            true,
+            area,
+            &candidates,
+        );
+        hard.is_empty()
+            && local_player::Level::new(self)
+                .no_collision(area, 0.0, source)
+                .unwrap_or(true)
     }
 
     /// `ClientLevel.tickEntities`: every entity the server added that is
