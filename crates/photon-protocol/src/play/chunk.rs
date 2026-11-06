@@ -210,7 +210,7 @@ pub fn parse_chunk_packet(
     let block_entities = read_block_entities(&mut input, (x, z), registries)?;
     let block_entity_count = block_entities.len();
 
-    let light_data = parse_light_data(&mut input)?;
+    let light_data = parse_light_data_for(&mut input, registries.has_byte_bit_sets())?;
     let sky_mask_word_count = light_data.sky_mask.to_longs().len();
     let block_mask_word_count = light_data.block_mask.to_longs().len();
     let empty_sky_mask_word_count = light_data.empty_sky_mask.to_longs().len();
@@ -251,12 +251,17 @@ pub fn parse_chunk_packet(
     })
 }
 
-pub fn parse_light_update_packet(
+pub fn parse_light_update_packet(input: &[u8]) -> Result<LightUpdateObservation, ConnectionError> {
+    parse_light_update_packet_for(input, false)
+}
+
+pub fn parse_light_update_packet_for(
     mut input: &[u8],
+    byte_masks: bool,
 ) -> Result<LightUpdateObservation, ConnectionError> {
     let x = read_varint(&mut input, "light update chunk x")?;
     let z = read_varint(&mut input, "light update chunk z")?;
-    let light_data = parse_light_data(&mut input)?;
+    let light_data = parse_light_data_for(&mut input, byte_masks)?;
     if !input.is_empty() {
         return Err(ConnectionError::Codec("light update trailing payload"));
     }
@@ -290,11 +295,15 @@ pub fn parse_light_update_packet(
     })
 }
 
-pub(super) fn parse_light_data(input: &mut &[u8]) -> Result<LightUpdateData, ConnectionError> {
-    let sky_mask = read_bitset(input, "sky light mask")?;
-    let block_mask = read_bitset(input, "block light mask")?;
-    let empty_sky_mask = read_bitset(input, "empty sky light mask")?;
-    let empty_block_mask = read_bitset(input, "empty block light mask")?;
+/// The light data, its masks as long arrays or, with `byte_masks`, as byte arrays.
+pub(super) fn parse_light_data_for(
+    input: &mut &[u8],
+    byte_masks: bool,
+) -> Result<LightUpdateData, ConnectionError> {
+    let sky_mask = read_bitset_as(input, "sky light mask", byte_masks)?;
+    let block_mask = read_bitset_as(input, "block light mask", byte_masks)?;
+    let empty_sky_mask = read_bitset_as(input, "empty sky light mask", byte_masks)?;
+    let empty_block_mask = read_bitset_as(input, "empty block light mask", byte_masks)?;
     let sky_updates = read_light_update_bytes(input, "sky light updates")?;
     let block_updates = read_light_update_bytes(input, "block light updates")?;
     Ok(LightUpdateData {
@@ -352,9 +361,9 @@ impl Decode for ChunkPacketObservation {
 impl Decode for LightUpdateObservation {
     fn decode(
         payload: &[u8],
-        _registries: &photon_data::version_registries::VersionRegistries,
+        registries: &photon_data::version_registries::VersionRegistries,
     ) -> Result<Self, ConnectionError> {
-        parse_light_update_packet(payload)
+        parse_light_update_packet_for(payload, registries.has_byte_bit_sets())
     }
 }
 

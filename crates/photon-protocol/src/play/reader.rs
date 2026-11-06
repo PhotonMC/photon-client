@@ -8,6 +8,24 @@ pub fn read_bitset(input: &mut &[u8], name: &'static str) -> Result<BitSet, Conn
     photon_core::binary::read_bitset(input).map_err(|_| ConnectionError::Codec(name))
 }
 
+/// A bit set as a version writes it: an array of longs, or (26.3 and later) of bytes.
+pub fn read_bitset_as(
+    input: &mut &[u8],
+    name: &'static str,
+    bytes: bool,
+) -> Result<BitSet, ConnectionError> {
+    if !bytes {
+        return read_bitset(input, name);
+    }
+    let length = read_count(input, name)?;
+    if input.len() < length {
+        return Err(ConnectionError::Codec(name));
+    }
+    let (head, rest) = input.split_at(length);
+    *input = rest;
+    Ok(BitSet::from_bytes(head))
+}
+
 pub fn read_length_prefixed_bytes<'a>(
     input: &mut &'a [u8],
     max_length: usize,

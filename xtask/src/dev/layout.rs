@@ -58,10 +58,12 @@ pub fn client_binary() -> PathBuf {
 
 /// The environment the client runs in: the assets, and the Vulkan loader on macOS.
 pub fn client_environment() -> Result<Vec<(String, String)>, String> {
-    let mut environment = vec![(
-        "PHOTON_ASSETS".to_owned(),
-        jar_assets()?.display().to_string(),
-    )];
+    // A caller that names its own assets (another game version) wins.
+    let assets = match std::env::var("PHOTON_ASSETS") {
+        Ok(path) if !path.is_empty() => path,
+        _ => jar_assets()?.display().to_string(),
+    };
+    let mut environment = vec![("PHOTON_ASSETS".to_owned(), assets)];
     if cfg!(target_os = "macos") && std::path::Path::new("/usr/local/lib").is_dir() {
         environment.push(("DYLD_LIBRARY_PATH".to_owned(), "/usr/local/lib".to_owned()));
     }

@@ -280,6 +280,24 @@ impl VersionRegistries {
         self.version >= Version::V26_3
     }
 
+    /// Whether bit sets travel as byte arrays (the light masks and a chat filter mask, 26.3 and
+    /// later) instead of arrays of longs.
+    pub fn has_byte_bit_sets(&self) -> bool {
+        self.version >= Version::V26_3
+    }
+
+    /// Whether a tag slot display is written as a holder set (a tag or the listed items, 26.3 and
+    /// later) instead of a bare tag name.
+    pub fn has_holder_set_tag_display(&self) -> bool {
+        self.version >= Version::V26_3
+    }
+
+    /// Whether the teleport confirmation carries the position it ends at (26.3 and later); before
+    /// it was a bare id, followed by a position packet of its own.
+    pub fn has_teleport_position(&self) -> bool {
+        self.version >= Version::V26_3
+    }
+
     /// Whether the entity move and position-sync packets carry paths of steps (26.3 and later).
     pub fn has_movement_paths(&self) -> bool {
         self.version >= Version::V26_3

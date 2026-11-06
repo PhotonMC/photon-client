@@ -61,6 +61,7 @@ mod pack_tests;
 mod photon_payload_tests;
 #[cfg(test)]
 mod profile_tests;
+mod progress;
 mod recipes;
 mod reconfigure;
 #[cfg(test)]

@@ -214,6 +214,15 @@ pub(super) fn read_signature(input: &mut &[u8]) -> Result<ChatSignature, Connect
 
 /// `ClientboundPlayerChatPacket`.
 pub fn parse_player_chat_packet(input: &[u8]) -> Result<PlayerChatPacket, ConnectionError> {
+    parse_player_chat_packet_as(input, false)
+}
+
+/// `ClientboundPlayerChatPacket`, its filter mask's bits as long words or, with `byte_bits`
+/// (26.3 and later), as bytes.
+pub fn parse_player_chat_packet_as(
+    input: &[u8],
+    byte_bits: bool,
+) -> Result<PlayerChatPacket, ConnectionError> {
     let mut input = input;
     let global_index = read_varint(&mut input, "chat global index")?;
     let sender = photon_core::binary::read_uuid(&mut input)
@@ -240,6 +249,10 @@ pub fn parse_player_chat_packet(input: &[u8]) -> Result<PlayerChatPacket, Connec
     // `FilterMask`: pass through, fully filtered, or partly (with a bit set).
     let filter = match read_varint(&mut input, "chat filter mask")? {
         1 => FilterMask::FullyFiltered,
+        2 if byte_bits => {
+            let set = read_bitset_as(&mut input, "chat filter bits", true)?;
+            FilterMask::Partial(set.to_longs().into_iter().map(|word| word as u64).collect())
+        }
         2 => {
             let words = read_varint(&mut input, "chat filter bits")?.max(0) as usize;
             let mut bits = Vec::with_capacity(words);
@@ -453,11 +466,19 @@ wrapped_packet!(
     DisguisedChat(ChatEvent) = parse_disguised_chat_event,
     OnError::Warn("disguised chat")
 );
-wrapped_packet!(
-    /// `ClientboundPlayerChatPacket`.
-    PlayerChat(PlayerChatPacket) = parse_player_chat_packet,
-    OnError::Warn("player chat")
-);
+impl Decode for PlayerChat {
+    const ON_ERROR: OnError = OnError::Warn("player chat");
+
+    fn decode(
+        payload: &[u8],
+        registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
+        parse_player_chat_packet_as(payload, registries.has_byte_bit_sets()).map(Self)
+    }
+}
+
+/// `ClientboundPlayerChatPacket`.
+pub struct PlayerChat(pub PlayerChatPacket);
 wrapped_packet!(
     /// `ClientboundDeleteChatPacket`.
     DeleteChat(PackedSignature) = parse_delete_chat_packet,

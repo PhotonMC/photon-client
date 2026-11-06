@@ -21,7 +21,7 @@ pub(super) fn read_slot_display(
         }
         4 => D::Item(WireItemId::read(input, "display item")?.canonical(registries)),
         5 => read_display_stack(input, registries)?,
-        6 => D::Tag(read_identifier_string(input, "display tag")?),
+        6 => read_tag_display(input, registries)?,
         7 => {
             let dye = next(input)?;
             D::Dyed(Box::new(dye), Box::new(next(input)?))
@@ -29,18 +29,7 @@ pub(super) fn read_slot_display(
         8 => {
             let base = next(input)?;
             let material = next(input)?;
-            // `Holder<TrimPattern>`: a registry id plus one, or zero and the
-            // pattern written out (its asset, its name and whether it is a decal).
-            let pattern = match read_varint(input, "display trim pattern")? {
-                0 => {
-                    read_identifier_string(input, "trim pattern asset")?;
-                    photon_core::nbt::read_any_nbt(input)
-                        .map_err(|_| ConnectionError::Codec("trim pattern name"))?;
-                    read_bool(input, "trim pattern decal")?;
-                    -1
-                }
-                id => id - 1,
-            };
+            let pattern = read_trim_pattern(input)?;
             D::SmithingTrim(Box::new(base), Box::new(material), pattern)
         }
         9 => {
@@ -56,6 +45,36 @@ pub(super) fn read_slot_display(
             D::Composite(all)
         }
         _ => return Err(ConnectionError::Codec("unknown slot display")),
+    })
+}
+
+/// `Holder<TrimPattern>`: a registry id plus one, or zero and the pattern written out (its
+/// asset, its name and whether it is a decal).
+fn read_trim_pattern(input: &mut &[u8]) -> Result<i32, ConnectionError> {
+    Ok(match read_varint(input, "display trim pattern")? {
+        0 => {
+            read_identifier_string(input, "trim pattern asset")?;
+            photon_core::nbt::read_any_nbt(input)
+                .map_err(|_| ConnectionError::Codec("trim pattern name"))?;
+            read_bool(input, "trim pattern decal")?;
+            -1
+        }
+        id => id - 1,
+    })
+}
+
+/// The tag slot display: a bare tag name, or from 26.3 a holder set (a tag or its items).
+fn read_tag_display(
+    input: &mut &[u8],
+    registries: &VersionRegistries,
+) -> Result<photon_core::recipes::SlotDisplay, ConnectionError> {
+    use photon_core::recipes::{Ingredient, SlotDisplay as D};
+    if !registries.has_holder_set_tag_display() {
+        return Ok(D::Tag(read_identifier_string(input, "display tag")?));
+    }
+    Ok(match read_ingredient(input, registries)? {
+        Ingredient::Tag(tag) => D::Tag(tag),
+        Ingredient::Items(items) => D::Composite(items.into_iter().map(D::Item).collect()),
     })
 }
 

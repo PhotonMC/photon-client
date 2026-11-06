@@ -347,3 +347,25 @@ fn chunk_biome_data_reads_one_container_per_section_and_ignores_the_rest() {
     assert_eq!(biomes, vec![vec![5; 64], vec![9; 64]]);
     assert!(data.biomes(3, &super::registries()).is_err());
 }
+
+#[test]
+fn light_update_26_3_writes_its_masks_as_byte_arrays() {
+    let mut payload = Vec::new();
+    photon_core::wire::write_varint(-3, &mut payload);
+    photon_core::wire::write_varint(7, &mut payload);
+    // The sky mask holds sections 0 and 9: two bytes, least significant bit first.
+    payload.extend_from_slice(&[2, 0b0000_0001, 0b0000_0010]);
+    // The block mask is empty, the empty masks hold one bit each.
+    payload.extend_from_slice(&[0, 1, 0b0000_0100, 1, 0b0000_1000]);
+    photon_core::wire::write_varint(1, &mut payload);
+    photon_core::wire::write_varint(2_048, &mut payload);
+    payload.extend_from_slice(&[0x12; 2_048]);
+    photon_core::wire::write_varint(0, &mut payload);
+
+    let observation = parse_light_update_packet_for(&payload, true).expect("byte masks");
+    assert_eq!((observation.x, observation.z), (-3, 7));
+    assert_eq!(observation.sky_update_lengths, [2_048]);
+    assert_eq!(observation.block_update_lengths, Vec::<usize>::new());
+    // The long-array reading does not take these bytes for a valid payload.
+    assert!(parse_light_update_packet(&payload).is_err());
+}
