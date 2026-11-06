@@ -20,7 +20,7 @@ impl Play {
             animated_atlas,
             tutorial,
             audio,
-            gui: _,
+            ..
         } = client;
         let root = photon_core::content_root::assets()
             .map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
@@ -306,6 +306,7 @@ impl Play {
                 size: sized_for,
                 block_renderer,
                 animated_atlas,
+                baked_root: photon_core::content_root::assets().unwrap_or_default(),
                 tutorial,
                 audio: Some(crate::music::Carried::new(sound, music)),
                 gui: Some(gui),

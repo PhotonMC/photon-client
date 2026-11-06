@@ -119,34 +119,14 @@ pub(crate) struct Client {
     pub size: (u32, u32),
     pub block_renderer: Arc<BlockRenderer>,
     pub animated_atlas: AnimatedAtlas,
+    /// The assets folder the block atlas above was baked from.
+    pub baked_root: String,
     /// `Minecraft.tutorial`: made with the game, so it goes on across the games played.
     pub tutorial: photon_gui::tutorial::Tutorial,
     /// The sound engine and music manager, passed between the menu and the game.
     pub audio: Option<crate::music::Carried>,
     /// The `Gui` of the game just played, whose assets the menus take over.
     pub gui: Option<Gui>,
-}
-
-impl Client {
-    /// Open the window and bake the blocks from `PHOTON_ASSETS`.
-    pub(crate) fn open((width, height): (i32, i32)) -> Result<Self> {
-        let root = photon_core::content_root::assets()
-            .map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
-        let (surface, mut backend, size) = open_window(width, height)?;
-        let (block_renderer, animated_atlas) = bake_blocks(&root, &mut backend)?;
-        Ok(Self {
-            surface,
-            backend,
-            size,
-            block_renderer,
-            animated_atlas,
-            tutorial: photon_gui::tutorial::Tutorial::new(
-                crate::controls::load_options().tutorial_step,
-            ),
-            audio: None,
-            gui: None,
-        })
-    }
 }
 
 /// How a game ended.
@@ -611,6 +591,7 @@ mod effects;
 mod fitting;
 mod friends;
 pub(crate) use fitting::fit_swapchain;
+mod client;
 mod clock;
 mod gizmo;
 mod glints;

@@ -175,6 +175,7 @@ fn after_game(exit: Exit, scripted: bool) -> AfterGame {
 
 /// Play a joined `session`, then drop the packs it pushed.
 fn play_game(mut client: Client, session: PlaySession) -> Result<(Client, Exit)> {
+    client.use_version(session.versions().version())?;
     client.backend.set_gui_only(false);
     client.backend.set_panorama(None);
     let (client, exit) = play::play_in(client, session)?;
