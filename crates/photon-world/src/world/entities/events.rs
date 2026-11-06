@@ -3,6 +3,10 @@ use crate::*;
 /// `FireworkRocketEntity.handleEntityEvent`'s event for an explosion.
 const FIREWORK_ROCKET_EXPLODE_EVENT: i8 = 17;
 
+const HASTE: i32 = 2;
+const MINING_FATIGUE: i32 = 3;
+const CONDUIT_POWER: i32 = 28;
+
 impl ClientWorld {
     /// `ClientLevel.shouldTickDeath`: a dying entity falls over only within the
     /// server's simulation distance of the local player's chunk.
@@ -156,10 +160,19 @@ impl Entities {
         if entity.living_kind().is_none() {
             return false;
         }
+        // `getModifiedSwingDuration`: haste or the conduit's power shorten it, mining fatigue
+        // lengthens it.
+        let amplifier = |effect| entity.as_view().effect_amplifier(effect);
+        let modified = match (amplifier(HASTE), amplifier(CONDUIT_POWER)) {
+            (None, None) => {
+                amplifier(MINING_FATIGUE).map_or(duration, |fatigue| duration + (1 + fatigue) * 2)
+            }
+            (haste, conduit) => duration - (1 + haste.unwrap_or(0).max(conduit.unwrap_or(0))),
+        };
         entity
             .living
             .swing
-            .start_if_able(off_hand, kind, duration, duration);
+            .start_if_able(off_hand, kind, modified, modified);
         true
     }
 

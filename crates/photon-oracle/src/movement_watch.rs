@@ -84,7 +84,7 @@ pub(super) fn apply_species_data(
         described.get("weakness"),
         photon_data::item::effect::effect_id("minecraft:weakness"),
     ) {
-        world.entities_mut().apply_mob_effect(id, weakness);
+        world.entities_mut().apply_mob_effect(id, weakness, 0);
     }
     for (flag, data) in [
         (

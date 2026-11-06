@@ -82,12 +82,23 @@ impl Entities {
     }
 
     /// `handleUpdateMobEffect` for an entity that is not the local player: it has the effect.
-    pub fn apply_mob_effect(&mut self, entity_id: EntityId, effect_id: i32) -> bool {
+    pub fn apply_mob_effect(
+        &mut self,
+        entity_id: EntityId,
+        effect_id: i32,
+        amplifier: i32,
+    ) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
-        if !entity.vitals.effects.contains(&effect_id) {
-            entity.vitals.effects.push(effect_id);
+        match entity
+            .vitals
+            .effects
+            .iter_mut()
+            .find(|(held, _)| *held == effect_id)
+        {
+            Some(held) => held.1 = amplifier,
+            None => entity.vitals.effects.push((effect_id, amplifier)),
         }
         true
     }
@@ -97,7 +108,7 @@ impl Entities {
         let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
-        entity.vitals.effects.retain(|&held| held != effect_id);
+        entity.vitals.effects.retain(|&(held, _)| held != effect_id);
         true
     }
 

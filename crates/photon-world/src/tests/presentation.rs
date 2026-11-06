@@ -377,6 +377,26 @@ fn a_swing_lasts_as_long_as_the_held_spears_and_a_kinetic_hit_kicks_for_ten_tick
     world.tick_entities(false);
     assert!(!swinging(&world));
 
+    // Haste II shortens a swing by two ticks; mining fatigue I lengthens it by four.
+    let ticks_swinging = |world: &mut ClientWorld, duration: i32| {
+        world
+            .entities_mut()
+            .apply_swing_animation(EntityId(9), false, 1, duration);
+        let mut ticks = 0;
+        while swinging(world) {
+            world.tick_entities(false);
+            ticks += 1;
+        }
+        ticks
+    };
+    let plain = ticks_swinging(&mut world, 10);
+    world.entities_mut().apply_mob_effect(EntityId(9), 2, 1);
+    assert_eq!(ticks_swinging(&mut world, 10), plain - 2);
+    world.entities_mut().remove_mob_effect(EntityId(9), 2);
+    world.entities_mut().apply_mob_effect(EntityId(9), 3, 1);
+    assert_eq!(ticks_swinging(&mut world, 10), plain + 4);
+    world.entities_mut().remove_mob_effect(EntityId(9), 3);
+
     // The kick of a hit starts at the game time of the event and is not restarted within ten ticks.
     let since = |world: &ClientWorld| {
         world

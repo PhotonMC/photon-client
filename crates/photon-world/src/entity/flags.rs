@@ -423,8 +423,9 @@ pub struct Vitals {
     pub(crate) ticks_frozen: i32,
     /// What the server changed of the attributes the type starts with.
     pub(crate) attributes: Vec<ClientAttributeState>,
-    /// The registry ids of the mob effects the server says the entity has (not its own timers).
-    pub(crate) effects: Vec<i32>,
+    /// The registry ids and amplifiers of the mob effects the server says the entity has (not
+    /// its own timers).
+    pub(crate) effects: Vec<(i32, i32)>,
 }
 
 impl Vitals {
@@ -447,7 +448,19 @@ impl Vitals {
 impl EntityView<'_> {
     /// `LivingEntity.hasEffect`, from the update and remove packets.
     pub fn has_effect(&self, effect_id: i32) -> bool {
-        self.vitals.effects.contains(&effect_id)
+        self.vitals
+            .effects
+            .iter()
+            .any(|&(held, _)| held == effect_id)
+    }
+
+    /// The amplifier of a mob effect the server says the entity has.
+    pub fn effect_amplifier(&self, effect_id: i32) -> Option<i32> {
+        self.vitals
+            .effects
+            .iter()
+            .find(|&&(held, _)| held == effect_id)
+            .map(|&(_, amplifier)| amplifier)
     }
 
     pub fn air_supply(&self) -> i32 {

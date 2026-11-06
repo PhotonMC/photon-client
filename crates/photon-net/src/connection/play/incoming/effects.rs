@@ -67,9 +67,11 @@ impl PlaySession {
             packet.flags,
         );
         if !local {
-            self.world
-                .entities_mut()
-                .apply_mob_effect(packet.entity_id, packet.effect_registry_id);
+            self.world.entities_mut().apply_mob_effect(
+                packet.entity_id,
+                packet.effect_registry_id,
+                packet.amplifier,
+            );
         }
         Ok(())
     }
