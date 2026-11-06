@@ -69,12 +69,16 @@ pub struct Interpolation {
     pub(crate) head_rotation_target: JavaF32,
     pub(crate) head_lerp_steps: u8,
     pub(crate) interpolation: Option<EntityInterpolationState>,
+    /// Whether the version's living entities ease with the stepped handler (26.3 and later) and
+    /// not with the plain lerp over steps.
+    pub(crate) stepped_easing: bool,
 }
 
 impl Interpolation {
     /// An entity that was just added, its head already where it faces.
-    pub(crate) fn spawned(head: f32) -> Self {
+    pub(crate) fn spawned(head: f32, stepped_easing: bool) -> Self {
         Self {
+            stepped_easing,
             head_rotation_target: JavaF32::new(head),
             head_lerp_steps: 0,
             interpolation: None,

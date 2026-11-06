@@ -232,7 +232,7 @@ impl ClientWorld {
                     entity.rotation.1,
                     entity.rotation.2,
                 ),
-                lerp: Interpolation::spawned(entity.rotation.2),
+                lerp: Interpolation::spawned(entity.rotation.2, self.versions.has_movement_paths()),
                 kind: initial_kind,
                 worn: Equipment::default(),
                 living: EntityState::default(),

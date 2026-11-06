@@ -504,7 +504,7 @@ impl EntityView<'_> {
     /// Whether the handler is the stepped one: every living entity but the shulker
     /// (`LivingEntity.makeInterpolationHandler`).
     pub(crate) fn uses_stepped_interpolation(&self) -> bool {
-        self.living_kind().is_some() && !self.is_shulker()
+        self.lerp.stepped_easing && self.living_kind().is_some() && !self.is_shulker()
     }
 
     /// The length of the handler's easing (`AbstractInterpolationHandler.interpolationSteps`): a
