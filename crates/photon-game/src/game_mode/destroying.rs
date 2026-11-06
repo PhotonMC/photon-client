@@ -199,6 +199,13 @@ impl GameMode {
         true
     }
 
+    /// `MultiPlayerGameMode.stopDestroyBlock` for a caller outside the game mode.
+    pub fn stop_destroying(&mut self, ctx: &mut Context<'_>) -> Vec<Outgoing> {
+        let mut out = Vec::new();
+        self.stop_destroy_block(ctx, &mut out);
+        out
+    }
+
     /// `stopDestroyBlock`: letting go abandons the block.
     pub(super) fn stop_destroy_block(&mut self, ctx: &mut Context<'_>, out: &mut Vec<Outgoing>) {
         if !self.is_destroying {

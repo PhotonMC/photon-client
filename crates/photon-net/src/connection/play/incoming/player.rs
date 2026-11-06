@@ -489,6 +489,9 @@ impl PlaySession {
         self.local.teleports += 1;
         self.handle_player_position(packet)?;
         self.world.prediction_teleport();
+        if self.registries.has_teleport_position() {
+            self.stop_destroying()?;
+        }
         Ok(())
     }
 

@@ -3,32 +3,22 @@ use photon_core::ids::{EntityId, ItemId};
 use photon_data::item::registry::AIR_ITEM;
 
 impl PlaySession {
-    /// What the hands hold and the glider rule, for the local player's tick.
-    pub(super) fn hand_state(&self) -> photon_world::local_player::HandState {
-        photon_game::item::glider::hand_state(&self.world, self.local.status.selected_slot)
-    }
-
-    /// The attack and use keys' part of `handleKeybinds`, with what the
-    /// player aims at. Runs before the tick, as the reference handles keys
-    /// before the level ticks the player.
-    pub fn keys(
+    /// Runs `step` on the game mode with the context of the local player, if there is one;
+    /// `hands` first updates the flags the server's packets just brought.
+    pub(super) fn run_game_mode<R>(
         &mut self,
-        keys: photon_game::game_mode::Keys,
-        aim: photon_game::game_mode::Aim,
-    ) -> Result<(), ConnectionError> {
-        use photon_game::game_mode::{Aim, Context, Miner};
-        self.local.aimed_entity = match aim {
-            Aim::Entity { id, .. } => Some(id),
-            _ => None,
-        };
-        self.ensure_has_sent_carried_item()?;
-        let hands = self.hand_state();
-        let main_arm_left = self.main_arm_is_left();
-        let Some(player) = self.local.player.as_mut() else {
-            return Ok(());
-        };
-        // The server's flags the packets just brought, which `onSyncedDataUpdated` acts on at once.
-        player.set_hand_state(hands);
+        hands: Option<photon_world::local_player::HandState>,
+        step: impl FnOnce(
+            &mut photon_game::game_mode::GameMode,
+            &mut photon_game::game_mode::Context<'_>,
+        ) -> R,
+    ) -> Option<R> {
+        use photon_game::game_mode::{Context, Miner};
+        let player = self.local.player.as_mut()?;
+        if let Some(hands) = hands {
+            // `onSyncedDataUpdated` acts on them at once.
+            player.set_hand_state(hands);
+        }
         let instruments = self.local.instruments.clone();
         let spin_attack = self.local.spin_attack.clone();
         let prevents_armor_change = self.local.prevents_armor_change.clone();
@@ -47,11 +37,14 @@ impl PlaySession {
             profile_id: self.state.profile_id,
             creaking_active: self.local.creaking_active,
         };
-        let keys = photon_game::game_mode::Keys {
-            main_arm_left,
-            ..keys
-        };
-        let sent = self.local.game_mode_state.keys_tick(&mut ctx, keys, aim);
+        Some(step(&mut self.local.game_mode_state, &mut ctx))
+    }
+
+    /// Sends what the game mode produced.
+    fn send_game_mode(
+        &mut self,
+        sent: Vec<photon_game::game_mode::Outgoing>,
+    ) -> Result<(), ConnectionError> {
         for packet in sent {
             let id = self.note_sent(packet);
             let body = packet.encode_body();
@@ -61,6 +54,45 @@ impl PlaySession {
             })?;
         }
         Ok(())
+    }
+
+    /// `handleMovePlayer`'s `stopDestroyBlock` (26.3): a teleport abandons the block being broken.
+    pub(super) fn stop_destroying(&mut self) -> Result<(), ConnectionError> {
+        let sent = self.run_game_mode(None, |mode, ctx| mode.stop_destroying(ctx));
+        self.send_game_mode(sent.unwrap_or_default())
+    }
+
+    /// What the hands hold and the glider rule, for the local player's tick.
+    pub(super) fn hand_state(&self) -> photon_world::local_player::HandState {
+        photon_game::item::glider::hand_state(&self.world, self.local.status.selected_slot)
+    }
+
+    /// The attack and use keys' part of `handleKeybinds`, with what the
+    /// player aims at. Runs before the tick, as the reference handles keys
+    /// before the level ticks the player.
+    pub fn keys(
+        &mut self,
+        keys: photon_game::game_mode::Keys,
+        aim: photon_game::game_mode::Aim,
+    ) -> Result<(), ConnectionError> {
+        use photon_game::game_mode::Aim;
+        self.local.aimed_entity = match aim {
+            Aim::Entity { id, .. } => Some(id),
+            _ => None,
+        };
+        self.ensure_has_sent_carried_item()?;
+        let hands = self.hand_state();
+        let main_arm_left = self.main_arm_is_left();
+        let keys = photon_game::game_mode::Keys {
+            main_arm_left,
+            ..keys
+        };
+        let Some(sent) =
+            self.run_game_mode(Some(hands), |mode, ctx| mode.keys_tick(ctx, keys, aim))
+        else {
+            return Ok(());
+        };
+        self.send_game_mode(sent)
     }
 
     /// What a packet of the game mode changes here, and the id it goes out under.
