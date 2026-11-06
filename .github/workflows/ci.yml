@@ -94,7 +94,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["26.2", "26.3"]
+        # 26.2 is left out until the cases are numbered per version: they carry the newest
+        # version's component and item ids, which the 26.2 reference cannot decode.
+        version: ["26.3"]
     steps:
       - uses: actions/checkout@v4
       - name: Install system packages
