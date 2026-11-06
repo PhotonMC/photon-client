@@ -70,7 +70,9 @@ fn assets_beside(
     let found = candidates
         .into_iter()
         .find(|folder| folder_version(folder).as_deref() == Some(version.name()));
-    found.or_else(|| version.is_newest().then_some(base))
+    // An installed game keeps only the newest version and may have no `version.json`; a folder
+    // that says it is another version is not this one's.
+    found.or_else(|| (version.is_newest() && folder_version(&base).is_none()).then_some(base))
 }
 
 /// The release name in the `version.json` beside an `assets` folder.
@@ -111,6 +113,12 @@ mod tests {
             Some(dir.join("jar-26.3/assets"))
         );
         assert_eq!(super::assets_beside(base, Version::V26_1), None);
+        // Without its own folder the newest version is not played with an older one's.
+        std::fs::remove_dir_all(dir.join("jar-26.3")).expect("remove");
+        assert_eq!(
+            super::assets_beside(dir.join("jar/assets"), Version::V26_3),
+            None
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 

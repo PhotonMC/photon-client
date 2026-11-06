@@ -27,6 +27,7 @@ impl Client {
             (self.block_renderer, self.animated_atlas) =
                 super::upload_blocks(renderer, &mut self.backend)?;
             super::prefetch::note_in_use(&root);
+            log::info!("game assets are now {} ({root})", version.name());
             self.baked_root = root;
         }
         Ok(())
