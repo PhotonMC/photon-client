@@ -20,20 +20,30 @@ fn index_file(root: &Path) -> Option<PathBuf> {
     if let Some(id) = photon_content::asset_index_id(root) {
         return Some(root.join("indexes").join(format!("{}.json", id.as_str())));
     }
-    let mut found = std::fs::read_dir(root.join("indexes"))
+    // Several indexes and no metadata (a development folder that keeps more than one version):
+    // the highest-numbered one is the newest game's.
+    let mut found: Vec<(u64, PathBuf)> = std::fs::read_dir(root.join("indexes"))
         .ok()?
         .flatten()
         .map(|entry| entry.path())
-        .filter(|path| path.extension().is_some_and(|ext| ext == "json"));
-    let only = found.next()?;
-    if found.next().is_some() {
+        .filter(|path| path.extension().is_some_and(|ext| ext == "json"))
+        .map(|path| {
+            let number = path
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .and_then(|stem| stem.parse().ok())
+                .unwrap_or(0);
+            (number, path)
+        })
+        .collect();
+    found.sort();
+    if found.len() > 1 {
         log::warn!(
-            "{}: several asset indexes and no version metadata",
+            "{}: several asset indexes and no version metadata, using the newest",
             root.display()
         );
-        return None;
     }
-    Some(only)
+    found.pop().map(|(_, path)| path)
 }
 
 /// Whether `text` is a SHA-1 digest as the index writes it. Only one is safe in a file path.
@@ -111,12 +121,12 @@ mod tests {
     }
 
     #[test]
-    fn the_only_index_is_taken_and_two_without_metadata_are_not() {
+    fn the_only_index_is_taken_and_of_two_without_metadata_the_newest() {
         let root = scratch("only");
         std::fs::write(root.join("indexes/32.json"), "{}").unwrap();
         assert_eq!(super::index_file(&root), Some(root.join("indexes/32.json")));
         std::fs::write(root.join("indexes/33.json"), "{}").unwrap();
-        assert_eq!(super::index_file(&root), None);
+        assert_eq!(super::index_file(&root), Some(root.join("indexes/33.json")));
         std::fs::remove_dir_all(root).unwrap();
     }
 

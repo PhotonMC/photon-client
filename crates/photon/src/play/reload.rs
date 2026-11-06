@@ -35,11 +35,20 @@ pub(super) fn entity_textures(
                 Some(seen.insert(name.clone()).then_some(name))
             })
             .flatten()
-            .map(|name| {
-                let image = texture(root, &name, "entity texture")?;
-                Ok((name, image))
+            .map(|name| match texture(root, &name, "entity texture") {
+                Ok(image) => Ok(Some((name, image))),
+                // A map decoration the pack's version does not have (the server may number more
+                // than the installed assets draw) is left out, not fatal.
+                Err(error) if name.starts_with("map/decorations/") => {
+                    log::warn!("{error}");
+                    Ok(None)
+                }
+                Err(error) => Err(error),
             })
             .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
             .into_iter()
             .chain(Armor::trim_images(root))
             .chain(skin_slots())
