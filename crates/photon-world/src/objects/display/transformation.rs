@@ -51,7 +51,9 @@ pub(super) fn slerp(from: [f32; 4], to: [f32; 4], alpha: f32) -> [f32; 4] {
         let sin_sqr = 1.0 - abs_cosom * abs_cosom;
         let sinom = 1.0 / sin_sqr.sqrt();
         let omega = f64::from(sin_sqr * sinom).atan2(f64::from(abs_cosom)) as f32;
-        scale0 = (((1.0 - f64::from(alpha)) * f64::from(omega)).sin() * f64::from(sinom)) as f32;
+        // JOML 1.10.9 (26.3) does this in single precision; 1.10.8 (26.1, 26.2) widened it to
+        // double, which waits for the per-version behaviour overrides.
+        scale0 = f64::from((1.0 - alpha) * omega).sin() as f32 * sinom;
         scale1 = f64::from(alpha * omega).sin() as f32 * sinom;
     } else {
         scale0 = 1.0 - alpha;
