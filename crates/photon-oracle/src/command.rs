@@ -1,5 +1,4 @@
 use super::*;
-use crate::case_ids::block_state;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -212,37 +211,7 @@ pub(super) fn respond(request: Value) -> Result<Value, String> {
             "packets" => sound_packets_result(&request)?,
             "decode" => sound_decode_result(&request)?,
             "engine" => sound_engine_result(&request)?,
-            "block_sounds" => {
-                let bits = |value: f32| format!("{:08x}", value.to_bits());
-                let mut rows: Vec<Value> = photon_data::block_sound::sound_types()
-                    .map(|row| {
-                        json!({"label": format!("type:{}", row.name), "kind": "type", "name": row.name,
-                            "volume": bits(row.volume), "pitch": bits(row.pitch),
-                            "break": row.break_sound(), "step": row.step_sound(), "place": row.place_sound(),
-                            "hit": row.hit_sound(), "fall": row.fall_sound()})
-                    })
-                    .collect();
-                let overrides: Vec<(u32, &str)> = photon_data::block_sound::state_overrides()
-                    .map(|(state, row)| (state, row.name))
-                    .collect();
-                for (name, row) in photon_data::block_sound::blocks() {
-                    let own: Vec<Value> = overrides
-                        .iter()
-                        .filter(|(state, _)| {
-                            photon_world::block::state_or_air(block_state(*state as i32))
-                                .block()
-                                .name
-                                == name
-                        })
-                        .map(|(state, type_name)| json!([state, type_name]))
-                        .collect();
-                    rows.push(
-                        json!({"label": format!("block:{name}"), "kind": "block", "name": name,
-                        "type": row.name, "overrides": own}),
-                    );
-                }
-                json!({"rows": rows})
-            }
+            "block_sounds" => crate::data_tables::block_sounds(),
             "music_manager" => crate::music::music_manager_result(&request)?,
             "damage_effects" => {
                 let mut rows: Vec<Value> = photon_data::damage_effect::effect_sounds()

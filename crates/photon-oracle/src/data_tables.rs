@@ -129,3 +129,56 @@ fn leaf_particles() -> Value {
         .collect();
     json!({"rows": [{"label": "all", "blocks": blocks}]})
 }
+
+/// The block sound types and which each block uses.
+pub(crate) fn block_sounds() -> Value {
+    let bits = |value: f32| format!("{:08x}", value.to_bits());
+    let mut rows: Vec<Value> = photon_data::block_sound::sound_types()
+        .filter(|row| sound_in_version(row.break_sound()))
+            .map(|row| {
+                json!({"label": format!("type:{}", row.name), "kind": "type", "name": row.name,
+                    "volume": bits(row.volume), "pitch": bits(row.pitch),
+                    "break": row.break_sound(), "step": row.step_sound(), "place": row.place_sound(),
+                    "hit": row.hit_sound(), "fall": row.fall_sound()})
+            })
+            .collect();
+    let overrides: Vec<(u32, &str)> = photon_data::block_sound::state_overrides()
+        .map(|(state, row)| (state, row.name))
+        .collect();
+    for block in crate::case_ids::blocks() {
+        let name = block.name;
+        let Some(row) = photon_data::block_sound::of_block(name) else {
+            continue;
+        };
+        let own: Vec<Value> = overrides
+            .iter()
+            .filter(|(state, _)| {
+                photon_world::block::state_or_air(photon_core::ids::BlockStateId(*state as i32))
+                    .block()
+                    .name
+                    == name
+            })
+            .map(|(state, type_name)| {
+                json!([
+                    crate::case_ids::wire_state(photon_core::ids::BlockStateId(*state as i32)),
+                    type_name
+                ])
+            })
+            .collect();
+        rows.push(
+            json!({"label": format!("block:{name}"), "kind": "block", "name": name,
+                "type": row.name, "overrides": own}),
+        );
+    }
+    json!({"rows": rows})
+}
+
+/// Whether the sound event exists in the oracle's version.
+fn sound_in_version(name: &str) -> bool {
+    photon_data::sound_event::id(name).is_some_and(|id| {
+        crate::case_ids::registries()
+            .sound_events
+            .to_wire(id as u32)
+            .is_some()
+    })
+}
