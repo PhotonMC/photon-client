@@ -58,6 +58,9 @@ pub(super) struct LocalState {
     pub(super) reduced_debug_option: bool,
     /// `LocalPlayer.getActivePostEffects`: the chains the server last asked for (26.3).
     pub(super) post_effects: Vec<String>,
+    /// `LevelRenderer.transientBlocks`: the blocks the server asked to show for a moment, with
+    /// when each goes.
+    pub(super) transient_blocks: Vec<TransientBlock>,
     /// `ClientAdvancements`: the tree the server told of and how far the player is.
     pub(super) advancements: photon_game::advancements::ClientAdvancements,
     /// The advancements done by updates whose toasts the screen is yet to show.
@@ -310,6 +313,7 @@ impl Default for LocalState {
             reduced_debug_info: false,
             reduced_debug_option: false,
             post_effects: Vec::new(),
+            transient_blocks: Vec::new(),
             advancements: photon_game::advancements::ClientAdvancements::default(),
             pending_toasts: Vec::new(),
             received_items: Vec::new(),
@@ -370,3 +374,15 @@ fn clock_seeded_random(salt: i64) -> photon_core::random::RandomSource {
             .map_or(0, |elapsed| elapsed.as_nanos() as i64 ^ salt),
     )
 }
+
+/// A block shown for a moment (`TransientBlockRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TransientBlock {
+    pub position: [i32; 3],
+    pub state: photon_core::ids::BlockStateId,
+    /// `liveUntilMs`.
+    pub live_until: std::time::Instant,
+}
+
+/// `TransientBlock.DEFAULT_TIME_TO_LIVE`, in seconds.
+pub(super) const TRANSIENT_BLOCK_SECONDS: f64 = 1.0;

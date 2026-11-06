@@ -23,7 +23,7 @@ pub use photon_protocol::play::*;
 pub use play::{
     ChartRequests, CommandBlockSettings, CommandBlockState, DebugQuery, DebugQueryAnswer,
     GameTestHighlight, GlobalBlock, JigsawBlockSettings, LoadingReason, PlaySession, ProfileSkin,
-    SampleLog, StructureBlockSettings, StructureFlags, SwitchKind,
+    SampleLog, StructureBlockSettings, StructureFlags, SwitchKind, TransientBlock,
 };
 pub use record::{NoRecorder, Recorder};
 pub use session::{

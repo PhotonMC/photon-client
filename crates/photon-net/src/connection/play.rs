@@ -67,7 +67,7 @@ mod reconfigure;
 mod version_tests;
 pub use chat::ProfileSkin;
 pub use command_blocks::{CommandBlockSettings, CommandBlockState};
-pub use groups::GlobalBlock;
+pub use groups::{GlobalBlock, TransientBlock};
 pub use reconfigure::SwitchKind;
 mod jigsaw_blocks;
 mod signs;
@@ -361,7 +361,8 @@ mod tests {
         effects.extend(name);
         session.handle_bytes(&effects).unwrap();
         assert_eq!(session.active_post_effects(), ["minecraft:blur"]);
-        // A swing of an entity that is not there, and a transient block, are taken and dropped.
+        // A swing of an entity that is not there is taken and dropped; a transient block is kept
+        // for a second.
         let mut swing = varint(wire(PLAY_CLIENTBOUND_SWING_ANIMATION_PACKET_ID) as u32);
         for value in [9, 0, 1, 6] {
             swing.extend(varint(value));
@@ -371,6 +372,9 @@ mod tests {
         block.extend(0_i64.to_be_bytes());
         block.extend(varint(1));
         session.handle_bytes(&block).unwrap();
+        let kept: Vec<_> = session.transient_blocks().collect();
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].position, [0, 0, 0]);
         // `forget_level_chunk` is 38 on the wire in 26.3 and still the packet it was.
         assert_eq!(wire(PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID), 38);
     }

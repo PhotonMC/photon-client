@@ -206,6 +206,15 @@ impl PlaySession {
         &self.local.post_effects
     }
 
+    /// The blocks the server asked to show for a moment, that have not gone yet.
+    pub fn transient_blocks(&self) -> impl Iterator<Item = &super::groups::TransientBlock> {
+        let now = std::time::Instant::now();
+        self.local
+            .transient_blocks
+            .iter()
+            .filter(move |block| now < block.live_until)
+    }
+
     pub fn reduced_debug_info(&self) -> bool {
         self.local.reduced_debug_info || self.local.reduced_debug_option
     }

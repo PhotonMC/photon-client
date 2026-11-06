@@ -70,10 +70,26 @@ impl ClientboundPacket for PostEffects {
     }
 }
 
-/// The block is only drawn for a moment, while a section mesh is made (the reference queues it
-/// for the renderer); nothing here keeps it.
+/// `LevelExtractor.drainTransientBlockQueue`: the block is drawn for a second.
 impl ClientboundPacket for AddTransientBlock {
-    fn handle(self: Box<Self>, _session: &mut PlaySession) -> Result<(), ConnectionError> {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        let block = self.0;
+        let now = std::time::Instant::now();
+        session
+            .local
+            .transient_blocks
+            .retain(|held| now < held.live_until);
+        session
+            .local
+            .transient_blocks
+            .push(super::super::groups::TransientBlock {
+                position: [block.x, block.y, block.z],
+                state: block.state_id,
+                live_until: now
+                    + std::time::Duration::from_secs_f64(
+                        super::super::groups::TRANSIENT_BLOCK_SECONDS,
+                    ),
+            });
         Ok(())
     }
 }

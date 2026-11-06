@@ -57,18 +57,6 @@ pub fn parse_post_effects_packet(input: &[u8]) -> Result<Vec<String>, Connection
     Ok(effects)
 }
 
-/// `ClientboundAddTransientBlockPacket`: a block shown for a moment at a place (the position and
-/// the wire id of its state).
-pub fn parse_add_transient_block_packet(input: &[u8]) -> Result<(i64, i32), ConnectionError> {
-    let mut input = input;
-    let position = read_i64(&mut input, "transient block position")?;
-    let state = read_varint(&mut input, "transient block state")?;
-    if !input.is_empty() {
-        return Err(ConnectionError::Codec("transient block trailing payload"));
-    }
-    Ok((position, state))
-}
-
 wrapped_packet!(
     /// `ClientboundSwingAnimationPacket`.
     SwingAnimation(SwingAnimationObservation) = parse_swing_animation_packet,
@@ -81,8 +69,8 @@ wrapped_packet!(
     OnError::Ignore("post_effects")
 );
 
-wrapped_packet!(
+// The packet carries what a block update does: a position and a state, shown for a moment.
+wrapped_wire_packet!(
     /// `ClientboundAddTransientBlockPacket`.
-    AddTransientBlock((i64, i32)) = parse_add_transient_block_packet,
-    OnError::Ignore("add_transient_block")
+    AddTransientBlock(BlockUpdateObservation) = parse_block_update_packet
 );

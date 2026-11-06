@@ -25,9 +25,8 @@ use crate::gui::Gui;
 use crate::mobs;
 use crate::mobs::humanoids::villagers;
 use crate::objects::dropped_items::{WorldItemLayers, world_items};
-use crate::objects::falling_blocks::falling_blocks;
 use crate::objects::fishing_hooks::{HookView, fishing_hooks};
-use crate::objects::piston_blocks::piston_blocks;
+use crate::objects::moving_blocks;
 use crate::overlays::{self, FrameView, cracks, hands, hud_fov, packed_light, tick_hands};
 use crate::packs;
 use crate::ppm;
@@ -592,8 +591,7 @@ fn set_moving_blocks(
     tints: (&BlockRenderer, &BiomeTints),
     view: overlays::FrameView,
 ) -> Result<()> {
-    let mut moving = falling_blocks(session, tints, view);
-    moving.extend(piston_blocks(session, tints, view));
+    let moving = moving_blocks(session, tints, view);
     let moving: Vec<_> = moving
         .iter()
         .map(|(mesh, centre)| (mesh, *centre))
