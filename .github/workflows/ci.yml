@@ -94,7 +94,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["26.2"]
+        version: ["26.2", "26.3"]
     steps:
       - uses: actions/checkout@v4
       - name: Install system packages
