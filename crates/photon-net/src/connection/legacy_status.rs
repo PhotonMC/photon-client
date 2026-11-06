@@ -130,6 +130,15 @@ mod tests {
             let mut out = vec![255];
             write_legacy_string(&mut out, text);
             stream.write_all(&out).expect("answer");
+            // The rest of the request is read before the socket closes: closing with unread
+            // bytes resets the connection on Windows and the answer is lost.
+            stream
+                .shutdown(std::net::Shutdown::Write)
+                .expect("shutdown");
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .expect("timeout");
+            let _ = stream.read_to_end(&mut Vec::new());
         });
         let status = query_legacy_status(address, ("localhost", 25565), Duration::from_secs(5));
         server.join().expect("server");
