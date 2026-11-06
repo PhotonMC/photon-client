@@ -27,6 +27,9 @@ pub fn generate(
 ) -> Result<Vec<Case>, String> {
     let mut sorted = families.to_vec();
     sorted.sort();
+    if let Some(version) = version {
+        parity_cases::set_version(version);
+    }
     let translation = version.and_then(super::translate::Translation::load);
     let mut cases = Vec::new();
     let mut ids = BTreeSet::new();

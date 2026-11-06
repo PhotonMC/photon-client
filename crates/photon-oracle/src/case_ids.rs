@@ -9,14 +9,22 @@ use photon_core::ids::{BlockStateId, EntityTypeId, ItemId};
 use photon_core::version::Version;
 use photon_data::version_registries::VersionRegistries;
 
-/// The version the oracle's Java is: the newest version's, `tests/behavior/java/v26_3`.
-pub(crate) const ORACLE_VERSION: Version = Version::NEWEST;
+/// The version the oracle's Java is (`PHOTON_ORACLE_VERSION`, else the newest version's), `tests/behavior/java/v26_3`.
+pub(crate) fn oracle_version() -> Version {
+    static VERSION: OnceLock<Version> = OnceLock::new();
+    *VERSION.get_or_init(|| {
+        std::env::var("PHOTON_ORACLE_VERSION")
+            .ok()
+            .and_then(|name| Version::from_name(&name))
+            .unwrap_or(Version::NEWEST)
+    })
+}
 
-/// The numbering of [`ORACLE_VERSION`].
+/// The numbering of [`oracle_version`].
 pub(crate) fn registries() -> Arc<VersionRegistries> {
     static REGISTRIES: OnceLock<Arc<VersionRegistries>> = OnceLock::new();
     REGISTRIES
-        .get_or_init(|| Arc::new(VersionRegistries::for_version(ORACLE_VERSION)))
+        .get_or_init(|| Arc::new(VersionRegistries::for_version(oracle_version())))
         .clone()
 }
 
@@ -35,27 +43,27 @@ pub(crate) fn block_state(wire: i32) -> BlockStateId {
     BlockStateId(registries().block_states.canonical_or_unknown(wire))
 }
 
-/// The blocks of [`ORACLE_VERSION`] in registry order: the position in this list is the
+/// The blocks of [`oracle_version`] in registry order: the position in this list is the
 /// block's place in the reference's registry.
 pub(crate) fn blocks() -> impl Iterator<Item = &'static photon_data::block::registry::Block> {
     photon_data::block::registry::BLOCKS
         .iter()
-        .filter(|block| block.exists_in(ORACLE_VERSION))
+        .filter(|block| block.exists_in(oracle_version()))
 }
 
-/// The items of [`ORACLE_VERSION`] in registry order.
+/// The items of [`oracle_version`] in registry order.
 pub(crate) fn items() -> impl Iterator<Item = &'static photon_data::item::registry::Item> {
     photon_data::item::registry::ITEMS
         .iter()
-        .filter(|item| item.exists_in(ORACLE_VERSION))
+        .filter(|item| item.exists_in(oracle_version()))
 }
 
-/// How many block states [`ORACLE_VERSION`] has.
+/// How many block states [`oracle_version`] has.
 pub(crate) fn state_count() -> u32 {
     registries().block_states.wire_len() as u32
 }
 
-/// The chunk sections a payload holds, read with the numbering of [`ORACLE_VERSION`].
+/// The chunk sections a payload holds, read with the numbering of [`oracle_version`].
 pub(crate) fn sections(
     bytes: &[u8],
 ) -> Result<Vec<photon_protocol::play::ChunkSectionObservation>, String> {
@@ -85,7 +93,7 @@ pub(crate) fn wire_sound(sound: i32) -> i32 {
     registries().sound_events.wire_or_unknown(sound)
 }
 
-/// The class [`ORACLE_VERSION`]'s Java gives an item. The newest version moved what the axe,
+/// The class [`oracle_version`]'s Java gives an item. The newest version moved what the axe,
 /// hoe, shovel, sign and bed classes did into item components, so its items are plain ones;
 /// the client keeps the classes as the kinds of behaviour they name.
 pub(crate) fn reference_class(
@@ -100,7 +108,7 @@ pub(crate) fn reference_class(
     }
 }
 
-/// Whether [`ORACLE_VERSION`]'s Java has the class.
+/// Whether [`oracle_version`]'s Java has the class.
 pub(crate) fn reference_has_class(class: photon_data::item::classes::ItemClass) -> bool {
     reference_class(class) == class
 }

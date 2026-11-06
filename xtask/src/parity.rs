@@ -305,6 +305,7 @@ fn adapter_failures<'a>(
     let mut command =
         std::process::Command::new(process::root().join("target/release/photon-oracle"));
     command.env("PHOTON_ASSETS", assets(version));
+    command.env("PHOTON_ORACLE_VERSION", version);
     let input: String = cases
         .iter()
         .map(|case| format!("{}\n", case.line))

@@ -406,7 +406,11 @@ fn damaged(value: i64) -> String {
 fn bundle(items: &[(i64, i64)]) -> String {
     let stacks: String =
         items.iter().map(|(item, count)| format!("{}{}0000", hex(&varint(*item)), hex(&varint(*count)))).collect();
-    format!("010032{}{stacks}", hex(&varint(items.len() as i64)))
+    format!(
+        "0100{:02x}{}{stacks}",
+        crate::components::kind_number(crate::components::BUNDLE_CONTENTS),
+        hex(&varint(items.len() as i64))
+    )
 }
 
 /// `UseCooldown.STREAM_CODEC`: the seconds (a float), then the group.

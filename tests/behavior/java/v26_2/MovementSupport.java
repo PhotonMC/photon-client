@@ -777,7 +777,11 @@ class MovementSupport {
             }
             var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
                 io.netty.buffer.Unpooled.wrappedBuffer(bytes), Game26_2.vanillaRegistries());
-            stack.applyComponents(net.minecraft.core.component.DataComponentPatch.STREAM_CODEC.decode(buffer));
+            try {
+                stack.applyComponents(net.minecraft.core.component.DataComponentPatch.STREAM_CODEC.decode(buffer));
+            } catch (RuntimeException failure) {
+                throw new IllegalStateException("patch " + patch + " of " + described, failure);
+            }
         }
         if (described.has("book_pages")) {
             // A written book of these pages (plain text).

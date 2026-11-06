@@ -111,7 +111,8 @@ fn direct(sound: &str, fixed_range: Option<f32>, duration: f32, range: f32) -> S
         text(sound),
         float(duration),
         float(range),
-        vi(0),
+        // The durability damage came with 26.3.
+        if crate::components::is_26_2() { String::new() } else { vi(0) },
         nbt_text("Horn")
     );
     patch(&[(INSTRUMENT, instrument)])

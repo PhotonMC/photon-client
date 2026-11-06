@@ -43,16 +43,86 @@ pub const SMITE: i64 = 35;
 pub const UNBREAKING: i64 = 40;
 pub const VANISHING_CURSE: i64 = 41;
 
-/// Item registry ids of the items a stack holds here.
+static CASE_VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// Names the version the cases are generated for: the ids below are the newest version's, and the
+/// version before it numbers some of them differently.
+pub fn set_version(version: &str) {
+    let _ = CASE_VERSION.set(version.to_owned());
+}
+
+pub fn is_26_2() -> bool {
+    CASE_VERSION.get().is_some_and(|version| version == "26.2")
+}
+
+/// A component type id (as the newest version numbers it) as the version under test does.
+pub fn kind_number(kind: i64) -> i64 {
+    if is_26_2() { component_26_2(kind) } else { kind }
+}
+
+/// `lodestone_tracker`'s type id as a hex byte.
+pub fn lodestone_tracker_hex() -> &'static str {
+    if is_26_2() { "43" } else { "45" }
+}
+
+/// The data component type ids that 26.2 numbers differently: (26.3's, 26.2's).
+const COMPONENTS_26_2: [(i64, i64); 40] = [
+    (42, 41),
+    (45, 42),
+    (46, 43),
+    (47, 44),
+    (48, 46),
+    (49, 47),
+    (50, 48),
+    (51, 49),
+    (52, 50),
+    (53, 51),
+    (54, 52),
+    (55, 53),
+    (56, 54),
+    (57, 55),
+    (58, 56),
+    (59, 57),
+    (60, 58),
+    (61, 59),
+    (62, 60),
+    (63, 61),
+    (64, 62),
+    (65, 63),
+    (66, 64),
+    (67, 65),
+    (68, 66),
+    (69, 67),
+    (70, 68),
+    (71, 69),
+    (72, 70),
+    (73, 71),
+    (74, 72),
+    (75, 73),
+    (76, 74),
+    (77, 75),
+    (78, 76),
+    (79, 77),
+    (80, 78),
+    (81, 79),
+    (82, 80),
+    (83, 81),
+];
+
+/// A data component type id as 26.2 numbers it (the constants are 26.3's).
+fn component_26_2(kind: i64) -> i64 {
+    COMPONENTS_26_2.iter().find(|(newest, _)| *newest == kind).map_or(kind, |(_, older)| *older)
+}
+
+/// Item registry ids of the items a stack holds here: (name, 26.3's id, 26.2's id).
+const ITEMS: [(&str, i64, i64); 5] =
+    [("stone", 1, 1), ("dirt", 55, 55), ("iron_sword", 1045, 959), ("bundle", 1153, 1065), ("ender_pearl", 1265, 1144)];
+
+/// The registry id of an item of the version under test.
 pub fn item_id(item: &str) -> i64 {
-    match item {
-        "stone" => 1,
-        "dirt" => 55,
-        "iron_sword" => 1045,
-        "bundle" => 1153,
-        "ender_pearl" => 1265,
-        other => panic!("no registry id for {other}"),
-    }
+    let (_, newest, older) =
+        ITEMS.iter().find(|(name, ..)| *name == item).unwrap_or_else(|| panic!("no registry id for {item}"));
+    if is_26_2() { *older } else { *newest }
 }
 
 /// A protocol VarInt as hex.
@@ -175,12 +245,13 @@ pub fn nbt_text(value: &str) -> String {
 /// removed type ids.
 pub fn patch_of(added: &[(i64, String)], removed: &[i64]) -> String {
     let mut out = format!("{}{}", vi(added.len() as i64), vi(removed.len() as i64));
+    let number = |kind: i64| if is_26_2() { component_26_2(kind) } else { kind };
     for (kind, value) in added {
-        out.push_str(&vi(*kind));
+        out.push_str(&vi(number(*kind)));
         out.push_str(value);
     }
     for kind in removed {
-        out.push_str(&vi(*kind));
+        out.push_str(&vi(number(*kind)));
     }
     out
 }

@@ -37,7 +37,8 @@ fn written_horn() -> String {
         text("minecraft:item.goat_horn.sound.2"),
         float(3.5),
         float(64.0),
-        vi(0),
+        // The durability damage came with 26.3.
+        if crate::components::is_26_2() { String::new() } else { vi(0) },
         nbt("Old Horn")
     )
 }

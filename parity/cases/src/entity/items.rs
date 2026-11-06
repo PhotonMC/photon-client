@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 
 use super::pose::{Fields, LOOK_WALK, entity, fields, layer_row, table};
 use crate::bits::{f32_bits, f64_bits};
+use crate::components::lodestone_tracker_hex;
 use crate::line::float_text;
 
 type Bounds = ([f64; 3], [f64; 3]);
@@ -213,9 +214,17 @@ pub fn glint() -> Vec<Value> {
         foil("foil-removed-override", "minecraft:enchanted_golden_apple", "000115"),
         foil("foil-no-enchantments", "minecraft:iron_helmet", "01000d00"),
         foil("foil-plain-compass", "minecraft:compass", "0000"),
-        foil("foil-lodestone-compass", "minecraft:compass", "0100450001"),
-        foil("foil-lodestone-compass-overridden-off", "minecraft:compass", "02004500011500"),
-        foil("foil-lodestone-recovery-compass", "minecraft:recovery_compass", "0100450001"),
+        foil("foil-lodestone-compass", "minecraft:compass", &format!("0100{}0001", lodestone_tracker_hex())),
+        foil(
+            "foil-lodestone-compass-overridden-off",
+            "minecraft:compass",
+            &format!("0200{}00011500", lodestone_tracker_hex()),
+        ),
+        foil(
+            "foil-lodestone-recovery-compass",
+            "minecraft:recovery_compass",
+            &format!("0100{}0001", lodestone_tracker_hex()),
+        ),
         foil("foil-enchanted-book-overridden-off", "minecraft:enchanted_book", "01001500"),
     ];
     let mut rows = rows;

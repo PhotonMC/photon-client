@@ -98,6 +98,13 @@ class MovementLivingOracle extends MovementObjectExtras {
                     case "death" -> eventDeath(ctx, event);
                     case "move" -> eventMove(ctx, event);
                     case "animate" -> eventAnimate(ctx, event);
+                    // 26.3's swing packet names the animation and its length; before it, an animate
+                    // packet swung the hand for the length its effects give.
+                    case "swing" -> {
+                        var animate = new JsonObject();
+                        animate.addProperty("action", event.get("hand").getAsInt() == 0 ? 0 : 3);
+                        eventAnimate(ctx, animate);
+                    }
                     case "creeper_data" -> eventCreeperData(ctx, event);
                     case "sync" -> eventSync(ctx, event);
                     case "game_time" -> eventGameTime(ctx, event);

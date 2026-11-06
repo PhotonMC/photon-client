@@ -258,7 +258,7 @@ fn describe_tool(tool: &photon_data::item::definition::Tool) -> Value {
     })
 }
 
-/// The item classes [`crate::case_ids::ORACLE_VERSION`]'s Java has, in its order.
+/// The item classes [`crate::case_ids::oracle_version`]'s Java has, in its order.
 fn item_classes() -> Vec<Value> {
     use photon_data::item::classes::ItemClass;
     ItemClass::ALL

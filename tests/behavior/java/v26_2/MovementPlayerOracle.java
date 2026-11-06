@@ -16,7 +16,11 @@ class MovementPlayerOracle extends MovementWorldOracle {
         }
         var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
             io.netty.buffer.Unpooled.wrappedBuffer(bytes), registries);
-        stack.applyComponents(net.minecraft.core.component.DataComponentPatch.STREAM_CODEC.decode(buffer));
+        try {
+            stack.applyComponents(net.minecraft.core.component.DataComponentPatch.STREAM_CODEC.decode(buffer));
+        } catch (RuntimeException failure) {
+            throw new IllegalStateException("component patch " + hex, failure);
+        }
         if (buffer.readableBytes() != 0) {
             throw new IllegalStateException("component patch has trailing bytes");
         }

@@ -16,6 +16,11 @@ mod block_placement;
 mod case;
 mod components;
 pub mod coverage;
+
+/// Names the version the cases are generated for (see `components::set_version`).
+pub fn set_version(version: &str) {
+    components::set_version(version);
+}
 mod entity;
 mod gui;
 mod image;
