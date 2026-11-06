@@ -438,3 +438,57 @@ fn a_player_hangs_upside_down_by_profile_name_when_the_cape_shows() {
     assert!(!flipped(&world, "dinnerbone"));
     assert!(!flipped(&world, "Steve"));
 }
+
+#[test]
+fn stepped_move_path_passes_through_each_step_like_java() {
+    let mut world = ClientWorld::default();
+    let (blocks, biomes) = section(0, 0);
+    world.replace_chunk(
+        0,
+        -3,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+    assert!(world.apply_entity(EntityInput {
+        entity_id: EntityId(37),
+        uuid: Uuid::new(1, 2),
+        type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
+        x: 1.0,
+        y: 80.0,
+        z: -35.5,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }));
+    // One block in one tick, then three more in three: the first tick ends on the first step,
+    // where one linear step to the end would only be half way.
+    let step = |ticks, delta_x| EntityDeltaStep {
+        ticks,
+        delta_x,
+        delta_y: 0,
+        delta_z: 0,
+    };
+    assert!(world.apply_entity_move_steps(
+        EntityMoveInput {
+            entity_id: EntityId(37),
+            delta_x: 0,
+            delta_y: 0,
+            delta_z: 0,
+            has_position: true,
+            y_rot: None,
+            x_rot: None,
+        },
+        &[step(1, 4096), step(3, 12288)],
+    ));
+    world.tick();
+    let entity = world.entities().at(EntityId(37)).expect("player");
+    assert_eq!(entity.position(), (2.0, 80.0, -35.5));
+    assert_eq!(
+        entity.interpolation_target_position(),
+        Some((5.0, 80.0, -35.5))
+    );
+}

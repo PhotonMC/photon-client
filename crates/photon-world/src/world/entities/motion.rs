@@ -27,6 +27,16 @@ impl ClientWorld {
         rotation: EntityRotationInput,
         mode: EntityPositionUpdateMode,
     ) -> bool {
+        self.apply_entity_position_along(input, rotation, (mode, &[]))
+    }
+
+    /// The same with a `PositionPath` (26.3): `input` is its end, `path` its steps.
+    pub fn apply_entity_position_along(
+        &mut self,
+        input: EntityPositionInput,
+        rotation: EntityRotationInput,
+        (mode, path): (EntityPositionUpdateMode, &[EntityPathStep]),
+    ) -> bool {
         let Some(resolved) = self.resolve_entity_position(&input) else {
             return false;
         };
@@ -56,7 +66,7 @@ impl ClientWorld {
         self.apply_entity_position_target(
             input.entity_id,
             resolved.current,
-            resolved.target,
+            (resolved.target, path),
             resolved.ticking,
             Some((target_y_rot, target_x_rot)),
             mode,
@@ -118,6 +128,15 @@ impl ClientWorld {
     }
 
     pub fn apply_entity_move(&mut self, input: EntityMoveInput) -> bool {
+        self.apply_entity_move_steps(input, &[])
+    }
+
+    /// `handleMoveEntity` with a stepped `VecDelta` (26.3): the entity passes through the steps.
+    pub fn apply_entity_move_steps(
+        &mut self,
+        input: EntityMoveInput,
+        steps: &[EntityDeltaStep],
+    ) -> bool {
         let Some((previous_position, current)) = self
             .entities
             .get(&input.entity_id)
@@ -125,13 +144,8 @@ impl ClientWorld {
         else {
             return false;
         };
-        let new_position = input.has_position.then(|| {
-            (
-                f64::from_bits(decode_entity_delta(current.0, input.delta_x)),
-                f64::from_bits(decode_entity_delta(current.1, input.delta_y)),
-                f64::from_bits(decode_entity_delta(current.2, input.delta_z)),
-            )
-        });
+        let path = decode_entity_steps(current, steps);
+        let new_position = move_target(current, &input, &path);
         if self.is_locally_authoritative(input.entity_id) {
             self.keep_packet_base_only(input.entity_id, new_position);
             return false;
@@ -155,7 +169,11 @@ impl ClientWorld {
                 let (current_y_rot, current_x_rot) = entity.as_view().interpolation_rotation();
                 let target_y_rot = input.y_rot.unwrap_or(current_y_rot);
                 let target_x_rot = input.x_rot.unwrap_or(current_x_rot);
-                entity.move_or_interpolate_to(target_position, target_y_rot, target_x_rot);
+                entity.move_or_interpolate_along(
+                    target_position,
+                    &path,
+                    (target_y_rot, target_x_rot),
+                );
             } else {
                 entity.set_plain_position(new_position, (input.y_rot, input.x_rot));
                 if input.has_position {
@@ -203,7 +221,7 @@ impl ClientWorld {
         &mut self,
         entity_id: EntityId,
         current_position: (f64, f64, f64),
-        target_position: (f64, f64, f64),
+        (target_position, path): ((f64, f64, f64), &[EntityPathStep]),
         ticking: bool,
         target_rotation: Option<(f32, f32)>,
         mode: EntityPositionUpdateMode,
@@ -242,7 +260,7 @@ impl ClientWorld {
                     } && delta_x * delta_x + delta_y * delta_y + delta_z * delta_z
                         <= ENTITY_INTERPOLATION_DISTANCE_SQR;
                 if can_interpolate {
-                    entity.move_or_interpolate_to(target_position, rotation.0, rotation.1);
+                    entity.move_or_interpolate_along(target_position, path, rotation);
                 } else {
                     entity.snap_to(target_position, rotation.0, rotation.1);
                 }
@@ -351,7 +369,7 @@ impl ClientWorld {
         self.apply_entity_position_target(
             input.entity_id,
             resolved.current,
-            resolved.target,
+            (resolved.target, &[]),
             resolved.ticking,
             None,
             EntityPositionUpdateMode::PositionSync,

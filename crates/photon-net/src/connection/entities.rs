@@ -4,8 +4,9 @@
 
 use photon_core::ids::EntityId;
 use photon_world::{
-    ClientWorld, EntityInput, EntityMotionInput, EntityMoveInput, EntityPositionInput,
-    EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput, EquipmentSlot,
+    ClientWorld, EntityDeltaStep, EntityInput, EntityMotionInput, EntityMoveInput,
+    EntityPositionInput, EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput,
+    EquipmentSlot,
 };
 
 use photon_world::objects::minecart_track::MinecartStep;
@@ -149,7 +150,7 @@ pub fn metadata(
 /// `handleEntityPositionSync`: the entity is put where the server says, and
 /// told whether it stands on the ground.
 pub fn position_sync(world: &mut ClientWorld, packet: &EntityPositionSyncObservation) -> bool {
-    let applied = world.apply_entity_position_and_rotation(
+    let applied = world.apply_entity_position_along(
         EntityPositionInput {
             entity_id: packet.entity_id,
             x: packet.x,
@@ -165,7 +166,7 @@ pub fn position_sync(world: &mut ClientWorld, packet: &EntityPositionSyncObserva
             relative_y_rot: false,
             relative_x_rot: false,
         },
-        EntityPositionUpdateMode::PositionSync,
+        (EntityPositionUpdateMode::PositionSync, &packet.steps),
     );
     if applied {
         world.apply_entity_ground_state(packet.entity_id, packet.on_ground);
@@ -195,15 +196,28 @@ pub fn teleport(world: &mut ClientWorld, packet: &EntityTeleportObservation) -> 
 
 /// `handleMoveEntity`: a step, a turn or both.
 pub fn step(world: &mut ClientWorld, packet: &EntityMoveObservation) -> bool {
-    let applied = world.apply_entity_move(EntityMoveInput {
-        entity_id: packet.entity_id,
-        delta_x: packet.delta_x,
-        delta_y: packet.delta_y,
-        delta_z: packet.delta_z,
-        has_position: packet.has_position,
-        y_rot: packet.y_rot,
-        x_rot: packet.x_rot,
-    });
+    let steps: Vec<_> = packet
+        .steps
+        .iter()
+        .map(|step| EntityDeltaStep {
+            ticks: step.ticks,
+            delta_x: step.delta_x,
+            delta_y: step.delta_y,
+            delta_z: step.delta_z,
+        })
+        .collect();
+    let applied = world.apply_entity_move_steps(
+        EntityMoveInput {
+            entity_id: packet.entity_id,
+            delta_x: packet.delta_x,
+            delta_y: packet.delta_y,
+            delta_z: packet.delta_z,
+            has_position: packet.has_position,
+            y_rot: packet.y_rot,
+            x_rot: packet.x_rot,
+        },
+        &steps,
+    );
     if applied {
         world.apply_entity_ground_state(packet.entity_id, packet.on_ground);
     }

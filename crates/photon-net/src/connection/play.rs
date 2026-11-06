@@ -304,10 +304,11 @@ mod tests {
         // A step of an entity that is there moves it; of one that is not, nothing.
         let mut step = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
         step.extend(varint(7));
+        // The on-ground bit and no steps (26.3 packs them into one number).
+        step.extend(varint(1));
         for delta in [4096_i16, 0, 0] {
             step.extend(delta.to_be_bytes());
         }
-        step.push(1);
         session.handle_bytes(&step).unwrap();
         let moved = session
             .world()

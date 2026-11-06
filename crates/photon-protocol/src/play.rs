@@ -77,6 +77,8 @@ mod merchant;
 pub use merchant::*;
 mod movement;
 pub use movement::*;
+mod movement_steps;
+pub use movement_steps::*;
 mod player;
 pub use player::*;
 mod particles;

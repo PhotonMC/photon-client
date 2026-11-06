@@ -1,3 +1,4 @@
+use super::super::movement_steps::*;
 use super::*;
 
 #[test]
@@ -105,6 +106,7 @@ fn entity_position_sync_parser_matches_java_position_move_rotation_without_mask(
             y_rot: 180.0,
             x_rot: -30.0,
             on_ground: false,
+            steps: Vec::new(),
             applied_to_world: false,
             applied_on_ground: None,
             applied_position: None,
@@ -136,6 +138,7 @@ fn move_entity_parsers_match_java_position_and_rotation_variants() {
             has_position: true,
             has_rotation: false,
             on_ground: true,
+            steps: Vec::new(),
             applied_to_world: false,
             applied_on_ground: None,
             applied_position: None,
@@ -158,6 +161,7 @@ fn move_entity_parsers_match_java_position_and_rotation_variants() {
             has_position: true,
             has_rotation: true,
             on_ground: true,
+            steps: Vec::new(),
             applied_to_world: false,
             applied_on_ground: None,
             applied_position: None,
@@ -180,6 +184,7 @@ fn move_entity_parsers_match_java_position_and_rotation_variants() {
             has_position: false,
             has_rotation: true,
             on_ground: false,
+            steps: Vec::new(),
             applied_to_world: false,
             applied_on_ground: None,
             applied_position: None,
@@ -212,4 +217,94 @@ fn minecart_steps_parser_reads_doubles_packed_turns_and_a_float_weight() {
 
     payload.push(0);
     assert!(parse_move_minecart_packet(&payload).is_err());
+}
+
+fn registries_263() -> std::sync::Arc<photon_data::version_registries::VersionRegistries> {
+    photon_data::version_registries::VersionRegistries::of(photon_core::version::Version::V26_3)
+}
+
+#[test]
+fn move_entity_26_3_reads_properties_steps_and_rotation_only_ground_byte() {
+    let registries = registries_263();
+    // Pos: id 5, properties = 2 steps << 1 | on ground, then two steps of (ticks, x, y, z).
+    let mut payload = Vec::new();
+    photon_core::wire::write_varint(5, &mut payload);
+    photon_core::wire::write_varint(2 << 1 | 1, &mut payload);
+    for (ticks, x, y, z) in [(2_i32, 100_i16, -50_i16, 7_i16), (3, 1, 2, 3)] {
+        photon_core::wire::write_varint(ticks, &mut payload);
+        for value in [x, y, z] {
+            payload.extend_from_slice(&value.to_be_bytes());
+        }
+    }
+    let packet = parse_move_entity_pos_packet_for(&payload, &registries).expect("stepped pos");
+    assert!(packet.on_ground && packet.has_position && !packet.has_rotation);
+    assert_eq!(packet.steps.len(), 2);
+    assert_eq!(packet.steps[0].ticks, 2);
+    assert_eq!((packet.delta_x, packet.delta_y, packet.delta_z), (1, 2, 3));
+
+    // A plain offset has no step count.
+    let mut plain = Vec::new();
+    photon_core::wire::write_varint(5, &mut plain);
+    photon_core::wire::write_varint(0, &mut plain);
+    for value in [256_i16, -512, 1024] {
+        plain.extend_from_slice(&value.to_be_bytes());
+    }
+    plain.extend_from_slice(&[64, 192]);
+    let packet = parse_move_entity_pos_rot_packet_for(&plain, &registries).expect("plain pos rot");
+    assert!(!packet.on_ground && packet.steps.is_empty());
+    assert_eq!(packet.delta_y, -512);
+    assert_eq!(packet.y_rot, Some(90.0));
+
+    // A count bigger than the bytes left is refused.
+    let mut bad = Vec::new();
+    photon_core::wire::write_varint(5, &mut bad);
+    photon_core::wire::write_varint(9 << 1, &mut bad);
+    bad.extend_from_slice(&[0; 7]);
+    assert!(parse_move_entity_pos_packet_for(&bad, &registries).is_err());
+
+    // Rot: the on-ground byte comes before the turn.
+    let mut rot = Vec::new();
+    photon_core::wire::write_varint(5, &mut rot);
+    rot.extend_from_slice(&[1, 64, 192]);
+    let packet = parse_move_entity_rot_packet_for(&rot, &registries).expect("rot");
+    assert!(packet.on_ground && packet.has_rotation && !packet.has_position);
+    assert_eq!(packet.x_rot, Some(-90.0));
+}
+
+#[test]
+fn position_sync_26_3_reads_linear_and_stepped_paths() {
+    let registries = registries_263();
+    let mut linear = Vec::new();
+    photon_core::wire::write_varint(3, &mut linear);
+    photon_core::wire::write_varint(0, &mut linear);
+    for value in [1.0_f64, 2.0, 3.0] {
+        linear.extend_from_slice(&value.to_be_bytes());
+    }
+    linear.extend_from_slice(&10.0_f32.to_be_bytes());
+    linear.extend_from_slice(&20.0_f32.to_be_bytes());
+    linear.push(1);
+    let packet = parse_entity_position_sync_packet_for(&linear, &registries).expect("linear");
+    assert_eq!((packet.x, packet.y, packet.z), (1.0, 2.0, 3.0));
+    assert!(packet.steps.is_empty() && packet.on_ground);
+    assert_eq!((packet.y_rot, packet.x_rot), (10.0, 20.0));
+
+    let mut stepped = Vec::new();
+    photon_core::wire::write_varint(3, &mut stepped);
+    photon_core::wire::write_varint(1, &mut stepped);
+    photon_core::wire::write_varint(2, &mut stepped);
+    for (place, ticks) in [([1.0_f64, 2.0, 3.0], 4), ([5.0, 6.0, 7.0], 1)] {
+        for value in place {
+            stepped.extend_from_slice(&value.to_be_bytes());
+        }
+        photon_core::wire::write_varint(ticks, &mut stepped);
+    }
+    stepped.extend_from_slice(&0.0_f32.to_be_bytes());
+    stepped.extend_from_slice(&0.0_f32.to_be_bytes());
+    stepped.push(0);
+    let packet = parse_entity_position_sync_packet_for(&stepped, &registries).expect("stepped");
+    assert_eq!((packet.x, packet.y, packet.z), (5.0, 6.0, 7.0));
+    assert_eq!(
+        packet.steps,
+        vec![((1.0, 2.0, 3.0), 4), ((5.0, 6.0, 7.0), 1)]
+    );
 }

@@ -25,6 +25,42 @@ pub(crate) fn decode_entity_delta(base: f64, delta: i16) -> u64 {
     }
 }
 
+/// `VecDelta.Stepped.decode`: each step is an offset from the one before, the first from the
+/// packet base. Returns the places with their ticks; the end is the last of them.
+pub(crate) fn decode_entity_steps(
+    base: (f64, f64, f64),
+    steps: &[EntityDeltaStep],
+) -> Vec<EntityPathStep> {
+    let mut at = base;
+    steps
+        .iter()
+        .map(|step| {
+            at = (
+                f64::from_bits(decode_entity_delta(at.0, step.delta_x)),
+                f64::from_bits(decode_entity_delta(at.1, step.delta_y)),
+                f64::from_bits(decode_entity_delta(at.2, step.delta_z)),
+            );
+            (at, step.ticks)
+        })
+        .collect()
+}
+
+/// Where a move packet puts the entity: the end of its steps, or the plain offset from the base.
+pub(crate) fn move_target(
+    base: (f64, f64, f64),
+    input: &EntityMoveInput,
+    path: &[EntityPathStep],
+) -> Option<(f64, f64, f64)> {
+    input.has_position.then(|| match path.last() {
+        Some((end, _)) => *end,
+        None => (
+            f64::from_bits(decode_entity_delta(base.0, input.delta_x)),
+            f64::from_bits(decode_entity_delta(base.1, input.delta_y)),
+            f64::from_bits(decode_entity_delta(base.2, input.delta_z)),
+        ),
+    })
+}
+
 pub(crate) fn resolve_entity_teleport_motion(
     current_motion: (f64, f64, f64),
     current_rotation: (f32, f32),

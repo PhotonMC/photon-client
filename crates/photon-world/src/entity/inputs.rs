@@ -149,6 +149,18 @@ pub enum EntityPositionUpdateMode {
     Teleport,
 }
 
+/// One place of a `PositionPath` and the ticks to reach it.
+pub type EntityPathStep = ((f64, f64, f64), i32);
+
+/// One step of a stepped `VecDelta`: the ticks to reach it and its offset from the one before.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EntityDeltaStep {
+    pub ticks: i32,
+    pub delta_x: i16,
+    pub delta_y: i16,
+    pub delta_z: i16,
+}
+
 pub struct EntityMoveInput {
     pub entity_id: EntityId,
     pub delta_x: i16,

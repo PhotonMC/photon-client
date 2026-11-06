@@ -280,6 +280,11 @@ impl VersionRegistries {
         self.version >= Version::V26_3
     }
 
+    /// Whether the entity move and position-sync packets carry paths of steps (26.3 and later).
+    pub fn has_movement_paths(&self) -> bool {
+        self.version >= Version::V26_3
+    }
+
     /// Whether the item named exists in this version; the filter for lists built from the union
     /// tables (creative tabs, the recipe book, command suggestions).
     pub fn has_item(&self, name: &str) -> bool {

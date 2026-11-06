@@ -151,6 +151,8 @@ pub struct EntityPositionSyncObservation {
     pub y_rot: f32,
     pub x_rot: f32,
     pub on_ground: bool,
+    /// The steps of a stepped path (26.3); empty for a plain place.
+    pub steps: Vec<super::PathStepObservation>,
     pub applied_to_world: bool,
     pub applied_on_ground: Option<bool>,
     pub applied_position: Option<(f64, f64, f64)>,
@@ -191,6 +193,8 @@ pub struct EntityMoveObservation {
     pub has_position: bool,
     pub has_rotation: bool,
     pub on_ground: bool,
+    /// The steps of a stepped offset (26.3); empty for a plain one.
+    pub steps: Vec<super::MoveStepObservation>,
     pub applied_to_world: bool,
     pub applied_on_ground: Option<bool>,
     pub applied_position: Option<(f64, f64, f64)>,
@@ -227,6 +231,7 @@ pub fn parse_entity_position_sync_packet(
         y_rot,
         x_rot,
         on_ground,
+        steps: Vec::new(),
         applied_to_world: false,
         applied_on_ground: None,
         applied_position: None,
@@ -335,6 +340,7 @@ pub(super) fn parse_move_entity_packet(
         has_position,
         has_rotation,
         on_ground,
+        steps: Vec::new(),
         applied_to_world: false,
         applied_on_ground: None,
         applied_position: None,
@@ -375,9 +381,9 @@ wrapped_packet!(
     OnError::Ignore("rotate_head")
 );
 
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundEntityPositionSyncPacket`.
-    EntityPositionSync(EntityPositionSyncObservation) = parse_entity_position_sync_packet,
+    EntityPositionSync(EntityPositionSyncObservation) = parse_entity_position_sync_packet_for,
     OnError::Ignore("entity_position_sync")
 );
 
@@ -387,20 +393,20 @@ wrapped_packet!(
     OnError::Ignore("entity_teleport")
 );
 
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundMoveEntityPosPacket`.
-    MoveEntityPos(EntityMoveObservation) = parse_move_entity_pos_packet,
+    MoveEntityPos(EntityMoveObservation) = parse_move_entity_pos_packet_for,
     OnError::Ignore("move_entity_pos")
 );
 
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundMoveEntityPosRotPacket`.
-    MoveEntityPosRot(EntityMoveObservation) = parse_move_entity_pos_rot_packet,
+    MoveEntityPosRot(EntityMoveObservation) = parse_move_entity_pos_rot_packet_for,
     OnError::Ignore("move_entity_pos_rot")
 );
 
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundMoveEntityRotPacket`.
-    MoveEntityRot(EntityMoveObservation) = parse_move_entity_rot_packet,
+    MoveEntityRot(EntityMoveObservation) = parse_move_entity_rot_packet_for,
     OnError::Ignore("move_entity_rot")
 );
