@@ -53,7 +53,30 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
         typed::<OpenSignEditor>,
     ),
     (PLAY_CLIENTBOUND_OPEN_BOOK_PACKET_ID, typed::<OpenBook>),
+    (
+        PLAY_CLIENTBOUND_POST_EFFECTS_PACKET_ID,
+        typed::<PostEffects>,
+    ),
+    (
+        PLAY_CLIENTBOUND_ADD_TRANSIENT_BLOCK_PACKET_ID,
+        typed::<AddTransientBlock>,
+    ),
 ];
+
+impl ClientboundPacket for PostEffects {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.local.post_effects = self.0;
+        Ok(())
+    }
+}
+
+/// The block is only drawn for a moment, while a section mesh is made (the reference queues it
+/// for the renderer); nothing here keeps it.
+impl ClientboundPacket for AddTransientBlock {
+    fn handle(self: Box<Self>, _session: &mut PlaySession) -> Result<(), ConnectionError> {
+        Ok(())
+    }
+}
 
 impl ClientboundPacket for StartConfiguration {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {

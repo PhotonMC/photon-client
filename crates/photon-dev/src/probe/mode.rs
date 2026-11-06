@@ -89,7 +89,7 @@ pub(super) fn connect_and_probe_with_mode(
             }
             Err(error) => return Err(error),
         };
-        let (packet_id, payload) = split_packet(&body)?;
+        let (packet_id, payload) = split_clientbound_play(&body, registries().version())?;
         trace.packets.push(PacketObservation {
             phase: ConnectionProtocol::Play,
             id: packet_id,

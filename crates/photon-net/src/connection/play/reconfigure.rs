@@ -320,7 +320,9 @@ mod tests {
             let mut stream = Transport::from(listener.accept().expect("accept").0);
             // The terminal play packet, then the configuration's finish.
             stream
-                .write_all(&frame(PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID))
+                .write_all(&frame(crate::connection::test_wire::play(
+                    PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID,
+                )))
                 .expect("start configuration");
             let acknowledged = read_packet(&mut stream, None).expect("acknowledgement");
             let (id, _) = split_packet(&acknowledged).expect("split");
@@ -366,7 +368,9 @@ mod tests {
         std::thread::spawn(move || {
             let mut stream = Transport::from(listener.accept().expect("accept").0);
             stream
-                .write_all(&frame(PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID))
+                .write_all(&frame(crate::connection::test_wire::play(
+                    PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID,
+                )))
                 .expect("start configuration");
             read_packet(&mut stream, None).expect("acknowledgement");
             then(stream);
@@ -403,7 +407,9 @@ mod tests {
         let mut session = reconfiguring_against(|mut stream| {
             use std::io::Write;
             stream
-                .write_all(&frame(CONFIG_CLIENTBOUND_RESET_CHAT_PACKET_ID))
+                .write_all(&frame(crate::connection::test_wire::config(
+                    CONFIG_CLIENTBOUND_RESET_CHAT_PACKET_ID,
+                )))
                 .expect("reset chat");
             finish_configuration(stream);
         });
@@ -458,7 +464,10 @@ mod tests {
             let mut body = vec![8, 0, 11];
             body.extend_from_slice(b"Server full");
             stream
-                .write_all(&framed(CONFIG_CLIENTBOUND_DISCONNECT_PACKET_ID, &body))
+                .write_all(&framed(
+                    crate::connection::test_wire::config(CONFIG_CLIENTBOUND_DISCONNECT_PACKET_ID),
+                    &body,
+                ))
                 .expect("disconnect");
         });
         session.wait(Duration::from_secs(5)).expect("ended");
@@ -587,7 +596,10 @@ mod tests {
         wire::write_varint(0, &mut body);
         wire::write_varint(63, &mut body);
         body.extend_from_slice(&[0, 0]);
-        framed(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, &body)
+        framed(
+            crate::connection::test_wire::play(PLAY_CLIENTBOUND_LOGIN_PACKET_ID),
+            &body,
+        )
     }
 
     /// A session that has the first server's two dimension types logs in again after the
@@ -599,7 +611,9 @@ mod tests {
         std::thread::spawn(move || {
             let mut stream = Transport::from(listener.accept().expect("accept").0);
             stream
-                .write_all(&frame(PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID))
+                .write_all(&frame(crate::connection::test_wire::play(
+                    PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID,
+                )))
                 .expect("start configuration");
             read_packet(&mut stream, None).expect("acknowledgement");
             stream
@@ -679,8 +693,14 @@ mod tests {
                 &mut request,
             )
             .expect("key");
-            with_id(PLAY_CLIENTBOUND_STORE_COOKIE_PACKET_ID, &stored);
-            with_id(PLAY_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID, &request);
+            with_id(
+                crate::connection::test_wire::play(PLAY_CLIENTBOUND_STORE_COOKIE_PACKET_ID),
+                &stored,
+            );
+            with_id(
+                crate::connection::test_wire::play(PLAY_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID),
+                &request,
+            );
             let answer = read_packet(&mut stream, None).expect("response");
             let (id, body) = split_packet(&answer).expect("split");
             assert_eq!(id, PLAY_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID);
@@ -740,7 +760,10 @@ mod tests {
             .expect("host");
             wire::write_varint(i32::from(target_port), &mut body);
             let mut packet = Vec::new();
-            wire::write_varint(PLAY_CLIENTBOUND_TRANSFER_PACKET_ID, &mut packet);
+            wire::write_varint(
+                crate::connection::test_wire::play(PLAY_CLIENTBOUND_TRANSFER_PACKET_ID),
+                &mut packet,
+            );
             packet.extend_from_slice(&body);
             let mut framed = Vec::new();
             wire::write_varint(packet.len() as i32, &mut framed);

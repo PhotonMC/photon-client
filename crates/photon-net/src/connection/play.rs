@@ -223,7 +223,9 @@ mod tests {
     }
 
     fn add_entity_of_type(id: u32, type_id: u32, x: f64) -> Vec<u8> {
-        let mut body = varint(PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID as u32);
+        let mut body = varint(crate::connection::test_wire::play(
+            PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID,
+        ) as u32);
         body.extend(varint(id));
         body.extend([0_u8; 16]);
         body.extend(varint(type_id));
@@ -245,7 +247,9 @@ mod tests {
         };
         assert_eq!(session.stat(jump), 0);
         assert!(!session.take_stats_updated());
-        let mut body = varint(PLAY_CLIENTBOUND_AWARD_STATS_PACKET_ID as u32);
+        let mut body = varint(crate::connection::test_wire::play(
+            PLAY_CLIENTBOUND_AWARD_STATS_PACKET_ID,
+        ) as u32);
         body.extend(varint(2));
         for (stat_type, value, amount) in [(8, 0, 5), (0, 1, 7)] {
             body.extend(varint(stat_type));
@@ -264,7 +268,9 @@ mod tests {
         assert!(session.take_stats_updated());
         assert!(!session.take_stats_updated());
         // The server's number replaces the one held; it is not added to it.
-        let mut again = varint(PLAY_CLIENTBOUND_AWARD_STATS_PACKET_ID as u32);
+        let mut again = varint(crate::connection::test_wire::play(
+            PLAY_CLIENTBOUND_AWARD_STATS_PACKET_ID,
+        ) as u32);
         again.extend(varint(1));
         again.extend([8, 0, 2]);
         session.handle_bytes(&again).unwrap();
@@ -275,7 +281,9 @@ mod tests {
     fn game_rule_values_wait_for_the_rule_screen_and_old_ones_are_dropped() {
         let (mut session, _far_end) = detached();
         assert!(session.take_game_rule_values().is_none());
-        let mut body = varint(PLAY_CLIENTBOUND_GAME_RULE_VALUES_PACKET_ID as u32);
+        let mut body = varint(crate::connection::test_wire::play(
+            PLAY_CLIENTBOUND_GAME_RULE_VALUES_PACKET_ID,
+        ) as u32);
         photon_protocol::play::encode_set_game_rules(
             &mut body,
             &[("minecraft:pvp".into(), "false".into())],
@@ -302,7 +310,9 @@ mod tests {
         session.handle_bytes(&add_entity(8, 9.0)).unwrap();
         assert_eq!(session.entity_count(), 2);
         // A step of an entity that is there moves it; of one that is not, nothing.
-        let mut step = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
+        let mut step = varint(crate::connection::test_wire::play(
+            PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID,
+        ) as u32);
         step.extend(varint(7));
         // The on-ground bit and no steps (26.3 packs them into one number).
         step.extend(varint(1));
@@ -318,10 +328,14 @@ mod tests {
             .position();
         assert!((moved.0 - 9.0).abs() < 1e-9, "{moved:?}");
         // An entity packet that does not parse leaves the session alone.
-        let mut broken = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
+        let mut broken = varint(crate::connection::test_wire::play(
+            PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID,
+        ) as u32);
         broken.push(7);
         session.handle_bytes(&broken).unwrap();
-        let mut remove = varint(PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID as u32);
+        let mut remove = varint(crate::connection::test_wire::play(
+            PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
+        ) as u32);
         remove.extend(varint(1));
         remove.extend(varint(7));
         session.handle_bytes(&remove).unwrap();
@@ -336,6 +350,32 @@ mod tests {
     }
 
     #[test]
+    fn the_packets_26_3_added_are_read_from_their_shifted_ids() {
+        let (mut session, _far_end) = detached();
+        let wire = crate::connection::test_wire::play;
+        // `post_effects`: the names are kept.
+        let mut effects = varint(wire(PLAY_CLIENTBOUND_POST_EFFECTS_PACKET_ID) as u32);
+        effects.extend(varint(1));
+        let name = b"minecraft:blur";
+        effects.extend(varint(name.len() as u32));
+        effects.extend(name);
+        session.handle_bytes(&effects).unwrap();
+        assert_eq!(session.active_post_effects(), ["minecraft:blur"]);
+        // A swing of an entity that is not there, and a transient block, are taken and dropped.
+        let mut swing = varint(wire(PLAY_CLIENTBOUND_SWING_ANIMATION_PACKET_ID) as u32);
+        for value in [9, 0, 1, 6] {
+            swing.extend(varint(value));
+        }
+        session.handle_bytes(&swing).unwrap();
+        let mut block = varint(wire(PLAY_CLIENTBOUND_ADD_TRANSIENT_BLOCK_PACKET_ID) as u32);
+        block.extend(0_i64.to_be_bytes());
+        block.extend(varint(1));
+        session.handle_bytes(&block).unwrap();
+        // `forget_level_chunk` is 38 on the wire in 26.3 and still the packet it was.
+        assert_eq!(wire(PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID), 38);
+    }
+
+    #[test]
     fn a_client_tick_moves_the_entities_on() {
         let (mut session, _far_end) = detached();
         // A player entity ticks wherever it is; others wait for their chunk.
@@ -346,7 +386,9 @@ mod tests {
                 8.0,
             ))
             .unwrap();
-        let mut step = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
+        let mut step = varint(crate::connection::test_wire::play(
+            PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID,
+        ) as u32);
         step.extend(varint(7));
         for delta in [4096_i16, 0, 0] {
             step.extend(delta.to_be_bytes());
@@ -415,7 +457,9 @@ mod tests {
         session
             .handle_bytes(&add_entity_of_type(7, minecart, 8.0))
             .unwrap();
-        let mut passengers = varint(PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID as u32);
+        let mut passengers = varint(crate::connection::test_wire::play(
+            PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID,
+        ) as u32);
         passengers.extend(varint(7));
         passengers.extend(varint(1));
         passengers.extend(varint(1));
@@ -432,12 +476,16 @@ mod tests {
             )
         ));
         // The server removes the minecart with the player in it, then moves "it".
-        let mut remove = varint(PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID as u32);
+        let mut remove = varint(crate::connection::test_wire::play(
+            PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
+        ) as u32);
         remove.extend(varint(1));
         remove.extend(varint(7));
         session.handle_bytes(&remove).unwrap();
         assert_eq!(session.local.removed_player_vehicle, Some(EntityId(7)));
-        let mut teleport = varint(PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID as u32);
+        let mut teleport = varint(crate::connection::test_wire::play(
+            PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
+        ) as u32);
         teleport.extend(varint(7));
         for value in [20.0_f64, 70.0, -4.0, 0.0, 0.0, 0.0] {
             teleport.extend(value.to_be_bytes());
@@ -487,7 +535,9 @@ mod tests {
             ))
             .unwrap();
         let camera = |id: u32| {
-            let mut body = varint(PLAY_CLIENTBOUND_SET_CAMERA_PACKET_ID as u32);
+            let mut body = varint(crate::connection::test_wire::play(
+                PLAY_CLIENTBOUND_SET_CAMERA_PACKET_ID,
+            ) as u32);
             body.extend(varint(id));
             body
         };
@@ -575,7 +625,9 @@ mod tests {
             ))
             .unwrap();
         let camera = |id: u32| {
-            let mut body = varint(PLAY_CLIENTBOUND_SET_CAMERA_PACKET_ID as u32);
+            let mut body = varint(crate::connection::test_wire::play(
+                PLAY_CLIENTBOUND_SET_CAMERA_PACKET_ID,
+            ) as u32);
             body.extend(varint(id));
             body
         };

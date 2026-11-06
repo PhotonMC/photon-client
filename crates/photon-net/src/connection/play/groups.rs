@@ -56,6 +56,8 @@ pub(super) struct LocalState {
     pub(super) reduced_debug_info: bool,
     /// `Options.reducedDebugInfo`, which `showOnlyReducedInfo` adds to the server's word.
     pub(super) reduced_debug_option: bool,
+    /// `LocalPlayer.getActivePostEffects`: the chains the server last asked for (26.3).
+    pub(super) post_effects: Vec<String>,
     /// `ClientAdvancements`: the tree the server told of and how far the player is.
     pub(super) advancements: photon_game::advancements::ClientAdvancements,
     /// The advancements done by updates whose toasts the screen is yet to show.
@@ -307,6 +309,7 @@ impl Default for LocalState {
             creaking_active: false,
             reduced_debug_info: false,
             reduced_debug_option: false,
+            post_effects: Vec::new(),
             advancements: photon_game::advancements::ClientAdvancements::default(),
             pending_toasts: Vec::new(),
             received_items: Vec::new(),

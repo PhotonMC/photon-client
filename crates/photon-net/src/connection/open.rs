@@ -175,6 +175,19 @@ fn route_pack_statuses(
     Ok(())
 }
 
+/// A configuration packet's constant and payload. The reference throws at a `post_effects`
+/// packet here: there is no player to set the effects on yet.
+fn split_config_packet<'a>(
+    body: &'a [u8],
+    state: &ConnectionState,
+) -> Result<(i32, &'a [u8]), ConnectionError> {
+    let (packet_id, payload) =
+        photon_protocol::versions::packet_ids::split_clientbound_config(body, state.version)?;
+    (packet_id != CONFIG_CLIENTBOUND_POST_EFFECTS_PACKET_ID)
+        .then_some((packet_id, payload))
+        .ok_or(ConnectionError::Codec("post effects before the player"))
+}
+
 /// The next packet of the configuration. When the connection ended on the player's answer (a
 /// pack the server requires was refused), that is the reason it ended.
 fn read_configuration_packet(
@@ -249,7 +262,7 @@ pub fn configure_connection(
     )?;
     loop {
         let body = read_configuration_packet(stream, compression_threshold, state)?;
-        let (packet_id, payload) = split_packet(&body)?;
+        let (packet_id, payload) = split_config_packet(&body, state)?;
         recorder.packet(ConnectionProtocol::Configuration, packet_id, body.len());
 
         match packet_id {

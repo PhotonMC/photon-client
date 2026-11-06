@@ -107,7 +107,7 @@ fn a_pack_asked_about_is_answered_by_the_player() {
     let packs = source(Err("never".into()), PackStatus::Prompt);
     let (mut session, server) = play_against(&packs, |mut stream| {
         let push = framed(
-            PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID,
+            crate::connection::test_wire::play(PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID),
             &push_body("https://example.com/pack.zip", false),
         );
         stream.write_all(&push).expect("push");
@@ -130,7 +130,7 @@ fn a_bad_address_is_refused_at_once() {
     let packs = source(Err("never".into()), PackStatus::Prompt);
     let (mut session, server) = play_against(&packs, |mut stream| {
         let push = framed(
-            PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID,
+            crate::connection::test_wire::play(PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID),
             &push_body("gopher://example.com/pack", false),
         );
         stream.write_all(&push).expect("push");
@@ -147,7 +147,7 @@ fn an_enabled_pack_is_accepted_downloaded_and_loaded() {
     let packs = source(Ok(PathBuf::from("/cache/pack")), PackStatus::Enabled);
     let (mut session, server) = play_against(&packs, |mut stream| {
         let push = framed(
-            PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID,
+            crate::connection::test_wire::play(PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID),
             &push_body("https://example.com/pack.zip", false),
         );
         stream.write_all(&push).expect("push");
@@ -173,7 +173,7 @@ fn a_pack_that_cannot_be_fetched_is_reported() {
     let packs = source(Err("no route".into()), PackStatus::Enabled);
     let (mut session, server) = play_against(&packs, |mut stream| {
         let push = framed(
-            PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID,
+            crate::connection::test_wire::play(PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID),
             &push_body("https://example.com/pack.zip", false),
         );
         stream.write_all(&push).expect("push");
@@ -235,7 +235,7 @@ fn a_pack_is_loaded_during_configuration_before_the_server_finishes_it() {
     let packs = source(Ok(PathBuf::from("/cache/pack")), PackStatus::Enabled);
     let (client, server) = configure_against(&packs, |mut stream| {
         let push = framed(
-            CONFIG_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID,
+            crate::connection::test_wire::config(CONFIG_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID),
             &push_body("https://example.com/pack.zip", true),
         );
         stream.write_all(&push).expect("push");
@@ -257,7 +257,7 @@ fn refusing_a_required_pack_during_configuration_ends_the_connection() {
     let packs = source(Err("never".into()), PackStatus::Prompt);
     let (client, server) = configure_against(&packs, |mut stream| {
         let push = framed(
-            CONFIG_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID,
+            crate::connection::test_wire::config(CONFIG_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID),
             &push_body("https://example.com/pack.zip", true),
         );
         stream.write_all(&push).expect("push");

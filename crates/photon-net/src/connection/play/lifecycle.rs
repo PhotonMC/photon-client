@@ -58,10 +58,12 @@ pub(super) fn spawn_reader(
                     return;
                 }
             };
-            let terminal = matches!(
-                split_packet(&body),
-                Ok((PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID, _))
-            );
+            let terminal = split_packet(&body).is_ok_and(|(wire_id, _)| {
+                photon_protocol::versions::packet_ids::clientbound_play_id(
+                    registries.version(),
+                    wire_id,
+                ) == PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID
+            });
             let (packet, failed) = match incoming::decode_packet(&body, &registries) {
                 Ok(packet) => (packet, false),
                 Err(error) => (incoming::failed(error), true),
@@ -285,6 +287,10 @@ impl PlaySession {
         if self.link.disconnect.is_some() || self.link.switching.is_some() {
             return Ok(());
         }
+        let id = photon_protocol::versions::packet_ids::serverbound_play_wire_id(
+            self.registries.version(),
+            id,
+        );
         self.link
             .writer
             .send(frame_packet(id, body, self.link.compression_threshold)?)

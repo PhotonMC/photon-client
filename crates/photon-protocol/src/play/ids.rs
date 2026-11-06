@@ -395,7 +395,9 @@ pub const PLAY_SERVERBOUND_PICK_ITEM_FROM_ENTITY_PACKET_ID: i32 = 37;
 
 pub const PLAY_SERVERBOUND_SPECTATOR_ACTION_PACKET_ID: i32 = 62;
 
-pub const PLAY_SERVERBOUND_PUNCH_PACKET_ID: i32 = 46;
+/// `ServerboundPunchPacket`, the `swing` packet of 26.2 (the constants number 26.2's packets; see
+/// `versions::packet_ids`).
+pub const PLAY_SERVERBOUND_PUNCH_PACKET_ID: i32 = 63;
 
 pub const PLAY_SERVERBOUND_TELEPORT_TO_ENTITY_PACKET_ID: i32 = 64;
 
@@ -475,3 +477,9 @@ pub const PLAY_CLIENTBOUND_PLAYER_LOOK_AT_PACKET_ID: i32 = 71;
 pub const PLAY_CLIENTBOUND_MOVE_VEHICLE_PACKET_ID: i32 = 57;
 
 pub const PLAY_CLIENTBOUND_PROJECTILE_POWER_PACKET_ID: i32 = 135;
+
+/// 26.3 packets: they have no number in 26.2, so these follow its last one.
+pub const PLAY_CLIENTBOUND_ADD_TRANSIENT_BLOCK_PACKET_ID: i32 = 141;
+pub const PLAY_CLIENTBOUND_POST_EFFECTS_PACKET_ID: i32 = 142;
+pub const PLAY_CLIENTBOUND_SWING_ANIMATION_PACKET_ID: i32 = 143;
+pub const CONFIG_CLIENTBOUND_POST_EFFECTS_PACKET_ID: i32 = 20;

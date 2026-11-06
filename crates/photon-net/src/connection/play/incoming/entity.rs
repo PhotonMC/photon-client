@@ -62,6 +62,10 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
     ),
     (PLAY_CLIENTBOUND_ANIMATE_PACKET_ID, typed::<Animate>),
     (
+        PLAY_CLIENTBOUND_SWING_ANIMATION_PACKET_ID,
+        typed::<SwingAnimation>,
+    ),
+    (
         PLAY_CLIENTBOUND_ENTITY_EVENT_PACKET_ID,
         typed::<EntityEvent>,
     ),
@@ -177,6 +181,19 @@ impl ClientboundPacket for MoveEntityRot {
 impl ClientboundPacket for Animate {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.on_animate(self.0)
+    }
+}
+
+impl ClientboundPacket for SwingAnimation {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        let swing = self.0;
+        session.world.entities_mut().apply_swing_animation(
+            swing.entity_id,
+            swing.off_hand,
+            swing.kind,
+            swing.duration,
+        );
+        Ok(())
     }
 }
 
@@ -409,19 +426,28 @@ impl PlaySession {
     }
 
     fn on_animate(&mut self, (id, action): (EntityId, u8)) -> Result<(), ConnectionError> {
-        // `ClientPacketListener.handleAnimate`: 4 and 5 are the hits that crit.
-        let hit = match action {
-            4 => Some("crit"),
-            5 => Some("enchanted_hit"),
-            _ => None,
-        };
-        if let Some(particle) = hit {
-            self.queue_emitter(id, particle, 3, None);
+        use photon_protocol::versions::animate::{AnimateAction, animate_action};
+        match animate_action(self.registries.version(), action) {
+            AnimateAction::WakeUp => {
+                if self.local.player_id == Some(id) {
+                    self.wake_local_player();
+                }
+                self.world.entities_mut().apply_animate(id, 0);
+            }
+            // `handleAnimate`: the hits that crit.
+            AnimateAction::CriticalHit => self.queue_emitter(id, "crit", 3, None),
+            AnimateAction::MagicCriticalHit => self.queue_emitter(id, "enchanted_hit", 3, None),
+            AnimateAction::Swing { off_hand } => {
+                let (kind, duration) = (
+                    photon_world::living::SWING_WHACK,
+                    photon_world::living::DEFAULT_SWING_DURATION,
+                );
+                self.world
+                    .entities_mut()
+                    .apply_swing_animation(id, off_hand, kind, duration);
+            }
+            AnimateAction::Other => {}
         }
-        if action == 2 && self.local.player_id == Some(id) {
-            self.wake_local_player();
-        }
-        self.world.entities_mut().apply_animate(id, action);
         Ok(())
     }
 

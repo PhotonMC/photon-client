@@ -25,7 +25,10 @@ fn payload(channel: &str, data: &[u8]) -> Vec<u8> {
     let id = Identifier::parse(channel).expect("channel");
     write_identifier(&id, &mut body).expect("identifier");
     body.extend_from_slice(data);
-    framed(PLAY_CLIENTBOUND_CUSTOM_PAYLOAD_PACKET_ID, &body)
+    framed(
+        crate::connection::test_wire::play(PLAY_CLIENTBOUND_CUSTOM_PAYLOAD_PACKET_ID),
+        &body,
+    )
 }
 
 fn play_against(

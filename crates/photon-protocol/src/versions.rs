@@ -3,4 +3,6 @@
 //! codecs in the other modules never name an older version; the few dispatch points that choose
 //! between them are the only places a `Version` is compared.
 
+pub mod animate;
+pub mod packet_ids;
 pub mod v26_1;

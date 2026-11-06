@@ -67,7 +67,9 @@ pub(super) fn decode_packet(
     body: &[u8],
     registries: &VersionRegistries,
 ) -> Result<Incoming, ConnectionError> {
-    let (packet_id, payload) = split_packet(body)?;
+    let (wire_id, payload) = split_packet(body)?;
+    let packet_id =
+        photon_protocol::versions::packet_ids::clientbound_play_id(registries.version(), wire_id);
     if let Some(decode) = decoders().get(&packet_id) {
         decode(packet_id, payload, registries)
     } else {

@@ -201,6 +201,11 @@ impl PlaySession {
 
     /// `Minecraft.showOnlyReducedInfo`: the server asked for less on the debug screen, or the
     /// option does.
+    /// The post-processing chains the server asked for (`LocalPlayer.getActivePostEffects`).
+    pub fn active_post_effects(&self) -> &[String] {
+        &self.local.post_effects
+    }
+
     pub fn reduced_debug_info(&self) -> bool {
         self.local.reduced_debug_info || self.local.reduced_debug_option
     }

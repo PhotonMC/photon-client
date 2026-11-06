@@ -37,3 +37,19 @@ pub use status::{
 };
 pub use transport::Transport;
 pub use version::{development_version, remember_protocol, select_version};
+
+/// The wire ids a test server sends: the constants number 26.2's packets, the newest version
+/// numbers them its own way.
+#[cfg(test)]
+mod test_wire {
+    use photon_core::version::Version;
+    use photon_protocol::versions::packet_ids;
+
+    pub(super) fn play(id: i32) -> i32 {
+        packet_ids::clientbound_play_wire_id(Version::NEWEST, id)
+    }
+
+    pub(super) fn config(id: i32) -> i32 {
+        packet_ids::clientbound_config_wire_id(Version::NEWEST, id)
+    }
+}

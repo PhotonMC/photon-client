@@ -70,6 +70,13 @@ fn wire_text(dirs: &[&str]) -> String {
     files.join("\n")
 }
 
+/// Packets 26.3 added; the pinned reference is still 26.2, so it does not list them.
+const ONLY_IN_26_3: [&str; 3] = [
+    "PLAY_CLIENTBOUND_ADD_TRANSIENT_BLOCK_PACKET_ID",
+    "PLAY_CLIENTBOUND_POST_EFFECTS_PACKET_ID",
+    "PLAY_CLIENTBOUND_SWING_ANIMATION_PACKET_ID",
+];
+
 /// Packets of one direction that the connection code names, and the direction's total.
 fn packets(wire: &str, direction: &str, template: &str) -> Result<(usize, usize), String> {
     let types = packet_types(template, direction);
@@ -80,7 +87,7 @@ fn packets(wire: &str, direction: &str, template: &str) -> Result<(usize, usize)
     let prefix = format!("PLAY_{direction}_");
     let unknown = defined(wire, &prefix)
         .into_iter()
-        .filter(|name| !constants.contains(name))
+        .filter(|name| !constants.contains(name) && !ONLY_IN_26_3.contains(&name.as_str()))
         .count();
     if unknown > 0 {
         return Err(format!(
