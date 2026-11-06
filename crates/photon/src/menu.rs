@@ -34,6 +34,7 @@ mod input;
 pub(crate) mod panorama;
 mod pings;
 mod resume;
+mod version;
 mod video;
 pub(crate) use pings::resolve_named;
 mod servers;
@@ -303,6 +304,7 @@ impl Menu {
             screen.friends_available();
         }
         self.directory.apply(&mut screen, self.gui.lang());
+        screen.set_game_version(&self.version_label(), self.gui.text_assets().0);
         Screen::Home(screen)
     }
 

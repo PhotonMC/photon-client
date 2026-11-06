@@ -36,7 +36,9 @@ pub use status::{
     query_status_text,
 };
 pub use transport::Transport;
-pub use version::{development_version, remember_protocol, select_version};
+pub use version::{
+    choose_version, chosen_version, development_version, remember_protocol, select_version,
+};
 
 /// The wire ids a test server sends: the constants number 26.2's packets, the newest version
 /// numbers them its own way.

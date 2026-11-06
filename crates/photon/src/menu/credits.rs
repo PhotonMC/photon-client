@@ -31,6 +31,7 @@ impl Menu {
         match chosen {
             Some(HomeAction::Servers) => self.screen = self.server_list(size),
             Some(HomeAction::Quit) => return Some(Choice::Quit),
+            Some(HomeAction::CycleVersion) => self.cycle_version(),
             Some(HomeAction::Join(index)) => return self.join_directory(index, size),
             Some(HomeAction::PlayOpen) => return self.join_open_game(size),
             // The other screens are not here yet.

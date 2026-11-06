@@ -26,6 +26,8 @@ pub enum HomeAction {
     Options,
     Quit,
     Credits,
+    /// The game version button: the next version the next join plays (or automatic).
+    CycleVersion,
     /// The play arrow of the directory's server at this index: straight into the game.
     Join(usize),
     /// The card of the directory's server at this index. The home screen opens its page itself.
@@ -40,6 +42,8 @@ const LOGO_WIDTH: i32 = 64;
 const CARD_SIZE: (i32, i32) = (148, 88);
 const MARGIN: i32 = 12;
 const ARROW: i32 = 16;
+/// What the top bar keeps free for the game version button.
+const VERSION_ROOM: i32 = 60;
 
 /// How a target is drawn.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,6 +84,8 @@ pub struct HomeScreen {
     nav: Vec<Target>,
     cards: Vec<Target>,
     quit: Target,
+    /// The game version button, left of `quit`.
+    game: Target,
     friends_ready: bool,
     focus: Option<usize>,
     /// The page's title and the line under it.
@@ -101,7 +107,11 @@ impl HomeScreen {
     pub fn new(size: (i32, i32), version: &str, font: &Font, lang: &Lang) -> Self {
         let quit_label = lang.text("photon.home.quit");
         let quit_width = font.width(&quit_label) + 14;
-        let nav = Self::nav_targets(font, lang, size.0 - quit_width - 12 - LOGO_WIDTH);
+        let nav = Self::nav_targets(
+            font,
+            lang,
+            size.0 - quit_width - 12 - LOGO_WIDTH - VERSION_ROOM,
+        );
         let quit = Target {
             rect: Rect {
                 x: size.0 - quit_width - 6,
@@ -122,6 +132,7 @@ impl HomeScreen {
             nav,
             cards: Vec::new(),
             quit,
+            game: Self::version_button(font, "", size.0 - quit_width - 12),
             friends_ready: false,
             focus: None,
             entries: Vec::new(),
@@ -272,7 +283,32 @@ impl HomeScreen {
         self.nav
             .iter()
             .chain(self.cards.iter())
-            .chain(std::iter::once(&self.quit))
+            .chain([&self.quit, &self.game])
+    }
+
+    /// The game version button with `label` on it, its right edge at `right`.
+    fn version_button(font: &Font, label: &str, right: i32) -> Target {
+        let width = font.width(label) + 14;
+        Target {
+            rect: Rect {
+                x: right - width,
+                y: (BAR_HEIGHT - TAB_HEIGHT) / 2,
+                width,
+                height: TAB_HEIGHT,
+            },
+            label: label.to_owned(),
+            detail: String::new(),
+            look: Look::Quit,
+            action: Some(HomeAction::CycleVersion),
+            enabled: !label.is_empty(),
+        }
+    }
+
+    /// Show `label` (the game version the next join plays) on the version button; an empty one
+    /// hides it.
+    pub fn set_game_version(&mut self, label: &str, font: &Font) {
+        let right = self.quit.rect.x - 6;
+        self.game = Self::version_button(font, label, right);
     }
 
     fn enabled_indices(&self) -> Vec<usize> {
@@ -451,7 +487,7 @@ impl HomeScreen {
         painter.label(&self.version, (8, 14), muted);
         let hovered = self.target_at(mouse);
         for (index, target) in self.targets().enumerate() {
-            if self.page.is_some() && target.look == Look::Card {
+            if target.label.is_empty() || self.page.is_some() && target.look == Look::Card {
                 continue;
             }
             let focused = self.focus == Some(index) || hovered == Some(index);
@@ -535,6 +571,18 @@ mod tests {
                 .any(|tab| tab.action == Some(HomeAction::Options))
         );
         assert!(home.nav.len() < DESTINATIONS.len());
+    }
+
+    #[test]
+    fn the_version_button_asks_for_the_next_version_once_it_has_a_label() {
+        let mut screen = screen();
+        let spot = |screen: &HomeScreen| centre(screen.game.rect);
+        assert_eq!(screen.clicked(spot(&screen)), None);
+        screen.set_game_version("26.3", &Font::default());
+        assert_eq!(
+            screen.clicked(spot(&screen)),
+            Some(HomeAction::CycleVersion)
+        );
     }
 
     #[test]

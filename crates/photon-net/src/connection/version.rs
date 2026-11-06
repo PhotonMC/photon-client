@@ -17,6 +17,23 @@ pub fn development_version() -> Option<Version> {
         .and_then(|name| Version::from_name(&name))
 }
 
+/// The version the player picked inside the client for the joins to come; none leaves it to the
+/// server's protocol. It is only set between play sessions (title, server list).
+static CHOSEN: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(usize::MAX);
+
+/// Pick the version of the next joins, or `None` to follow each server's protocol.
+pub fn choose_version(version: Option<Version>) {
+    let index = version.map_or(usize::MAX, Version::index);
+    CHOSEN.store(index, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// The version the player picked, if any.
+pub fn chosen_version() -> Option<Version> {
+    Version::ALL
+        .get(CHOSEN.load(std::sync::atomic::Ordering::Relaxed))
+        .copied()
+}
+
 /// How long the choice may wait for the server's status: a server that does not answer in time
 /// is taken as the newest version, so it never holds a login back for long.
 const STATUS_WAIT: Duration = Duration::from_secs(3);
@@ -47,7 +64,7 @@ pub fn select_version(
     timeout: Duration,
     hint: Option<i32>,
 ) -> Version {
-    if let Some(version) = development_version() {
+    if let Some(version) = development_version().or_else(chosen_version) {
         return version;
     }
     let seen = || remembered().lock().ok()?.get(&address).copied();
