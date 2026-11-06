@@ -7,10 +7,38 @@ use std::sync::OnceLock;
 
 static INSTALLED: OnceLock<String> = OnceLock::new();
 
-/// The assets folder: `PHOTON_ASSETS` when it is set, else the one the start-up resolved. It
-/// has the type of the environment lookup it replaces.
-pub fn assets() -> Result<String, VarError> {
+/// The folder of the version the player switched to, which readers see before the start-up one.
+static SELECTED: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
+
+/// The folder the start-up resolved: `PHOTON_ASSETS` when it is set, else the installed game's.
+fn start_up() -> Result<String, VarError> {
     std::env::var("PHOTON_ASSETS").or_else(|error| INSTALLED.get().cloned().ok_or(error))
+}
+
+/// The assets folder: the one of the selected version, else the start-up one. It has the type
+/// of the environment lookup it replaces.
+pub fn assets() -> Result<String, VarError> {
+    if let Some(folder) = SELECTED.read().ok().and_then(|selected| selected.clone()) {
+        return Ok(folder);
+    }
+    start_up()
+}
+
+/// Make the assets of `version` the ones every reader sees, for a switch of the game version
+/// between play sessions. Whether its assets are on disk; when they are not, nothing changes.
+pub fn select_version(version: crate::version::Version) -> bool {
+    let Some(folder) = assets_for_start_up(version) else {
+        return false;
+    };
+    if let Ok(mut selected) = SELECTED.write() {
+        *selected = Some(folder.to_string_lossy().into_owned());
+    }
+    true
+}
+
+/// [`assets_for`], looked up from the start-up folder so a selection does not move the search.
+fn assets_for_start_up(version: crate::version::Version) -> Option<std::path::PathBuf> {
+    assets_beside(std::path::PathBuf::from(start_up().ok()?), version)
 }
 
 /// Record the assets folder of the installed game. The first call wins; whether this one did.
@@ -18,12 +46,12 @@ pub fn set_installed_assets(root: String) -> bool {
     INSTALLED.set(root).is_ok()
 }
 
-/// The assets folder of one game version, found beside the folder [`assets`] names: a sibling
+/// The assets folder of one game version, found beside the folder the start-up names: a sibling
 /// `jar-<version>` or `jar` whose `version.json` carries that version's name. The newest
-/// version falls back to [`assets`] itself, as an installed game keeps only that one. `None`
+/// version falls back to that folder itself, as an installed game keeps only that one. `None`
 /// when the version's assets are not on disk, so the version cannot be played.
 pub fn assets_for(version: crate::version::Version) -> Option<std::path::PathBuf> {
-    assets_beside(std::path::PathBuf::from(assets().ok()?), version)
+    assets_for_start_up(version)
 }
 
 /// [`assets_for`] with the named folder given.
