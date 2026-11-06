@@ -3,6 +3,21 @@
 
 use crate::version::Version;
 
+/// The resource pack format `(major, minor)` of the game the session plays (26.1 shares 26.2's
+/// until its jar is read).
+pub fn resource_pack_format() -> (i32, i32) {
+    if Version::active_before_26_3() {
+        (88, 0)
+    } else {
+        (97, 1)
+    }
+}
+
+/// The release name the session plays, as the servers and the debug screen show it.
+pub fn game_version_name() -> &'static str {
+    Version::active().name()
+}
+
 /// Whether the serverbound swing carries a hand and the player action numbers skip the
 /// direction change (before 26.3).
 pub fn punch_is_swing() -> bool {

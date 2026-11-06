@@ -39,7 +39,7 @@ impl Gui {
             memory: controls.debug.memory.usage(),
             impactors: Some(impactors(&controls.options.quality)),
             version: {
-                let version = photon_net::resources::KnownPack::VANILLA_VERSION;
+                let version = photon_core::versions::behaviour::game_version_name();
                 debug::version_line(version, version)
             },
             crosshair_entity: Self::crosshair_entity(session),

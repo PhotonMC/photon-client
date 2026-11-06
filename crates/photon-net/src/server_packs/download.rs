@@ -17,12 +17,6 @@ use super::source::{PackFetcher, PackUser};
 /// The largest pack that is taken (`DownloadedPackSource`'s limit, in bytes).
 pub const MAX_PACK_BYTES: u64 = 262_144_000;
 
-/// The pack format of the client's resources, for the header the servers see.
-const PACK_FORMAT: &str = "97.1";
-
-/// The game's version name and id, as the servers see them.
-const VERSION: &str = crate::resources::KnownPack::VANILLA_VERSION;
-
 /// Downloads packs into a cache folder.
 pub struct HttpFetcher {
     cache_dir: PathBuf,
@@ -48,15 +42,17 @@ impl HttpFetcher {
         {
             return Ok(cached);
         }
+        let version = photon_core::versions::behaviour::game_version_name();
+        let (major, minor) = photon_core::versions::behaviour::resource_pack_format();
         let response = self
             .agent
             .get(&request.url)
             .header("X-Minecraft-Username", &user.name)
             .header("X-Minecraft-UUID", undashed(user.id))
-            .header("X-Minecraft-Version", VERSION)
-            .header("X-Minecraft-Version-ID", VERSION)
-            .header("X-Minecraft-Pack-Format", PACK_FORMAT)
-            .header("User-Agent", format!("Minecraft Java/{VERSION}"))
+            .header("X-Minecraft-Version", version)
+            .header("X-Minecraft-Version-ID", version)
+            .header("X-Minecraft-Pack-Format", format!("{major}.{minor}"))
+            .header("User-Agent", format!("Minecraft Java/{version}"))
             .call()
             .map_err(|error| error.to_string())?;
         let announced = response.body().content_length();
