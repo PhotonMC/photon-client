@@ -25,6 +25,16 @@ pub fn name_tag_text_is_constant() -> bool {
     Version::active_before_26_3()
 }
 
+/// Whether the custom statistic exists in the active version (the straw bed one is new in 26.3).
+pub fn custom_stat_exists(name: &str) -> bool {
+    !name.ends_with(":sleep_in_straw_bed") || !Version::active_before_26_3()
+}
+
+/// Whether keypad digits also count as digits for tab shortcuts (new in 26.3).
+pub fn keypad_digits_choose_tabs() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// The data version the active version's files carry (`world_version` of its `version.json`).
 pub fn data_version() -> i32 {
     if Version::active_before_26_3() {

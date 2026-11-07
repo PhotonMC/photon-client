@@ -37,6 +37,7 @@ impl GeneralList {
         let mut keyed: Vec<(Vec<u16>, Entry)> = stat::custom_names()
             .iter()
             .enumerate()
+            .filter(|(_, name)| photon_core::versions::behaviour::custom_stat_exists(name))
             .map(|(index, name)| {
                 let key = format!("stat.{}", name.replace(':', "."));
                 let id = index as i32;
