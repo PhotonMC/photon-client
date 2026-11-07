@@ -15,6 +15,12 @@ pub fn out_of_range_enum_ids_read_as_first() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether a bed item sets its block with its own flags (26: no neighbour update; before 26.3,
+/// whose bed item has no override and uses the block item's).
+pub fn bed_item_sets_own_flags() -> bool {
+    Version::active_before_26_3()
+}
+
 /// The resource pack format `(major, minor)` of the game the session plays (26.1 shares 26.2's
 /// until its jar is read).
 pub fn resource_pack_format() -> (i32, i32) {

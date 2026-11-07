@@ -684,7 +684,7 @@
 "crates/photon-oracle/src/math_cases.rs::math_result" = 306
 "crates/photon-oracle/src/math_cases/player.rs::local_player_travel_in_air_case" = 81
 "crates/photon-oracle/src/math_cases/positions/blockpos.rs::blockpos_mutable_helpers_case" = 161
-"crates/photon-oracle/src/model.rs::model_parse_result" = 138
+"crates/photon-oracle/src/model.rs::model_parse_result" = 136
 "crates/photon-oracle/src/model.rs::model_result" = 83
 "crates/photon-oracle/src/model.rs::model_rotation_result" = 70
 "crates/photon-oracle/src/model.rs::model_winding_result" = 67
