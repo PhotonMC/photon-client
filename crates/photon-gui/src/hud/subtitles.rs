@@ -59,6 +59,9 @@ impl Subtitle {
         if let [only] = self.played_at.as_slice() {
             return Some(*only);
         }
+        if photon_core::versions::behaviour::subtitles_show_closest() {
+            return self.closest(position);
+        }
         let range = f64::from(self.range);
         let mut best: Option<((Vec3Key, u64), f64)> = None;
         for played in &self.played_at {
@@ -70,6 +73,18 @@ impl Subtitle {
                 (played.1, distance).partial_cmp(&(time, far)) == Some(std::cmp::Ordering::Greater)
             });
             if better {
+                best = Some((*played, distance));
+            }
+        }
+        best.map(|(played, _)| played)
+    }
+
+    /// 26.2 `getClosest`: the place heard nearest to the listener, the first of equals.
+    fn closest(&self, position: Vec3) -> Option<(Vec3Key, u64)> {
+        let mut best: Option<((Vec3Key, u64), f64)> = None;
+        for played in &self.played_at {
+            let distance = vec3(played.0).distance_to(position);
+            if best.is_none_or(|(_, far)| distance < far) {
                 best = Some((*played, distance));
             }
         }

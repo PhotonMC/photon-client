@@ -35,6 +35,12 @@ pub fn keypad_digits_choose_tabs() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether a subtitle shows the closest place it was heard at (26.2) instead of the latest one
+/// within range (26.3).
+pub fn subtitles_show_closest() -> bool {
+    Version::active_before_26_3()
+}
+
 /// The data version the active version's files carry (`world_version` of its `version.json`).
 pub fn data_version() -> i32 {
     if Version::active_before_26_3() {
