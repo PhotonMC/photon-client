@@ -54,7 +54,10 @@ impl Facts for Setting {
 }
 
 fn block_id(name: &str) -> Result<i32, String> {
-    crate::case_ids::blocks()
+    // The tag sets are numbered canonically (`of_registry` translates the wire ids), so the
+    // block is too.
+    photon_data::block::registry::BLOCKS
+        .iter()
         .position(|block| block.name == name)
         .map(|index| index as i32)
         .ok_or_else(|| format!("unknown block {name}"))
