@@ -48,7 +48,7 @@ impl DebugOptionsScreen {
             self.set_focus(Focus::Profile(index));
             return Some(self.press_profile(Profile::ALL[index], index));
         }
-        if self.gui_scale.contains(&self.arena, at) {
+        if self.has_gui_scale() && self.gui_scale.contains(&self.arena, at) {
             self.set_focus(Focus::GuiScale);
             return Some(self.cycle_scale());
         }
@@ -114,6 +114,9 @@ impl DebugOptionsScreen {
         let Some(index) = row else {
             return;
         };
+        if !photon_core::versions::behaviour::debug_option_categories_styled() {
+            return;
+        }
         let Row::Category(_, width) = &self.rows[index] else {
             return;
         };
@@ -158,7 +161,11 @@ impl DebugOptionsScreen {
         let mut order = vec![(Focus::Search, true)];
         for (index, row) in self.rows.iter().enumerate() {
             match row {
-                Row::Category(..) => order.push((Focus::Category(index), true)),
+                Row::Category(..) => {
+                    if photon_core::versions::behaviour::debug_option_categories_styled() {
+                        order.push((Focus::Category(index), true));
+                    }
+                }
                 Row::Entry { id, buttons, .. } => {
                     for (slot, button) in buttons.iter().enumerate() {
                         order.push((Focus::Button(id, slot), button.is_active()));
@@ -169,7 +176,9 @@ impl DebugOptionsScreen {
         for (index, profile) in self.profiles.iter().enumerate() {
             order.push((Focus::Profile(index), profile.is_active()));
         }
-        order.push((Focus::GuiScale, self.gui_scale.is_active()));
+        if self.has_gui_scale() {
+            order.push((Focus::GuiScale, self.gui_scale.is_active()));
+        }
         order.push((Focus::Done, self.done.is_active()));
         order
     }
@@ -182,7 +191,7 @@ impl DebugOptionsScreen {
         // from its end going back (`ContainerEventHandler.handleTabNavigation` with no focused child).
         let (after, before) = match order.iter().position(|(focus, _)| *focus == self.focus) {
             Some(at) => (at + 1, at),
-            None => (1, order.len() - 4),
+            None => (1, order.len() - if self.has_gui_scale() { 4 } else { 3 }),
         };
         let takes = |candidate: &&(Focus, bool)| candidate.1;
         let found = if forward {

@@ -44,6 +44,9 @@ impl DebugOptionsScreen {
             (&self.done, Focus::Done),
         ];
         for (widget, focus) in footer {
+            if focus == Focus::GuiScale && !self.has_gui_scale() {
+                continue;
+            }
             let lit = widget.contains(&self.arena, mouse) || self.focus == focus;
             widget.draw(frame, atlas, font, &self.arena, lit);
         }
@@ -168,7 +171,12 @@ impl DebugOptionsScreen {
                         },
                     );
                 }
-                frame.styled_text(atlas, font, text, (at, y + 4), 0xFFFF_FFFF, true);
+                let top = if photon_core::versions::behaviour::debug_option_categories_styled() {
+                    4
+                } else {
+                    5
+                };
+                frame.styled_text(atlas, font, text, (at, y + top), 0xFFFF_FFFF, true);
             }
             Row::Entry { name, allowed, .. } => {
                 let colour = if *allowed {

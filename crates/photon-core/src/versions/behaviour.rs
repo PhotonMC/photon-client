@@ -55,6 +55,17 @@ pub fn debug_system_specs_have_window() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether the debug options screen has the GUI scale button (`debugGuiScale`, new in 26.3).
+pub fn debug_options_have_gui_scale() -> bool {
+    !Version::active_before_26_3()
+}
+
+/// Whether the debug options screen's category titles are focusable text widgets, written bold
+/// and underlined (26.3; in 26.2 they are plain text drawn five pixels down and take no focus).
+pub fn debug_option_categories_styled() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// Whether an enum read by ordinal takes the first constant when the id is out of range
 /// (26.3's `OutOfBoundsStrategy.ZERO`; before it the read fails).
 pub fn out_of_range_enum_ids_read_as_first() -> bool {

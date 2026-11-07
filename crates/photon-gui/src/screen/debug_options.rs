@@ -284,13 +284,13 @@ impl DebugOptionsScreen {
             (0, 0, width, HEADER_HEIGHT),
             (0.5, 0.5),
         );
-        let leaves = [
-            self.profiles[0].rect,
-            self.profiles[1].rect,
-            self.gui_scale.rect,
-            self.done.rect,
-        ];
-        let mut footer = horizontal(&self.arena, &leaves, 4);
+        let mut leaves = vec![self.profiles[0].rect, self.profiles[1].rect];
+        if self.has_gui_scale() {
+            leaves.push(self.gui_scale.rect);
+        }
+        leaves.push(self.done.rect);
+        let spacing = if self.has_gui_scale() { 4 } else { 8 };
+        let mut footer = horizontal(&self.arena, &leaves, spacing);
         footer.arrange(&mut self.arena);
         place_in_frame(
             &mut self.arena,
@@ -302,6 +302,11 @@ impl DebugOptionsScreen {
 
     pub fn size(&self) -> (i32, i32) {
         self.size
+    }
+
+    /// Whether the GUI scale button is on the screen (26.2 has none).
+    fn has_gui_scale(&self) -> bool {
+        photon_core::versions::behaviour::debug_options_have_gui_scale()
     }
 
     /// `Screen.resize` (`repositionElements` of this screen): the widgets are laid out again for
@@ -446,10 +451,14 @@ impl DebugOptionsScreen {
 
 /// The group labels, bold and underlined as 26.3 draws them.
 fn category_labels(font: &Font, lang: &Lang) -> [(Vec<Run>, i32); 2] {
-    let style = Style {
-        bold: Some(true),
-        underlined: Some(true),
-        ..Style::default()
+    let style = if photon_core::versions::behaviour::debug_option_categories_styled() {
+        Style {
+            bold: Some(true),
+            underlined: Some(true),
+            ..Style::default()
+        }
+    } else {
+        Style::default()
     };
     [Category::ScreenText, Category::Renderer].map(|category| {
         let runs = lang.runs(&Component::translatable(category.translation_key()), &style);
