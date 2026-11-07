@@ -12,7 +12,7 @@ fn write_debug_profile(list: &EntryList) {
     let _ = std::fs::create_dir_all(game_directory());
     let _ = std::fs::write(
         debug_profile_path(),
-        profile_text(list, photon_game::options::DATA_VERSION),
+        profile_text(list, photon_game::options::data_version()),
     );
 }
 

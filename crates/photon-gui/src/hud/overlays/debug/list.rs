@@ -135,7 +135,7 @@ const fn renderer(id: &'static str) -> Entry {
 }
 
 /// Every registered entry, in the order `DebugScreenEntries` registers them.
-pub const ENTRIES: [Entry; 46] = [
+const ENTRIES_26_3: [Entry; 46] = [
     text("game_version", true),
     text("fps", true),
     text("tps", true),
@@ -184,9 +184,33 @@ pub const ENTRIES: [Entry; 46] = [
     renderer("chunk_section_visibility"),
 ];
 
+/// The registered entries of the active version: 26.2 has no `player_speed` and calls the
+/// post effect entry `post_effect`.
+pub fn entries() -> &'static [Entry] {
+    static BEFORE_26_3: std::sync::LazyLock<Vec<Entry>> = std::sync::LazyLock::new(|| {
+        ENTRIES_26_3
+            .iter()
+            .filter(|entry| entry.id != "player_speed")
+            .map(|entry| Entry {
+                id: if entry.id == "post_effects" {
+                    "post_effect"
+                } else {
+                    entry.id
+                },
+                ..*entry
+            })
+            .collect()
+    });
+    if photon_core::versions::behaviour::debug_entries_before_26_3() {
+        &BEFORE_26_3
+    } else {
+        &ENTRIES_26_3
+    }
+}
+
 /// `DebugScreenEntries.getEntry`.
 pub fn entry(id: &str) -> Option<&'static Entry> {
-    ENTRIES.iter().find(|entry| entry.id == id)
+    entries().iter().find(|entry| entry.id == id)
 }
 
 /// `DebugScreenEntry.isAllowed`.
@@ -197,7 +221,7 @@ fn allowed(id: &str, reduced_debug_info: bool) -> bool {
 /// The entries in the order the options screen lists them (`OptionList.COMPARATOR`): by group, then
 /// by id.
 pub fn listed_entries() -> Vec<&'static Entry> {
-    let mut all: Vec<&Entry> = ENTRIES.iter().collect();
+    let mut all: Vec<&Entry> = entries().iter().collect();
     all.sort_by(|a, b| {
         a.category
             .sort_key()
@@ -321,7 +345,7 @@ impl EntryList {
     /// `getCurrentlyEnabled`: the ids shown now, sorted by their paths as `Identifier`'s natural
     /// order does.
     pub fn enabled(&self, reduced_debug_info: bool) -> Vec<&'static str> {
-        let mut shown: Vec<&'static str> = ENTRIES
+        let mut shown: Vec<&'static str> = entries()
             .iter()
             .filter(|entry| {
                 let status = self.statuses.get(entry.id).copied();

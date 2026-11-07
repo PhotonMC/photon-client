@@ -4,6 +4,11 @@ use super::*;
 /// the pinned client's `world_version`.
 pub const DATA_VERSION: i32 = 5023;
 
+/// The data version the files of the active version carry (`SharedConstants.getCurrentVersion`).
+pub fn data_version() -> i32 {
+    photon_core::versions::behaviour::data_version()
+}
+
 /// An option of the file, in the order `processOptions` goes through them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Key {

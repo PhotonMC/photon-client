@@ -60,7 +60,7 @@ pub(super) fn debug_options_screen_case(
         "events": asked.events,
     });
     if asked.saved {
-        let text = profile_text(&entries, photon_game::options::DATA_VERSION);
+        let text = profile_text(&entries, photon_game::options::data_version());
         out["file"] = serde_json::from_str(&text).map_err(|error| error.to_string())?;
     }
     Ok(out)

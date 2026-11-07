@@ -2,7 +2,7 @@
 //! operations with the file it saves.
 
 use photon_gui::hud::debug::{
-    ENTRIES, EntryList, Profile, Status, listed_entries, parse_profile, profile_text,
+    EntryList, Profile, Status, entries, listed_entries, parse_profile, profile_text,
 };
 use serde_json::{Map, Value, json};
 
@@ -21,7 +21,7 @@ fn profile_of(name: &str) -> Result<Profile, String> {
 
 /// The entries registered and the profiles, as the screen reads them.
 fn registry() -> (Value, Value) {
-    let mut entries: Vec<_> = ENTRIES.iter().collect();
+    let mut entries: Vec<_> = entries().iter().collect();
     entries.sort_by_key(|entry| entry.id);
     let registry = entries
         .into_iter()
@@ -53,7 +53,7 @@ fn registry() -> (Value, Value) {
 /// What a list and the file it saved look like after an operation.
 fn state(list: &EntryList, reduced: bool, file: Option<&str>) -> Value {
     let statuses: Map<String, Value> = {
-        let mut ids: Vec<_> = ENTRIES.iter().map(|entry| entry.id).collect();
+        let mut ids: Vec<_> = entries().iter().map(|entry| entry.id).collect();
         ids.sort_unstable();
         ids.into_iter()
             .map(|id| (id.to_owned(), json!(list.status(id).name())))
@@ -78,7 +78,7 @@ pub(super) fn debug_entries_case(row: &Value) -> Result<Value, String> {
         out["registry"] = registry;
         out["profiles"] = profiles;
         // The screen lists them by group, then by id.
-        debug_assert!(listed_entries().len() == ENTRIES.len());
+        debug_assert!(listed_entries().len() == entries().len());
     }
     if let Some(ops) = row["ops"].as_array() {
         out["states"] = run_ops(ops)?;
@@ -95,7 +95,7 @@ fn run_ops(ops: &[Value]) -> Result<Value, String> {
     for op in ops {
         let result = apply_op(op, &mut list, &mut reduced, &mut file)?;
         if list.take_changed() {
-            file = Some(profile_text(&list, photon_game::options::DATA_VERSION));
+            file = Some(profile_text(&list, photon_game::options::data_version()));
         }
         let mut after = state(&list, reduced, file.as_deref());
         if let Some(result) = result {
@@ -119,7 +119,7 @@ fn apply_op(
         "toggle" => return Ok(Some(list.toggle_status(id))),
         "profile" => {
             list.load_profile(profile_of(op["profile"].as_str().unwrap_or(""))?);
-            *file = Some(profile_text(list, photon_game::options::DATA_VERSION));
+            *file = Some(profile_text(list, photon_game::options::data_version()));
         }
         "overlay" => list.set_overlay_visible(op["visible"].as_bool().unwrap_or(false)),
         "reduced" => *reduced = op["on"].as_bool().unwrap_or(false),
@@ -135,7 +135,7 @@ fn write_file(text: &str, list: &mut EntryList, file: &mut Option<String>) {
     *file = Some(text.to_owned());
     *list = parse_profile(text).unwrap_or_else(|| {
         let fresh = EntryList::default();
-        *file = Some(profile_text(&fresh, photon_game::options::DATA_VERSION));
+        *file = Some(profile_text(&fresh, photon_game::options::data_version()));
         fresh
     });
     list.set_overlay_visible(overlay);

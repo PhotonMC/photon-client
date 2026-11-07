@@ -19,7 +19,7 @@ use photon_world::ClientItemStackState as Stack;
 
 use crate::text::{Component, Content};
 
-use crate::options::DATA_VERSION;
+use crate::options::data_version;
 
 /// `HotbarManager.NUM_HOTBAR_GROUPS`.
 pub const HOTBARS: usize = 9;
@@ -246,7 +246,7 @@ impl HotbarManager {
 fn encode_file(hotbars: &[Hotbar]) -> Vec<u8> {
     let mut fields = vec![Field {
         key: "DataVersion".to_owned(),
-        value: FieldValue::Int(DATA_VERSION),
+        value: FieldValue::Int(data_version()),
     }];
     for (id, hotbar) in hotbars.iter().enumerate() {
         fields.push(Field {

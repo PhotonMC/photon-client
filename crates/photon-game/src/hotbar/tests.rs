@@ -60,7 +60,7 @@ fn the_file_is_uncompressed_with_an_empty_root_name() {
     let fields = parse_file(&bytes).unwrap();
     assert_eq!(
         field(&fields, "DataVersion"),
-        Some(&FieldValue::Int(DATA_VERSION))
+        Some(&FieldValue::Int(data_version()))
     );
     let mut keys: Vec<_> = fields.iter().map(|field| field.key.as_str()).collect();
     keys.sort_unstable();

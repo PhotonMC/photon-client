@@ -500,7 +500,7 @@ impl Options {
     /// A line the file had for an option not modelled here keeps its value; a line no option
     /// reads is dropped, as Java drops it.
     pub fn save(&self, path: &Path) -> io::Result<()> {
-        let mut text = format!("version:{DATA_VERSION}\n");
+        let mut text = format!("version:{}\n", data_version());
         let mut put = |name: &str, value: &str| text.push_str(&format!("{name}:{value}\n"));
         let kept = |name: &str| self.file.lines.iter().find(|(known, _)| known == name);
         for name in WRITE_ORDER {

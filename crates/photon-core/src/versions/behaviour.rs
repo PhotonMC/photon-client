@@ -19,6 +19,21 @@ pub fn has_quit_shortcuts_option() -> bool {
     !Version::active_before_26_3()
 }
 
+/// The data version the active version's files carry (`world_version` of its `version.json`).
+pub fn data_version() -> i32 {
+    if Version::active_before_26_3() {
+        4903
+    } else {
+        5023
+    }
+}
+
+/// Whether the debug entries are those of 26.2 (no `player_speed`; `post_effect` for 26.3's
+/// `post_effects`).
+pub fn debug_entries_before_26_3() -> bool {
+    Version::active_before_26_3()
+}
+
 /// Whether an enum read by ordinal takes the first constant when the id is out of range
 /// (26.3's `OutOfBoundsStrategy.ZERO`; before it the read fails).
 pub fn out_of_range_enum_ids_read_as_first() -> bool {

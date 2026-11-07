@@ -14,7 +14,7 @@ pub use entries::{
 };
 pub use format::fixed;
 pub use layout::{Line, columns};
-pub use list::{Category, ENTRIES, Entry, EntryList, Profile, Status, entry, listed_entries};
+pub use list::{Category, Entry, EntryList, Profile, Status, entries, entry, listed_entries};
 pub use pick::targets;
 pub use profile_file::{parse_profile, profile_text};
 
