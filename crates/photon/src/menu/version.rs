@@ -51,6 +51,28 @@ fn after(current: Option<Version>, offered: &[Version]) -> Option<Version> {
     }
 }
 
+/// Pick the version of the next joins, as the button does: its content is baked while the player
+/// is still on the menu.
+fn pick(version: Option<Version>) {
+    choose_version(version);
+    if let Some(version) = version {
+        crate::play::prefetch::start(version);
+    }
+}
+
+/// Dev only: `PHOTON_PICK_VERSION=26.3,26.2` picks these versions for the scripted joins in turn,
+/// the way the button does.
+pub(super) fn pick_scripted() {
+    static JOINS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let Ok(list) = std::env::var("PHOTON_PICK_VERSION") else {
+        return;
+    };
+    let at = JOINS.fetch_add(1, Ordering::Relaxed);
+    if let Some(name) = list.split(',').nth(at) {
+        pick(Version::from_name(name));
+    }
+}
+
 /// The text of the version button: the picked version, or automatic.
 pub(super) fn label(lang: &photon_game::text::Lang) -> String {
     match chosen_version() {
@@ -84,11 +106,7 @@ impl Menu {
     /// A press on the version button: the next choice, shown on the button.
     pub(super) fn cycle_version(&mut self) {
         let next = after(chosen_version(), &offered());
-        choose_version(next);
-        // The picked version's content is baked while the player is still on the menu.
-        if let Some(version) = next {
-            crate::play::prefetch::start(version);
-        }
+        pick(next);
         let label = label(self.gui.lang());
         let font = self.gui.text_assets().0;
         if let Screen::Home(home) = &mut self.screen {

@@ -335,6 +335,7 @@ impl Menu {
 
     /// A scripted run's join of `server`, named by its address.
     fn connect_scripted(&mut self, server: SocketAddr, size: (i32, i32)) {
+        version::pick_scripted();
         let shown = server.to_string();
         let name = self.gui.lang().text("photon.loading.server");
         self.connect(Target::Address(server), None, (&name, &shown), size);
