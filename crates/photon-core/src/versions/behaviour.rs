@@ -9,6 +9,11 @@ pub fn negative_tag_counts_fail() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether the game has the improved transparency option and its debug key (new in 26.3).
+pub fn has_improved_transparency() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// Whether an enum read by ordinal takes the first constant when the id is out of range
 /// (26.3's `OutOfBoundsStrategy.ZERO`; before it the read fails).
 pub fn out_of_range_enum_ids_read_as_first() -> bool {

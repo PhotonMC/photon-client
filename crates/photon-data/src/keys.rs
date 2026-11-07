@@ -25,8 +25,10 @@ pub enum InputKey {
 
 /// Every key mapping, in `Options.keyMappings` order.
 pub fn mappings() -> impl Iterator<Item = KeyMappingRow> {
+    let improved = photon_core::versions::behaviour::has_improved_transparency();
     KEY_MAPPINGS
         .iter()
+        .filter(move |row| improved || row.0 != "key.debug.improvedTransparency")
         .map(|&(name, category, default_key, order)| KeyMappingRow {
             name,
             category,
