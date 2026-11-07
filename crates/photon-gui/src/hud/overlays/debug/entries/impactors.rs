@@ -63,19 +63,22 @@ pub fn display(impactors: &Impactors) -> Vec<Line> {
     } else {
         format!("Filtering: {}", filtering.caption())
     };
-    vec![
+    let mut lines = vec![
         Line::Regular(format!(
             "{transparency}{clouds}B: {}",
             impactors.biome_blend
         )),
         Line::Regular(second),
-        Line::Regular(format!(
+    ];
+    if photon_core::versions::behaviour::debug_shows_terrain_rendering() {
+        lines.push(Line::Regular(format!(
             "Terrain Rendering: {}",
             if impactors.multi_draw_indirect {
                 "multidrawindirect"
             } else {
                 "naive"
             }
-        )),
-    ]
+        )));
+    }
+    lines
 }

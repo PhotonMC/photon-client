@@ -385,7 +385,12 @@ fn fps_line(frame: &FrameStats) -> String {
     };
     let mode = frame.present_mode.map_or("", PresentMode::name);
     let rate = frame.refresh_rate.unwrap_or(0);
-    format!("{} fps T: {limit}{mode} @{rate}Hz", frame.fps)
+    let base = format!("{} fps T: {limit}{mode}", frame.fps);
+    if photon_core::versions::behaviour::fps_line_shows_refresh_rate() {
+        format!("{base} @{rate}Hz")
+    } else {
+        base
+    }
 }
 
 /// `DebugEntryTps` for a server that is not the integrated one: its brand, whether the tick rate is

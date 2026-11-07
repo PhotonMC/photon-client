@@ -34,6 +34,27 @@ pub fn debug_entries_before_26_3() -> bool {
     Version::active_before_26_3()
 }
 
+/// Whether the fps debug line ends with the display's refresh rate (new in 26.3).
+pub fn fps_line_shows_refresh_rate() -> bool {
+    !Version::active_before_26_3()
+}
+
+/// Whether the debug footer writes the fps chart in lower case (26.3; 26.2 writes `FPS`).
+pub fn debug_footer_fps_lower_case() -> bool {
+    !Version::active_before_26_3()
+}
+
+/// Whether the performance debug entry has the terrain rendering line (new in 26.3).
+pub fn debug_shows_terrain_rendering() -> bool {
+    !Version::active_before_26_3()
+}
+
+/// Whether the system specs debug entry names its runtime and has the window line (26.3; 26.2
+/// says `Java` and has no window line).
+pub fn debug_system_specs_have_window() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// Whether an enum read by ordinal takes the first constant when the id is out of range
 /// (26.3's `OutOfBoundsStrategy.ZERO`; before it the read fails).
 pub fn out_of_range_enum_ids_read_as_first() -> bool {

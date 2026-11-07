@@ -77,26 +77,36 @@ pub fn display(specs: &SystemSpecs) -> Vec<Line> {
         .lines()
         .next()
         .unwrap_or(&specs.driver_info);
-    vec![Line::Group(
-        "minecraft:system",
-        vec![
-            format!("{}: {}", specs.runtime.0, specs.runtime.1),
-            format!("CPU: {}", specs.cpu),
-            format!(
-                "Display: {}x{} ({})",
-                specs.display.0, specs.display.1, specs.vendor
-            ),
-            format!(
-                "Window: {}x{} ({}.{:02}x pixel density)",
-                specs.window.0,
-                specs.window.1,
-                specs.window.2 / 100,
-                specs.window.2 % 100
-            ),
-            format!("{}{}", specs.device_name, specs.device_type.suffix()),
-            format!("{} {driver}", specs.backend),
-        ],
-    )]
+    let newer = photon_core::versions::behaviour::debug_system_specs_have_window();
+    let runtime = if newer {
+        format!("{}: {}", specs.runtime.0, specs.runtime.1)
+    } else {
+        format!("Java: {}", specs.runtime.1)
+    };
+    let mut lines = vec![
+        runtime,
+        format!("CPU: {}", specs.cpu),
+        format!(
+            "Display: {}x{} ({})",
+            specs.display.0, specs.display.1, specs.vendor
+        ),
+    ];
+    if newer {
+        lines.push(format!(
+            "Window: {}x{} ({}.{:02}x pixel density)",
+            specs.window.0,
+            specs.window.1,
+            specs.window.2 / 100,
+            specs.window.2 % 100
+        ));
+    }
+    lines.push(format!(
+        "{}{}",
+        specs.device_name,
+        specs.device_type.suffix()
+    ));
+    lines.push(format!("{} {driver}", specs.backend));
+    vec![Line::Group("minecraft:system", lines)]
 }
 
 #[cfg(test)]

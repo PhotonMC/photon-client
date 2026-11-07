@@ -55,7 +55,7 @@ pub fn footer(
             keys.profiler,
             state(profiler),
             keys.fps,
-            if has_server { "fps + tps" } else { "fps" },
+            fps_chart_name(has_server),
             state(fps)
         ),
         format!(
@@ -72,6 +72,17 @@ pub fn footer(
         ),
         format!("To edit: press {}", keys.options),
     ]
+}
+
+/// The fps chart's name in the footer.
+fn fps_chart_name(has_server: bool) -> &'static str {
+    let lower = photon_core::versions::behaviour::debug_footer_fps_lower_case();
+    match (has_server, lower) {
+        (true, true) => "fps + tps",
+        (false, true) => "fps",
+        (true, false) => "FPS + TPS",
+        (false, false) => "FPS",
+    }
 }
 
 /// The keys as `formatKeybind` writes them.
