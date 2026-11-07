@@ -41,6 +41,12 @@ pub fn subtitles_show_closest() -> bool {
     Version::active_before_26_3()
 }
 
+/// Whether the brewing stand screen uses fixed totals (400 ticks, 20 fuel) instead of the ones the
+/// server sends (26.3 sends them as data slots 2 and 3).
+pub fn brewing_totals_are_fixed() -> bool {
+    Version::active_before_26_3()
+}
+
 /// The data version the active version's files carry (`world_version` of its `version.json`).
 pub fn data_version() -> i32 {
     if Version::active_before_26_3() {

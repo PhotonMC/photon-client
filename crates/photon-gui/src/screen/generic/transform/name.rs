@@ -330,7 +330,7 @@ impl GenericScreen {
                 }
             }
             MenuKind::Brewing => {
-                brewing_progress(draw, ((data(0), data(1)), (data(2), data(3))), (left, top));
+                brewing_progress(draw, brewing_data(&data), (left, top));
             }
             MenuKind::Cartography => self.cartography_preview(draw, menu, (left, top)),
             MenuKind::Anvil => self.anvil_extras(draw, menu, (left, top)),
@@ -381,4 +381,14 @@ impl GenericScreen {
             sprite(draw, "map", 67, 13, 66, 66);
         }
     }
+}
+
+/// The brewing stand's (ticks, fuel) and (total ticks, total fuel), the totals fixed before 26.3.
+fn brewing_data(data: &impl Fn(usize) -> i32) -> ((i32, i32), (i32, i32)) {
+    let totals = if photon_core::versions::behaviour::brewing_totals_are_fixed() {
+        (400, 20)
+    } else {
+        (data(2), data(3))
+    };
+    ((data(0), data(1)), totals)
 }
