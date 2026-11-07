@@ -21,6 +21,11 @@ pub fn bed_item_sets_own_flags() -> bool {
     Version::active_before_26_3()
 }
 
+/// Whether every tooltip leaves a gap after its first line, not only an item's (before 26.3).
+pub fn every_tooltip_gaps_after_first_line() -> bool {
+    Version::active_before_26_3()
+}
+
 /// The resource pack format `(major, minor)` of the game the session plays (26.1 shares 26.2's
 /// until its jar is read).
 pub fn resource_pack_format() -> (i32, i32) {

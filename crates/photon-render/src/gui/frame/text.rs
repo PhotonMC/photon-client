@@ -149,6 +149,8 @@ impl GuiFrame {
             .map(|line| font.width_of_text_runs(line))
             .max()
             .unwrap_or(0);
+        let name_gap =
+            name_gap || photon_core::versions::behaviour::every_tooltip_gaps_after_first_line();
         let short = !(name_gap && lines.len() != 1);
         let height = lines.len() as i32 * 10 - if short { 2 } else { 0 };
         let (x, y) = positioner.position(screen, mouse, (width, height));
