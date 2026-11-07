@@ -19,6 +19,12 @@ pub fn has_quit_shortcuts_option() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether the name tag text is the fixed half-transparent white instead of a colour derived
+/// from the background opacity (26.2 submits a constant; 26.3 derives it).
+pub fn name_tag_text_is_constant() -> bool {
+    Version::active_before_26_3()
+}
+
 /// The data version the active version's files carry (`world_version` of its `version.json`).
 pub fn data_version() -> i32 {
     if Version::active_before_26_3() {
