@@ -77,7 +77,7 @@ impl Fixture {
                 .into_boxed_str(),
         );
         Pin {
-            id: "26.2",
+            id: "26.3",
             client_sha1: sha,
         }
     }
@@ -89,7 +89,7 @@ impl Fixture {
         let jar_sha = Sha1Hex::of_bytes(&self.jar);
         let version = version.unwrap_or_else(|| {
             format!(
-                r#"{{"id":"26.2","downloads":{{"client":{{"url":"{DATA}/v1/objects/{jar}/client.jar","sha1":"{jar}","size":{}}}}},"assetIndex":{{"id":"32","url":"{META}/v1/packages/{idx}/32.json","sha1":"{idx}","size":{}}}}}"#,
+                r#"{{"id":"26.3","downloads":{{"client":{{"url":"{DATA}/v1/objects/{jar}/client.jar","sha1":"{jar}","size":{}}}}},"assetIndex":{{"id":"32","url":"{META}/v1/packages/{idx}/32.json","sha1":"{idx}","size":{}}}}}"#,
                 self.jar.len(),
                 index.len(),
                 jar = jar_sha.as_str(),
@@ -98,7 +98,7 @@ impl Fixture {
         });
         let version_sha = Sha1Hex::of_bytes(version.as_bytes());
         let manifest = format!(
-            r#"{{"versions":[{{"id":"26.2","url":"{META}/v1/packages/{v}/26.2.json","sha1":"{v}"}}]}}"#,
+            r#"{{"versions":[{{"id":"26.3","url":"{META}/v1/packages/{v}/26.3.json","sha1":"{v}"}}]}}"#,
             v = version_sha.as_str()
         );
         stand.serve(
@@ -106,7 +106,7 @@ impl Fixture {
             manifest.into_bytes(),
         );
         stand.serve(
-            &format!("/meta/v1/packages/{}/26.2.json", version_sha.as_str()),
+            &format!("/meta/v1/packages/{}/26.3.json", version_sha.as_str()),
             version.into_bytes(),
         );
         stand.serve(
@@ -262,7 +262,7 @@ fn metadata_cannot_send_the_download_to_another_host() {
     let (stand, fixture) = (Stand::start(), Fixture::new());
     let jar = Sha1Hex::of_bytes(&fixture.jar);
     let version = format!(
-        r#"{{"id":"26.2","downloads":{{"client":{{"url":"https://evil.example/client.jar","sha1":"{jar}","size":{}}}}},"assetIndex":{{"id":"32","url":"{META}/x","sha1":"{jar}","size":1}}}}"#,
+        r#"{{"id":"26.3","downloads":{{"client":{{"url":"https://evil.example/client.jar","sha1":"{jar}","size":{}}}}},"assetIndex":{{"id":"32","url":"{META}/x","sha1":"{jar}","size":1}}}}"#,
         fixture.jar.len(),
         jar = jar.as_str()
     );
@@ -280,7 +280,7 @@ fn an_index_with_a_path_for_a_hash_is_refused_before_any_object_is_fetched() {
     let idx = Sha1Hex::of_bytes(index.as_bytes());
     let jar = Sha1Hex::of_bytes(&fixture.jar);
     let version = format!(
-        r#"{{"id":"26.2","downloads":{{"client":{{"url":"{DATA}/v1/objects/{jar}/client.jar","sha1":"{jar}","size":{}}}}},"assetIndex":{{"id":"32","url":"{META}/v1/packages/{idx}/32.json","sha1":"{idx}","size":{}}}}}"#,
+        r#"{{"id":"26.3","downloads":{{"client":{{"url":"{DATA}/v1/objects/{jar}/client.jar","sha1":"{jar}","size":{}}}}},"assetIndex":{{"id":"32","url":"{META}/v1/packages/{idx}/32.json","sha1":"{idx}","size":{}}}}}"#,
         fixture.jar.len(),
         index.len(),
         jar = jar.as_str(),
@@ -306,7 +306,7 @@ fn a_jar_that_is_not_the_pinned_one_stops_the_download() {
     let (stand, fixture) = (Stand::start(), Fixture::new());
     fixture.serve(&stand, None);
     let other = Pin {
-        id: "26.2",
+        id: "26.3",
         client_sha1: "0000000000000000000000000000000000000000",
     };
     let cache = scratch("otherjar");
@@ -353,8 +353,8 @@ fn an_interrupted_extraction_is_redone_and_a_member_outside_the_folder_is_refuse
 fn the_real_jar_extracts_to_the_development_tree() {
     let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.data/minecraft");
     let (jar, dev_tree) = (
-        data.join("runtime/client-26.2.jar"),
-        data.join("assets/jar-26.2"),
+        data.join("runtime/client-26.3.jar"),
+        data.join("assets/jar"),
     );
     let Ok(bytes) = std::fs::read(&jar) else {
         println!("missing reference: {}", jar.display());
@@ -416,7 +416,7 @@ fn an_installed_cache_is_found_again_and_a_half_made_one_is_not() {
         })
     );
     let other = Pin {
-        id: "26.2",
+        id: "26.3",
         client_sha1: "0000000000000000000000000000000000000000",
     };
     assert!(
