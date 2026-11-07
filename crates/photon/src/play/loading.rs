@@ -83,6 +83,10 @@ impl Play {
                 draw_level_loading_over(frame, atlas, font, lang, size, background);
             })?;
         self.gui.sync_glyphs(&mut self.backend)?;
+        if crate::menu::holding() {
+            // A picked version's join: no loading screen, the last frame stays up.
+            return Ok(());
+        }
         self.backend
             .draw_scene([0.0, 0.0, 0.0, 1.0], super::switch::IDENTITY)
             .map_err(Into::into)

@@ -35,6 +35,7 @@ pub(crate) mod panorama;
 mod pings;
 mod resume;
 mod version;
+pub(crate) use version::{holding, release};
 mod video;
 pub(crate) use pings::resolve_named;
 mod servers;
@@ -313,6 +314,7 @@ impl Menu {
     fn connect(&mut self, target: Target, ip: Option<&str>, about: (&str, &str), size: (i32, i32)) {
         let packs = crate::packs::shared();
         crate::packs::prepare(&packs, ip);
+        version::hold_for_join();
         self.screen = Screen::Connecting(
             LoadingScreen::new(self.gui.lang(), size, about.0, about.1),
             JoinTask::start(target, packs),
@@ -457,16 +459,13 @@ impl Menu {
             if let Some(session) = self.poll_join(size) {
                 return Ok(Choice::Play(session));
             }
-            self.credits_ticked(size);
-            self.friends_account_polled();
-            self.directory_polled();
-            self.link_arrived(client);
-            self.link_polled(size);
-            self.signin_polled(size);
-            self.account_polled(size, client);
-            self.friends_ticked(client);
+            self.poll_services(client, size);
             self.fit_screen(size);
             self.spin_panorama(client);
+            if self.holds_frame() {
+                std::thread::sleep(MENU_FRAME);
+                continue;
+            }
             let clear = self.draw_frame(client, size)?;
             self.show_cursor(client);
             self.gui.sync_glyphs(&mut client.backend)?;

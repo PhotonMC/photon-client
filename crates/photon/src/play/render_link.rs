@@ -24,6 +24,21 @@ impl Play {
         self.surface.set_hand_cursor(hand);
     }
 
+    /// Submit the frame, saving it too when a recording is on.
+    pub(super) fn submit_or_record(
+        &mut self,
+        colour: [f32; 4],
+        view_projection: [[f32; 4]; 4],
+    ) -> Result<()> {
+        crate::menu::release();
+        if ppm::record::due() {
+            let shot = self.backend.capture_scene(colour, view_projection)?;
+            ppm::record::save(shot.width, shot.height, &shot.rgba);
+            return Ok(());
+        }
+        self.submit_scene(colour, view_projection)
+    }
+
     /// Draws the scene on the render thread (inline in serial mode). The error of the frame
     /// before comes back here, a frame late.
     pub(super) fn submit_scene(

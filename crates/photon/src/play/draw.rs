@@ -497,16 +497,6 @@ impl Play {
             .client_message(&mut self.controls.chat_log, &message, focused);
     }
 
-    /// Submit the frame, saving it too when a recording is on.
-    fn submit_or_record(&mut self, colour: [f32; 4], view_projection: [[f32; 4]; 4]) -> Result<()> {
-        if ppm::record::due() {
-            let shot = self.backend.capture_scene(colour, view_projection)?;
-            ppm::record::save(shot.width, shot.height, &shot.rgba);
-            return Ok(());
-        }
-        self.submit_scene(colour, view_projection)
-    }
-
     /// With a frame count, the frames after the script ends are captured
     /// one per tick into numbered files; then the run reports where the
     /// player ended, captures `PHOTON_CAPTURE_PPM` and stops.

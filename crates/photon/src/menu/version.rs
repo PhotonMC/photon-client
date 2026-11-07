@@ -4,7 +4,30 @@
 use photon_core::version::Version;
 use photon_net::connection::{choose_version, chosen_version};
 
-use super::{Menu, Screen};
+use super::{Client, Menu, Screen};
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// A join of a picked version is under way: the window keeps showing the last frame the player
+/// saw (the home screen) until the new game's first world frame, so a switch shows no
+/// connecting or loading screens ([ADR 0013](../../../../docs/adr/0013-multi-version-content-model.md)).
+static HOLDING: AtomicBool = AtomicBool::new(false);
+
+/// Whether a join of a picked version is waiting for its first world frame.
+pub(crate) fn holding() -> bool {
+    HOLDING.load(Ordering::Relaxed)
+}
+
+/// The join's wait is over (the world shows, or the join failed).
+pub(crate) fn release() {
+    HOLDING.store(false, Ordering::Relaxed);
+}
+
+/// Start holding the frame when the player picked a version (or `PHOTON_HOLD_JOIN` asks, for
+/// scripted runs, which have no picker).
+pub(super) fn hold_for_join() {
+    let wanted = chosen_version().is_some() || std::env::var_os("PHOTON_HOLD_JOIN").is_some();
+    HOLDING.store(wanted, Ordering::Relaxed);
+}
 
 /// The versions the button offers, after automatic: the newest first, those whose assets are on
 /// disk.
@@ -37,6 +60,27 @@ pub(super) fn label(lang: &photon_game::text::Lang) -> String {
 }
 
 impl Menu {
+    /// The frame's polls of the services behind the menus: credits, friends, directory, links and
+    /// sign-in.
+    pub(super) fn poll_services(&mut self, client: &mut Client, size: (i32, i32)) {
+        self.credits_ticked(size);
+        self.friends_account_polled();
+        self.directory_polled();
+        self.link_arrived(client);
+        self.link_polled(size);
+        self.signin_polled(size);
+        self.account_polled(size, client);
+        self.friends_ticked(client);
+    }
+
+    /// Whether the window keeps its last frame: a picked version's join is under way.
+    pub(super) fn holds_frame(&self) -> bool {
+        if !matches!(self.screen, Screen::Connecting(..)) {
+            release();
+        }
+        holding()
+    }
+
     /// A press on the version button: the next choice, shown on the button.
     pub(super) fn cycle_version(&mut self) {
         let next = after(chosen_version(), &offered());
