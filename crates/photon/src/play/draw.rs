@@ -444,7 +444,7 @@ impl Play {
             let captured = self.backend.capture_scene(colour, frame.view_projection)?;
             self.save_screenshot(&captured);
         } else {
-            self.submit_scene(colour, frame.view_projection)?;
+            self.submit_or_record(colour, frame.view_projection)?;
         }
         self.frames += 1;
         let parts = profile::take_parts();
@@ -495,6 +495,16 @@ impl Play {
         let focused = self.controls.chat.is_some();
         self.gui
             .client_message(&mut self.controls.chat_log, &message, focused);
+    }
+
+    /// Submit the frame, saving it too when a recording is on.
+    fn submit_or_record(&mut self, colour: [f32; 4], view_projection: [[f32; 4]; 4]) -> Result<()> {
+        if ppm::record::due() {
+            let shot = self.backend.capture_scene(colour, view_projection)?;
+            ppm::record::save(shot.width, shot.height, &shot.rgba);
+            return Ok(());
+        }
+        self.submit_scene(colour, view_projection)
     }
 
     /// With a frame count, the frames after the script ends are captured

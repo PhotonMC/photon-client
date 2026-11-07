@@ -481,7 +481,7 @@ impl Menu {
                 println!("captured_frame={path}");
                 return Ok(Choice::Quit);
             }
-            client.backend.draw_scene(clear, IDENTITY)?;
+            present(client, clear)?;
             if let Some(rest) = MENU_FRAME.checked_sub(frame_start.elapsed()) {
                 std::thread::sleep(rest);
             }
@@ -589,6 +589,17 @@ fn menu_registries(
         photon_game::registries::Registries::load(data_root, |_| Vec::new()),
         menu_versions(),
     )
+}
+
+/// Show the frame, saving it too when a recording is on.
+fn present(client: &mut Client, clear: [f32; 4]) -> Result<()> {
+    if crate::ppm::record::due() {
+        let shot = client.backend.capture_scene(clear, IDENTITY)?;
+        crate::ppm::record::save(shot.width, shot.height, &shot.rgba);
+    } else {
+        client.backend.draw_scene(clear, IDENTITY)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
