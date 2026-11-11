@@ -24,14 +24,18 @@ pub(crate) fn registry_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": rows}))
 }
 
-/// The entries of `names` the version has, with the wire id `map` gives each canonical place.
+/// The entries of `names` the version has, with the wire id `map` gives each canonical place, in
+/// wire id order (a version that regroups a window lists the window's entries where it numbers
+/// them, not where the union list keeps them).
 fn listed(names: impl Iterator<Item = String>, map: &IdMap) -> Vec<Value> {
-    names
+    let mut found: Vec<(u32, String)> = names
         .enumerate()
-        .filter_map(|(index, name)| {
-            map.to_wire(index as u32)
-                .map(|id| json!({"name": name, "id": id}))
-        })
+        .filter_map(|(index, name)| map.to_wire(index as u32).map(|id| (id, name)))
+        .collect();
+    found.sort_by_key(|(id, _)| *id);
+    found
+        .into_iter()
+        .map(|(id, name)| json!({"name": name, "id": id}))
         .collect()
 }
 
@@ -112,10 +116,14 @@ fn block_states(registries: &VersionRegistries, version: Version) -> Vec<Value> 
                     .iter()
                     .map(|(name, value)| format!("{name}={value}"))
                     .collect();
-                states.push(json!({"name": block.name, "id": id, "properties": properties}));
+                states.push((
+                    id,
+                    json!({"name": block.name, "id": id, "properties": properties}),
+                ));
             }
             canonical += 1;
         }
     }
-    states
+    states.sort_by_key(|(id, _)| *id);
+    states.into_iter().map(|(_, state)| state).collect()
 }
