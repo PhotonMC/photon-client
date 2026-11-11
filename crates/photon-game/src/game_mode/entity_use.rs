@@ -62,7 +62,9 @@ impl Context<'_> {
                 if secondary || taken {
                     EntityUse::Pass
                 } else {
-                    EntityUse::Success { swing: false }
+                    EntityUse::Success {
+                        swing: photon_core::versions::behaviour::mount_and_trade_clicks_swing(),
+                    }
                 }
             }
             // `AbstractMinecartContainer.interact` and `MinecartFurnace.interact` always succeed.

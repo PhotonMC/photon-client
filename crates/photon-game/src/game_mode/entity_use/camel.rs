@@ -43,6 +43,9 @@ impl Context<'_> {
         if baby && self.holds_golden_dandelion() {
             return self.golden_dandelion_on_baby(id, hand);
         }
+        if photon_core::versions::behaviour::camel_consumes_idle_click() {
+            return EntityUse::Success { swing: false };
+        }
         // 26.3 fails the click, which goes on to the held item.
         EntityUse::Pass
     }

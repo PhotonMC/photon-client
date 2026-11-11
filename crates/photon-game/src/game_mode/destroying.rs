@@ -83,6 +83,20 @@ impl GameMode {
         end_attack
     }
 
+    /// 26.2's `continueDestroyBlock`: the block's hit sound on every fourth tick of the breaking,
+    /// counted before this tick is.
+    fn repeat_hit_sound(
+        &self,
+        ctx: &mut Context<'_>,
+        pos: (i32, i32, i32),
+        state: photon_core::ids::BlockStateId,
+    ) {
+        if photon_core::versions::behaviour::hit_sound_repeats() && self.destroy_ticks % 4.0 == 0.0
+        {
+            ctx.world.play_hit_sound(pos, state);
+        }
+    }
+
     /// `MultiPlayerGameMode.attack`: the server decides what it does.
     fn attack_entity(
         &mut self,
@@ -92,7 +106,7 @@ impl GameMode {
     ) {
         out.push(Outgoing::Attack { entity_id: id });
         ctx.player.reset_attack_strength();
-        if ctx.instabuild() {
+        if ctx.instabuild() && photon_core::versions::behaviour::creative_attack_delays_breaking() {
             // 26.3: an attack in creative waits out the next break.
             self.destroy_delay = 5;
         }
@@ -187,7 +201,9 @@ impl GameMode {
                     game_mode.destroy_ticks = 0.0;
                     game_mode.crack(ctx);
                     // `ClientLevel.addBreakingBlockEffects` with its sound.
-                    ctx.world.play_hit_sound(pos, state);
+                    if !photon_core::versions::behaviour::hit_sound_repeats() {
+                        ctx.world.play_hit_sound(pos, state);
+                    }
                     ctx.world.add_breaking_block_effect(
                         pos,
                         photon_core::direction::Direction::from_3d_data_value(i32::from(face)),
@@ -256,6 +272,7 @@ impl GameMode {
             return false;
         }
         self.destroy_progress += ctx.miner.destroy_progress(ctx.world, ctx.player, state);
+        self.repeat_hit_sound(ctx, pos, state);
         self.destroy_ticks += 1.0;
         self.destroyed
             .push((state, self.destroy_progress.clamp(0.0, 1.0)));

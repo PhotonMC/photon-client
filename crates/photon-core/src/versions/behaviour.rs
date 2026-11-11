@@ -92,6 +92,28 @@ pub fn in_world_options_offer_online() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether the client swings for a click that mounts a minecart or opens a grown wandering
+/// trader's trades (26.2); in 26.3 only the server's answer swings.
+pub fn mount_and_trade_clicks_swing() -> bool {
+    Version::active_before_26_3()
+}
+
+/// Whether a camel consumes a click it has no use for (26.2); 26.3 lets it go on to the held item.
+pub fn camel_consumes_idle_click() -> bool {
+    Version::active_before_26_3()
+}
+
+/// Whether a block being broken sounds its hit every fourth tick of the breaking (26.2); 26.3
+/// sounds it once when the breaking starts.
+pub fn hit_sound_repeats() -> bool {
+    Version::active_before_26_3()
+}
+
+/// Whether an attack on an entity in creative waits out the next block break (26.3).
+pub fn creative_attack_delays_breaking() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// Whether the atmosphere's fog colour is worked out on packed 8-bit colours (26.2); 26.3 keeps
 /// float vectors.
 pub fn fog_colour_is_packed() -> bool {
