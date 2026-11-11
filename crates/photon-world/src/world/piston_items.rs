@@ -166,9 +166,9 @@ impl ClientWorld {
         let Some(entity) = self.entities.at_mut(id) else {
             return;
         };
-        // 26.3: only what simulates its own movement on the client is sent along; the rest waits
+        // 26.3: only what simulates its own movement on the client is sent along (26.2: all); the rest waits
         // for the server.
-        if !crate::constants::simulates_own_movement(entity.type_id) {
+        if !crate::constants::blocks_set_motion_of(entity.type_id) {
             return;
         }
         let (sx, sy, sz) = movement.step();

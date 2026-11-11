@@ -20,21 +20,12 @@ impl LocalPlayer {
         // AbstractClientPlayer.tick: the avatar state steps first.
         self.begin_avatar_tick();
         self.player_tick(&level)?;
+        // 26.2 tells the server at the end of this tick, before the ambient sounds.
+        if super::sync::sends_in_own_tick() {
+            self.send_changes_on_foot();
+        }
         self.tick_ambient_sounds(&level);
         Ok(std::mem::take(&mut self.sent))
-    }
-
-    /// `LocalPlayer.sendChanges` for a player on foot (26.3): the input and the position, sent at
-    /// the end of the client tick, after the entities and the block entities have moved the player.
-    pub fn send_changes(&mut self) -> Vec<ServerboundMovement> {
-        self.sent.clear();
-        if self.last_sent_input != self.input.key_presses {
-            self.sent
-                .push(ServerboundMovement::PlayerInput(self.input.key_presses));
-            self.last_sent_input = self.input.key_presses;
-        }
-        self.send_position();
-        std::mem::take(&mut self.sent)
     }
 
     /// One client tick of the player sitting in a vehicle the world has already ticked: what
@@ -69,6 +60,11 @@ impl LocalPlayer {
             self.riding = None;
             return Err(error);
         }
+        // 26.2 tells the server of the look and the vehicle at the end of the player's own tick,
+        // before the vehicle carries the player to its seat and turns it.
+        if super::sync::sends_in_own_tick() {
+            self.send_changes_riding(boat);
+        }
         self.tick_ambient_sounds(&level);
         // `LivingEntity.rideTick` and then the boat: the fall is forgiven, and the boat is handed the
         // keys, before `positionRider` carries the player to its seat and turns it with the boat.
@@ -88,31 +84,8 @@ impl LocalPlayer {
                 self.set_pos(boat.rider_position);
             }
         }
-        // `LocalPlayer.sendChanges` of a passenger, at the end of the client tick: the input, the
-        // look the vehicle gave it, and, when it is the vehicle's authority, where the vehicle is.
-        if self.last_sent_input != self.input.key_presses {
-            self.sent
-                .push(ServerboundMovement::PlayerInput(self.input.key_presses));
-            self.last_sent_input = self.input.key_presses;
-        }
-        self.sent.push(ServerboundMovement::MovePlayerRot {
-            y_rot: self.y_rot,
-            x_rot: self.x_rot,
-            on_ground: self.on_ground,
-            horizontal_collision: self.horizontal_collision,
-        });
-        self.send_vehicle_move(boat);
-        if boat.controlled && self.sprinting != self.was_sprinting {
-            self.sent.push(ServerboundMovement::PlayerCommand {
-                entity_id: self.entity_id,
-                action: if self.sprinting {
-                    PlayerCommandAction::StartSprinting
-                } else {
-                    PlayerCommandAction::StopSprinting
-                },
-                data: 0,
-            });
-            self.was_sprinting = self.sprinting;
+        if !super::sync::sends_in_own_tick() {
+            self.send_changes_riding(boat);
         }
         self.riding = None;
         Ok(RideTick {
@@ -131,7 +104,7 @@ impl LocalPlayer {
     }
 
     /// The vehicle's own position, which its authority tells the server.
-    fn send_vehicle_move(&mut self, vehicle: &crate::VehicleView) {
+    pub(super) fn send_vehicle_move(&mut self, vehicle: &crate::VehicleView) {
         if vehicle.controlled {
             self.sent.push(ServerboundMovement::MoveVehicle {
                 position: vehicle.position,
@@ -384,7 +357,11 @@ impl LocalPlayer {
 
     /// The four corner pushes of `aiStep`; since 26.3 a passenger is not pushed by its own tick.
     fn push_out_of_blocks(&mut self, level: &Level<'_>) {
-        if self.no_physics || self.is_passenger() {
+        let passenger_is_left_alone = self.is_passenger()
+            && !photon_core::versions::rules()
+                .world
+                .passenger_is_pushed_out_of_blocks;
+        if self.no_physics || passenger_is_left_alone {
             return;
         }
         let half = f64::from(self.dimensions.width()) * 0.35;

@@ -58,6 +58,19 @@ pub(crate) fn square_dimensions(size: f32) -> ClientEntityDimensions {
     ClientEntityDimensions::scalable(size, size)
 }
 
+/// Whether a fall at `fall_speed` is too slow to bounce off a springy block, against one tick of
+/// `gravity`: slower than gravity in 26.2, no faster than it in 26.3.
+pub(crate) fn too_slow_to_bounce(fall_speed: f64, gravity: f64) -> bool {
+    if photon_core::versions::rules()
+        .world
+        .bounce_stops_at_gravity_speed
+    {
+        fall_speed <= gravity
+    } else {
+        fall_speed < gravity
+    }
+}
+
 /// `Entity.restituteMovementAfterCollisions` for an item (26.3): a bump keeps none of its speed
 /// unless the block it lands on bounces.
 pub(crate) fn restitute(
@@ -85,7 +98,7 @@ pub(crate) fn restitute(
     }
     if vertical {
         if below {
-            let slow = -current.y <= gravity;
+            let slow = too_slow_to_bounce(-current.y, gravity);
             restitution = if !slow && effect.flags & flag::SUPPRESSES_BOUNCE == 0 {
                 // `getBlockBounciness`: what is not a living thing bounces a fifth less.
                 f64::from(effect.bounce * 0.8_f32).max(restitution)

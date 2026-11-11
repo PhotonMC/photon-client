@@ -814,7 +814,6 @@
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 120
 "crates/photon-world/src/local_player/state.rs::LocalPlayer::new" = 102
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 70
-"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::tick_riding" = 73
 "crates/photon-world/src/mobs/guardian.rs::GuardianState::tick" = 70
 "crates/photon-world/src/particles/attract.rs::Particle::attract_tick" = 62
 "crates/photon-world/src/particles/colour.rs::Particle::glow" = 64

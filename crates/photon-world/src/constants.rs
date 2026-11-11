@@ -466,3 +466,12 @@ pub(crate) fn simulates_own_movement(type_id: EntityTypeId) -> bool {
     ]
     .contains(&type_id)
 }
+
+/// Whether a slime block on a moving piston and a bubble column set this entity's motion: every
+/// entity in 26.2, and only those the client simulates in 26.3.
+pub(crate) fn blocks_set_motion_of(type_id: EntityTypeId) -> bool {
+    photon_core::versions::rules()
+        .world
+        .block_motion_reaches_all_entities
+        || simulates_own_movement(type_id)
+}

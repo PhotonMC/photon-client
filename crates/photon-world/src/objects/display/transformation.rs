@@ -41,6 +41,16 @@ pub(super) fn lerp3(from: [f32; 3], to: [f32; 3], t: f32) -> [f32; 3] {
     [0, 1, 2].map(|axis| fma(to[axis] - from[axis], t, from[axis]))
 }
 
+/// The weight of the first quaternion in `Quaternionf.slerp`: single precision with JOML 1.10.9,
+/// double precision narrowed at the end with 1.10.8.
+fn slerp_first_weight(alpha: f32, omega: f32, sinom: f32) -> f32 {
+    if photon_core::versions::rules().world.slerp_weight_in_double {
+        let wide = ((1.0 - f64::from(alpha)) * f64::from(omega)).sin();
+        return (wide * f64::from(sinom)) as f32;
+    }
+    f64::from((1.0 - alpha) * omega).sin() as f32 * sinom
+}
+
 /// `Quaternionf.slerp`.
 pub(super) fn slerp(from: [f32; 4], to: [f32; 4], alpha: f32) -> [f32; 4] {
     let [x, y, z, w] = from;
@@ -51,9 +61,7 @@ pub(super) fn slerp(from: [f32; 4], to: [f32; 4], alpha: f32) -> [f32; 4] {
         let sin_sqr = 1.0 - abs_cosom * abs_cosom;
         let sinom = 1.0 / sin_sqr.sqrt();
         let omega = f64::from(sin_sqr * sinom).atan2(f64::from(abs_cosom)) as f32;
-        // JOML 1.10.9 (26.3) does this in single precision; 1.10.8 (26.1, 26.2) widened it to
-        // double, which waits for the per-version behaviour overrides.
-        scale0 = f64::from((1.0 - alpha) * omega).sin() as f32 * sinom;
+        scale0 = slerp_first_weight(alpha, omega, sinom);
         scale1 = f64::from(alpha * omega).sin() as f32 * sinom;
     } else {
         scale0 = 1.0 - alpha;

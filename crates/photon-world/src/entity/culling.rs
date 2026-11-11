@@ -140,6 +140,12 @@ impl EntityView<'_> {
     /// `Entity.getInterpolatedBoundingBox`: the box moved to where the entity is drawn between
     /// its last position and this one.
     fn interpolated(&self, bounds: Aabb, partial_tick: f32) -> Aabb {
+        if !photon_core::versions::rules()
+            .render
+            .culling_box_interpolates
+        {
+            return bounds;
+        }
         let (x, y, z) = self.position();
         let (old_x, old_y, old_z) = self.previous_position();
         if old_x == x && old_y == y && old_z == z {

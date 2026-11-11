@@ -155,9 +155,10 @@ impl EntityViewMut<'_> {
         living: Option<LivingKind>,
         in_water: Option<bool>,
         targets: EntityTargets,
+        easing: AiStepEasing,
     ) {
         if self.is_ender_dragon() {
-            self.tick_ender_dragon(&targets);
+            self.tick_ender_dragon(&targets, easing);
             return;
         }
         if self.is_minecart() {
@@ -177,7 +178,10 @@ impl EntityViewMut<'_> {
         }
         self.tick_axolotl();
         self.tick_guardian(&targets);
-        let was_interpolating = self.as_view().is_interpolating();
+        let was_interpolating = mob_motion_sees_easing(
+            easing.interpolating_before_tick,
+            self.as_view().is_interpolating(),
+        );
         self.tick_head_rotation();
         if matches!(living, Some(LivingKind::Mob | LivingKind::Other)) {
             self.tick_mob_motion(was_interpolating);
@@ -188,6 +192,37 @@ impl EntityViewMut<'_> {
             self.tick_shulker();
         }
         self.tick_wither_heads(targets.wither);
+    }
+}
+
+/// What an entity's tick needs to know about the easing of its position to the packets': whether
+/// it was running when the tick began, and the inputs of one step.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct AiStepEasing {
+    pub(crate) interpolating_before_tick: bool,
+    pub(crate) tick_speed: f32,
+    pub(crate) follow_position: bool,
+}
+
+/// Whether the ender dragon steps its position easing inside its own tick, after its flight
+/// history took the position (26.2), instead of in the common tick before it (26.3).
+pub(crate) fn dragon_eases_in_own_tick() -> bool {
+    !photon_core::versions::rules()
+        .world
+        .easing_steps_in_common_tick
+}
+
+/// Whether a mob's motion fade sees the position easing as running: with 26.3 the easing has
+/// already stepped when the fade looks (so its last step counts as over), with 26.2 the fade
+/// looks first.
+fn mob_motion_sees_easing(before_tick: bool, after_easing: bool) -> bool {
+    if photon_core::versions::rules()
+        .world
+        .easing_steps_in_common_tick
+    {
+        after_easing
+    } else {
+        before_tick
     }
 }
 

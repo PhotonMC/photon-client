@@ -177,22 +177,37 @@ impl ClientWorld {
         })
     }
 
+    /// What the easing of an entity's position is like as its tick begins.
+    fn ai_step_easing(&self, entity_id: EntityId) -> AiStepEasing {
+        AiStepEasing {
+            interpolating_before_tick: self
+                .entities
+                .at(entity_id)
+                .is_some_and(|entity| entity.is_interpolating()),
+            tick_speed: self.relative_tick_speed,
+            follow_position: self.interpolation_may_follow(entity_id),
+        }
+    }
+
     /// `Entity.commonTick`: the old transform is kept, the position eases before the entity's own
-    /// tick, an avatar's cloak follows it, and the tick count advances.
-    fn common_tick(&mut self, entity_id: EntityId) {
-        let tick_speed = self.relative_tick_speed;
-        let follow_position = self.interpolation_may_follow(entity_id);
+    /// tick, an avatar's cloak follows it, and the tick count advances. Returns what the easing was
+    /// like as the tick began, for the entity's own tick.
+    fn common_tick(&mut self, entity_id: EntityId) -> AiStepEasing {
+        let easing = self.ai_step_easing(entity_id);
         let mut entity = self
             .entities
             .at_mut(entity_id)
             .expect("entity position was checked above");
         entity.capture_old_transform();
-        entity.tick_position_interpolation(tick_speed, follow_position);
+        if !(entity.is_ender_dragon() && dragon_eases_in_own_tick()) {
+            entity.tick_position_interpolation(easing.tick_speed, easing.follow_position);
+        }
         // `AbstractClientPlayer.tick` and `ClientMannequin.tick`: an avatar's cloak follows it.
         if entity.is_avatar() {
             entity.tick_cloak();
         }
         entity.tick_count = entity.tick_count.wrapping_add(1);
+        easing
     }
 
     pub(crate) fn tick_entity_once(&mut self, entity_id: EntityId) {
@@ -222,7 +237,7 @@ impl ClientWorld {
         let in_water = self.mob_in_water(entity_id);
         let targets = self.targets_of(entity_id);
         let boat_under_water = self.boat_under_water_of(entity_id);
-        self.common_tick(entity_id);
+        let easing = self.common_tick(entity_id);
         // The level ticks a mount's physics (`super.tick`) before its own `tick` counts its
         // rearing and eases its animations.
         if ridden_mount {
@@ -248,7 +263,7 @@ impl ClientWorld {
             let living = entity.living_kind();
             // A mount the player steers is moved by the player's client, not eased to the
             // server's packets, nor slowed as a mob the client does not move is.
-            entity.tick_ai_step(living.filter(|_| !ridden_mount), in_water, targets);
+            entity.tick_ai_step(living.filter(|_| !ridden_mount), in_water, targets, easing);
             if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
                 entity.tick_motion_interpolation();
                 entity.tick_bob();

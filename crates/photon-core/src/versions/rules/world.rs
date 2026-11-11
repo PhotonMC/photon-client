@@ -35,6 +35,23 @@ rules! {
         /// The client leaves a dropped item's speed as it was on a collision, because it does not
         /// simulate those entities (before 26.3).
         item_collision_keeps_speed: before V26_3,
+        /// `Quaternionf.slerp` works out its first weight in double precision and narrows it
+        /// (JOML 1.10.8, before 26.3); JOML 1.10.9 stays in single precision.
+        slerp_weight_in_double: before V26_3,
+        /// A position easing steps in the common tick, before the entity's own tick (26.3); 26.2
+        /// steps it inside the tick of a living entity (`aiStep`, and the dragon's own), so what
+        /// the tick does before that point, a mob's motion fade and the dragon's flight history,
+        /// sees the easing and the position as they were when the tick began.
+        easing_steps_in_common_tick: since V26_3,
+        /// A slime block on a moving piston and a bubble column set the motion of every entity the
+        /// client holds (26.2); 26.3 sets only that of the entities the client simulates.
+        block_motion_reaches_all_entities: before V26_3,
+        /// A fall that is exactly as fast as gravity pulls in a tick does not bounce off a springy
+        /// block (26.3: the speed is compared with `<=`); 26.2 lets it bounce (`<`).
+        bounce_stops_at_gravity_speed: since V26_3,
+        /// The local player's own tick pushes it out of the blocks around it even while it rides
+        /// a vehicle (26.2); from 26.3 a passenger is left alone.
+        passenger_is_pushed_out_of_blocks: before V26_3,
         /// Swings use the older timing rules (before 26.3).
         legacy_swing: before V26_3,
         /// Using a shelf answers with a plain success, which swings (before 26.3).

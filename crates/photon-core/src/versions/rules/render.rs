@@ -18,5 +18,8 @@ rules! {
         every_tooltip_gaps_after_first_line: before V26_3,
         /// `PoseStack.Pose.rotate(axis, angle)` goes through a quaternion (before 26.3).
         pose_rotates_by_quaternion: before V26_3,
+        /// The box an entity is culled by is drawn between its last and current position at the
+        /// frame's partial tick (26.3); 26.2 culls by the current box alone.
+        culling_box_interpolates: since V26_3,
     }
 }

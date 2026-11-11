@@ -244,6 +244,7 @@ mod spectating;
 mod sprinting;
 mod state;
 pub use state::*;
+mod sync;
 mod ticking;
 mod travel;
 pub(crate) use travel::*;

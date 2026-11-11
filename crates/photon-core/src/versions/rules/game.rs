@@ -18,6 +18,10 @@ rules! {
         hit_sound_repeats: before V26_3,
         /// An attack on an entity in creative waits out the next block break (26.3).
         creative_attack_delays_breaking: since V26_3,
+        /// The local player tells the server its input, look and position at the end of its own
+        /// tick (26.2), before the block entities move it and the vehicle it rides turns it;
+        /// 26.3 sends them at the end of the client tick, after both.
+        player_sends_in_own_tick: before V26_3,
         /// The serverbound swing carries a hand and the player action numbers skip the direction
         /// change (before 26.3).
         punch_is_swing: before V26_3,

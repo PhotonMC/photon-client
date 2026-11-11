@@ -73,8 +73,8 @@ impl ClientWorld {
             dimensions: entity.dimensions(),
             fall_distance: 0.0,
             stuck: Vec3::ZERO,
-            // 26.3: items, orbs and primed TNT move themselves on the client.
-            simulates: crate::constants::simulates_own_movement(entity.type_id),
+            // 26.3: items, orbs and primed TNT move themselves on the client (26.2: every entity is set).
+            simulates: crate::constants::blocks_set_motion_of(entity.type_id),
         };
         let movement = Movement {
             from,

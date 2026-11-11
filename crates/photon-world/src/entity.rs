@@ -54,6 +54,7 @@ mod minecart;
 pub(crate) use minecart::*;
 mod motion;
 pub(crate) use motion::*;
+pub(crate) use motion::{AiStepEasing, dragon_eases_in_own_tick};
 mod mounts;
 mod pose;
 pub use pose::*;

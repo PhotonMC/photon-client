@@ -34,7 +34,7 @@ impl EntityViewMut<'_> {
     /// `EnderDragon.aiStep` on the client, which replaces `LivingEntity.aiStep`: the wing
     /// beat and the flight history, then the position eases to the last packet's. Nothing
     /// fades its motion and its head does not turn after anything; while it dies, none of it.
-    pub(crate) fn tick_ender_dragon(&mut self, targets: &EntityTargets) {
+    pub(crate) fn tick_ender_dragon(&mut self, targets: &EntityTargets, easing: AiStepEasing) {
         let silent = self.status.silent;
         let (flap, growl) = self.ender_dragon_mut().begin_ai_step(silent);
         self.sound_requests.extend(flap.map(TickSound::DragonFlap));
@@ -59,6 +59,9 @@ impl EntityViewMut<'_> {
         let (motion, no_ai, y) = (self.motion(), self.as_view().is_no_ai(), self.position().1);
         self.ender_dragon_mut().fly(motion, no_ai, (y, y_rot));
         if !no_ai {
+            if dragon_eases_in_own_tick() {
+                self.tick_position_interpolation(easing.tick_speed, easing.follow_position);
+            }
             self.rotation.y_body_rot = self.rotation.y_rot;
             let (at, y_rot) = (self.position(), self.rotation.y_rot.get());
             self.ender_dragon_mut().tick_parts(at, y_rot);
