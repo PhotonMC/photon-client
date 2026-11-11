@@ -92,6 +92,12 @@ pub fn in_world_options_offer_online() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether a boat clamps every passenger the same way (26.2): body turned to the boat, yaw held
+/// within a quarter turn, previous yaw moved along, head set to the yaw. 26.3 treats mobs apart.
+pub fn boat_clamp_is_uniform() -> bool {
+    Version::active_before_26_3()
+}
+
 /// Whether changing the exclusive fullscreen option asks for a restart (26.2); 26.3 applies it.
 pub fn exclusive_fullscreen_needs_restart() -> bool {
     Version::active_before_26_3()

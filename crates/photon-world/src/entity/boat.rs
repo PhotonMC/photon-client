@@ -134,7 +134,9 @@ impl EntityViewMut<'_> {
         if vanilla_passenger_is_living(self.type_id) {
             self.rotation.y_body_rot = JavaF32::new(body_y_rot);
         }
-        if vanilla_passenger_is_mob(self.type_id) {
+        if vanilla_passenger_is_mob(self.type_id)
+            && !photon_core::versions::behaviour::boat_clamp_is_uniform()
+        {
             self.rotation.y_rot = JavaF32::new(body_y_rot);
             let head = vanilla_clamped_head_y_rot(
                 self.rotation.y_head_rot.get(),
@@ -147,7 +149,36 @@ impl EntityViewMut<'_> {
         let (y_rot, delta) =
             vanilla_boat_passenger_clamped_y_rot(self.rotation.y_rot.get(), body_y_rot);
         self.rotation.y_rot = JavaF32::new(y_rot);
+        if photon_core::versions::behaviour::boat_clamp_is_uniform()
+            && vanilla_passenger_is_living(self.type_id)
+        {
+            self.rotation.y_head_rot = JavaF32::new(y_rot);
+        }
         delta
+    }
+
+    /// The clamp of a passenger carried by its boat. 26.2 also moves the previous yaw along and
+    /// turns a crowded animal afterwards (`crowded` holds whether its id is even).
+    pub(crate) fn follow_boat_position(&mut self, body_y_rot: f32, crowded: Option<bool>) {
+        let delta = self.clamp_vanilla_boat_passenger_rotation(body_y_rot);
+        if !photon_core::versions::behaviour::boat_clamp_is_uniform() {
+            return;
+        }
+        let old = self.rotation.old_y_rot.get();
+        self.rotation.old_y_rot = JavaF32::new(old + delta);
+        if let Some(even_id) = crowded {
+            self.add_crowded_boat_offset(even_id);
+        }
+    }
+
+    /// 26.2's `positionRider` for an animal in a full boat: its body and head turned a further
+    /// quarter turn one way or the other after the clamp.
+    pub(crate) fn add_crowded_boat_offset(&mut self, even_id: bool) {
+        let offset = if even_id { 90.0_f32 } else { 270.0_f32 };
+        let body = self.rotation.y_body_rot.get() + offset;
+        let head = self.rotation.y_head_rot.get() + offset;
+        self.rotation.y_body_rot = JavaF32::new(body);
+        self.rotation.y_head_rot = JavaF32::new(head);
     }
 
     /// `AbstractBoat.tick` on the client, at the start of the tick (`under_water` is

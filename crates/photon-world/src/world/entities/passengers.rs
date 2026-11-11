@@ -207,21 +207,12 @@ impl ClientWorld {
         let Some(max_passenger_count) = vanilla_boat_max_passengers(vehicle_type_id) else {
             return;
         };
-        let body_y_rot = vehicle_y_rot
-            + if vanilla_passenger_is_animal(passenger_type_id)
-                && passenger_count == max_passenger_count
-            {
-                if passenger_id.0 % 2 == 0 {
-                    90.0_f32
-                } else {
-                    270.0_f32
-                }
-            } else {
-                0.0_f32
-            };
+        let crowded = vanilla_passenger_is_animal(passenger_type_id)
+            && passenger_count == max_passenger_count;
+        let body_y_rot = vehicle_y_rot + crowded_body_offset(crowded, passenger_id);
         // Only the local player's own turning is carried along; the others follow the server.
         if let Some(mut passenger) = self.entities.at_mut(passenger_id) {
-            passenger.clamp_vanilla_boat_passenger_rotation(body_y_rot);
+            passenger.follow_boat_position(body_y_rot, crowded.then_some(passenger_id.0 % 2 == 0));
         } else if let Some(player) = self
             .local_player
             .as_mut()
@@ -442,7 +433,9 @@ impl ClientWorld {
         let body_y_rot = |type_id| {
             vehicle_y_rot
                 + match (
-                    vanilla_passenger_is_animal(type_id) && at_capacity,
+                    vanilla_passenger_is_animal(type_id)
+                        && at_capacity
+                        && !photon_core::versions::behaviour::boat_clamp_is_uniform(),
                     passenger_id.0 % 2 == 0,
                 ) {
                     (false, _) => 0.0_f32,
@@ -513,5 +506,16 @@ impl ClientWorld {
         {
             player.vehicle_id = vehicle_id;
         }
+    }
+}
+
+/// The offset a full boat adds to an animal's body yaw before the clamp (26.3); 26.2 adds it
+/// after the clamp instead.
+fn crowded_body_offset(crowded: bool, passenger_id: EntityId) -> f32 {
+    let folded = crowded && !photon_core::versions::behaviour::boat_clamp_is_uniform();
+    match (folded, passenger_id.0 % 2 == 0) {
+        (false, _) => 0.0,
+        (true, true) => 90.0,
+        (true, false) => 270.0,
     }
 }
