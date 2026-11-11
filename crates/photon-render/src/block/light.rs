@@ -393,11 +393,8 @@ where
         let around: [[i32; 3]; 4] = info.corners.map(|side| offset(base, side));
         let light = around.map(|p| self.light_at(p));
         let shade = around.map(|p| self.shade_at(p));
-        let translucent = around.map(|p| {
-            let beyond = offset(p, direction);
-            let traits = traits((self.state)(beyond));
-            !traits.view_blocking || traits.light_dampening == 0
-        });
+        let translucent =
+            around.map(|p| corner_lets_light_through(traits((self.state)(offset(p, direction)))));
         // The reference falls back to the first corner's values for every
         // diagonal whose two sides are both opaque.
         let diagonal = |first: usize, second: usize| {
@@ -479,6 +476,20 @@ pub fn grey(lit: &QuadLight, corner: usize, side: f32) -> i32 {
 /// The two lightmap coordinates a packed light value gives a vertex.
 pub fn light_uv(packed: i32) -> [f32; 2] {
     [(packed & 0xFFFF) as f32, ((packed >> 16) & 0xFFFF) as f32]
+}
+
+/// Whether a block beyond an ambient-occlusion corner counts as see-through: it does not block, or
+/// it blocks no light. What "block" means for the corner changed in 26.3 (see the rule).
+fn corner_lets_light_through(traits: &StateInfo) -> bool {
+    let opaque = if photon_core::versions::rules()
+        .render
+        .ao_corner_asks_view_blocking
+    {
+        traits.view_blocking
+    } else {
+        traits.solid_render
+    };
+    !opaque || traits.light_dampening == 0
 }
 
 #[cfg(test)]

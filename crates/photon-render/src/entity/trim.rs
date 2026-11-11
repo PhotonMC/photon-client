@@ -35,6 +35,49 @@ impl TrimMaterial {
     }
 }
 
+/// An equipment asset's `trim_overrides` entry (`EquipmentClientInfo.TrimOverride`): for a trim
+/// that matches, the picture and palette it draws with instead.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TrimOverride {
+    /// `when.material` and `when.pattern`: a name each (`minecraft:iron`), or any.
+    pub material: Option<String>,
+    pub pattern: Option<String>,
+    /// `texture`: the pattern's picture to draw, in place of the trim's own.
+    pub texture: Option<String>,
+    /// `palette`: the palette to recolour with. Without one the picture is drawn as it is.
+    pub palette: Option<String>,
+}
+
+impl TrimOverride {
+    /// The entries of an equipment asset's `trim_overrides`, in order.
+    pub fn parse_all(asset: &JsonObject) -> Vec<Self> {
+        let Some(entries) = asset.array("trim_overrides") else {
+            return Vec::new();
+        };
+        entries
+            .iter()
+            .filter_map(|entry| {
+                let JsonValue::Object(entry) = entry else {
+                    return None;
+                };
+                let when = entry.object("when")?;
+                Some(Self {
+                    material: when.text("material"),
+                    pattern: when.text("pattern"),
+                    texture: entry.text("texture").map(|id| path_of(&id).to_owned()),
+                    palette: entry.text("palette").map(|id| path_of(&id).to_owned()),
+                })
+            })
+            .collect()
+    }
+
+    /// `TrimPredicate.matches`.
+    pub fn matches(&self, material: &str, pattern: &str) -> bool {
+        self.material.as_deref().is_none_or(|name| name == material)
+            && self.pattern.as_deref().is_none_or(|name| name == pattern)
+    }
+}
+
 /// The patterns and materials of the vanilla data pack, by name (`minecraft:sentry`).
 #[derive(Debug, Clone, Default)]
 pub struct TrimData {

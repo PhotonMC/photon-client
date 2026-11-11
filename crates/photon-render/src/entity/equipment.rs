@@ -32,6 +32,8 @@ pub struct EquipmentLayer {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EquipmentInfo {
     pub layers: BTreeMap<String, Vec<EquipmentLayer>>,
+    /// What a trim draws in instead, tried in order (26.3's `trim_overrides`).
+    pub trim_overrides: Vec<super::trim::TrimOverride>,
 }
 
 impl EquipmentInfo {
@@ -84,6 +86,7 @@ pub fn parse_equipment_info(text: &str) -> Option<EquipmentInfo> {
         }
         info.layers.insert(name, layers);
     }
+    info.trim_overrides = super::trim::TrimOverride::parse_all(&root);
     Some(info)
 }
 

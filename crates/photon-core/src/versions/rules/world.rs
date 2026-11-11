@@ -86,5 +86,10 @@ rules! {
         /// A sleeper lies at the height the bed gives (26.3: the top of its shape, and nowhere
         /// when the block is no bed); 26.2 puts it a fixed 0.6875 over the block.
         sleep_height_comes_from_the_bed: since V26_3,
+        /// A rider's sound of the vehicle (minecart, happy ghast, nautilus) is placed at the
+        /// vehicle when it starts and at each tick that is not silenced (26.3); 26.2 leaves it at
+        /// the world's origin. It has no attenuation, so the place shows only in the stereo pan.
+        /// Source-derived, no golden.
+        riding_sound_follows_vehicle: since V26_3,
     }
 }

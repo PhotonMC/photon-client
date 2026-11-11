@@ -109,6 +109,7 @@ mod gates;
 mod parrots;
 mod skull;
 mod spin;
+mod trim;
 
 /// The layer types armor is drawn in, by `HumanoidArmorLayer`.
 const HUMANOID: &str = "humanoid";
@@ -184,6 +185,12 @@ impl Armor {
             let id = Identifier::parse(&format!("minecraft:textures/{path}.png")).ok()?;
             photon_render::texture::png::decode_rgba(&stack.read(&id)?).ok()
         };
+        if photon_core::versions::rules()
+            .render
+            .armor_trims_are_recoloured_on_demand
+        {
+            return trim::images(&*stack);
+        }
         let Ok(atlas) = Identifier::parse("minecraft:atlases/armor_trims.json") else {
             return Vec::new();
         };
@@ -235,12 +242,21 @@ impl Armor {
         let (material, pattern) =
             Values::new(stack.item_registry_id(), stack.patch_bytes()).trim()?;
         let (patterns, materials) = self.trim_names.as_ref()?;
-        let pattern = self
-            .trims
-            .pattern(patterns.get(usize::try_from(pattern).ok()?)?)?;
-        let material = self
-            .trims
-            .material(materials.get(usize::try_from(material).ok()?)?)?;
+        let pattern_name = patterns.get(usize::try_from(pattern).ok()?)?;
+        let material_name = materials.get(usize::try_from(material).ok()?)?;
+        let pattern = self.trims.pattern(pattern_name)?;
+        let material = self.trims.material(material_name)?;
+        if photon_core::versions::rules()
+            .render
+            .armor_trims_are_recoloured_on_demand
+        {
+            let info = self.infos.get(asset)?;
+            let (pattern, material) = (
+                (pattern_name.as_str(), pattern),
+                (material_name.as_str(), material),
+            );
+            return Some(trim::sprite(info, layer_type, pattern, material));
+        }
         Some(sprite_path(
             &format!("trims/entity/{layer_type}"),
             pattern,

@@ -103,7 +103,67 @@ fn in_nether(mut row: Value) -> Value {
 pub fn rows() -> Vec<Value> {
     let overworld = overworld_rows();
     let nether: Vec<Value> = overworld.iter().take(3).cloned().map(in_nether).collect();
-    cat![overworld, nether]
+    cat![overworld, nether, see_through_rows()]
+}
+
+/// The unit step of a direction, and the two axes across it.
+fn step_of(direction: &str) -> ([i64; 3], [[i64; 3]; 2]) {
+    match direction {
+        "down" => ([0, -1, 0], [[1, 0, 0], [0, 0, 1]]),
+        "up" => ([0, 1, 0], [[1, 0, 0], [0, 0, 1]]),
+        "north" => ([0, 0, -1], [[1, 0, 0], [0, 1, 0]]),
+        "south" => ([0, 0, 1], [[1, 0, 0], [0, 1, 0]]),
+        "west" => ([-1, 0, 0], [[0, 1, 0], [0, 0, 1]]),
+        _ => ([1, 0, 0], [[0, 1, 0], [0, 0, 1]]),
+    }
+}
+
+fn shifted(base: [i64; 3], offsets: &[[i64; 3]], sign: &[i64]) -> [i64; 3] {
+    let mut at = base;
+    for (offset, factor) in offsets.iter().zip(sign) {
+        for axis in 0..3 {
+            at[axis] += offset[axis] * factor;
+        }
+    }
+    at
+}
+
+/// A stone at `(0, 64, 0)` whose face towards `direction` looks at the next layer, with `ring`
+/// in the four blocks that layer's corners are tested at (the layer beyond it) and stone in the
+/// diagonals the corners fall back to. A corner the test calls opaque takes the first corner's
+/// light and shade instead of the diagonal's, so a ring the two versions judge differently shows
+/// in the corners' colour.
+fn ring_row(label: &str, ring: &str, direction: &str) -> Value {
+    let (step, across) = step_of(direction);
+    let centre = [0, 64, 0];
+    let base = shifted(centre, &[step], &[1]);
+    let beyond = shifted(base, &[step], &[1]);
+    let mut blocks = cat![floor(), vec![put(0, 64, 0, "minecraft:stone")]];
+    for (first, second) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+        let at = shifted(beyond, &across, &[first, second]);
+        blocks.push(put(at[0], at[1], at[2], ring));
+    }
+    for (first, second) in [(1, 1), (1, -1), (-1, 1), (-1, -1)] {
+        let at = shifted(base, &across, &[first, second]);
+        blocks.push(put(at[0], at[1], at[2], "minecraft:stone"));
+    }
+    row(label, blocks, centre)
+}
+
+/// Blocks whose face the model lighter treats as a corner that light passes: those that block
+/// the view but are not drawn as solid cubes, against ones that do not block it and ones that
+/// are solid.
+fn see_through_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for direction in DIRECTIONS {
+        rows.push(ring_row(&format!("ice-ring-{direction}"), "minecraft:ice", direction));
+    }
+    for block in
+        ["slime_block", "barrier", "beacon", "spawner", "white_shulker_box", "vault", "frosted_ice", "glass", "stone"]
+    {
+        rows.push(ring_row(&format!("{block}-ring-up"), &format!("minecraft:{block}"), "up"));
+    }
+    rows
 }
 
 fn overworld_rows() -> Vec<Value> {

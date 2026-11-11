@@ -15,27 +15,14 @@ use photon_render::vulkan::SectionFade;
 
 use super::flood::{Flood, FloodInputs, FloodParams};
 
+mod fade;
 mod graph;
 use crate::profile::{self, Span};
-
-/// The squared distance, in blocks, within which a section counts as near
-/// the camera: it does not fade in.
-const NEAR: i64 = 768;
 
 /// The time a frame may spend copying regions for the workers: at several
 /// hundred frames a second this still hands out hundreds of sections a
 /// second, and a frame spending more shows as a spike.
 const COPY_BUDGET: Duration = Duration::from_millis(1);
-
-/// Whether a section's centre is near the camera's block.
-fn near(key: SectionKey, camera_block: [i64; 3]) -> bool {
-    [key.0, key.1, key.2]
-        .iter()
-        .zip(camera_block)
-        .map(|(&section, block)| (i64::from(section) * 16 + 8 - block).pow(2))
-        .sum::<i64>()
-        < NEAR
-}
 
 /// What the workers have built since the profile last printed.
 #[derive(Default)]
@@ -73,7 +60,7 @@ pub struct SectionMeshes {
     /// older one is stale.
     latest: HashMap<SectionKey, u64>,
     next_generation: u64,
-    fades: HashMap<SectionKey, SectionFade>,
+    fades: fade::Fades,
     /// Each built section's face visibility (`CompiledSectionMesh`).
     compiled: HashMap<SectionKey, VisibilitySet>,
     /// What the flood last read of each dirtied section: whether its chunk
@@ -104,8 +91,6 @@ pub struct SectionMeshes {
     graph_from: Option<([i64; 3], i32, bool)>,
     workers: SectionWorkers,
     worker_count: usize,
-    /// The chunk fade option.
-    chunk_fade: Duration,
     /// Whether the occlusion graph and the frustum choose the sections;
     /// `PHOTON_CULLING=0` turns them off to compare against.
     culling: bool,
@@ -148,7 +133,7 @@ impl SectionMeshes {
             unchecked,
             latest: HashMap::new(),
             next_generation: 0,
-            fades: HashMap::new(),
+            fades: fade::Fades::new(chunk_fade),
             compiled: HashMap::new(),
             flood_inputs: HashMap::new(),
             graph: None,
@@ -162,7 +147,6 @@ impl SectionMeshes {
             graph_from: None,
             workers: SectionWorkers::new(worker_count, renderer, tints),
             worker_count,
-            chunk_fade,
             blinks: crate::profile::BlinkWatch::from_env(),
             culling: std::env::var("PHOTON_CULLING").map_or(true, |value| value != "0"),
             sections: low..low + dimension.height / 16,
@@ -269,7 +253,7 @@ impl SectionMeshes {
                 let key = (chunk_x, section_y, chunk_z);
                 self.pending.remove(&key);
                 self.latest.remove(&key);
-                self.fades.remove(&key);
+                self.fades.remove(key);
                 self.compiled.remove(&key);
                 self.flood_inputs.remove(&key);
                 backend.set_section(
@@ -286,29 +270,13 @@ impl SectionMeshes {
     /// `LevelRenderer.isSectionCompiledAndVisible`: the section has shown and is at least
     /// three tenths into its fade.
     pub fn compiled_and_visible(&self, key: SectionKey) -> bool {
-        self.fades
-            .get(&key)
-            .is_some_and(|fade| fade.visibility(Instant::now()) >= 0.3)
+        self.fades.compiled_and_visible(key)
     }
 
     /// The chunk fade option changed: sections that show for the first time from now on fade in
     /// over this long.
     pub fn set_chunk_fade(&mut self, length: Duration) {
-        self.chunk_fade = length;
-    }
-
-    /// A section fades in from the fog the first time it shows, unless it is
-    /// near the camera; its later rebuilds keep that first time.
-    fn fade(&mut self, key: SectionKey, camera_block: [i64; 3]) -> SectionFade {
-        let chunk_fade = self.chunk_fade;
-        *self.fades.entry(key).or_insert_with(|| SectionFade {
-            since: Instant::now(),
-            length: if near(key, camera_block) {
-                Duration::ZERO
-            } else {
-                chunk_fade
-            },
-        })
+        self.fades.set_option(length);
     }
 
     /// Update the light, show what the workers have finished, work out which
@@ -392,7 +360,7 @@ impl SectionMeshes {
                 if self.compiled.insert(built.key, built.visibility) != Some(built.visibility) {
                     self.propagate.push(built.key);
                 }
-                let fade = self.fade(built.key, camera_block);
+                let fade = self.fades.built(built.key, camera_block);
                 backend.set_section(built.key, &built.mesh, built.centre, fade)?;
             }
         }
@@ -420,7 +388,7 @@ impl SectionMeshes {
             self.compiled.remove(&key);
             // An empty section has shown too, so what is built in it later
             // does not fade.
-            let fade = self.fade(key, camera_block);
+            let fade = self.fades.empty(key, camera_block);
             backend.set_section(key, &photon_render::Mesh::default(), [0.0; 3], fade)?;
         }
         Ok(())
@@ -550,7 +518,7 @@ impl SectionMeshes {
         match self.prioritize {
             Priority::None => false,
             Priority::PlayerAffected => by_player,
-            Priority::Nearby => by_player || near(key, camera_block),
+            Priority::Nearby => by_player || fade::near(key, camera_block),
         }
     }
 

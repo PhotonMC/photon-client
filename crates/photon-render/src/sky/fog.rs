@@ -183,14 +183,36 @@ fn finish_colour(base: [f32; 3], view: &FogView) -> [f32; 4] {
         green = mth_lerp_f32(view.darken_world, green, green * 0.6);
         blue = mth_lerp_f32(view.darken_world, blue, blue * 0.6);
     }
-    let brighten = brighten_factor(view);
-    if red != 0.0 && green != 0.0 && blue != 0.0 {
-        let target = 1.0 / red.max(green.max(blue));
-        red = mth_lerp_f32(brighten, red, red * target);
-        green = mth_lerp_f32(brighten, green, green * target);
-        blue = mth_lerp_f32(brighten, blue, blue * target);
-    }
+    [red, green, blue] = brightened([red, green, blue], brighten_factor(view));
     [red, green, blue, 1.0]
+}
+
+/// The colour pulled towards its brightest form by `factor` (`FogRenderer.computeFogColor`): each
+/// channel is scaled so the brightest reaches one. 26.2 scales the channels that are not the
+/// brightest by one over the brightest held between 0.07 and one.
+fn brightened(colour: [f32; 3], factor: f32) -> [f32; 3] {
+    let [red, green, blue] = colour;
+    if red == 0.0 || green == 0.0 || blue == 0.0 {
+        return colour;
+    }
+    let brightest = red.max(green.max(blue));
+    let top_scale = 1.0 / brightest;
+    let other_scale = if photon_core::versions::rules()
+        .render
+        .fog_brighten_clamps_scale
+    {
+        1.0 / brightest.clamp(0.07, 1.0)
+    } else {
+        top_scale
+    };
+    colour.map(|channel| {
+        let scale = if channel == brightest {
+            top_scale
+        } else {
+            other_scale
+        };
+        mth_lerp_f32(factor, channel, channel * scale)
+    })
 }
 
 /// What the first environment that applies sets for the distances: the start and end of the fog, and

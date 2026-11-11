@@ -20,6 +20,24 @@ struct Fog<'a> {
     boss_fog: bool,
     sun_angle: f64,
     forward_x: f64,
+    /// The packed colours the row's fog, sky, sunrise and water attributes hold.
+    colours: Colours,
+}
+
+/// The colours of a row's attributes, packed ARGB.
+#[derive(Clone, Copy)]
+struct Colours {
+    fog: u32,
+    sunrise: u32,
+    sky: u32,
+    water: u32,
+}
+
+impl Colours {
+    /// A day sky.
+    const DAY: Self = Self { fog: 0xFFC0_D8FF, sunrise: 0xB3FF_8040, sky: 0xFF78_A7FF, water: 0xFF3F_76E4 };
+    /// Colours so dark that no channel reaches seven hundredths, with no warmth at the horizon.
+    const DIM: Self = Self { fog: 0xFF05_0810, sunrise: 0x0000_0000, sky: 0xFF04_0710, water: 0xFF04_0A12 };
 }
 
 impl<'a> Fog<'a> {
@@ -37,6 +55,7 @@ impl<'a> Fog<'a> {
             boss_fog: false,
             sun_angle: 40.0,
             forward_x: 0.5,
+            colours: Colours::DAY,
         }
     }
 
@@ -52,8 +71,8 @@ impl<'a> Fog<'a> {
             "render_distance": self.render_distance, "water_vision_time": self.water_vision_time,
             "darken_world": f32_bits(self.darken_world), "boss_fog": self.boss_fog, "forward_x": f32_bits(self.forward_x), "partial": f32_bits(0.4),
             "attributes": {
-                "fog_color": 0xFFC0_D8FF_u32 as i32, "sunrise": 0xB3FF_8040_u32 as i32, "sky_color": 0xFF78_A7FF_u32 as i32,
-                "water_color": 0xFF3F_76E4_u32 as i32, "sun_angle": f32_bits(self.sun_angle),
+                "fog_color": self.colours.fog as i32, "sunrise": self.colours.sunrise as i32, "sky_color": self.colours.sky as i32,
+                "water_color": self.colours.water as i32, "sun_angle": f32_bits(self.sun_angle),
                 "fog_start": f32_bits(-8.0), "fog_end": f32_bits(192.0), "sky_fog_end": f32_bits(512.0),
                 "cloud_fog_end": f32_bits(300.0), "water_start": f32_bits(-8.0), "water_end": f32_bits(96.0),
             },
@@ -129,6 +148,7 @@ fn effect_rows(rows: &mut Vec<Value>) {
                 .row(),
         );
     }
+    dim_rows(rows);
     rows.push(Fog::new("night vision under water", "water").effect("minecraft:night_vision", 100, false, 0).row());
     rows.push(
         Fog::new("night vision and darkness", "atmospheric")
@@ -136,6 +156,49 @@ fn effect_rows(rows: &mut Vec<Value>) {
             .effect("minecraft:darkness", 400, true, 30)
             .row(),
     );
+}
+
+/// Fog dimmer than seven hundredths in every channel, brightened by night vision and by the water
+/// vision: the reference stops the brightening's scale from growing past that floor for the
+/// channels that are not the brightest.
+fn dim_rows(rows: &mut Vec<Value>) {
+    let dim = |label: &str, fog_type: &'static str| {
+        let mut fog = Fog::new(label, fog_type);
+        fog.colours = Colours::DIM;
+        fog
+    };
+    for (duration, ticks) in [(2000, 0), (150, 0), (60, 20)] {
+        rows.push(
+            dim(&format!("dim night vision {duration} for {ticks}"), "atmospheric")
+                .effect("minecraft:night_vision", duration, false, ticks)
+                .row(),
+        );
+    }
+    rows.push(dim("dim fog without night vision", "atmospheric").row());
+    for time in [0, 100, 300, 600] {
+        let mut fog = dim(&format!("dim water, {time} ticks"), "water");
+        fog.water_vision_time = time;
+        rows.push(fog.row());
+    }
+    let mut remote = dim("dim water, another's camera", "water");
+    remote.local = false;
+    rows.push(remote.row());
+    // The void darkens bright fog the same way: the brightest channel falls under the floor.
+    for y in [-60.0, -62.0, -63.5] {
+        let mut fog =
+            Fog::new(&format!("night vision at {y}"), "atmospheric").effect("minecraft:night_vision", 2000, false, 0);
+        fog.y = y;
+        rows.push(fog.row());
+    }
+    let mut dark = Fog::new("night vision, darkened world and dim fog", "atmospheric").effect(
+        "minecraft:night_vision",
+        2000,
+        false,
+        0,
+    );
+    dark.colours = Colours::DIM;
+    dark.darken_world = 0.5;
+    rows.push(dark.row());
 }
 
 /// The void's darkness near the bottom of the world, and the bosses'.

@@ -223,16 +223,31 @@ class MathShapeBorderOracle extends MathSectionOracle {
         return result;
     }
 
+    /**
+     * How far inside the border the wall is drawn: the renderer's own constant where the version
+     * has one, none before it. The sides' distances keep the border itself.
+     */
+    private static double renderingOffset() {
+        try {
+            return Reflect.field(WorldBorderRenderer.class, "RENDERING_OFFSET").getDouble(null);
+        } catch (NoSuchFieldException absent) {
+            return 0.0;
+        } catch (IllegalAccessException error) {
+            throw new IllegalStateException(error);
+        }
+    }
+
     private static JsonArray worldBorderQuads(
         WorldBorderRenderState state, Vec3 cameraPos, double renderDistance, float halfHeightY, long timeMillis
     ) {
         double cameraX = cameraPos.x;
         double cameraY = cameraPos.y;
         double cameraZ = cameraPos.z;
-        double borderMinX = state.minX;
-        double borderMaxX = state.maxX;
-        double borderMinZ = state.minZ;
-        double borderMaxZ = state.maxZ;
+        double inset = renderingOffset();
+        double borderMinX = state.minX + inset;
+        double borderMaxX = state.maxX - inset;
+        double borderMinZ = state.minZ + inset;
+        double borderMaxZ = state.maxZ - inset;
         double minZ = Math.max(Mth.floor(cameraZ - renderDistance), borderMinZ);
         double maxZ = Math.min(Mth.ceil(cameraZ + renderDistance), borderMaxZ);
         float u0z = (Mth.floor(minZ) & 1) * 0.5F;

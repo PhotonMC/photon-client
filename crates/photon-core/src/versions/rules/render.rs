@@ -45,5 +45,33 @@ rules! {
         /// The enchantment glint is a pass of its own over the model (`pipeline/glint`); from
         /// 26.3 it is a switch of the pipeline that draws the model itself.
         glint_is_own_pass: before V26_3,
+        /// The fog colour's brightening (night vision, water vision) scales the channels that are
+        /// not the brightest by one over the brightest channel held to at least 0.07 (26.2); 26.3
+        /// scales every channel by one over the brightest. Proved by the `movement/fog-data` rows
+        /// with dim fog.
+        fog_brighten_clamps_scale: before V26_3,
+        /// An ambient-occlusion corner lets light through when the block beyond it does not
+        /// block the view or does not dampen light (26.2); 26.3 asks whether it is not drawn as a
+        /// solid cube or does not dampen light. Ice, slime and shulker boxes differ. Proved by the
+        /// `movement/block-lighting` ring rows.
+        ao_corner_asks_view_blocking: before V26_3,
+        /// A section's fade length is set each time it is compiled and is none for a section
+        /// near the camera or one that was empty before; a section found empty is never stamped
+        /// (26.2). 26.3 fades every section over the option's length from the time it is first
+        /// found empty or meshed. Source-derived, no golden (a frame clock decides it).
+        section_fade_is_set_per_compile: before V26_3,
+        /// The world border's wall is drawn 0.01 inside the border on every side (26.3); its
+        /// distance checks keep the true border. Proved by the `math/shape/border` quad rows,
+        /// which the oracle lays out from the real renderer's constant.
+        border_wall_is_inset: since V26_3,
+        /// The forcefield texture the world border is drawn with has four mip levels and a linear
+        /// minification filter (26.3); 26.2 has the one level. Source-derived, no golden.
+        forcefield_has_mipmaps: since V26_3,
+        /// An armor trim's picture is the pattern's grey picture recoloured by a palette when it
+        /// is first drawn, and an equipment asset's `trim_overrides` choose the picture and
+        /// palette (26.3); 26.2 draws a sprite of the `armor_trims` atlas, named by the material's
+        /// suffix, and the material's `override_armor_assets` choose that suffix per armor.
+        /// Source-derived, no golden: the oracle proves the names only.
+        armor_trims_are_recoloured_on_demand: since V26_3,
     }
 }

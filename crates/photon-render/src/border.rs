@@ -106,6 +106,32 @@ impl BorderExtract {
     }
 }
 
+/// How far inside the border the wall is drawn in 26.3 (`WorldBorderRenderer.RENDERING_OFFSET`).
+const WALL_INSET: f64 = 0.01;
+
+/// How many mip levels the forcefield texture gets beyond the first (`MipmappedTexture`): at
+/// most four, and no more than the base-two logarithm of the smaller side or of the largest power
+/// of two that divides both sides, whichever is lower.
+pub fn forcefield_mip_levels(width: u32, height: u32) -> u32 {
+    const MAX_LEVEL: u32 = 4;
+    let lowest_bit = u32::isolate_lowest_one;
+    let smallest = width
+        .min(height)
+        .min(lowest_bit(width).min(lowest_bit(height)));
+    MAX_LEVEL.min(smallest.checked_ilog2().unwrap_or(0))
+}
+
+/// Where the wall is drawn: the border itself, or from 26.3 a hair inside it. Distances to the
+/// border keep the true bounds.
+fn wall_bounds([min_x, max_x, min_z, max_z]: [f64; 4]) -> [f64; 4] {
+    let inset = if photon_core::versions::rules().render.border_wall_is_inset {
+        WALL_INSET
+    } else {
+        0.0
+    };
+    [min_x + inset, max_x - inset, min_z + inset, max_z - inset]
+}
+
 /// What the border wall is laid out from: the border's `[min_x, max_x, min_z, max_z]`, how far
 /// out walls are drawn, the half height of the wall, the clock for the texture scroll and the
 /// RGBA tint.
@@ -132,10 +158,11 @@ pub fn quads(wall: &Wall, camera: [f64; 3], origin: [i32; 3]) -> Vec<(u8, [Verte
         tint,
     } = *wall;
     let [camera_x, camera_y, camera_z] = camera;
-    let min_z = (lfloor_f64(camera_z - render_distance) as f64).max(border_min_z);
-    let max_z = f64::from(ceil_f64(camera_z + render_distance)).min(border_max_z);
-    let min_x = (lfloor_f64(camera_x - render_distance) as f64).max(border_min_x);
-    let max_x = f64::from(ceil_f64(camera_x + render_distance)).min(border_max_x);
+    let [wall_min_x, wall_max_x, wall_min_z, wall_max_z] = wall_bounds(wall.bounds);
+    let min_z = (lfloor_f64(camera_z - render_distance) as f64).max(wall_min_z);
+    let max_z = f64::from(ceil_f64(camera_z + render_distance)).min(wall_max_z);
+    let min_x = (lfloor_f64(camera_x - render_distance) as f64).max(wall_min_x);
+    let max_x = f64::from(ceil_f64(camera_x + render_distance)).min(wall_max_x);
     let u0z = (lfloor_f64(min_z) & 1) as f32 * 0.5;
     let u1z = ((max_z - min_z) / 2.0) as f32;
     let u0x = (lfloor_f64(min_x) & 1) as f32 * 0.5;
@@ -150,10 +177,8 @@ pub fn quads(wall: &Wall, camera: [f64; 3], origin: [i32; 3]) -> Vec<(u8, [Verte
     let origin_y = f64::from(origin[1]);
     let y0 = -half_height_y - origin_y as f32;
     let y1 = half_height_y - origin_y as f32;
-    let ox = f64::from(origin[0]);
-    let oz = f64::from(origin[2]);
-    let sx = |value: f64| (value - ox) as f32;
-    let sz = |value: f64| (value - oz) as f32;
+    let sx = |value: f64| (value - f64::from(origin[0])) as f32;
+    let sz = |value: f64| (value - f64::from(origin[2])) as f32;
     let corner = |position: [f32; 3], uv: [f32; 2]| Vertex {
         position,
         uv: [uv[0] + scroll, uv[1] + scroll],
@@ -164,10 +189,10 @@ pub fn quads(wall: &Wall, camera: [f64; 3], origin: [i32; 3]) -> Vec<(u8, [Verte
     let quad_for = |side: u8| -> [Vertex; 4] {
         match side {
             SOUTH => [
-                corner([sx(min_x), y0, sz(border_max_z)], [u0x, v1]),
-                corner([sx(max_x), y0, sz(border_max_z)], [u1x + u0x, v1]),
-                corner([sx(max_x), y1, sz(border_max_z)], [u1x + u0x, v0]),
-                corner([sx(min_x), y1, sz(border_max_z)], [u0x, v0]),
+                corner([sx(min_x), y0, sz(wall_max_z)], [u0x, v1]),
+                corner([sx(max_x), y0, sz(wall_max_z)], [u1x + u0x, v1]),
+                corner([sx(max_x), y1, sz(wall_max_z)], [u1x + u0x, v0]),
+                corner([sx(min_x), y1, sz(wall_max_z)], [u0x, v0]),
             ],
             WEST => [
                 corner([sx(min_x), y0, sz(min_z)], [u0z, v1]),
@@ -182,10 +207,10 @@ pub fn quads(wall: &Wall, camera: [f64; 3], origin: [i32; 3]) -> Vec<(u8, [Verte
                 corner([sx(max_x), y1, sz(min_z)], [u0x, v0]),
             ],
             _ => [
-                corner([sx(border_max_x), y0, sz(max_z)], [u0z, v1]),
-                corner([sx(border_max_x), y0, sz(min_z)], [u1z + u0z, v1]),
-                corner([sx(border_max_x), y1, sz(min_z)], [u1z + u0z, v0]),
-                corner([sx(border_max_x), y1, sz(max_z)], [u0z, v0]),
+                corner([sx(wall_max_x), y0, sz(max_z)], [u0z, v1]),
+                corner([sx(wall_max_x), y0, sz(min_z)], [u1z + u0z, v1]),
+                corner([sx(wall_max_x), y1, sz(min_z)], [u1z + u0z, v0]),
+                corner([sx(wall_max_x), y1, sz(max_z)], [u0z, v0]),
             ],
         }
     };
@@ -211,4 +236,21 @@ pub fn triangulate(corners: [Vertex; 4]) -> [Vertex; 6] {
     [
         corners[0], corners[1], corners[2], corners[2], corners[3], corners[0],
     ]
+}
+
+#[cfg(test)]
+mod mip_tests {
+    use super::forcefield_mip_levels;
+
+    /// The cap is four, and a side that is not a power of two limits the count by its lowest bit.
+    #[test]
+    fn forcefield_mip_levels_follow_the_smaller_side_and_the_cap() {
+        assert_eq!(forcefield_mip_levels(256, 256), 4);
+        assert_eq!(forcefield_mip_levels(16, 16), 4);
+        assert_eq!(forcefield_mip_levels(8, 8), 3);
+        assert_eq!(forcefield_mip_levels(256, 4), 2);
+        assert_eq!(forcefield_mip_levels(96, 96), 4);
+        assert_eq!(forcefield_mip_levels(6, 64), 1);
+        assert_eq!(forcefield_mip_levels(1, 1), 0);
+    }
 }

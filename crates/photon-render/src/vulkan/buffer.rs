@@ -263,8 +263,9 @@ pub(super) struct SceneResources {
     pub(super) rays_pipeline: Pipeline,
     pub(super) world_border_pipeline: Pipeline,
     /// The forcefield texture, once loaded, with its set.
-    pub(super) world_border_texture: Option<Texture>,
-    pub(super) world_border_set: Option<vk::DescriptorSet>,
+    pub(super) world_border: Option<(Texture, vk::DescriptorSet)>,
+    /// The same picture with its mip levels, and its set, which 26.3 samples.
+    pub(super) world_border_mipped: Option<(Texture, vk::DescriptorSet)>,
     pub(super) screen_effect_pipeline: Pipeline,
     /// The water texture laid over the view under water, once loaded, with its set.
     pub(super) underwater_texture: Option<Texture>,

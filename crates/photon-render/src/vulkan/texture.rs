@@ -220,29 +220,6 @@ impl VulkanBackend {
         Ok(true)
     }
 
-    /// Load the forcefield texture the world border overlay samples,
-    /// sampled at the nearest texel and repeating, as the reference's
-    /// plain resource textures are.
-    pub fn load_world_border_texture(
-        &mut self,
-        forcefield: &DecodedImage,
-    ) -> Result<(), VulkanError> {
-        if self
-            .scene
-            .as_ref()
-            .is_none_or(|scene| scene.world_border_set.is_some())
-        {
-            return Ok(());
-        }
-        let Some((texture, set)) = self.upload_repeating_texture(forcefield)? else {
-            return Ok(());
-        };
-        let scene = self.scene.as_mut().expect("checked above");
-        scene.world_border_texture = Some(texture);
-        scene.world_border_set = Some(set);
-        Ok(())
-    }
-
     /// Load the texture the water lays over the view under water, sampled like the forcefield.
     pub fn load_underwater_texture(&mut self, image: &DecodedImage) -> Result<(), VulkanError> {
         if self

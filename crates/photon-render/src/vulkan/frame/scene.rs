@@ -412,7 +412,7 @@ impl VulkanBackend {
     ///
     /// Recording inside the scene's rendering scope; `scene` is live.
     unsafe fn record_world_border(&self, scene: &SceneResources, terrain_push: &[f32; 46]) {
-        let (Some(buffer), Some(set)) = (self.world_border_buffer.as_ref(), scene.world_border_set)
+        let (Some(buffer), Some(set)) = (self.world_border_buffer.as_ref(), scene.border_set())
         else {
             return;
         };

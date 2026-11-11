@@ -192,6 +192,8 @@ pub struct RidingView {
     pub speed: f32,
     /// `shoudlPlaySound`.
     pub allowed: bool,
+    /// Where the vehicle is, when the sound is placed at it (26.3).
+    pub follow: Option<(f64, f64, f64)>,
 }
 
 /// The loudness range of a riding sound (`volumeMin`, `volumeMax`, `volumeAmplifier`).
@@ -208,10 +210,15 @@ pub fn tick_riding(voice: &mut Voice, view: &RidingView, volume: RidingVolume) {
         voice.stop();
     } else if view.wrong_water {
         voice.volume = volume.min;
-    } else if view.speed >= 0.01 && view.allowed {
-        voice.volume = volume.amplifier * clamped_lerp(view.speed, volume.min, volume.max);
     } else {
-        voice.volume = volume.min;
+        voice.volume = if view.speed >= 0.01 && view.allowed {
+            volume.amplifier * clamped_lerp(view.speed, volume.min, volume.max)
+        } else {
+            volume.min
+        };
+        if let Some(at) = view.follow {
+            voice.position = at;
+        }
     }
 }
 
@@ -354,13 +361,20 @@ mod tests {
             wrong_water: false,
             speed: 0.375,
             allowed: true,
+            follow: None,
         };
         let mut voice = Voice::new(0.0);
         tick_riding(&mut voice, &view, volume);
         assert_eq!(voice.volume, 0.28125);
+        assert_eq!(voice.position, (0.0, 0.0, 0.0));
+        view.follow = Some((1.5, 64.0, -2.0));
+        tick_riding(&mut voice, &view, volume);
+        assert_eq!(voice.position, (1.5, 64.0, -2.0));
+        view.follow = Some((9.0, 9.0, 9.0));
         view.wrong_water = true;
         tick_riding(&mut voice, &view, volume);
         assert_eq!(voice.volume, 0.0);
+        assert_eq!(voice.position, (1.5, 64.0, -2.0));
         view.rides_it = false;
         tick_riding(&mut voice, &view, volume);
         assert!(voice.stopped);

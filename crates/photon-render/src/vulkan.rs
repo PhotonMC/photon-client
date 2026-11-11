@@ -46,6 +46,7 @@ use crate::scene::{BlockVertex, Mesh, Vertex};
 use crate::texture::png::DecodedImage;
 
 mod blur;
+mod border_texture;
 mod bytes;
 mod device;
 mod draws;

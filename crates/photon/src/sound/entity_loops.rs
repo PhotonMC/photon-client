@@ -310,6 +310,9 @@ impl SoundSystem {
             max: kind.max_volume,
             amplifier: 1.0,
         };
+        let follows = photon_core::versions::rules()
+            .world
+            .riding_sound_follows_vehicle;
         Box::new(move |state: &mut TickState| {
             let snapshot = snapshot_of(&watched, id);
             let rides_it = rides.lock().is_ok_and(|rides| *rides == Some(id));
@@ -330,35 +333,46 @@ impl SoundSystem {
                     }
                 }),
                 allowed: !kind.minecart || snapshot.is_some_and(|now| !now.off_rail),
+                follow: follows.then(|| snapshot.map(|now| now.position)).flatten(),
             };
             with_voice(state, |voice| tick_riding(voice, &view, volume));
         })
     }
 
-    fn start_riding(&mut self, id: EntityId, kind: Riding, setup: Setup) {
+    fn start_riding(&mut self, (id, at): (EntityId, (f64, f64, f64)), kind: Riding, setup: Setup) {
         let mut instance = instance_of(setup);
+        if photon_core::versions::rules()
+            .world
+            .riding_sound_follows_vehicle
+        {
+            instance.position = at;
+        }
         instance.ticker = Some(self.riding_ticker(id, kind));
         self.follow_entity(id, instance, false);
     }
 
     /// `LocalPlayer.startRiding`: the sounds of a minecart, a happy ghast or a nautilus.
-    fn start_riding_sounds(&mut self, id: EntityId, type_id: photon_core::ids::EntityTypeId) {
+    fn start_riding_sounds(
+        &mut self,
+        vehicle: (EntityId, (f64, f64, f64)),
+        type_id: photon_core::ids::EntityTypeId,
+    ) {
         let kinds = kinds();
         if kinds.minecarts.contains(&type_id) {
             let kind = Riding::MINECART;
             self.start_riding(
-                id,
+                vehicle,
                 Riding {
                     underwater: true,
                     ..kind
                 },
                 RIDING_MINECART_UNDERWATER,
             );
-            self.start_riding(id, kind, RIDING_MINECART);
+            self.start_riding(vehicle, kind, RIDING_MINECART);
         } else if Some(type_id) == kinds.happy_ghast {
-            self.start_riding(id, Riding::AFLOAT, RIDING_GHAST);
+            self.start_riding(vehicle, Riding::AFLOAT, RIDING_GHAST);
         } else if kinds.nautiluses.contains(&type_id) {
-            self.start_riding(id, Riding::UNDER, RIDING_NAUTILUS);
+            self.start_riding(vehicle, Riding::UNDER, RIDING_NAUTILUS);
         }
     }
 
@@ -404,9 +418,12 @@ impl SoundSystem {
                 *rides = vehicle;
             }
             if let Some(id) = vehicle
-                && let Some(type_id) = world.entities().at(id).map(|entity| entity.type_id)
+                && let Some((type_id, at)) = world
+                    .entities()
+                    .at(id)
+                    .map(|entity| (entity.type_id, entity.position()))
             {
-                self.start_riding_sounds(id, type_id);
+                self.start_riding_sounds((id, at), type_id);
             }
         }
     }
