@@ -198,6 +198,7 @@ fn queue_fireworks(event: &Value, world: &mut ClientWorld) -> Result<(), String>
             parsed64(event, "zd")?,
         ),
         explosions,
+        silent: event["silent"].as_bool().unwrap_or(false),
     });
     Ok(())
 }

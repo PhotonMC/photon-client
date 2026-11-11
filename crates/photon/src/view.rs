@@ -351,24 +351,6 @@ pub fn camera_vectors(rotation: (f32, f32)) -> ([f32; 3], [f32; 3], [f32; 3]) {
     )
 }
 
-/// `FluidState.getHeight`: how high a block's fluid stands, a whole block if the same fluid is over it.
-fn fluid_height(
-    world: &photon_world::ClientWorld,
-    (x, y, z): (i32, i32, i32),
-) -> (photon_world::block::FluidState, f32) {
-    let at = |x: i32, y: i32, z: i32| {
-        photon_world::block::state_or_air(world.block_state_or_air(x, y, z)).fluid
-    };
-    let fluid = at(x, y, z);
-    let above = at(x, y + 1, z);
-    let height = if !above.is_empty() && fluid.is_same(above.fluid) {
-        1.0
-    } else {
-        fluid.own_height()
-    };
-    (fluid, height)
-}
-
 /// `Camera.NearPlane`: the point straight ahead on the near plane and its four corners, as offsets
 /// from the camera.
 fn near_plane_points(rotation: (f32, f32), (option_fov, aspect): (i32, f64)) -> [[f64; 3]; 5] {
@@ -407,7 +389,7 @@ pub fn camera_fluid(
     use photon_data::block::definition::Fluid;
     use photon_render::sky::FogType;
     let block = [camera.x, camera.y, camera.z].map(photon_core::math::floor_f64);
-    let (fluid, height) = fluid_height(world, (block[0], block[1], block[2]));
+    let (fluid, height) = world.camera_fluid_height(block[0], block[1], block[2]);
     if fluid.is_same(Fluid::Water)
         && !fluid.is_empty()
         && camera.y < f64::from(block[1]) + f64::from(height)
@@ -421,7 +403,7 @@ pub fn camera_fluid(
             camera.z + point[2],
         ];
         let pos = at.map(photon_core::math::floor_f64);
-        let (fluid, height) = fluid_height(world, (pos[0], pos[1], pos[2]));
+        let (fluid, height) = world.camera_fluid_height(pos[0], pos[1], pos[2]);
         if fluid.is_same(Fluid::Lava) && !fluid.is_empty() {
             if at[1] <= f64::from(height) + f64::from(pos[1]) {
                 return FogType::Lava;

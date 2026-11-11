@@ -105,6 +105,7 @@ fn sky_only(updates: &[Vec<u8>]) -> LightUpdateInput<'_> {
     }
 }
 
+mod beds;
 mod block_light;
 mod campfires;
 mod chunks;

@@ -100,6 +100,13 @@ pub fn fireworks(tick: i64, at: Vec3, explosions: Vec<Value>, motion: Vec3) -> V
     })
 }
 
+/// A rocket that is silent: 26.3 passes that on as `playSound`, 26.2 has no such flag.
+pub fn silent_fireworks(tick: i64, at: Vec3, explosions: Vec<Value>, motion: Vec3) -> Value {
+    let mut event = fireworks(tick, at, explosions, motion);
+    event["silent"] = json!(true);
+    event
+}
+
 pub fn level_event(tick: i64, event: i64, pos: Block, data: i64) -> Value {
     json!({"tick": tick, "type": "level_event", "event": event, "x": pos.0, "y": pos.1, "z": pos.2, "data": data})
 }

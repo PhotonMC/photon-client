@@ -1,4 +1,5 @@
 use super::*;
+use crate::menus::merchant::MerchantOfferExt;
 
 impl ContainerMenu {
     /// `canTakeItemForPickAll`: the result containers of these menus are
@@ -118,12 +119,38 @@ impl ContainerMenu {
         {
             return false;
         }
-        if self.kind == MenuKind::Anvil && index == 2 {
-            let cost = i32::from(self.data.first().copied().unwrap_or(0));
-            return (self.infinite_materials || self.xp_level >= cost) && cost > 0;
-        }
         // `NonInteractiveResultSlot`.
-        !(self.kind == MenuKind::Crafter && index == 45)
+        self.result_may_be_taken(index)
+            .unwrap_or(!(self.kind == MenuKind::Crafter && index == 45))
+    }
+
+    /// `MerchantResultSlot.mayPickup` (26.3): an active offer that the payments satisfy, in either
+    /// order; before, the slot gave up its result whatever the payments were.
+    pub(super) fn merchant_result_may_be_taken(&self) -> bool {
+        if !photon_core::versions::rules()
+            .game
+            .merchant_result_needs_payment
+        {
+            return true;
+        }
+        let Some(offer) = self.active_offer.and_then(|index| self.offers.get(index)) else {
+            return false;
+        };
+        let (buy_a, buy_b) = (self.slots[0].as_ref(), self.slots[1].as_ref());
+        offer.satisfied_by(buy_a, buy_b) || offer.satisfied_by(buy_b, buy_a)
+    }
+
+    /// `mayPickup` of the result slots that ask for more: the anvil's needs the levels it costs, a
+    /// trade's the payment.
+    fn result_may_be_taken(&self, index: usize) -> Option<bool> {
+        match (self.kind, index) {
+            (MenuKind::Merchant, 2) => Some(self.merchant_result_may_be_taken()),
+            (MenuKind::Anvil, 2) => {
+                let cost = i32::from(self.data.first().copied().unwrap_or(0));
+                Some((self.infinite_materials || self.xp_level >= cost) && cost > 0)
+            }
+            _ => None,
+        }
     }
 
     /// `Slot.allowModification`.

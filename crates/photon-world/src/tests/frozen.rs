@@ -60,3 +60,17 @@ fn a_crack_nobody_updates_goes_after_four_hundred_ticks() {
     world.expire_destroy_progress();
     assert!(world.destroying_blocks().is_empty());
 }
+
+/// `LightningBolt.tick` (26.3): a silent bolt strikes without its thunder and impact.
+#[test]
+fn a_silent_bolt_strikes_without_a_sound() {
+    let strike = |silent: bool| {
+        let mut world = ClientWorld::default();
+        add_ticking(&mut world, 1, "minecraft:lightning_bolt");
+        world.entities.at_mut(EntityId(1)).unwrap().status.silent = silent;
+        world.tick_entities(false);
+        world.take_sounds().len()
+    };
+    assert_eq!(strike(false), 2);
+    assert_eq!(strike(true), 0);
+}

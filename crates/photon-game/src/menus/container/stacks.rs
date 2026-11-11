@@ -383,4 +383,69 @@ mod tests {
         assert_eq!(damage(&armor), 63);
         assert!(components::is_damageable(&armor));
     }
+
+    /// `AbstractFurnaceMenu.isFuel` (26.3): the stack's `cooking_fuel` component, a patch counted.
+    #[test]
+    fn a_furnace_takes_the_fuel_a_stack_carries_as_a_component() {
+        use photon_data::item::component_types::COOKING_FUEL;
+        // A burn time of 300 and a speed of 1: a constant each.
+        const FUEL: [u8; 10] = [1, 0, 0, 1, 44, 1, 63, 128, 0, 0];
+        let menu = ContainerMenu::for_menu(
+            MenuKind::Furnace(Smelter::Furnace),
+            1,
+            vec![None; 39],
+            None,
+            0,
+        );
+        let with_patch = |name: &str, added: Vec<(i32, Vec<u8>)>, removed: Vec<i32>| {
+            let item = stack(name, 1).item_registry_id();
+            let patch = crate::item_components::Patch { added, removed };
+            let mut stack = Stack::new(1, item);
+            stack.set_patch(&patch);
+            stack
+        };
+        assert!(menu.may_place(1, &stack("minecraft:coal", 1)));
+        assert!(!menu.may_place(1, &stack("minecraft:dirt", 1)));
+        assert!(menu.may_place(
+            1,
+            &with_patch(
+                "minecraft:dirt",
+                vec![(COOKING_FUEL, FUEL.to_vec())],
+                vec![]
+            )
+        ));
+        assert!(!menu.may_place(1, &with_patch("minecraft:coal", vec![], vec![COOKING_FUEL])));
+    }
+
+    /// `MerchantResultSlot.mayPickup` (26.3): the result goes only to payments that satisfy the
+    /// active offer.
+    #[test]
+    fn a_trade_result_is_taken_only_for_its_payment() {
+        use crate::menus::merchant::{ItemCost, MerchantOffer};
+        let wheat = crate::item::id_of("minecraft:wheat").unwrap();
+        let offer = MerchantOffer {
+            cost_a: ItemCost {
+                item: wheat,
+                count: 3,
+                components: Vec::new(),
+            },
+            cost_b: None,
+            result: stack("minecraft:emerald", 1),
+            uses: 0,
+            max_uses: 16,
+            xp: 1,
+            special_price_diff: 0,
+            demand: 0,
+            price_multiplier: 0.0,
+        };
+        let mut menu = ContainerMenu::for_menu(MenuKind::Merchant, 1, vec![None; 39], None, 0);
+        menu.offers = std::sync::Arc::new(vec![offer]);
+        assert!(!menu.may_pickup(2));
+        menu.active_offer = Some(0);
+        assert!(!menu.may_pickup(2));
+        menu.slots[1] = Some(stack("minecraft:wheat", 3));
+        assert!(menu.may_pickup(2));
+        menu.slots[1] = Some(stack("minecraft:wheat", 2));
+        assert!(!menu.may_pickup(2));
+    }
 }

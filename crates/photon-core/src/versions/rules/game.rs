@@ -27,5 +27,17 @@ rules! {
         punch_is_swing: before V26_3,
         /// The brewing stand's ingredient slot takes `PotionBrewing`'s own list (before 26.3).
         brewing_ingredients_are_hard_coded: before V26_3,
+        /// Mining fatigue slows breaking by a table of four factors, the last for every level from
+        /// the fourth (26.2); 26.3 raises 0.3 to the level.
+        mining_fatigue_is_a_table: before V26_3,
+        /// A rocket's flight duration line is one translation with the number as its argument
+        /// (26.3); before, a translation of the label, a space and the number.
+        flight_duration_is_one_translation: since V26_3,
+        /// A furnace takes as fuel what carries the `cooking_fuel` component, a stack's own patch
+        /// counting (26.3); before, what the level's fuel table lists for the item.
+        fuel_is_a_component: since V26_3,
+        /// A trade's result can be taken only while the payments satisfy the active offer, in
+        /// either order (26.3); before, a result in the slot could always be picked up.
+        merchant_result_needs_payment: since V26_3,
     }
 }

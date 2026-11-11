@@ -111,6 +111,8 @@ pub struct Block {
     pub speed_factor: f32,
     pub jump_factor: f32,
     pub bounce_restitution: f32,
+    /// `fallDistanceReduction`: the share of a fall that landing on the block forgives.
+    pub fall_distance_reduction: f32,
     pub has_collision: bool,
     pub requires_correct_tool_for_drops: bool,
     pub randomly_ticking: bool,
@@ -157,6 +159,7 @@ impl Block {
             speed_factor: 1.0,
             jump_factor: 1.0,
             bounce_restitution: 0.0,
+            fall_distance_reduction: 0.0,
             has_collision: true,
             requires_correct_tool_for_drops: false,
             randomly_ticking: false,
@@ -249,6 +252,11 @@ impl Block {
 
     pub const fn bounce_restitution(mut self, restitution: f32) -> Self {
         self.bounce_restitution = restitution;
+        self
+    }
+
+    pub const fn fall_distance_reduction(mut self, reduction: f32) -> Self {
+        self.fall_distance_reduction = reduction;
         self
     }
 

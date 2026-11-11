@@ -78,6 +78,12 @@ pub(crate) fn blocks() -> impl Iterator<Item = &'static photon_data::block::regi
     in_wire_order(&photon_data::block::registry::BLOCKS, &registries().blocks).into_iter()
 }
 
+/// Whether a known block exists in [`oracle_version`]; a block a row places that the version
+/// lacks is air there, as the reference's registry answers for a name it does not hold.
+pub(crate) fn block_exists(block: &photon_data::block::registry::Block) -> bool {
+    block.exists_in(oracle_version())
+}
+
 /// The items of [`oracle_version`] in registry order.
 pub(crate) fn items() -> impl Iterator<Item = &'static photon_data::item::registry::Item> {
     in_wire_order(&photon_data::item::registry::ITEMS, &registries().items).into_iter()

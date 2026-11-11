@@ -400,7 +400,7 @@
 "crates/photon-world/src/entity/pose.rs::ClientEntityPose::from_wire_id" = 18
 "crates/photon-world/src/entity/pose.rs::ClientEntityPose::id" = 18
 "crates/photon-world/src/entity/pose.rs::ClientEntityPose::java_name" = 18
-"crates/photon-world/src/fluid.rs::scan_in" = 16
+"crates/photon-world/src/fluid.rs::scan_in" = 13
 "crates/photon-world/src/input/fluids.rs::local_player_travel_in_lava" = 11
 "crates/photon-world/src/input/fluids.rs::local_player_travel_in_water" = 12
 "crates/photon-world/src/input/sprint.rs::can_start_local_player_sprinting" = 12
@@ -416,7 +416,7 @@
 "crates/photon-world/src/local_player/level.rs::Level::fluid_flow" = 17
 "crates/photon-world/src/local_player/rotation.rs::LocalPlayer::send_position" = 12
 "crates/photon-world/src/local_player/sounds.rs::LocalPlayer::apply_movement_emission" = 11
-"crates/photon-world/src/local_player/sounds.rs::LocalPlayer::fall_on" = 12
+"crates/photon-world/src/local_player/sounds.rs::LocalPlayer::fall_on" = 11
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 24
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 29
 "crates/photon-world/src/local_player/travel.rs::LocalPlayer::entity_move" = 13
@@ -435,7 +435,7 @@
 "crates/photon-world/src/particles/drip.rs::Particle::drip_provider" = 11
 "crates/photon-world/src/particles/drip.rs::Particle::drip_tick" = 17
 "crates/photon-world/src/particles/drip.rs::drip_of" = 18
-"crates/photon-world/src/particles/firework.rs::Particle::firework_starter_tick" = 18
+"crates/photon-world/src/particles/firework.rs::Particle::firework_starter_tick" = 15
 "crates/photon-world/src/particles/hit.rs::Mark::of" = 23
 "crates/photon-world/src/particles/hit.rs::Particle::hit_provider" = 21
 "crates/photon-world/src/particles/level_events.rs::ParticleEngine::level_event" = 17
@@ -574,7 +574,7 @@
 "crates/photon-game/src/registries.rs::Registries::load" = 80
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::play" = 67
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::tick_in_game_sound" = 81
-"crates/photon-game/src/tooltip/lines.rs::lines" = 258
+"crates/photon-game/src/tooltip/lines.rs::lines" = 253
 "crates/photon-game/src/tooltip/name.rs::attribute_tooltips" = 75
 "crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 73
 "crates/photon-gui/src/hud.rs::Hud::player_health" = 115
@@ -818,7 +818,6 @@
 "crates/photon-world/src/particles/drip.rs::Particle::drip_tick" = 76
 "crates/photon-world/src/particles/drip.rs::drip_of" = 66
 "crates/photon-world/src/particles/explosion.rs::ParticleEngine::explosion_particle" = 67
-"crates/photon-world/src/particles/firework.rs::Particle::firework_starter_tick" = 74
 "crates/photon-world/src/particles/hit.rs::Particle::hit_provider" = 103
 "crates/photon-world/src/particles/level_events.rs::ParticleEngine::level_event" = 68
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::last_level_event" = 72
@@ -938,7 +937,7 @@ photon-gui = 46
 photon-net = 35
 photon-protocol = 6
 photon-render = 238
-photon-world = 1165
+photon-world = 1161
 
 [unsafe]
 "crates/photon/src/controls/keybinds.rs" = 1

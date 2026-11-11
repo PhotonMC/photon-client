@@ -317,7 +317,7 @@ impl Level<'_> {
             let mut neighbour_height = neighbour.own_height;
             let mut distance = 0.0_f32;
             if neighbour_height == 0.0 {
-                if !self.blocks_motion(neighbour_pos, &neighbour)? {
+                if !self.blocks_fluid_flow(neighbour_pos, &neighbour)? {
                     let below_pos =
                         BlockPos::new(neighbour_pos.x, neighbour_pos.y - 1, neighbour_pos.z);
                     let below = self.info(below_pos);
@@ -463,6 +463,18 @@ impl Level<'_> {
             return shape.clip(from, to, pos).is_some();
         }
         false
+    }
+
+    /// Whether a block stops a fluid's flow: the server's `blocks_fluid_flow` tag (26.3), or
+    /// `BlockState.blocksMotion` (26.2).
+    fn blocks_fluid_flow(&self, pos: BlockPos, info: &StateInfo) -> Result<bool, Unsupported> {
+        if photon_core::versions::rules()
+            .world
+            .fluid_flow_is_stopped_by_tag
+        {
+            return Ok(info.flags & flag::BLOCKS_FLUID_FLOW != 0);
+        }
+        self.blocks_motion(pos, info)
     }
 
     /// `BlockState.blocksMotion`.

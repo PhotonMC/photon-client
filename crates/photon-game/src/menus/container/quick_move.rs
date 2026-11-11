@@ -442,9 +442,16 @@ impl ContainerMenu {
         Some(clicked)
     }
 
-    /// `AbstractFurnaceMenu.isFuel`.
+    /// `AbstractFurnaceMenu.isFuel`: from 26.3 the stack's `cooking_fuel` component, a patch
+    /// adding or removing it included; the item's own is the one with a burn time.
     pub(super) fn is_fuel(&self, stack: &Stack) -> bool {
-        stacking(stack).is_some_and(|item| item.burn_time > 0)
+        let own = stacking(stack).is_some_and(|item| item.burn_time > 0);
+        if !photon_core::versions::rules().game.fuel_is_a_component {
+            return own;
+        }
+        stack
+            .patched(photon_world::item_components::ids::COOKING_FUEL)
+            .map_or(own, |patch| patch.is_some())
     }
 
     /// `AbstractFurnaceMenu.canSmelt`.

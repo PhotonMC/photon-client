@@ -92,12 +92,7 @@ pub fn lines(
         && let Some((flight, explosions)) = values.fireworks()
     {
         if flight > 0 {
-            out.push(
-                Component::translatable("item.minecraft.firework_rocket.flight")
-                    .append(Component::literal(" "))
-                    .append(Component::literal(flight.to_string()))
-                    .with_colour("gray"),
-            );
+            out.push(flight_duration_line(flight));
         }
         let mut current: Option<(&Explosion, i32)> = None;
         let flush = |current: Option<(&Explosion, i32)>, out: &mut Vec<Component>| {
@@ -381,4 +376,22 @@ fn instrument_description(values: &Values, registries: &Registries) -> Option<Co
             .and_then(json_component),
         None => crate::item::instrument::direct_description(values),
     }
+}
+
+/// `Fireworks.addToTooltip`'s flight duration line.
+pub(super) fn flight_duration_line(flight: i32) -> Component {
+    if photon_core::versions::rules()
+        .game
+        .flight_duration_is_one_translation
+    {
+        return Component::translatable_with(
+            "item.minecraft.firework_rocket.flight_duration",
+            vec![Component::literal(flight.to_string())],
+        )
+        .with_colour("gray");
+    }
+    Component::translatable("item.minecraft.firework_rocket.flight")
+        .append(Component::literal(" "))
+        .append(Component::literal(flight.to_string()))
+        .with_colour("gray")
 }

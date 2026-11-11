@@ -9,7 +9,11 @@ fn placed_blocks(
     let mut placed = std::collections::HashMap::new();
     for block in row["blocks"].as_array().ok_or("blocks must be an array")? {
         let name = string(block, "block")?;
-        let definition = registry::block(name).ok_or_else(|| format!("unknown block {name}"))?;
+        let mut definition =
+            registry::block(name).ok_or_else(|| format!("unknown block {name}"))?;
+        if !crate::case_ids::block_exists(definition) {
+            definition = registry::block("minecraft:air").ok_or("no air")?;
+        }
         let mut chosen = std::collections::BTreeMap::new();
         if let Some(properties) = block["properties"].as_object() {
             for (key, value) in properties {

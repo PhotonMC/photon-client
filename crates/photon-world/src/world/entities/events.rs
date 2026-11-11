@@ -295,6 +295,7 @@ impl ClientWorld {
             at: entity.position(),
             motion: entity.motion(),
             explosions: entity.firework_explosions(),
+            silent: entity.is_silent(),
         };
         self.create_fireworks(launch);
         true

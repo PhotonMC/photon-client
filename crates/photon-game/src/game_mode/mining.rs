@@ -1,6 +1,23 @@
 use super::*;
 use photon_core::ids::BlockStateId;
 
+/// The factor a mining fatigue effect of `amplifier` puts on the break speed: a table of four
+/// entries (26.2), or 0.3 raised to the level (26.3).
+fn mining_fatigue_scale(amplifier: i32) -> f32 {
+    if photon_core::versions::rules()
+        .game
+        .mining_fatigue_is_a_table
+    {
+        return match amplifier {
+            0 => 0.3,
+            1 => 0.09,
+            2 => 0.0027,
+            _ => 8.1e-4,
+        };
+    }
+    photon_core::math::fdlibm_pow(0.3, f64::from(amplifier + 1)) as f32
+}
+
 /// What breaking reads of the player besides its movement state: the held
 /// item, the effects and the attributes. Taken before a tick's attack.
 #[derive(Debug, Clone, Default)]
@@ -137,12 +154,7 @@ impl Miner {
             speed *= 1.0 + (amplifier + 1) as f32 * 0.2;
         }
         if let Some(amplifier) = self.mining_fatigue_amplifier {
-            speed *= match amplifier {
-                0 => 0.3,
-                1 => 0.09,
-                2 => 0.0027,
-                _ => 8.1e-4,
-            };
+            speed *= mining_fatigue_scale(amplifier);
         }
         speed *= self.block_break_speed as f32;
         if player.is_eye_in_water() {

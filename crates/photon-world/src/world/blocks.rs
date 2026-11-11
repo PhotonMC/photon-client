@@ -308,4 +308,25 @@ impl ClientWorld {
             _ => false,
         }
     }
+
+    /// The fluid at a place and the height the camera and the eyes-in-fluid test read for it:
+    /// `FluidState.getHeight`, a whole block when the same fluid stands over it; and from 26.3
+    /// `getHeightForCamera`, which also makes a source block full when a block with a sturdy
+    /// underside is over it.
+    pub fn camera_fluid_height(&self, x: i32, y: i32, z: i32) -> (crate::block::FluidState, f32) {
+        let at = |y: i32| crate::block::state_or_air(self.block_state_or_air(x, y, z));
+        let fluid = at(y).fluid;
+        let above = at(y + 1);
+        let rules = photon_core::versions::rules();
+        let roofed = rules.world.camera_height_fills_under_ceiling
+            && fluid.is_source()
+            && above.is_face_sturdy(photon_core::direction::Direction::Down);
+        let same_above = !above.fluid.is_empty() && fluid.is_same(above.fluid.fluid);
+        let height = if roofed || same_above {
+            1.0
+        } else {
+            fluid.own_height()
+        };
+        (fluid, height)
+    }
 }

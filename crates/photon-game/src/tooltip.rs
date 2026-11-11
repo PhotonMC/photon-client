@@ -95,6 +95,13 @@ mod tests {
     }
 
     #[test]
+    fn a_rockets_flight_duration_is_one_translation_with_the_number() {
+        let line = format!("{:?}", lines::flight_duration_line(3));
+        assert!(line.contains("firework_rocket.flight_duration"), "{line}");
+        assert!(!line.contains("firework_rocket.flight\""), "{line}");
+    }
+
+    #[test]
     fn every_creative_stack_has_a_name_and_no_panic() {
         let lang = lang();
         if lang.get("item.minecraft.stone").is_none() {

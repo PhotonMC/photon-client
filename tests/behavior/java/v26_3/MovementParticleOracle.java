@@ -687,13 +687,14 @@ class MovementParticleOracle extends MovementMenuOracle {
                     double xd = Oracle.f64(event, "xd");
                     double yd = Oracle.f64(event, "yd");
                     double zd = Oracle.f64(event, "zd");
+                    boolean silent = event.has("silent") && event.get("silent").getAsBoolean();
                     if (explosions.isEmpty()) {
-                        level.createFireworks(x, y, z, xd, yd, zd, explosions, true);
+                        level.createFireworks(x, y, z, xd, yd, zd, explosions, !silent);
                     } else {
                         // The starter is made as `ClientLevel.createFireworks` does, with the next seed.
                         engine.add(seededParticle(engine.seeds.pollFirst(), () ->
                             new net.minecraft.client.particle.FireworkParticles.Starter(
-                                level, x, y, z, xd, yd, zd, engine, explosions, true)));
+                                level, x, y, z, xd, yd, zd, engine, explosions, !silent)));
                     }
                     continue;
                 }

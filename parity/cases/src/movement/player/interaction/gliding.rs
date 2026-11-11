@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use super::breaking;
 use crate::movement::player::scene::keys;
+use crate::movement::world::put;
 
 /// A press of the jump key, then `rest` ticks without it.
 fn press_then(rest: usize) -> Vec<Value> {
@@ -46,7 +47,18 @@ pub fn rows() -> Vec<Value> {
             .x_rot(-10.0)
             .row(),
         glide("no-glider-rocket", press_then(10)).rockets(1).x_rot(0.0).row(),
+        // A press in lava: 26.3 refuses the glide there, 26.2 refuses only in water.
+        breaking("glide-in-lava", lava_column(), [keys(4, &[]), press_then(20)].concat())
+            .chest("minecraft:elytra")
+            .start(0.5, 62.0, 0.5)
+            .x_rot(10.0)
+            .row(),
         // Holding the key does not start a second glide: the press is an edge.
         glide("glide-held-jump", keys(30, &["jump"])).chest("minecraft:elytra").x_rot(20.0).row(),
     ]
+}
+
+/// Lava from the floor of the scene up past the player's head.
+fn lava_column() -> Vec<Value> {
+    (-1..=1).flat_map(|x| (-1..=1).flat_map(move |z| (60..66).map(move |y| put(x, y, z, "minecraft:lava")))).collect()
 }

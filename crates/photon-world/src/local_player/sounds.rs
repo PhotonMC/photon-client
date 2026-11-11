@@ -258,11 +258,15 @@ impl LocalPlayer {
             None
         } else if is(BlockClass::PointedDripstoneBlock) && Self::is_dripstone_tip_up(state) {
             Some((distance + 2.5, 2.0))
-        } else if is(BlockClass::BedBlock) {
-            Some((distance * 0.5, 1.0))
         } else {
-            Some((distance, 1.0))
+            Some((Self::reduced_fall(state.block(), distance), 1.0))
         }
+    }
+
+    /// `Block.fallOn`'s own share of a fall: the distance less the block's
+    /// `fallDistanceReduction` (the beds and the shelf mushroom forgive half).
+    fn reduced_fall(block: &photon_data::block::registry::Block, distance: f64) -> f64 {
+        distance * f64::from(1.0_f32 - block.fall_distance_reduction)
     }
 
     /// `Block.fallOn` of the block landed on, for the sounds it makes (the slime block's fall
@@ -301,10 +305,8 @@ impl LocalPlayer {
             }
         } else if is(BlockClass::PointedDripstoneBlock) && Self::is_dripstone_tip_up(state) {
             self.cause_fall_damage(level, distance + 2.5, 2.0);
-        } else if is(BlockClass::BedBlock) {
-            self.cause_fall_damage(level, distance * 0.5, 1.0);
         } else {
-            self.cause_fall_damage(level, distance, 1.0);
+            self.cause_fall_damage(level, Self::reduced_fall(block, distance), 1.0);
         }
     }
 

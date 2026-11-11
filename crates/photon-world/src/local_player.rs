@@ -62,6 +62,7 @@ pub(crate) mod flag {
     pub const FENCE_GATE: u16 = 1 << 5;
     pub const TRAPDOOR: u16 = 1 << 6;
     pub const LADDER: u16 = 1 << 7;
+    pub const BLOCKS_FLUID_FLOW: u16 = 1 << 8;
 }
 
 /// What the vehicle the player rides tells its tick: the top of the vehicle's box and whether the

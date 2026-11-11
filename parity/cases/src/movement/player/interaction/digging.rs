@@ -119,6 +119,42 @@ fn breaking_rows_1() -> Vec<Value> {
         )
         .row(),
     ]
+    .into_iter()
+    .chain(fatigue_rows())
+    .chain(roofed_water_rows())
+    .collect()
+}
+
+/// A mining fatigue level of three or more: 26.2 has a table that ends there, 26.3 raises 0.3 to
+/// the level.
+fn fatigue_rows() -> Vec<Value> {
+    [("iii", 2), ("iv", 3), ("v", 4)]
+        .into_iter()
+        .map(|(name, amplifier)| {
+            breaking(
+                &format!("dirt-mining-fatigue-{name}"),
+                vec![place(&target(), "minecraft:dirt")],
+                [hits(1).clicks(1).go(), hits(12).go()].concat(),
+            )
+            .effects(&[("minecraft:mining_fatigue", amplifier)])
+            .row()
+        })
+        .collect()
+}
+
+/// Eyes in the top of a source fluid that has a block over it: 26.3 reads the height for the camera,
+/// a whole block there, where 26.2 reads the fluid's own height (eight ninths). The player starts
+/// with its eyes between the two, so the mining speed under water tells which one counts.
+fn roofed_water_rows() -> Vec<Value> {
+    let water = (-3..4).flat_map(|x| (-3..2).map(move |z| (x, z))).flat_map(|(x, z)| {
+        [put(x, 64, z, "minecraft:water"), put(x, 65, z, "minecraft:water"), put(x, 66, z, "minecraft:stone")]
+    });
+    let blocks = [place(&target(), "minecraft:dirt")].into_iter().chain(water).collect();
+    vec![
+        breaking("dirt-underwater-roofed", blocks, [hits(1).clicks(1).go(), hits(12).go()].concat())
+            .start(0.5, 64.33, 0.5)
+            .row(),
+    ]
 }
 
 fn breaking_rows_2() -> Vec<Value> {

@@ -31,6 +31,8 @@ pub(super) struct Starter {
     life: i32,
     explosions: Arc<Vec<Explosion>>,
     twinkle_delay: bool,
+    /// `Starter.playSound`.
+    play_sound: bool,
 }
 
 /// `DyeColor.BLACK.getFireworkColor`: the colour of an explosion with none.
@@ -76,6 +78,7 @@ impl Particle {
         random: RandomSource,
         (at, motion): ((f64, f64, f64), (f64, f64, f64)),
         explosions: Vec<Explosion>,
+        play_sound: bool,
     ) -> Self {
         let sprites = Arc::new(SpriteSet::new(Vec::new()));
         let twinkle_delay = explosions.iter().any(|explosion| explosion.twinkle);
@@ -88,6 +91,7 @@ impl Particle {
                 life: 0,
                 explosions: Arc::new(explosions),
                 twinkle_delay,
+                play_sound,
             }),
         );
         (particle.xd, particle.yd, particle.zd) = motion;
@@ -206,26 +210,16 @@ impl Particle {
         let Kind::FireworkStarter(starter) = &self.kind else {
             return Vec::new();
         };
-        let (explosions, twinkle_delay, mut life) = (
+        let (explosions, twinkle_delay, mut life, play_sound) = (
             Arc::clone(&starter.explosions),
             starter.twinkle_delay,
             starter.life,
+            starter.play_sound,
         );
         let far = camera.distance_to_sqr_components(self.x, self.y, self.z) >= 256.0;
         let mut spawns = Vec::new();
-        if life == 0 {
-            let large = explosions.len() >= 3
-                || explosions
-                    .iter()
-                    .any(|explosion| explosion.shape == Shape::LargeBall);
-            let event = match (large, far) {
-                (true, true) => "minecraft:entity.firework_rocket.large_blast_far",
-                (true, false) => "minecraft:entity.firework_rocket.large_blast",
-                (false, true) => "minecraft:entity.firework_rocket.blast_far",
-                (false, false) => "minecraft:entity.firework_rocket.blast",
-            };
-            let pitch = 0.95 + self.random.next_float() * 0.1;
-            self.firework_sound(event, pitch, camera);
+        if life == 0 && play_sound {
+            self.blast_sound(&explosions, far, camera);
         }
         if life % 2 == 0 && (life / 2) < explosions.len() as i32 {
             let explosion = &explosions[(life / 2) as usize];
@@ -260,14 +254,8 @@ impl Particle {
         }
         life += 1;
         if life > self.lifetime {
-            if twinkle_delay {
-                let event = if far {
-                    "minecraft:entity.firework_rocket.twinkle_far"
-                } else {
-                    "minecraft:entity.firework_rocket.twinkle"
-                };
-                let pitch = 0.9 + self.random.next_float() * 0.15;
-                self.firework_sound(event, pitch, camera);
+            if twinkle_delay && play_sound {
+                self.twinkle_sound(far, camera);
             }
             self.removed = true;
         }
@@ -275,6 +263,33 @@ impl Particle {
             starter.life = life;
         }
         spawns
+    }
+
+    /// The blast of the first tick: the large one for three explosions or a large ball.
+    fn blast_sound(&mut self, explosions: &[Explosion], far: bool, camera: Vec3) {
+        let large = explosions.len() >= 3
+            || explosions
+                .iter()
+                .any(|explosion| explosion.shape == Shape::LargeBall);
+        let event = match (large, far) {
+            (true, true) => "minecraft:entity.firework_rocket.large_blast_far",
+            (true, false) => "minecraft:entity.firework_rocket.large_blast",
+            (false, true) => "minecraft:entity.firework_rocket.blast_far",
+            (false, false) => "minecraft:entity.firework_rocket.blast",
+        };
+        let pitch = 0.95 + self.random.next_float() * 0.1;
+        self.firework_sound(event, pitch, camera);
+    }
+
+    /// The twinkle at the end of the wait.
+    fn twinkle_sound(&mut self, far: bool, camera: Vec3) {
+        let event = if far {
+            "minecraft:entity.firework_rocket.twinkle_far"
+        } else {
+            "minecraft:entity.firework_rocket.twinkle"
+        };
+        let pitch = 0.9 + self.random.next_float() * 0.15;
+        self.firework_sound(event, pitch, camera);
     }
 
     /// `level.playLocalSound(x, y, z, sound, AMBIENT, 20.0F, pitch, true)`.
@@ -407,6 +422,8 @@ pub struct FireworkLaunch {
     pub at: (f64, f64, f64),
     pub motion: (f64, f64, f64),
     pub explosions: Vec<Explosion>,
+    /// The rocket is silent (`Entity.isSilent`): from 26.3 its starter makes no sound.
+    pub silent: bool,
 }
 
 impl ParticleEngine {
@@ -428,10 +445,15 @@ impl ParticleEngine {
             }
         } else {
             let random = (context.particle_random)();
+            let play_sound = !(launch.silent
+                && photon_core::versions::rules()
+                    .world
+                    .silent_rockets_make_no_sound);
             self.add(Particle::firework_starter(
                 random,
                 (launch.at, launch.motion),
                 launch.explosions,
+                play_sound,
             ));
         }
     }

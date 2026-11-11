@@ -187,6 +187,25 @@ fn fireworks_3() -> Vec<Value> {
     ]
 }
 
+fn silent_fireworks_rows() -> Vec<Value> {
+    vec![
+        // A silent rocket: 26.3 starts the burst with no sound at all, 26.2 knows no such flag.
+        engine_row(
+            "fireworks-silent-twinkle",
+            vec![silent_fireworks(
+                0,
+                (0.0, 70.0, 0.0),
+                vec![explosion("LARGE_BALL", vec![16711935], vec![], true)],
+                (0.0, 0.0, 0.0),
+            )],
+        )
+        .ticks(24)
+        .seeds(500)
+        .describe(6)
+        .row(),
+    ]
+}
+
 fn fireworks_4() -> Vec<Value> {
     vec![
         engine_row(
@@ -260,5 +279,5 @@ fn fireworks_5() -> Vec<Value> {
 }
 
 pub fn rows() -> Vec<Value> {
-    [fireworks_1(), fireworks_2(), fireworks_3(), fireworks_4(), fireworks_5()].concat()
+    [fireworks_1(), fireworks_2(), fireworks_3(), fireworks_4(), fireworks_5(), silent_fireworks_rows()].concat()
 }

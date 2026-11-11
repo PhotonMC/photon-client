@@ -96,7 +96,12 @@ impl LocalPlayer {
 
     /// `Player.tryToStartFallFlying`.
     pub(super) fn try_to_start_fall_flying(&mut self) -> bool {
-        if !self.elytra.fall_flying && self.can_glide() && !self.is_in_water() {
+        let in_liquid = self.is_in_water()
+            || (photon_core::versions::rules()
+                .world
+                .glide_start_refused_in_lava
+                && self.is_in_lava());
+        if !self.elytra.fall_flying && self.can_glide() && !in_liquid {
             self.elytra.fall_flying = true;
             self.start_glide_sound();
             true

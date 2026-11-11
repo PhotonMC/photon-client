@@ -56,6 +56,12 @@ rules! {
         shelf_use_swings: before V26_3,
         /// A picked-up entity that is silent makes no pickup sound (26.3); before it always did.
         silent_pickups_make_no_sound: since V26_3,
+        /// A silent firework rocket bursts without the blast and twinkle sounds (26.3); 26.2 played
+        /// them whatever its flags.
+        silent_rockets_make_no_sound: since V26_3,
+        /// A silent lightning bolt plays neither its thunder nor its impact on its first tick (26.3);
+        /// 26.2 played them whatever its flags.
+        silent_lightning_makes_no_sound: since V26_3,
         /// A pickup whose taker the level does not hold is flown to the local player (26.2); in
         /// 26.3 there is no pickup animation then.
         unknown_taker_is_the_local_player: before V26_3,
@@ -66,5 +72,19 @@ rules! {
         /// A boat above a bubble column tells the one who steers it with entity events 71 (drag
         /// down) and 72 (launch up), which set its motion there (26.3); 26.2 does not tell.
         boat_bubble_column_events: since V26_3,
+        /// A glide cannot be started in lava either (26.3: `isInLiquid`); 26.2 refuses only in
+        /// water.
+        glide_start_refused_in_lava: since V26_3,
+        /// The height the camera and the eyes-in-fluid test read of a source fluid is a whole
+        /// block when a block with a sturdy underside is over it (26.3: `getHeightForCamera`);
+        /// 26.2 reads the fluid's height.
+        camera_height_fills_under_ceiling: since V26_3,
+        /// A fluid's flow is stopped by the blocks of the `blocks_fluid_flow` tag the server sends
+        /// (26.3: the motion blocking blocks and the signs); 26.2 asks `blocksMotion`, which is
+        /// false for cobweb and bamboo sapling.
+        fluid_flow_is_stopped_by_tag: since V26_3,
+        /// A sleeper lies at the height the bed gives (26.3: the top of its shape, and nowhere
+        /// when the block is no bed); 26.2 puts it a fixed 0.6875 over the block.
+        sleep_height_comes_from_the_bed: since V26_3,
     }
 }

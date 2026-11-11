@@ -236,6 +236,42 @@ fn obstacle_rows() -> Vec<Value> {
     ]
 }
 
+/// A fall onto a floor of blocks with their own share of a fall forgiven: the beds and the shelf
+/// mushroom (26.3) halve it, the straw bed (26.3) does not.
+fn soft_landing_rows() -> Vec<Value> {
+    [
+        ("bed", "minecraft:white_bed"),
+        ("shelf-mushroom", "minecraft:shelf_mushroom"),
+        ("straw-bed", "minecraft:straw_bed"),
+    ]
+    .into_iter()
+    .map(|(name, block)| {
+        Scene::new(format!("land-on-{name}"), floor_block(block), keys(40, &[])).start(0.5, 72.0, 0.5).row()
+    })
+    .collect()
+}
+
+/// A water source with a block beside it and water under that block: the current runs toward the
+/// block unless the block stops the flow. 26.3 asks the tag of the blocks that stop it (signs
+/// do, cobweb and bamboo sapling do not); 26.2 asks whether the block blocks motion.
+fn ledge_flow_rows() -> Vec<Value> {
+    [
+        ("cobweb", "minecraft:cobweb"),
+        ("bamboo-sapling", "minecraft:bamboo_sapling"),
+        ("sign", "minecraft:oak_sign"),
+        ("stone", "minecraft:stone"),
+    ]
+    .into_iter()
+    .map(|(name, block)| {
+        let blocks = cat![
+            floor(),
+            vec![put(0, 64, 0, "minecraft:water"), put(1, 63, 0, "minecraft:water"), put(1, 64, 0, block)]
+        ];
+        Scene::new(format!("flow-past-{name}"), blocks, keys(8, &[])).start(0.5, 64.0, 0.5).row()
+    })
+    .collect()
+}
+
 /// Slime, flight and ladders at a ledge.
 fn landing_rows() -> Vec<Value> {
     let edge_ladder = cat![column_with(0, 2, 56, 62, "minecraft:ladder", &[("facing", "north")]), column(0, 3, 56, 63)];
@@ -415,6 +451,8 @@ pub fn local_player_ticks() -> Value {
         climbing_rows(),
         scaffolding_rows(),
         obstacle_rows(),
+        ledge_flow_rows(),
+        soft_landing_rows(),
         landing_rows(),
         held_back(),
         border_rows(),

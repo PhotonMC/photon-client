@@ -216,15 +216,6 @@ pub fn entity_living_flags(metadata: &[u8]) -> Option<u8> {
     metadata::living_flags_from_metadata(metadata)
 }
 
-/// `LivingEntity.setPosToBed`: where a sleeper lies, over the bed's middle.
-pub(crate) fn bed_position(bed: photon_core::binary::BlockPos) -> (f64, f64, f64) {
-    (
-        f64::from(bed.x) + 0.5,
-        f64::from(bed.y) + 0.6875,
-        f64::from(bed.z) + 0.5,
-    )
-}
-
 pub fn motion_blocking(state: BlockStateId) -> bool {
     let state = block::state_or_air(state);
     state.in_motion_heightmap || !state.fluid.is_empty()

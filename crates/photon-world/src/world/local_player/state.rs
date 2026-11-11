@@ -289,7 +289,9 @@ impl ClientWorld {
 
     /// `LivingEntity.setPosToBed` for an entity the server has told of the bed it sleeps in.
     pub fn lie_in_bed(&mut self, entity_id: EntityId, bed: photon_core::binary::BlockPos) {
-        let at = crate::bed_position(bed);
+        let Some(at) = crate::block::bed::sleeping_position(self, bed) else {
+            return;
+        };
         if let Some(player) = self.local_player.as_mut().filter(|p| p.id == entity_id) {
             player.set_position(at);
         } else if let Some(mut entity) = self.entities.at_mut(entity_id) {

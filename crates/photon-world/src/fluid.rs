@@ -101,7 +101,7 @@ pub(crate) fn scan_in(
                 } else {
                     &mut fluids.lava
                 };
-                if x == eye_x && z == eye_z && eye_y >= bottom && eye_y <= top {
+                if eye_in_fluid(level, pos, (eye_x, eye_y, eye_z), top) {
                     tracker.eyes_inside = true;
                 }
                 tracker.height = java_math::max(top - entity_y, tracker.height);
@@ -122,6 +122,28 @@ pub(crate) fn scan_in(
         }
     }
     Ok(fluids)
+}
+
+/// Whether the eyes, in the block column `eye.0`, `eye.2` at height `eye.1`, are in the fluid of
+/// the block at `pos` whose fluid reaches `top`.
+fn eye_in_fluid(level: &Level<'_>, pos: BlockPos, eye: (i32, f64, i32), top: f64) -> bool {
+    pos.x == eye.0
+        && pos.z == eye.2
+        && eye.1 >= f64::from(pos.y)
+        && eye.1 <= eyes_top(level, pos, top)
+}
+
+/// How high the eyes can be and still be in the fluid of the block at `pos`: the top of the
+/// fluid, or from 26.3 the height the camera reads.
+fn eyes_top(level: &Level<'_>, pos: BlockPos, top: f64) -> f64 {
+    if photon_core::versions::rules()
+        .world
+        .camera_height_fills_under_ceiling
+    {
+        let (_, height) = level.world.camera_fluid_height(pos.x, pos.y, pos.z);
+        return f64::from(pos.y) + f64::from(height);
+    }
+    top
 }
 
 /// `EntityFluidInteraction.hasFluidAndLoaded`: whether the chunks of the

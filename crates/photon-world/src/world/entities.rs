@@ -10,6 +10,13 @@ impl ClientWorld {
             return;
         };
         let at = entity.position();
+        let muted = entity.as_view().is_silent()
+            && photon_core::versions::rules()
+                .world
+                .silent_lightning_makes_no_sound;
+        if muted {
+            return;
+        }
         for (event, volume, pitch) in [
             ("minecraft:entity.lightning_bolt.thunder", 10000.0, thunder),
             ("minecraft:entity.lightning_bolt.impact", 2.0, impact),

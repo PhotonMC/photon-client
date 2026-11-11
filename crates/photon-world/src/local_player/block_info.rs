@@ -40,11 +40,12 @@ impl StateInfo {
         let block = state.block();
         let index = usize::from(state.block);
         let tagged = [
-            ("minecraft:climbable", flag::CLIMBABLE),
-            ("minecraft:fences", flag::FENCE),
-            ("minecraft:walls", flag::WALL),
-            ("minecraft:can_glide_through", flag::CAN_GLIDE_THROUGH),
-            ("minecraft:suppresses_bounce", flag::SUPPRESSES_BOUNCE),
+            ("climbable", flag::CLIMBABLE),
+            ("fences", flag::FENCE),
+            ("walls", flag::WALL),
+            ("can_glide_through", flag::CAN_GLIDE_THROUGH),
+            ("suppresses_bounce", flag::SUPPRESSES_BOUNCE),
+            ("blocks_fluid_flow", flag::BLOCKS_FLUID_FLOW),
         ];
         let classes = [
             (BlockClass::FenceGateBlock, flag::FENCE_GATE),
@@ -53,7 +54,7 @@ impl StateInfo {
         ];
         let flags = tagged
             .iter()
-            .filter(|(tag, _)| tags.contains(index, tag))
+            .filter(|(tag, _)| tags.contains(index, &format!("minecraft:{tag}")))
             .map(|(_, bit)| bit)
             .chain(
                 classes
