@@ -100,8 +100,13 @@ impl LocalPlayer {
         let delta_x = (self.position.x - previous_x) as f32;
         let delta_z = (self.position.z - previous_z) as f32;
         self.update_auto_jump(level, delta_x, delta_z)?;
-        // 26.3's `Mth.length(float, float)` sums the squares as floats.
-        self.avatar.walk_dist += photon_core::math::mth_length_f32_2_v26_3(delta_x, delta_z) * 0.6;
+        // 26.3's `Mth.length(float, float)` sums the squares as floats, 26.2's as doubles.
+        let walked = if photon_core::versions::behaviour::length_sums_squares_as_floats() {
+            photon_core::math::mth_length_f32_2_v26_3(delta_x, delta_z)
+        } else {
+            photon_core::math::mth_length_f32_2(delta_x, delta_z)
+        };
+        self.avatar.walk_dist += walked * 0.6;
         Ok(())
     }
 

@@ -92,6 +92,11 @@ pub fn in_world_options_offer_online() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether `Mth.length(float, float)` sums its squares as floats (26.3); 26.2 sums them as doubles.
+pub fn length_sums_squares_as_floats() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// Whether a boat clamps every passenger the same way (26.2): body turned to the boat, yaw held
 /// within a quarter turn, previous yaw moved along, head set to the yaw. 26.3 treats mobs apart.
 pub fn boat_clamp_is_uniform() -> bool {
