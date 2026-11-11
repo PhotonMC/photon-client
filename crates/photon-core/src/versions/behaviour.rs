@@ -92,6 +92,17 @@ pub fn in_world_options_offer_online() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether changing the exclusive fullscreen option asks for a restart (26.2); 26.3 applies it.
+pub fn exclusive_fullscreen_needs_restart() -> bool {
+    Version::active_before_26_3()
+}
+
+/// Whether the fullscreen resolution option is the exclusive mode one with a tooltip (26.3); 26.2
+/// calls it the fullscreen resolution and has no tooltip.
+pub fn fullscreen_resolution_is_exclusive_mode() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// The data version the active version's files carry (`world_version` of its `version.json`).
 pub fn data_version() -> i32 {
     if Version::active_before_26_3() {

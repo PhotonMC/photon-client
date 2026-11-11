@@ -43,13 +43,7 @@ impl VideoSettingsScreen {
             list.add_big(
                 lang,
                 FULLSCREEN_RESOLUTION,
-                slider_tip(
-                    "options.fullscreen.exclusive.mode",
-                    fullscreen.clone(),
-                    fullscreen_resolution,
-                    fullscreen.initial(),
-                    constant_tip("options.fullscreen.exclusive.mode.tooltip"),
-                ),
+                resolution_entry(fullscreen.clone()),
             );
             list.add_small(lang, display_options(gui_scale, max_gui_scale, &values));
             list.add_header(font, lang, "options.video.quality.header");
@@ -98,8 +92,16 @@ impl VideoSettingsScreen {
             .find(GRAPHICS_API)
             .and_then(|control| control.as_any().downcast_ref::<CycleButton<Named>>())
             .is_some_and(|button| *button.value() != "options.graphicsApi.default");
-        self.screen
-            .set_header_line((&self.restart.0, self.restart.1), api_changed);
+        let exclusive_changed =
+            photon_core::versions::behaviour::exclusive_fullscreen_needs_restart()
+                && list
+                    .find(EXCLUSIVE_FULLSCREEN)
+                    .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
+                    .is_some_and(|button| *button.value());
+        self.screen.set_header_line(
+            (&self.restart.0, self.restart.1),
+            api_changed || exclusive_changed,
+        );
         let anisotropic = self
             .screen
             .list
@@ -339,5 +341,26 @@ impl VideoSettingsScreen {
             }
             self.screen.list.set_scroll_amount(0.0);
         }
+    }
+}
+
+/// The fullscreen resolution slider: since 26.3 the exclusive mode one with a tooltip.
+fn resolution_entry(fullscreen: FullscreenModes) -> Build {
+    let initial = fullscreen.initial();
+    if photon_core::versions::behaviour::fullscreen_resolution_is_exclusive_mode() {
+        slider_tip(
+            "options.fullscreen.exclusive.mode",
+            fullscreen,
+            fullscreen_resolution,
+            initial,
+            constant_tip("options.fullscreen.exclusive.mode.tooltip"),
+        )
+    } else {
+        slider(
+            "options.fullscreen.resolution",
+            fullscreen,
+            fullscreen_resolution,
+            initial,
+        )
     }
 }
