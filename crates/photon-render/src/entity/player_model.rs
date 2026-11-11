@@ -236,7 +236,10 @@ impl ArmPose {
                 | ArmPose::ThrowTrident
                 | ArmPose::CrossbowCharge
                 | ArmPose::CrossbowHold
-        )
+        ) || (self == ArmPose::Spear
+            && photon_core::versions::rules()
+                .render
+                .spear_pose_affects_offhand_pose)
     }
 
     /// The pose with this name in the reference's `ArmPose` enum, lower-cased.

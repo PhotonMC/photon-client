@@ -163,36 +163,9 @@ pub(super) fn text_display_submit_result(request: &Value) -> Result<Value, Strin
             .flatten()
             .map(|value| format!("{:08x}", value.to_bits()))
             .collect::<String>();
-        // The reference submits the background and the lines as plain text parts: no ordering.
-        let mut described = json!({"label": row["label"], "pose": matrix, "text_order": -1});
-        let mode = if submit.see_through {
-            "SEE_THROUGH"
-        } else {
-            "POLYGON_OFFSET"
-        };
-        let mut background = Vec::new();
-        if let Some(([[x0, y0, _], _, [x1, y1, _], _], color)) = submit.background {
-            background.push(json!(format!(
-                "{:08x},{:08x},{:08x},{:08x},{color},{mode},{light}",
-                x0.to_bits(),
-                y0.to_bits(),
-                x1.to_bits(),
-                y1.to_bits()
-            )));
-        }
-        let texts: Vec<Value> = submit
-            .lines
-            .iter()
-            .map(|(x, y)| {
-                json!(format!(
-                    "{:08x},{:08x},{},{mode},{light},{},0,0",
-                    x.to_bits(),
-                    y.to_bits(),
-                    submit.shadow,
-                    submit.color
-                ))
-            })
-            .collect();
+        let mut described = json!({"label": row["label"], "pose": matrix});
+        let background = background_entries(&submit, light, &mut described);
+        let texts = text_entries(&submit, light);
         if texts.is_empty() {
             described
                 .as_object_mut()
@@ -204,6 +177,89 @@ pub(super) fn text_display_submit_result(request: &Value) -> Result<Value, Strin
         out.push(described);
     }
     Ok(json!({"rows": out}))
+}
+
+/// The display mode the oracle prints for a text display's parts.
+fn display_mode(submit: &photon_render::objects::display::TextSubmit) -> &'static str {
+    if submit.see_through {
+        "SEE_THROUGH"
+    } else {
+        "POLYGON_OFFSET"
+    }
+}
+
+/// The lines of a text display as the oracle prints them.
+fn text_entries(submit: &photon_render::objects::display::TextSubmit, light: i32) -> Vec<Value> {
+    let mode = display_mode(submit);
+    submit
+        .lines
+        .iter()
+        .map(|(x, y)| {
+            json!(format!(
+                "{:08x},{:08x},{},{mode},{light},{},0,0",
+                x.to_bits(),
+                y.to_bits(),
+                submit.shadow,
+                submit.color
+            ))
+        })
+        .collect()
+}
+
+/// The background of a text display as the version's oracle prints it, with the keys that go with
+/// it set in `described`: a box and a mode as plain text parts without ordering from 26.3 on,
+/// custom geometry before.
+fn background_entries(
+    submit: &photon_render::objects::display::TextSubmit,
+    light: i32,
+    described: &mut Value,
+) -> Vec<Value> {
+    if crate::case_ids::before_26_3() {
+        return legacy_background(submit, light, described);
+    }
+    described["text_order"] = json!(-1);
+    let mode = display_mode(submit);
+    submit
+        .background
+        .map(|([[x0, y0, _], _, [x1, y1, _], _], color)| {
+            json!(format!(
+                "{:08x},{:08x},{:08x},{:08x},{color},{mode},{light}",
+                x0.to_bits(),
+                y0.to_bits(),
+                x1.to_bits(),
+                y1.to_bits()
+            ))
+        })
+        .into_iter()
+        .collect()
+}
+
+/// How the 26.2 oracle prints a text display's background: custom geometry of a render type, so
+/// the four corners through the pose and whether the type sees through, and the lines one order
+/// later when there is a background. The drawing is the same as 26.3's. Fills the keys of
+/// `described` that go with it and returns the background's entries.
+fn legacy_background(
+    submit: &photon_render::objects::display::TextSubmit,
+    light: i32,
+    described: &mut Value,
+) -> Vec<Value> {
+    described["text_order"] = json!(i32::from(submit.background.is_some()));
+    let Some((corners, color)) = submit.background else {
+        return Vec::new();
+    };
+    described["see_through"] = json!(submit.see_through);
+    corners
+        .into_iter()
+        .map(|[x, y, z]| {
+            let [x, y, z] = submit.pose.transform_position(x, y, z);
+            json!(format!(
+                "{:08x}{:08x}{:08x},{color},{light}",
+                x.to_bits(),
+                y.to_bits(),
+                z.to_bits()
+            ))
+        })
+        .collect()
 }
 
 /// `map_render`: the quads a map and its decorations are drawn with.

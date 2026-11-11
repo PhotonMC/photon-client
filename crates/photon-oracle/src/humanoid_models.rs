@@ -468,8 +468,9 @@ pub(super) fn held_item_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
-/// The arm a row swings: the one it names, else the main hand's, as the reference's state setup
-/// leaves it.
+/// The arm a row swings: the one it names, else the main hand's in the 26.3 oracle (its state setup
+/// derives the arm from the hand before the main arm is set) and the right arm in the 26.2 one
+/// (which never sets it).
 fn swing_arm(
     row: &Value,
     main_arm: photon_render::entity::player_model::Arm,
@@ -478,6 +479,7 @@ fn swing_arm(
     match row["attack_arm"].as_str() {
         Some("left") => Arm::Left,
         Some(_) => Arm::Right,
+        None if crate::case_ids::before_26_3() => Arm::Right,
         None => main_arm,
     }
 }

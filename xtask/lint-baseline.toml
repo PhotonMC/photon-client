@@ -639,7 +639,6 @@
 "crates/photon-oracle/src/declarations.rs::block_declarations" = 91
 "crates/photon-oracle/src/declarations.rs::face_occlusion" = 95
 "crates/photon-oracle/src/declarations.rs::vanilla_tags_of" = 74
-"crates/photon-oracle/src/display.rs::text_display_submit_result" = 78
 "crates/photon-oracle/src/entity.rs::entity_result" = 116
 "crates/photon-oracle/src/entity/tables.rs::entity_variant_fields_case" = 413
 "crates/photon-oracle/src/entity_motion.rs::client_world_entity_player_head_rotation_result" = 70
@@ -766,7 +765,6 @@
 "crates/photon-render/src/entity/mob_model/villagers.rs::illager_arms" = 93
 "crates/photon-render/src/entity/player_model.rs::Cube::grown" = 72
 "crates/photon-render/src/entity/player_model.rs::PlayerModel::new" = 102
-"crates/photon-render/src/entity/player_model/pose.rs::humanoid_anim" = 62
 "crates/photon-render/src/entity/player_model/pose.rs::pose_arm" = 92
 "crates/photon-render/src/entity/special_models.rs::head" = 90
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 76

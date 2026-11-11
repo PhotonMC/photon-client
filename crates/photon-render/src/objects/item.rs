@@ -26,7 +26,12 @@ pub fn rendered_amount(stack_count: i32) -> i32 {
 /// `ItemClusterRenderState.getSeedForItemStack`: what the copies' offsets
 /// are drawn from.
 pub fn seed_for_stack(item_registry_id: ItemId, damage: i32) -> i32 {
-    item_registry_id.0 + damage
+    // `Item.getId` is the number the version's own item registry gives the item, not the
+    // canonical one the game holds.
+    let wire = photon_data::version_registries::VersionRegistries::active()
+        .items
+        .wire_or_unknown(item_registry_id.0);
+    wire + damage
 }
 
 /// A model's extent as the renderer reads it: its lowest and highest points, and its

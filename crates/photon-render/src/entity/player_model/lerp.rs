@@ -3,7 +3,12 @@ use super::*;
 /// `HumanoidModel.setupAnim`'s swimming arms and legs.
 pub(super) fn swim(root: &mut Part, state: &PlayerRenderState, pi: f32) {
     let swim_amount = state.swim_amount;
-    swim_head(root, state);
+    if !photon_core::versions::rules()
+        .render
+        .swim_head_tips_before_arms
+    {
+        swim_head(root, state);
+    }
     let position = state.walk_position;
     let swim_position = position % 26.0;
     let (right_amount, left_amount) = arm_swim_amounts(state);
@@ -100,9 +105,9 @@ pub(super) fn drowned_swim(root: &mut Part, state: &PlayerRenderState) {
     root.child("head").x_rot = 0.0;
 }
 
-/// `setupSwimAnimation`: the head tips down unless gliding.
-fn swim_head(root: &mut Part, state: &PlayerRenderState) {
-    if !state.is_fall_flying {
+/// The head tips down while swimming, unless gliding.
+pub(super) fn swim_head(root: &mut Part, state: &PlayerRenderState) {
+    if !state.is_fall_flying && state.swim_amount > 0.0 {
         let head = root.child("head");
         head.x_rot = rot_lerp_rad(
             state.swim_amount,
@@ -115,8 +120,16 @@ fn swim_head(root: &mut Part, state: &PlayerRenderState) {
 /// How far each arm (right, left) joins the stroke: not the arm of a swing, nor one holding a
 /// spear.
 fn arm_swim_amounts(state: &PlayerRenderState) -> (f32, f32) {
+    let swing_runs = if photon_core::versions::rules()
+        .render
+        .swim_arm_skips_swing_with_progress
+    {
+        state.attack_time > 0.0
+    } else {
+        state.current_swing
+    };
     let amount = |arm: Arm, pose: ArmPose| {
-        let swinging = state.current_swing && state.attack_arm == arm;
+        let swinging = swing_runs && state.attack_arm == arm;
         if pose == ArmPose::Spear || swinging {
             0.0
         } else {

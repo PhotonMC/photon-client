@@ -80,6 +80,15 @@ pub(super) fn skull_block_pose_result(request: &Value) -> Result<Value, String> 
     Ok(json!({"rows": rows}))
 }
 
+/// The order the collector is asked to draw the base pattern (`None`) or pattern layer `index`
+/// at. The real renderer draws them in turn, so the number is only what the version's oracle
+/// prints: 26.3 puts the base pattern at 1 and layer `i` at `i + 2` (the crumbling overlay
+/// follows them); 26.2 puts them at 0 and `i + 1`.
+fn pattern_order(layer: Option<usize>) -> usize {
+    let shift = usize::from(!crate::case_ids::before_26_3());
+    layer.map_or(shift, |index| index + 1 + shift)
+}
+
 /// `banner_pose`: every model a banner block submits, in the order it is drawn.
 pub(super) fn banner_pose_result(request: &Value) -> Result<Value, String> {
     use photon_render::block_entity::banner::{
@@ -156,7 +165,7 @@ pub(super) fn banner_pose_result(request: &Value) -> Result<Value, String> {
                 &cloth,
                 PATTERN_BASE_TEXTURE,
                 dye(row["color"].as_str().ok_or("color")?)?,
-                1,
+                pattern_order(None),
             ),
         ];
         for (index, layer) in row["patterns"]
@@ -170,7 +179,7 @@ pub(super) fn banner_pose_result(request: &Value) -> Result<Value, String> {
                 &cloth,
                 &pattern_texture(layer["pattern"].as_str().ok_or("pattern")?),
                 dye(layer["color"].as_str().ok_or("color")?)?,
-                index + 2,
+                pattern_order(Some(index)),
             ));
         }
         rows.push(json!({"label": row["label"], "calls": calls}));

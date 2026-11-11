@@ -37,8 +37,13 @@ pub(crate) fn piglin_model_result(request: &Value) -> Result<Value, String> {
         model.setup_piglin(&PiglinState {
             humanoid: photon_render::entity::player_model::PlayerRenderState {
                 main_arm,
-                // The swing is of the main hand, whichever arm that is.
-                attack_arm: main_arm,
+                // The 26.3 oracle swings the main hand, whichever arm that is; the 26.2 oracle
+                // never sets the attack arm, so it stays the right one.
+                attack_arm: if crate::case_ids::before_26_3() {
+                    photon_render::entity::player_model::Arm::Right
+                } else {
+                    main_arm
+                },
                 ticks_using_item: f32_field(row, "ticks_using_item")?,
                 max_crossbow_charge_duration: f32_field(row, "max_crossbow_charge")?,
                 ..humanoid_state(row)?

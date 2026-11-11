@@ -72,29 +72,68 @@ pub fn chest_quads() -> Vec<[ModelVertex; 4]> {
 /// swing, the crouch and the swim. `root` holds the humanoid mesh's parts
 /// (the player's, a zombie's).
 pub fn humanoid_anim(root: &mut Part, state: &PlayerRenderState) {
-    use std::f64::consts::PI;
-    let pi = PI as f32;
     root.reset();
     let show_body = !state.spectator;
     for name in ["body", "right_arm", "left_arm", "right_leg", "left_leg"] {
         root.child(name).visible = show_body;
     }
+    look(root, state);
+    walk_limbs(root, state);
+    if state.is_passenger {
+        sit(root);
+    }
+    pose_arms(root, state);
 
-    let degrees_to_radians = (PI / 180.0) as f32;
-    let swim_amount = state.swim_amount;
+    setup_attack_animation(root, state);
+    let render = photon_core::versions::rules().render;
+    if let Some(aggressive) = state
+        .zombie_arms
+        .filter(|_| !render.zombie_arms_follow_whole_pose && !holds_spear(state))
     {
-        let head = root.child("head");
-        head.x_rot = state.x_rot * degrees_to_radians;
-        head.y_rot = state.head_y_rot * degrees_to_radians;
-        if state.is_fall_flying {
-            head.x_rot = (-PI / 4.0) as f32;
-        }
+        animate_zombie_arms(root, state, aggressive);
     }
 
+    if state.crouching {
+        crouch(root);
+    }
+    // `AnimationUtils.bobModelPart`: the arms breathe, a spyglass held up does not.
+    for (name, scale, pose) in [
+        ("right_arm", 1.0_f32, state.right_arm_pose),
+        ("left_arm", -1.0, state.left_arm_pose),
+    ] {
+        if pose != ArmPose::Spyglass {
+            bob_arm(root.child(name), state.age_in_ticks, scale);
+        }
+    }
+    swim_pose(root, state);
+    if render.zombie_arms_follow_whole_pose {
+        zombie_arms_after_pose(root, state);
+    }
+}
+
+/// The head follows the look, tipped down while gliding, and (before 26.3) while swimming.
+fn look(root: &mut Part, state: &PlayerRenderState) {
+    let degrees_to_radians = (std::f64::consts::PI / 180.0) as f32;
+    let head = root.child("head");
+    head.x_rot = state.x_rot * degrees_to_radians;
+    head.y_rot = state.head_y_rot * degrees_to_radians;
+    if state.is_fall_flying {
+        head.x_rot = (-std::f64::consts::PI / 4.0) as f32;
+    }
+    if photon_core::versions::rules()
+        .render
+        .swim_head_tips_before_arms
+    {
+        swim_head(root, state);
+    }
+}
+
+/// The arms and legs swing with the walk.
+fn walk_limbs(root: &mut Part, state: &PlayerRenderState) {
+    let pi = std::f64::consts::PI as f32;
     let position = state.walk_position;
     let speed = state.walk_speed;
     let cos = |value: f32| mth_cos_f64(f64::from(value));
-    let sin = |value: f32| mth_sin_f64(f64::from(value));
     let slowdown = state.speed_value;
     root.child("right_arm").x_rot = cos(position * 0.6662 + pi) * 2.0 * speed * 0.5 / slowdown;
     root.child("left_arm").x_rot = cos(position * 0.6662) * 2.0 * speed * 0.5 / slowdown;
@@ -104,42 +143,64 @@ pub fn humanoid_anim(root: &mut Part, state: &PlayerRenderState) {
     root.child("left_leg").y_rot = -0.005;
     root.child("right_leg").z_rot = 0.005;
     root.child("left_leg").z_rot = -0.005;
-    if state.is_passenger {
-        sit(root);
-    }
-    pose_arms(root, state);
+}
 
-    setup_attack_animation(root, state);
-    if let Some(aggressive) = state.zombie_arms.filter(|_| !holds_spear(state)) {
+/// The swimming stroke: the humanoid one, or a drowned's own from 26.3 on.
+fn swim_pose(root: &mut Part, state: &PlayerRenderState) {
+    if state.swim_amount <= 0.0 {
+        return;
+    }
+    let drowned_replaces = state.drowned_swim
+        && !photon_core::versions::rules()
+            .render
+            .drowned_swim_adds_to_humanoid_swim;
+    if drowned_replaces {
+        drowned_swim(root, state);
+    } else {
+        swim(root, state, std::f64::consts::PI as f32);
+    }
+}
+
+/// What the zombie-like models add after the humanoid pose before 26.3: the arms held out and
+/// bobbed again unless the swing is a stab, then a drowned's thrown trident held up again and its
+/// own swim stroke on top.
+fn zombie_arms_after_pose(root: &mut Part, state: &PlayerRenderState) {
+    let Some(aggressive) = state.zombie_arms else {
+        return;
+    };
+    if state.swing_animation != SwingAnimation::Stab {
         animate_zombie_arms(root, state, aggressive);
     }
-
-    if state.crouching {
-        crouch(root);
+    for (name, scale) in [("right_arm", 1.0_f32), ("left_arm", -1.0)] {
+        bob_arm(root.child(name), state.age_in_ticks, scale);
     }
-
-    // `AnimationUtils.bobModelPart`: the arms breathe.
-    for (name, scale, pose) in [
-        ("right_arm", 1.0_f32, state.right_arm_pose),
-        ("left_arm", -1.0, state.left_arm_pose),
+    if !state.drowned_swim
+        || !photon_core::versions::rules()
+            .render
+            .drowned_swim_adds_to_humanoid_swim
+    {
+        return;
+    }
+    let pi = std::f64::consts::PI as f32;
+    for (name, pose) in [
+        ("left_arm", state.left_arm_pose),
+        ("right_arm", state.right_arm_pose),
     ] {
-        // A spyglass held up does not breathe.
-        if pose == ArmPose::Spyglass {
-            continue;
+        if pose == ArmPose::ThrowTrident {
+            let arm = root.child(name);
+            arm.x_rot = arm.x_rot * 0.5 - pi;
+            arm.y_rot = 0.0;
         }
-        let age = state.age_in_ticks;
-        let arm = root.child(name);
-        arm.z_rot += scale * (cos(age * 0.09) * 0.05 + 0.05);
-        arm.x_rot += scale * (sin(age * 0.067) * 0.05);
     }
+    if state.swim_amount > 0.0 {
+        drowned_swim(root, state);
+    }
+}
 
-    if swim_amount > 0.0 {
-        if state.drowned_swim {
-            drowned_swim(root, state);
-        } else {
-            swim(root, state, pi);
-        }
-    }
+/// `AnimationUtils.bobModelPart`: an arm breathes.
+fn bob_arm(arm: &mut Part, age: f32, scale: f32) {
+    arm.z_rot += scale * (mth_cos_f64(f64::from(age * 0.09)) * 0.05 + 0.05);
+    arm.x_rot += scale * (mth_sin_f64(f64::from(age * 0.067)) * 0.05);
 }
 
 /// `HumanoidModel.setupAnim`'s riding: the arms lift and the legs sit.
@@ -406,10 +467,24 @@ pub(super) fn pose_arm(root: &mut Part, state: &PlayerRenderState, arm: Arm) {
                 fall_flying_or_swimming: state.is_fall_flying || state.swim_amount > 0.0,
                 ticks_using_item: state.ticks_using_item,
                 is_using_item: state.is_using_item,
-                using_arm_holds: (state.use_item_main_hand == (state.main_arm == arm)),
+                using_arm_holds: spear_use_arm_holds(state, arm),
             };
             third_person_hand_use(root.child(name), (head_x, head_y), right, &use_state);
         }
+    }
+}
+
+/// Whether the hand using the item is the hand of `arm`, as `SpearAnimations.thirdPersonHandUse`
+/// asks: the main hand for the right arm and the off hand for the left one before 26.3, whichever
+/// arm is the main one; the hand of the arm itself from 26.3 on.
+fn spear_use_arm_holds(state: &PlayerRenderState, arm: Arm) -> bool {
+    if photon_core::versions::rules()
+        .render
+        .spear_use_hand_is_fixed_by_arm
+    {
+        state.use_item_main_hand == (arm == Arm::Right)
+    } else {
+        state.use_item_main_hand == (state.main_arm == arm)
     }
 }
 
@@ -419,6 +494,7 @@ pub(super) fn pose_arm(root: &mut Part, state: &PlayerRenderState, arm: Arm) {
 fn animate_zombie_arms(root: &mut Part, state: &PlayerRenderState, aggressive: bool) {
     let sin = |value: f32| mth_sin_f64(f64::from(value));
     let pi = std::f64::consts::PI as f32;
+    let render = photon_core::versions::rules().render;
     let raise_arms = !state.is_baby || state.main_hand_empty;
     let arm_drop = if raise_arms {
         -pi / if aggressive { 1.5 } else { 2.25 }
@@ -442,7 +518,8 @@ fn animate_zombie_arms(root: &mut Part, state: &PlayerRenderState, aggressive: b
             if raise_arms { y_rot } else { -y_rot },
         ),
     ] {
-        if pose != ArmPose::ThrowTrident {
+        // Before 26.3 the arm throwing a trident is held out too (and put back up afterwards).
+        if pose != ArmPose::ThrowTrident || render.zombie_arms_follow_whole_pose {
             let arm = root.child(name);
             arm.x_rot = x_rot;
             arm.y_rot = y;

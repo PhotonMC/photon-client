@@ -269,6 +269,11 @@ impl VersionRegistries {
             .clone()
     }
 
+    /// The numbering of the active version ([`Version::active`]).
+    pub fn active() -> std::sync::Arc<Self> {
+        Self::of(Version::active())
+    }
+
     /// The version the numbering is for.
     pub fn version(&self) -> Version {
         self.version
