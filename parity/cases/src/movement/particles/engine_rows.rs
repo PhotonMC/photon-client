@@ -341,6 +341,7 @@ pub fn rows() -> Vec<Value> {
     rows.extend(super::vault_rows::rows());
     rows.extend(super::spawner_rows::rows());
     rows.extend(super::portal_rows::rows());
+    rows.extend(super::server_event_rows::rows());
     rows.extend(super::parrot_rows::rows());
     rows.extend(super::crack_rows::rows());
     rows

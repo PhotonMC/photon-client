@@ -171,8 +171,9 @@ impl ClientWorld {
                         always_show: false,
                         at: spray,
                         spread: (0.0, 0.0, 0.0),
-                        max_speed: 1.0,
+                        max_speed: (1.0, 1.0, 1.0),
                         count: 0,
+                        randomization: Default::default(),
                     });
             }
         }

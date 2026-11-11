@@ -549,8 +549,9 @@ impl ClientWorld {
             always_show: false,
             at,
             spread: (sideways.0 as f32, (-climb * 0.5) as f32, sideways.1 as f32),
-            max_speed: 1.0,
+            max_speed: (1.0, 1.0, 1.0),
             count: 0,
+            randomization: Default::default(),
         });
     }
 }

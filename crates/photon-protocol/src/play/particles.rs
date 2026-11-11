@@ -1,12 +1,45 @@
 use super::*;
 
-/// `ClientboundLevelParticlesPacket`, read from the front of `input`: nothing for a type whose
-/// options are not read yet (the packet ends with them).
+/// `ClientboundLevelParticlesPacket`, read from the front of `input` as the session's version
+/// lays it out: nothing for a type whose options are not read yet (the rest of the packet then
+/// cannot be read, and is left).
 pub fn read_level_particles_packet(
     input: &mut &[u8],
     registries: &VersionRegistries,
 ) -> Result<Option<photon_data::particle_values::LevelParticles>, ConnectionError> {
+    let axis_speeds = photon_core::versions::Rules::of(registries.version())
+        .protocol
+        .level_particles_carry_axis_speeds;
+    // 26.3 names the particle first; before it the particle came last.
+    let first = if axis_speeds {
+        Some(read_particle_options(input, registries)?)
+    } else {
+        None
+    };
+    if first == Some(None) {
+        *input = &[];
+        return Ok(None);
+    }
+    let mut packet = read_particles_body(input, axis_speeds)?;
+    let options = match first {
+        Some(options) => options,
+        None => read_particle_options(input, registries)?,
+    };
+    let Some((type_id, data)) = options else {
+        *input = &[];
+        return Ok(None);
+    };
+    (packet.type_id, packet.data) = (type_id, data);
+    Ok(Some(packet))
+}
+
+/// What a level particles packet carries besides its particle, with the particle left blank.
+fn read_particles_body(
+    input: &mut &[u8],
+    axis_speeds: bool,
+) -> Result<photon_data::particle_values::LevelParticles, ConnectionError> {
     const NAME: &str = "level particles";
+    use photon_data::particle_values::{LevelParticles, ParticleData, Randomization};
     let override_limiter = read_bool(input, NAME)?;
     let always_show = read_bool(input, NAME)?;
     let at = (
@@ -19,22 +52,34 @@ pub fn read_level_particles_packet(
         read_f32(input, NAME)?,
         read_f32(input, NAME)?,
     );
-    let max_speed = read_f32(input, NAME)?;
-    let count = read_i32(input, NAME)?;
-    let Some((type_id, data)) = read_particle_options(input, registries)? else {
-        *input = &[];
-        return Ok(None);
+    let (max_speed, count, randomization) = if axis_speeds {
+        let speed = (
+            read_f32(input, NAME)?,
+            read_f32(input, NAME)?,
+            read_f32(input, NAME)?,
+        );
+        let count = read_varint(input, NAME)?;
+        (
+            speed,
+            count,
+            Randomization::from_id(read_varint(input, NAME)?),
+        )
+    } else {
+        let speed = read_f32(input, NAME)?;
+        let count = read_i32(input, NAME)?;
+        ((speed, speed, speed), count, Randomization::Default)
     };
-    Ok(Some(photon_data::particle_values::LevelParticles {
-        type_id,
-        data,
+    Ok(LevelParticles {
+        type_id: 0,
+        data: ParticleData::Plain,
         override_limiter,
         always_show,
         at,
         spread,
         max_speed,
         count,
-    }))
+        randomization,
+    })
 }
 
 /// `ParticleTypes.STREAM_CODEC`: a type and its options. Nothing for a type whose options are not

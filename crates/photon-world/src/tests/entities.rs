@@ -14,6 +14,7 @@ mod living_flags;
 mod lookup;
 mod menus;
 mod movement_collision;
+mod pickups;
 mod projectiles;
 mod remote_players;
 mod splashes;

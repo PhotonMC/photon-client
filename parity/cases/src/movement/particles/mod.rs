@@ -22,6 +22,7 @@ mod piston_rows;
 mod portal_rows;
 mod quads;
 mod scene;
+mod server_event_rows;
 mod spawner_rows;
 mod sulfur_rows;
 mod terrain;
@@ -46,6 +47,11 @@ pub fn cases() -> Vec<Value> {
             "particle_engine",
             [engine_rows::rows(), animating::rows(), fireworks::rows()].concat(),
         ),
+        {
+            let mut newer = rows("movement/particle-engine-26-3", "particle_engine", server_event_rows::newer_rows());
+            newer["version"] = json!("26.3");
+            newer
+        },
         quads::particle_quads(),
         terrain::particle_terrain(),
         pickup::item_pickup(),

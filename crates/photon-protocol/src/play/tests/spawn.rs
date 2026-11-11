@@ -157,9 +157,22 @@ fn explode_parser_reads_the_push_the_particles_and_the_sound() {
     payload.extend_from_slice(&0.5_f32.to_be_bytes());
     payload.extend_from_slice(&1.0_f32.to_be_bytes());
     photon_core::wire::write_varint(3, &mut payload);
+    // 26.2's packet ends here and always sounds; 26.3 adds whether the sound plays.
+    let older = super::super::parse_explode_packet(
+        &payload,
+        &photon_data::version_registries::VersionRegistries::of(
+            photon_core::version::Version::V26_2,
+        ),
+    )
+    .expect("explode")
+    .expect("known options");
+    assert!(older.0.play_sound);
+    assert!(super::super::parse_explode_packet(&payload, &registries()).is_err());
+    payload.push(0);
     let (read, knockback) = super::super::parse_explode_packet(&payload, &registries())
         .expect("explode")
         .expect("known options");
+    assert!(!read.play_sound);
     assert_eq!(knockback, Some((0.25, 0.5, 0.0)));
     assert_eq!(
         (read.center, read.radius, read.block_count),

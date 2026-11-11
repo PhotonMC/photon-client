@@ -16,6 +16,36 @@ fn queue_block_event(event: &Value, world: &mut ClientWorld) -> Result<(), Strin
     Ok(())
 }
 
+/// A particle packet's spread along each axis.
+pub(super) fn packet_spread(event: &Value) -> Result<(f32, f32, f32), String> {
+    let single = |key: &str| -> Result<f32, String> {
+        u32::from_str_radix(string(event, key)?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| format!("{key}: {error}"))
+    };
+    Ok((single("x_dist")?, single("y_dist")?, single("z_dist")?))
+}
+
+/// A particle packet's top speed along each axis: one for all three, or a field for each.
+pub(super) fn packet_speeds(event: &Value) -> Result<(f32, f32, f32), String> {
+    let single = |key: &str| -> Result<f32, String> {
+        u32::from_str_radix(string(event, key)?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| format!("{key}: {error}"))
+    };
+    if event.get("x_speed").is_some() {
+        return Ok((single("x_speed")?, single("y_speed")?, single("z_speed")?));
+    }
+    let speed = single("max_speed")?;
+    Ok((speed, speed, speed))
+}
+
+/// How a particle packet's count is spread; the default when the row names none.
+pub(super) fn packet_randomization(event: &Value) -> photon_world::particles::Randomization {
+    let id = event["randomization"].as_i64().unwrap_or(0);
+    photon_world::particles::Randomization::from_id(id as i32)
+}
+
 /// What a level event carries: its data, or the number of the block state it names.
 fn level_event_data(event: &Value) -> Result<i32, String> {
     if event.get("state").is_some() {
@@ -115,6 +145,7 @@ fn queue_explosion(event: &Value, world: &mut ClientWorld) -> Result<(), String>
         ),
         sound: Some("minecraft:entity.generic.explode"),
         block_particles,
+        play_sound: event["play_sound"].as_bool().unwrap_or(true),
     });
     Ok(())
 }

@@ -63,8 +63,9 @@ pub fn parse_player_combat_kill_packet(
     Ok((id, read_chat_component(&mut input, "combat kill message")?))
 }
 
+/// The login packet as 26.2 lays it out (the game modes are bytes).
 pub fn parse_login_packet(input: &[u8]) -> Result<LoginObservation, ConnectionError> {
-    parse_login_fields(input, true)
+    parse_login_fields(input, true, false)
 }
 
 /// The login packet as the session's version sends it.
@@ -74,15 +75,24 @@ pub fn parse_login_packet_for(
 ) -> Result<LoginObservation, ConnectionError> {
     match registries.version() {
         photon_core::version::Version::V26_1 => crate::versions::v26_1::login_packet(input),
-        _ => parse_login_packet(input),
+        version => parse_login_fields(input, true, var_int_game_modes(version)),
     }
 }
 
+/// Whether the version's spawn info writes its game modes as variable-length numbers.
+fn var_int_game_modes(version: photon_core::version::Version) -> bool {
+    photon_core::versions::Rules::of(version)
+        .protocol
+        .spawn_info_game_modes_are_var_ints
+}
+
 /// The login packet's fields; `has_online_mode` is whether the version sends the online-mode flag
-/// (absent, it reads as off).
+/// (absent, it reads as off), and `var_int_modes` whether its game modes are variable-length
+/// numbers.
 pub(crate) fn parse_login_fields(
     input: &[u8],
     has_online_mode: bool,
+    var_int_modes: bool,
 ) -> Result<LoginObservation, ConnectionError> {
     let mut input = input;
     let packet = LoginObservation {
@@ -101,7 +111,7 @@ pub(crate) fn parse_login_fields(
         reduced_debug_info: read_bool(&mut input, "login reduced debug info")?,
         show_death_screen: read_bool(&mut input, "login show death screen")?,
         do_limited_crafting: read_bool(&mut input, "login limited crafting")?,
-        spawn_info: parse_spawn_info(&mut input)?,
+        spawn_info: parse_spawn_info(&mut input, var_int_modes)?,
         online_mode: has_online_mode && read_bool(&mut input, "login online mode")?,
         enforces_secure_chat: read_bool(&mut input, "login secure chat")?,
     };
@@ -111,9 +121,25 @@ pub(crate) fn parse_login_fields(
     Ok(packet)
 }
 
+/// The respawn packet as 26.2 lays it out (the game modes are bytes).
 pub fn parse_respawn_packet(input: &[u8]) -> Result<(SpawnInfoObservation, u8), ConnectionError> {
+    parse_respawn_fields(input, false)
+}
+
+/// The respawn packet as the session's version sends it.
+pub fn parse_respawn_packet_for(
+    input: &[u8],
+    registries: &photon_data::version_registries::VersionRegistries,
+) -> Result<(SpawnInfoObservation, u8), ConnectionError> {
+    parse_respawn_fields(input, var_int_game_modes(registries.version()))
+}
+
+fn parse_respawn_fields(
+    input: &[u8],
+    var_int_modes: bool,
+) -> Result<(SpawnInfoObservation, u8), ConnectionError> {
     let mut input = input;
-    let spawn_info = parse_spawn_info(&mut input)?;
+    let spawn_info = parse_spawn_info(&mut input, var_int_modes)?;
     let data_to_keep = read_byte(&mut input, "respawn data to keep")?;
     if !input.is_empty() {
         return Err(ConnectionError::Codec("respawn trailing payload"));
@@ -287,15 +313,40 @@ pub fn parse_game_event_packet(input: &[u8]) -> Result<GameEventPacket, Connecti
     Ok(packet)
 }
 
-pub(super) fn parse_spawn_info(input: &mut &[u8]) -> Result<SpawnInfoObservation, ConnectionError> {
+/// `GameType.byId`: a number out of range is survival, the first mode.
+fn game_mode_by_id(id: i32) -> u8 {
+    u8::try_from(id).ok().filter(|id| *id <= 3).unwrap_or(0)
+}
+
+/// The game mode and the one before it. 26.2 writes each as a signed byte, minus one for no
+/// previous mode; 26.3 writes each as a variable-length number, the previous mode one more than
+/// its id with zero for none.
+fn read_game_modes(
+    input: &mut &[u8],
+    var_int_modes: bool,
+) -> Result<(u8, Option<u8>), ConnectionError> {
+    if var_int_modes {
+        let game_type = game_mode_by_id(read_varint(input, "spawn game type")?);
+        let previous = read_varint(input, "spawn previous game type")?;
+        let previous = (previous != 0).then(|| game_mode_by_id(previous.wrapping_sub(1)));
+        return Ok((game_type, previous));
+    }
+    let game_type = game_mode_by_id(i32::from(read_byte(input, "spawn game type")? as i8));
+    let previous = match read_byte(input, "spawn previous game type")? as i8 {
+        -1 => None,
+        value => Some(game_mode_by_id(i32::from(value))),
+    };
+    Ok((game_type, previous))
+}
+
+pub(super) fn parse_spawn_info(
+    input: &mut &[u8],
+    var_int_modes: bool,
+) -> Result<SpawnInfoObservation, ConnectionError> {
     let dimension_type_id = read_varint(input, "spawn dimension type")?;
     let dimension = read_identifier_string(input, "spawn dimension")?;
     let seed = read_i64(input, "spawn seed")?;
-    let game_type = read_byte(input, "spawn game type")?;
-    let previous_game_type = match read_byte(input, "spawn previous game type")? {
-        u8::MAX => None,
-        value => Some(value),
-    };
+    let (game_type, previous_game_type) = read_game_modes(input, var_int_modes)?;
     let is_debug = read_bool(input, "spawn debug flag")?;
     let is_flat = read_bool(input, "spawn flat flag")?;
     let last_death_location = if read_bool(input, "spawn death-location presence")? {
@@ -326,9 +377,9 @@ wrapped_wire_packet!(
     /// `ClientboundLoginPacket`.
     Login(LoginObservation) = parse_login_packet_for
 );
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundRespawnPacket`: where the player respawns, and what it keeps.
-    Respawn((SpawnInfoObservation, u8)) = parse_respawn_packet
+    Respawn((SpawnInfoObservation, u8)) = parse_respawn_packet_for
 );
 wrapped_packet!(
     /// `ClientboundSetHealthPacket`.

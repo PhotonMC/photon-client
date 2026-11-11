@@ -112,6 +112,8 @@ pub struct Explosion {
     /// Its sound; none for one the client does not know by name.
     pub sound: Option<&'static str>,
     pub block_particles: Vec<ExplosionParticle>,
+    /// Whether its sound plays (always, before 26.3).
+    pub play_sound: bool,
 }
 
 /// `ClientboundLevelParticlesPacket`, of a type that is only its id or a block state.
@@ -124,8 +126,42 @@ pub struct LevelParticles {
     pub always_show: bool,
     pub at: (f64, f64, f64),
     pub spread: (f32, f32, f32),
-    pub max_speed: f32,
+    /// The top speed along each axis (26.2 has one for all three).
+    pub max_speed: (f32, f32, f32),
     pub count: i32,
+    pub randomization: Randomization,
+}
+
+/// `ClientboundLevelParticlesPacket.RandomizationType`: how the particles of a count are spread.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Randomization {
+    /// A normal distribution for the place and the speed.
+    #[default]
+    Default,
+    /// An even spread over the distance, at the top speed.
+    Alternative,
+    /// An even spread over the distance, at a share of the top speed.
+    AlternativeWithSpeed,
+}
+
+impl Randomization {
+    /// The type of a wire id; one out of range is the default.
+    pub fn from_id(id: i32) -> Self {
+        match id {
+            1 => Self::Alternative,
+            2 => Self::AlternativeWithSpeed,
+            _ => Self::Default,
+        }
+    }
+
+    /// The wire id.
+    pub fn id(self) -> i32 {
+        match self {
+            Self::Default => 0,
+            Self::Alternative => 1,
+            Self::AlternativeWithSpeed => 2,
+        }
+    }
 }
 
 /// `FireworkExplosion.Shape`.

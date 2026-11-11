@@ -799,7 +799,7 @@ pub(super) fn connect_and_probe_with_mode(
                 }
             }
             PLAY_CLIENTBOUND_RESPAWN_PACKET_ID => {
-                let (spawn_info, data_to_keep) = parse_respawn_packet(payload)?;
+                let (spawn_info, data_to_keep) = parse_respawn_packet_for(payload, &registries())?;
                 let cleared_chunk_count = trace.world.loaded_chunk_count();
                 let cleared_entity_count = trace.world.entities().count();
                 let dimension_changed = trace.world.replace_dimension_with_environment(

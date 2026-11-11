@@ -19,5 +19,5 @@ pub fn login_finished(input: &mut &[u8]) -> Result<ClientboundLoginFinishedPacke
 /// flag; 26.2 added it. The client treats the server as offline then (what it decides with the
 /// flag is unchecked against 26.1's own client).
 pub fn login_packet(input: &[u8]) -> Result<LoginObservation, ConnectionError> {
-    crate::play::parse_login_fields(input, false)
+    crate::play::parse_login_fields(input, false, false)
 }

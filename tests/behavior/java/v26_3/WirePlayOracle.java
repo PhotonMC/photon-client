@@ -49,7 +49,13 @@ final class WirePlayOracle {
                 case "game_test_highlight" -> highlight(ClientboundGameTestHighlightPosPacket.STREAM_CODEC.decode(input));
                 case "combat_end" -> combatEnd(ClientboundPlayerCombatEndPacket.STREAM_CODEC.decode(input));
                 case "custom_chat_completions" -> completions(ClientboundCustomChatCompletionsPacket.STREAM_CODEC.decode(input));
-                default -> throw new IllegalArgumentException("Unknown play packet");
+                default -> {
+                    var state = WirePlayStateOracle.fields(request.get("packet").getAsString(), buffer);
+                    if (state == null) {
+                        throw new IllegalArgumentException("Unknown play packet");
+                    }
+                    yield state;
+                }
             };
             if (buffer.isReadable()) {
                 throw new IllegalStateException("trailing bytes");

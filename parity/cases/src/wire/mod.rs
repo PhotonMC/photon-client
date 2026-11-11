@@ -9,6 +9,7 @@ mod finished;
 mod framing;
 mod login;
 mod play;
+mod play_state;
 mod registry;
 mod stats;
 mod status;
@@ -25,6 +26,7 @@ pub fn cases() -> Vec<Value> {
     cases.extend(advancements::cases());
     cases.extend(stats::cases());
     cases.extend(play::cases());
+    cases.extend(play_state::cases());
     cases.extend(tag_text::cases());
     cases.extend(status::cases());
     cases

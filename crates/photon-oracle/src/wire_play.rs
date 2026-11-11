@@ -142,7 +142,7 @@ fn combat_fields(packet: &str, bytes: &[u8]) -> Result<Option<Value>, String> {
         "combat_end" => PlayerCombatEnd::decode(bytes, &registries)
             .ok()
             .map(|p| json!({"duration": p.duration})),
-        other => return Err(format!("unknown play packet {other}")),
+        other => return crate::wire_play_state::fields(other, bytes),
     })
 }
 

@@ -585,7 +585,8 @@ class MovementParticleOracle extends MovementMenuOracle {
                         new net.minecraft.world.phys.Vec3(Oracle.f64(event, "x"), Oracle.f64(event, "y"), Oracle.f64(event, "z")),
                         floatBits(event, "radius"), event.get("block_count").getAsInt(), java.util.Optional.empty(),
                         simpleType(event.get("particle").getAsString()),
-                        net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE, weighted.build(), true));
+                        net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE, weighted.build(),
+                        !event.has("play_sound") || event.get("play_sound").getAsBoolean()));
                     setField(minecraft, "player", null);
                     continue;
                 }
@@ -701,12 +702,22 @@ class MovementParticleOracle extends MovementMenuOracle {
                     case "add" -> level.addParticle(options, event.get("override").getAsBoolean(),
                         event.get("always_show").getAsBoolean(), Oracle.f64(event, "x"), Oracle.f64(event, "y"),
                         Oracle.f64(event, "z"), Oracle.f64(event, "xa"), Oracle.f64(event, "ya"), Oracle.f64(event, "za"));
-                    case "packet" -> listener.handleParticleEvent(
-                        new net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket(options,
-                            event.get("override").getAsBoolean(), event.get("always_show").getAsBoolean(),
-                            Oracle.f64(event, "x"), Oracle.f64(event, "y"), Oracle.f64(event, "z"),
-                            Oracle.f32(event, "x_dist"), Oracle.f32(event, "y_dist"), Oracle.f32(event, "z_dist"),
-                            Oracle.f32(event, "max_speed"), event.get("count").getAsInt()));
+                    case "packet" -> {
+                        // A row that names a randomization sends the whole packet, a speed for each axis.
+                        var kinds = net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket.RandomizationType.values();
+                        listener.handleParticleEvent(event.has("randomization")
+                            ? new net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket(options,
+                                event.get("override").getAsBoolean(), event.get("always_show").getAsBoolean(),
+                                Oracle.f64(event, "x"), Oracle.f64(event, "y"), Oracle.f64(event, "z"),
+                                Oracle.f32(event, "x_dist"), Oracle.f32(event, "y_dist"), Oracle.f32(event, "z_dist"),
+                                Oracle.f32(event, "x_speed"), Oracle.f32(event, "y_speed"), Oracle.f32(event, "z_speed"),
+                                event.get("count").getAsInt(), kinds[event.get("randomization").getAsInt()])
+                            : new net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket(options,
+                                event.get("override").getAsBoolean(), event.get("always_show").getAsBoolean(),
+                                Oracle.f64(event, "x"), Oracle.f64(event, "y"), Oracle.f64(event, "z"),
+                                Oracle.f32(event, "x_dist"), Oracle.f32(event, "y_dist"), Oracle.f32(event, "z_dist"),
+                                Oracle.f32(event, "max_speed"), event.get("count").getAsInt()));
+                    }
                     default -> throw new IllegalArgumentException("Unknown particle event " + event);
                 }
             }

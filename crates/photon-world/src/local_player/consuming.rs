@@ -48,8 +48,9 @@ pub(crate) fn crumb_particle(
         always_show: false,
         at: (from.0 + eye.x, from.1 + eye.y, from.2 + eye.z),
         spread: (push.0 as f32, (push.1 + 0.05) as f32, push.2 as f32),
-        max_speed: 1.0,
+        max_speed: (1.0, 1.0, 1.0),
         count: 0,
+        randomization: Default::default(),
     })
 }
 

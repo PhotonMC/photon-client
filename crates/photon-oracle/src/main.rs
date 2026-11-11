@@ -110,6 +110,7 @@ mod music;
 mod registry;
 mod wire_crypto;
 mod wire_play;
+mod wire_play_state;
 use hex::*;
 mod information;
 use information::*;

@@ -246,3 +246,32 @@ fn a_boat_the_local_player_steers_ignores_the_servers_moves() {
     let boat = world.entities().at(EntityId(37)).expect("the boat");
     assert_eq!(boat.interpolation_position(), (12.5, 8.0, -4.25));
 }
+
+/// Source-derived (the oracle has no boats under a bubble column): 26.3's events 71 and 72 set
+/// the motion of the boat the local player steers, and of no other.
+#[test]
+fn a_bubble_column_event_moves_only_the_boat_the_player_steers() {
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    for id in [37, 40] {
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(id),
+            uuid: Uuid::new(1, u64::try_from(id).unwrap()),
+            type_id: photon_data::entity_type::named("minecraft:oak_boat"),
+            x: 12.5,
+            y: 8.0,
+            z: -4.25,
+            movement: (0.25, 0.5, -0.75),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+    }
+    world.set_local_player_id(EntityId(38));
+    assert!(world.apply_entity_passengers(EntityId(37), &[EntityId(38)]));
+    let motion = |world: &ClientWorld, id: i32| world.entities().at(EntityId(id)).unwrap().motion();
+    assert!(world.bubble_column_boat_event(EntityId(37), 71));
+    assert_eq!(motion(&world, 37), (0.25, 0.5 - 0.7, -0.75));
+    assert!(world.bubble_column_boat_event(EntityId(37), 72));
+    assert_eq!(motion(&world, 37), (0.25, 0.6, -0.75));
+    assert!(!world.bubble_column_boat_event(EntityId(40), 72));
+    assert_eq!(motion(&world, 40), (0.25, 0.5, -0.75));
+}

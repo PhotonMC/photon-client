@@ -202,11 +202,12 @@ fn effect_particle_spawns(spawn: &Value) -> Value {
             continue;
         };
         let (x, y, z) = thrown.at;
-        let push = |spread: f32| f64::from(thrown.max_speed * spread);
+        let push = |speed: f32, spread: f32| f64::from(speed * spread);
         added.push(json!({
             "tick": tick, "type_id": thrown.type_id, "x": bits(x), "y": bits(y), "z": bits(z),
-            "xd": bits(push(thrown.spread.0)), "yd": bits(push(thrown.spread.1)),
-            "zd": bits(push(thrown.spread.2)),
+            "xd": bits(push(thrown.max_speed.0, thrown.spread.0)),
+            "yd": bits(push(thrown.max_speed.1, thrown.spread.1)),
+            "zd": bits(push(thrown.max_speed.2, thrown.spread.2)),
         }));
     }
     json!({"added": added})

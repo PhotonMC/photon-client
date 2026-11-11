@@ -300,3 +300,28 @@ impl ClientWorld {
         true
     }
 }
+
+impl ClientWorld {
+    /// `AbstractBoat.handleEntityEvent`'s 71 and 72 (26.3): a bubble column drags the boat the local
+    /// player steers down (a push of 0.7 down) or launches it up (a motion of 0.6 up). A boat the
+    /// client does not steer is left to the server's own motion.
+    pub fn bubble_column_boat_event(&mut self, entity_id: EntityId, event: i8) -> bool {
+        if !matches!(event, 71 | 72)
+            || !photon_core::versions::rules()
+                .world
+                .boat_bubble_column_events
+        {
+            return false;
+        }
+        let steered = self.entities.at(entity_id).is_some_and(|entity| {
+            entity.is_boat() && self.boat_is_local_instance_authoritative(entity)
+        });
+        let Some(entity) = self.entities.at_mut(entity_id).filter(|_| steered) else {
+            return false;
+        };
+        let (_, y, _) = entity.motion();
+        let y = if event == 71 { y - 0.7 } else { 0.6 };
+        entity.vel.motion.y = JavaF64::new(y);
+        true
+    }
+}

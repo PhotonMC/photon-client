@@ -35,15 +35,15 @@ impl ParticleEngine {
             1505 => self.bone_meal(pos, data, context, sounds),
             2011 | 2012 => self.particle_in_block(pos, data, context),
             2013 => self.smash_attack(pos, data, context),
-            2019 | 2020 => self.breaking_block_effects((event, pos, data), context, sounds),
+            2014..=2020 => self.server_effect_event((event, pos, data), context, sounds),
             _ => return self.block_level_event((event, pos, data), context),
         }
         true
     }
 
-    /// Events 2019 and 2020 (26.3): the effects of a block being broken, from the face named by the
+    /// Events 2019 and 2020 (26.3, see `server_effect_event`): the effects of a block being broken, from the face named by the
     /// data; 2020 adds the hit sound.
-    fn breaking_block_effects<F: FnMut() -> RandomSource>(
+    pub(super) fn breaking_block_effects<F: FnMut() -> RandomSource>(
         &mut self,
         (event, pos, data): (i32, (i32, i32, i32), i32),
         context: &mut LevelEventContext<'_, F>,

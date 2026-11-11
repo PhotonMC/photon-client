@@ -556,8 +556,9 @@ impl PlaySession {
                 always_show: false,
                 at: (at.x, at.y, at.z),
                 spread: (0.0, 0.0, 0.0),
-                max_speed: 0.0,
+                max_speed: (0.0, 0.0, 0.0),
                 count: 0,
+                randomization: Default::default(),
             });
         if param == 1 {
             self.world

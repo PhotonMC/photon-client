@@ -205,9 +205,12 @@ impl LocalPlayer {
         self.delta = motion;
     }
 
-    /// `Entity.addDeltaMovement`: a push on top of the motion it has (an explosion's).
+    /// `Entity.addDeltaMovement`: a push on top of the motion it has (an explosion's); nothing
+    /// for one that is not a finite number.
     pub fn add_delta_movement(&mut self, push: Vec3) {
-        self.delta = self.delta.add_vec3(push);
+        if push.x.is_finite() && push.y.is_finite() && push.z.is_finite() {
+            self.delta = self.delta.add_vec3(push);
+        }
     }
 
     pub fn on_ground(&self) -> bool {

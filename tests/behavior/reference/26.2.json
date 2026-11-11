@@ -527,6 +527,7 @@
         "WireFrameOracle.java",
         "WireLoginOracle.java",
         "WirePlayOracle.java",
+        "WirePlayStateOracle.java",
         "WireRegistryOracle.java",
         "WireSupport.java"
       ]

@@ -38,8 +38,9 @@ pub fn effect_particle(
         always_show: false,
         at: (x, y, z),
         spread: (1.0, 1.0, 1.0),
-        max_speed: 1.0,
+        max_speed: (1.0, 1.0, 1.0),
         count: 0,
+        randomization: Default::default(),
     })
 }
 
@@ -70,8 +71,9 @@ pub fn teleport_particles(
                 always_show: false,
                 at: (x, y, z),
                 spread,
-                max_speed: 1.0,
+                max_speed: (1.0, 1.0, 1.0),
                 count: 0,
+                randomization: Default::default(),
             }
         })
         .collect()
@@ -103,8 +105,9 @@ pub fn sprint_particle(
         at: (x, position.y + 0.1, z),
         // Count 0 reads the spread as the velocity.
         spread: ((motion.x * -4.0) as f32, 1.5, (motion.z * -4.0) as f32),
-        max_speed: 1.0,
+        max_speed: (1.0, 1.0, 1.0),
         count: 0,
+        randomization: Default::default(),
     })
 }
 
@@ -164,8 +167,9 @@ pub fn area_effect_cloud_particles(
             always_show: true,
             at,
             spread,
-            max_speed: 1.0,
+            max_speed: (1.0, 1.0, 1.0),
             count: 0,
+            randomization: Default::default(),
         });
     }
     specks
@@ -207,8 +211,9 @@ pub fn water_splash_particles(
                 always_show: false,
                 at: (x + xo, top, z + zo),
                 spread: (motion.x as f32, (motion.y - down) as f32, motion.z as f32),
-                max_speed: 1.0,
+                max_speed: (1.0, 1.0, 1.0),
                 count: 0,
+                randomization: Default::default(),
             });
             i += 1;
         }

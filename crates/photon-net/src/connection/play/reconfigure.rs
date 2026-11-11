@@ -592,7 +592,8 @@ mod tests {
         wire::write_varint(dimension_type_id, &mut body);
         identifier(&mut body, "example:lobby");
         body.extend_from_slice(&1_i64.to_be_bytes());
-        body.extend_from_slice(&[1, u8::MAX, 0, 0, 0]);
+        // The game mode and the one before it (none) are var ints in the newest version.
+        body.extend_from_slice(&[1, 0, 0, 0, 0]);
         wire::write_varint(0, &mut body);
         wire::write_varint(63, &mut body);
         body.extend_from_slice(&[0, 0]);

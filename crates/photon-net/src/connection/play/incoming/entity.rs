@@ -1,7 +1,6 @@
 use super::*;
 use photon_core::ids::EntityId;
 use photon_world::objects::minecart_track::MinecartStep;
-use photon_world::particles::pickup_target;
 
 /// The packets of this family, by packet id.
 pub(super) const DECODERS: &[(i32, Decoder)] = &[
@@ -302,39 +301,6 @@ impl PlaySession {
         Ok(())
     }
 
-    fn on_take_item_entity(
-        &mut self,
-        (item_id, player_id, amount): (EntityId, EntityId, i32),
-    ) -> Result<(), ConnectionError> {
-        let world = &self.world;
-        let taker = world
-            .entities()
-            .at(player_id)
-            .filter(|entity| Some(player_id) != self.local.player_id && entity.is_living_entity())
-            .map(|entity| (player_id, entity.position(), entity.eye_height()));
-        let target_at = match taker {
-            Some((_, position, eye_height)) => Some(pickup_target(position, eye_height)),
-            None => self.local.player.as_ref().map(|player| {
-                let at = player.position();
-                pickup_target((at.x, at.y, at.z), player.eye_height())
-            }),
-        };
-        if let Some(target_at) = target_at
-            && let Some(taken) =
-                self.world
-                    .take_item_entity(item_id, amount, &mut self.effects.listener_random)
-        {
-            self.effects
-                .item_pickups
-                .push(photon_world::particles::ItemPickup::new(
-                    taken,
-                    taker.map(|(id, ..)| id),
-                    target_at,
-                ));
-        }
-        Ok(())
-    }
-
     fn on_set_passengers(
         &mut self,
         packet: EntityPassengersObservation,
@@ -494,6 +460,7 @@ impl PlaySession {
             self.local_kinetic_hit(id, event);
             self.local_use_complete(id, event);
             self.show_teleport(id, event);
+            self.world.bubble_column_boat_event(id, event);
             self.world.play_entity_event_sound(id, event);
             self.world.apply_entity_event(id, event);
         }

@@ -11,6 +11,7 @@ mod effects;
 mod emitters;
 mod entity;
 mod local_events;
+mod pickups;
 mod player;
 mod recipes;
 mod session;

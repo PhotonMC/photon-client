@@ -21,21 +21,25 @@ impl ParticleEngine {
         context: &mut LevelEventContext<'_, F>,
     ) -> Vec<LocalSound> {
         let mut sounds = Vec::new();
-        let random = &mut *context.level_random;
-        let pitch = (1.0 + (random.next_float() - random.next_float()) * 0.2) * 0.7;
-        // `playLocalSound`'s seed.
-        random.next_long();
-        if let Some(event) = explosion.sound {
-            sounds.push(LocalSound {
-                relative: false,
-                delay_ticks: 0,
-                follows_player: false,
-                event,
-                source: LocalSoundSource::Blocks,
-                volume: 4.0,
-                pitch,
-                position: explosion.center,
-            });
+        // 26.3 plays the sound only when the packet says so; the pitch and the sound's seed are
+        // drawn from the level's random source then and not otherwise.
+        if explosion.play_sound {
+            let random = &mut *context.level_random;
+            let pitch = (1.0 + (random.next_float() - random.next_float()) * 0.2) * 0.7;
+            // `playLocalSound`'s seed.
+            random.next_long();
+            if let Some(event) = explosion.sound {
+                sounds.push(LocalSound {
+                    relative: false,
+                    delay_ticks: 0,
+                    follows_player: false,
+                    event,
+                    source: LocalSoundSource::Blocks,
+                    volume: 4.0,
+                    pitch,
+                    position: explosion.center,
+                });
+            }
         }
         let (type_id, data) = explosion.particle;
         let spawn = Spawn {

@@ -54,5 +54,17 @@ rules! {
         legacy_swing: before V26_3,
         /// Using a shelf answers with a plain success, which swings (before 26.3).
         shelf_use_swings: before V26_3,
+        /// A picked-up entity that is silent makes no pickup sound (26.3); before it always did.
+        silent_pickups_make_no_sound: since V26_3,
+        /// A pickup whose taker the level does not hold is flown to the local player (26.2); in
+        /// 26.3 there is no pickup animation then.
+        unknown_taker_is_the_local_player: before V26_3,
+        /// The server tells of the effects of a block broken without a sound (event 2014), of a
+        /// block's teleport (2015, 2016, 2017 and 2018) and of a block broken from a face (2019
+        /// and 2020) with level events (26.3); a 26.2 client has no such events.
+        destroy_and_teleport_level_events: since V26_3,
+        /// A boat above a bubble column tells the one who steers it with entity events 71 (drag
+        /// down) and 72 (launch up), which set its motion there (26.3); 26.2 does not tell.
+        boat_bubble_column_events: since V26_3,
     }
 }

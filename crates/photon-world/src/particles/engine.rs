@@ -15,7 +15,9 @@ use super::group::ParticleGroup;
 use super::particle::Particle;
 use super::resources::ParticleResources;
 
-pub use photon_data::particle_values::{LevelParticles, ParticleData, PositionSource};
+pub use photon_data::particle_values::{
+    LevelParticles, ParticleData, PositionSource, Randomization,
+};
 
 /// `ParticleStatus`: the particles option.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -454,63 +456,6 @@ impl ParticleEngine {
                 (spawn.type_id, spawn.data),
                 (spawn.at, spawn.push),
                 (&mut particle_random, level_random),
-            );
-        }
-    }
-
-    /// `ClientPacketListener.handleParticleEvent`: no count is one particle moving as told; a
-    /// count is that many, each spread and sped by the listener's random source.
-    pub fn level_particles(
-        &mut self,
-        world: &ClientWorld,
-        packet: &LevelParticles,
-        view: &AddView,
-        (listener_random, level_random): (&mut RandomSource, &mut RandomSource),
-        mut particle_random: impl FnMut() -> RandomSource,
-    ) {
-        let spawn = |at: (f64, f64, f64), push: (f64, f64, f64)| Spawn {
-            type_id: packet.type_id,
-            data: packet.data,
-            override_limiter: packet.override_limiter,
-            always_show: packet.always_show,
-            at,
-            push,
-        };
-        if packet.count == 0 {
-            let push = (
-                f64::from(packet.max_speed * packet.spread.0),
-                f64::from(packet.max_speed * packet.spread.1),
-                f64::from(packet.max_speed * packet.spread.2),
-            );
-            self.add_particle(
-                world,
-                &spawn(packet.at, push),
-                view,
-                level_random,
-                &mut particle_random,
-            );
-            return;
-        }
-        for _ in 0..packet.count {
-            let x_variance = listener_random.next_gaussian() * f64::from(packet.spread.0);
-            let y_variance = listener_random.next_gaussian() * f64::from(packet.spread.1);
-            let z_variance = listener_random.next_gaussian() * f64::from(packet.spread.2);
-            let xa = listener_random.next_gaussian() * f64::from(packet.max_speed);
-            let ya = listener_random.next_gaussian() * f64::from(packet.max_speed);
-            let za = listener_random.next_gaussian() * f64::from(packet.max_speed);
-            self.add_particle(
-                world,
-                &spawn(
-                    (
-                        packet.at.0 + x_variance,
-                        packet.at.1 + y_variance,
-                        packet.at.2 + z_variance,
-                    ),
-                    (xa, ya, za),
-                ),
-                view,
-                level_random,
-                &mut particle_random,
             );
         }
     }

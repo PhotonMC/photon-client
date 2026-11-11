@@ -266,11 +266,6 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                         &mut particle_random,
                     ),
                     "packet" => {
-                        let single = |key: &str| -> Result<f32, String> {
-                            u32::from_str_radix(string(event, key)?, 16)
-                                .map(f32::from_bits)
-                                .map_err(|error| format!("{key}: {error}"))
-                        };
                         engine.level_particles(
                             &world,
                             &LevelParticles {
@@ -279,9 +274,10 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                                 override_limiter,
                                 always_show,
                                 at,
-                                spread: (single("x_dist")?, single("y_dist")?, single("z_dist")?),
-                                max_speed: single("max_speed")?,
+                                spread: events::packet_spread(event)?,
+                                max_speed: events::packet_speeds(event)?,
                                 count: i32_field(event, "count")?,
+                                randomization: events::packet_randomization(event),
                             },
                             &view,
                             (&mut listener_random, &mut level_random),
