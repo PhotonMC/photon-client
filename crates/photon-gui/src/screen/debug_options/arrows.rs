@@ -51,7 +51,11 @@ impl DebugOptionsScreen {
     /// row's children, so a label takes it whatever the slot.
     fn takes_focus(&self, (row, slot): (usize, usize)) -> bool {
         match &self.rows[row] {
-            Row::Category(..) => photon_core::versions::behaviour::debug_option_categories_styled(),
+            Row::Category(..) => {
+                photon_core::versions::rules()
+                    .hud
+                    .debug_option_categories_styled
+            }
             Row::Entry { buttons, .. } => buttons[slot].is_active(),
         }
     }
@@ -71,7 +75,9 @@ impl DebugOptionsScreen {
             _ => return None,
         };
         // Every row has a child to take the focus, but 26.2's category labels are plain text.
-        let categories_focus = photon_core::versions::behaviour::debug_option_categories_styled();
+        let categories_focus = photon_core::versions::rules()
+            .hud
+            .debug_option_categories_styled;
         let has_buttons =
             |row: usize| categories_focus || matches!(self.rows[row], Row::Entry { .. });
         let mut index = match start {

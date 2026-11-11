@@ -76,7 +76,9 @@ pub fn footer(
 
 /// The fps chart's name in the footer.
 fn fps_chart_name(has_server: bool) -> &'static str {
-    let lower = photon_core::versions::behaviour::debug_footer_fps_lower_case();
+    let lower = photon_core::versions::rules()
+        .hud
+        .debug_footer_fps_lower_case;
     match (has_server, lower) {
         (true, true) => "fps + tps",
         (false, true) => "fps",

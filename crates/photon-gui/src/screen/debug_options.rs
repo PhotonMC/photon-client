@@ -306,7 +306,9 @@ impl DebugOptionsScreen {
 
     /// Whether the GUI scale button is on the screen (26.2 has none).
     fn has_gui_scale(&self) -> bool {
-        photon_core::versions::behaviour::debug_options_have_gui_scale()
+        photon_core::versions::rules()
+            .hud
+            .debug_options_have_gui_scale
     }
 
     /// `Screen.resize` (`repositionElements` of this screen): the widgets are laid out again for
@@ -451,7 +453,10 @@ impl DebugOptionsScreen {
 
 /// The group labels, bold and underlined as 26.3 draws them.
 fn category_labels(font: &Font, lang: &Lang) -> [(Vec<Run>, i32); 2] {
-    let style = if photon_core::versions::behaviour::debug_option_categories_styled() {
+    let style = if photon_core::versions::rules()
+        .hud
+        .debug_option_categories_styled
+    {
         Style {
             bold: Some(true),
             underlined: Some(true),

@@ -17,7 +17,10 @@ pub fn of(block: &str) -> Option<(f32, &'static str, Option<i32>)> {
 /// Every leaves block of the active version, in registry order.
 pub fn all() -> Vec<LeafRow> {
     let mut rows = LEAVES.to_vec();
-    if photon_core::versions::behaviour::spruce_leaves_are_tinted() {
+    if photon_core::versions::rules()
+        .protocol
+        .spruce_leaves_are_tinted
+    {
         rows.insert(1, LEGACY_SPRUCE);
     }
     rows

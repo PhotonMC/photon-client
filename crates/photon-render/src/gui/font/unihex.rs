@@ -27,7 +27,10 @@ impl UnihexGlyph {
 
     /// `Glyph.info().getAdvance`: half the width, in whole pixels since 26.3, and one more.
     pub fn advance(&self) -> f32 {
-        if photon_core::versions::behaviour::unihex_advance_is_whole() {
+        if photon_core::versions::rules()
+            .render
+            .unihex_advance_is_whole
+        {
             (self.width() / 2 + 1) as f32
         } else {
             self.width() as f32 / 2.0 + 1.0

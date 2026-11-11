@@ -167,7 +167,10 @@ impl ParticleEngine {
     ) {
         self.particles_on_block_faces(pos, "wax_on", (3, 5), context);
         // The wax-on sound is its own event since 26.3.
-        if photon_core::versions::behaviour::splash_and_wax_events_sound() {
+        if photon_core::versions::rules()
+            .world
+            .splash_and_wax_events_sound
+        {
             let centre = (
                 f64::from(pos.0) + 0.5,
                 f64::from(pos.1) + 0.5,

@@ -70,7 +70,10 @@ pub fn display(impactors: &Impactors) -> Vec<Line> {
         )),
         Line::Regular(second),
     ];
-    if photon_core::versions::behaviour::debug_shows_terrain_rendering() {
+    if photon_core::versions::rules()
+        .hud
+        .debug_shows_terrain_rendering
+    {
         lines.push(Line::Regular(format!(
             "Terrain Rendering: {}",
             if impactors.multi_draw_indirect {

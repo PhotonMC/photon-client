@@ -201,7 +201,10 @@ pub fn entries() -> &'static [Entry] {
             })
             .collect()
     });
-    if photon_core::versions::behaviour::debug_entries_before_26_3() {
+    if photon_core::versions::rules()
+        .hud
+        .debug_entries_are_the_older_set
+    {
         &BEFORE_26_3
     } else {
         &ENTRIES_26_3

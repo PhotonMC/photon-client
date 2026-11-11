@@ -91,7 +91,7 @@ impl GameMode {
         pos: (i32, i32, i32),
         state: photon_core::ids::BlockStateId,
     ) {
-        if photon_core::versions::behaviour::hit_sound_repeats() && self.destroy_ticks % 4.0 == 0.0
+        if photon_core::versions::rules().game.hit_sound_repeats && self.destroy_ticks % 4.0 == 0.0
         {
             ctx.world.play_hit_sound(pos, state);
         }
@@ -106,7 +106,11 @@ impl GameMode {
     ) {
         out.push(Outgoing::Attack { entity_id: id });
         ctx.player.reset_attack_strength();
-        if ctx.instabuild() && photon_core::versions::behaviour::creative_attack_delays_breaking() {
+        if ctx.instabuild()
+            && photon_core::versions::rules()
+                .game
+                .creative_attack_delays_breaking
+        {
             // 26.3: an attack in creative waits out the next break.
             self.destroy_delay = 5;
         }
@@ -201,7 +205,7 @@ impl GameMode {
                     game_mode.destroy_ticks = 0.0;
                     game_mode.crack(ctx);
                     // `ClientLevel.addBreakingBlockEffects` with its sound.
-                    if !photon_core::versions::behaviour::hit_sound_repeats() {
+                    if !photon_core::versions::rules().game.hit_sound_repeats {
                         ctx.world.play_hit_sound(pos, state);
                     }
                     ctx.world.add_breaking_block_effect(

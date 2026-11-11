@@ -116,15 +116,14 @@ impl Kind {
     ) {
         let (atlas, _) = fonts;
         let top = bottom - HEIGHT;
+        let lower = photon_core::versions::rules()
+            .hud
+            .debug_footer_fps_lower_case;
         let across = |y| (left, left + width - 1, y);
         match self {
             Self::Ping => shaded(frame, fonts, "500 ms", (left + 1, top + 1)),
             Self::Fps { limit } => {
-                let fps = if photon_core::versions::behaviour::debug_footer_fps_lower_case() {
-                    "fps"
-                } else {
-                    "FPS"
-                };
+                let fps = if lower { "fps" } else { "FPS" };
                 shaded(frame, fonts, &format!("30 {fps}"), (left + 1, top + 1));
                 shaded(
                     frame,
@@ -140,11 +139,7 @@ impl Kind {
             }
             Self::Tps { mspt } => {
                 let tps = 1000.0_f32 / mspt;
-                let unit = if photon_core::versions::behaviour::debug_footer_fps_lower_case() {
-                    "tps"
-                } else {
-                    "TPS"
-                };
+                let unit = if lower { "tps" } else { "TPS" };
                 let text = format!("{} {unit}", fixed(f64::from(tps), 1));
                 shaded(frame, fonts, &text, (left + 1, top + 1));
             }

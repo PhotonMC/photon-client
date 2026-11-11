@@ -341,7 +341,10 @@ pub(super) fn support_shape(
 fn view_blocking_rule(
     block: &photon_data::block::definition::Block,
 ) -> photon_data::block::definition::Rule {
-    if photon_core::versions::behaviour::blocks_view_at_near_plane() {
+    if photon_core::versions::rules()
+        .world
+        .blocks_view_at_near_plane
+    {
         block.view_blocking
     } else if block.view_blocking == photon_data::block::definition::Rule::NearPlane {
         block.view_blocking_before_26_3
@@ -352,7 +355,9 @@ fn view_blocking_rule(
 
 /// Whether the view-blocking rule is the near plane one, which only 26.3 has.
 fn has_near_plane_rule(block: &photon_data::block::definition::Block) -> bool {
-    photon_core::versions::behaviour::blocks_view_at_near_plane()
+    photon_core::versions::rules()
+        .world
+        .blocks_view_at_near_plane
         && block.view_blocking == photon_data::block::definition::Rule::NearPlane
 }
 
@@ -360,16 +365,18 @@ fn has_near_plane_rule(block: &photon_data::block::definition::Block) -> bool {
 /// bamboo sapling do not block motion, and the heightmap counts what does. 26.3: every solid
 /// state blocks motion, and the heightmap leaves out signs and those two.
 fn motion_facts(solid: bool, index: usize, sign: bool) -> (bool, bool) {
-    use photon_core::versions::behaviour as version;
+    let rules = photon_core::versions::rules();
     let web = index == id::COBWEB || index == id::BAMBOO_SAPLING;
-    let blocks_motion = solid && (version::blocks_motion_is_solidity() || !web);
-    let listed_out = version::motion_heightmap_has_own_list() && (sign || web);
+    let blocks_motion = solid && (rules.world.blocks_motion_is_solidity || !web);
+    let listed_out = rules.world.motion_heightmap_has_own_list && (sign || web);
     (blocks_motion, blocks_motion && !listed_out)
 }
 
 /// Whether the block's forced solidity holds in the active version: the resin brick wall's is
 /// 26.3's.
 fn forced_solid_in_version(block: &Block) -> bool {
-    photon_core::versions::behaviour::resin_brick_wall_is_forced_solid()
+    photon_core::versions::rules()
+        .world
+        .resin_brick_wall_is_forced_solid
         || !block.name.ends_with(":resin_brick_wall")
 }

@@ -435,7 +435,7 @@ impl ClientWorld {
                 + match (
                     vanilla_passenger_is_animal(type_id)
                         && at_capacity
-                        && !photon_core::versions::behaviour::boat_clamp_is_uniform(),
+                        && !photon_core::versions::rules().world.boat_clamp_is_uniform,
                     passenger_id.0 % 2 == 0,
                 ) {
                     (false, _) => 0.0_f32,
@@ -512,7 +512,7 @@ impl ClientWorld {
 /// The offset a full boat adds to an animal's body yaw before the clamp (26.3); 26.2 adds it
 /// after the clamp instead.
 fn crowded_body_offset(crowded: bool, passenger_id: EntityId) -> f32 {
-    let folded = crowded && !photon_core::versions::behaviour::boat_clamp_is_uniform();
+    let folded = crowded && !photon_core::versions::rules().world.boat_clamp_is_uniform;
     match (folded, passenger_id.0 % 2 == 0) {
         (false, _) => 0.0,
         (true, true) => 90.0,

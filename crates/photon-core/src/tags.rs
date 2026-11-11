@@ -82,7 +82,7 @@ impl ClientboundUpdateTagsPacket {
                 let id = identifier::read_identifier(input)?;
                 let value_count = wire::read_varint(input).map_err(ReadError::from)?;
                 // 26.3 sizes the list from the count, which refuses a negative one.
-                if value_count < 0 && crate::versions::behaviour::negative_tag_counts_fail() {
+                if value_count < 0 && crate::versions::rules().protocol.negative_tag_counts_fail {
                     return Err(ReadError::DecoderError);
                 }
                 let mut values = Vec::new();

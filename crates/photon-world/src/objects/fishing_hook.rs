@@ -362,7 +362,10 @@ impl ClientWorld {
 
 /// What a bobber in the air falls by each tick: 26.2 writes 0.03 as a double, 26.3 as a float.
 fn bobber_gravity() -> f64 {
-    if photon_core::versions::behaviour::bobber_gravity_is_double() {
+    if photon_core::versions::rules()
+        .world
+        .bobber_gravity_is_double
+    {
         0.03
     } else {
         f64::from(0.03_f32)

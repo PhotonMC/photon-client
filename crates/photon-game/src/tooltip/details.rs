@@ -248,7 +248,10 @@ pub(super) fn advanced_lines(
 
 /// The arguments of a container content line: the count and the name, in the active version's order.
 fn container_line_args(count: Component, name: Component) -> Vec<Component> {
-    if photon_core::versions::behaviour::container_line_count_first() {
+    if photon_core::versions::rules()
+        .game
+        .container_line_count_first
+    {
         vec![count, name]
     } else {
         vec![name, count]

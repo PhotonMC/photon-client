@@ -131,12 +131,11 @@ impl EntityViewMut<'_> {
     /// body's and its head held to it, anyone else's yaw held within a quarter turn of it. How far
     /// the yaw moved.
     pub(crate) fn clamp_vanilla_boat_passenger_rotation(&mut self, body_y_rot: f32) -> f32 {
+        let uniform = photon_core::versions::rules().world.boat_clamp_is_uniform;
         if vanilla_passenger_is_living(self.type_id) {
             self.rotation.y_body_rot = JavaF32::new(body_y_rot);
         }
-        if vanilla_passenger_is_mob(self.type_id)
-            && !photon_core::versions::behaviour::boat_clamp_is_uniform()
-        {
+        if vanilla_passenger_is_mob(self.type_id) && !uniform {
             self.rotation.y_rot = JavaF32::new(body_y_rot);
             let head = vanilla_clamped_head_y_rot(
                 self.rotation.y_head_rot.get(),
@@ -149,9 +148,7 @@ impl EntityViewMut<'_> {
         let (y_rot, delta) =
             vanilla_boat_passenger_clamped_y_rot(self.rotation.y_rot.get(), body_y_rot);
         self.rotation.y_rot = JavaF32::new(y_rot);
-        if photon_core::versions::behaviour::boat_clamp_is_uniform()
-            && vanilla_passenger_is_living(self.type_id)
-        {
+        if uniform && vanilla_passenger_is_living(self.type_id) {
             self.rotation.y_head_rot = JavaF32::new(y_rot);
         }
         delta
@@ -161,7 +158,7 @@ impl EntityViewMut<'_> {
     /// turns a crowded animal afterwards (`crowded` holds whether its id is even).
     pub(crate) fn follow_boat_position(&mut self, body_y_rot: f32, crowded: Option<bool>) {
         let delta = self.clamp_vanilla_boat_passenger_rotation(body_y_rot);
-        if !photon_core::versions::behaviour::boat_clamp_is_uniform() {
+        if !photon_core::versions::rules().world.boat_clamp_is_uniform {
             return;
         }
         let old = self.rotation.old_y_rot.get();

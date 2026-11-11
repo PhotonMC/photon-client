@@ -77,7 +77,9 @@ pub fn display(specs: &SystemSpecs) -> Vec<Line> {
         .lines()
         .next()
         .unwrap_or(&specs.driver_info);
-    let newer = photon_core::versions::behaviour::debug_system_specs_have_window();
+    let newer = photon_core::versions::rules()
+        .hud
+        .debug_system_specs_have_window;
     let runtime = if newer {
         format!("{}: {}", specs.runtime.0, specs.runtime.1)
     } else {

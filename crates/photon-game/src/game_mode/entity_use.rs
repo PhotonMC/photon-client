@@ -63,7 +63,9 @@ impl Context<'_> {
                     EntityUse::Pass
                 } else {
                     EntityUse::Success {
-                        swing: photon_core::versions::behaviour::mount_and_trade_clicks_swing(),
+                        swing: photon_core::versions::rules()
+                            .game
+                            .mount_and_trade_clicks_swing,
                     }
                 }
             }

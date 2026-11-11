@@ -303,7 +303,7 @@ pub fn atmospheric_colour(
 ) -> [f32; 3] {
     let sun = sun_mix(attributes, forward_x, render_distance);
     let mix = sky_mix(attributes, render_distance);
-    if photon_core::versions::behaviour::fog_colour_is_packed() {
+    if photon_core::versions::rules().render.fog_colour_is_packed {
         return packed_colour(attributes, (sun, mix), weather);
     }
     let vec4 = |colour: [f32; 3]| [colour[0], colour[1], colour[2], 1.0];

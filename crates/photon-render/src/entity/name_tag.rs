@@ -299,7 +299,10 @@ fn line_submits(
     // The text takes half the background's opacity plus three eighths, at least a half
     // (`Math.max((alpha + 0.75F) * 0.5F, 0.5F)`), over white.
     let text_alpha = ((background_opacity + 0.75) * 0.5).max(0.5);
-    let translucent = if photon_core::versions::behaviour::name_tag_text_is_constant() {
+    let translucent = if photon_core::versions::rules()
+        .render
+        .name_tag_text_is_constant
+    {
         -2_130_706_433
     } else {
         (((text_alpha * 255.0).floor() as i32) << 24) | 0x00FF_FFFF

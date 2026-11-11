@@ -385,7 +385,7 @@ impl GenericScreen {
 
 /// The brewing stand's (ticks, fuel) and (total ticks, total fuel), the totals fixed before 26.3.
 fn brewing_data(data: &impl Fn(usize) -> i32) -> ((i32, i32), (i32, i32)) {
-    let totals = if photon_core::versions::behaviour::brewing_totals_are_fixed() {
+    let totals = if photon_core::versions::rules().hud.brewing_totals_are_fixed {
         (400, 20)
     } else {
         (data(2), data(3))

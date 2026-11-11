@@ -486,7 +486,7 @@ fn shelf(use_: &Use) -> Option<ItemOn> {
         return pass();
     }
     // Before 26.3 the same answer was a plain success, which swings.
-    let consumed = if photon_core::versions::behaviour::shelf_use_swings() {
+    let consumed = if photon_core::versions::rules().world.shelf_use_swings {
         SUCCESS
     } else {
         SERVER

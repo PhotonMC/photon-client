@@ -114,7 +114,10 @@ impl DebugOptionsScreen {
         let Some(index) = row else {
             return;
         };
-        if !photon_core::versions::behaviour::debug_option_categories_styled() {
+        if !photon_core::versions::rules()
+            .hud
+            .debug_option_categories_styled
+        {
             return;
         }
         let Row::Category(_, width) = &self.rows[index] else {
@@ -162,7 +165,10 @@ impl DebugOptionsScreen {
         for (index, row) in self.rows.iter().enumerate() {
             match row {
                 Row::Category(..) => {
-                    if photon_core::versions::behaviour::debug_option_categories_styled() {
+                    if photon_core::versions::rules()
+                        .hud
+                        .debug_option_categories_styled
+                    {
                         order.push((Focus::Category(index), true));
                     }
                 }

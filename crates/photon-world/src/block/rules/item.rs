@@ -245,7 +245,7 @@ fn is_wall_hanging_sign(state: BlockStateId) -> bool {
 
 /// The flags `placeBlock` sets the block with.
 fn place_flags(kind: ItemPlacement) -> u32 {
-    if kind == ItemPlacement::Bed && photon_core::versions::behaviour::bed_item_sets_own_flags() {
+    if kind == ItemPlacement::Bed && photon_core::versions::rules().world.bed_item_sets_own_flags {
         26
     } else {
         11

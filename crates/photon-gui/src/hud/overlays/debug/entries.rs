@@ -386,7 +386,10 @@ fn fps_line(frame: &FrameStats) -> String {
     let mode = frame.present_mode.map_or("", PresentMode::name);
     let rate = frame.refresh_rate.unwrap_or(0);
     let base = format!("{} fps T: {limit}{mode}", frame.fps);
-    if photon_core::versions::behaviour::fps_line_shows_refresh_rate() {
+    if photon_core::versions::rules()
+        .hud
+        .fps_line_shows_refresh_rate
+    {
         format!("{base} @{rate}Hz")
     } else {
         base

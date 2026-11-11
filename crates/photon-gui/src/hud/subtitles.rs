@@ -59,7 +59,7 @@ impl Subtitle {
         if let [only] = self.played_at.as_slice() {
             return Some(*only);
         }
-        if photon_core::versions::behaviour::subtitles_show_closest() {
+        if photon_core::versions::rules().hud.subtitles_show_closest {
             return self.closest(position);
         }
         let range = f64::from(self.range);

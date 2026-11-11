@@ -171,7 +171,10 @@ impl DebugOptionsScreen {
                         },
                     );
                 }
-                let top = if photon_core::versions::behaviour::debug_option_categories_styled() {
+                let top = if photon_core::versions::rules()
+                    .hud
+                    .debug_option_categories_styled
+                {
                     4
                 } else {
                     5

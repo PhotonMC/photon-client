@@ -46,7 +46,9 @@ impl Context<'_> {
             .is_some_and(|entity| !entity.is_baby());
         if grown {
             EntityUse::Success {
-                swing: photon_core::versions::behaviour::mount_and_trade_clicks_swing(),
+                swing: photon_core::versions::rules()
+                    .game
+                    .mount_and_trade_clicks_swing,
             }
         } else {
             self.golden_dandelion_on_baby(id, hand)

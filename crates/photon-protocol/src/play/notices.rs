@@ -80,7 +80,10 @@ impl Decode for CustomChatCompletions {
             1 => CompletionAction::Remove,
             2 => CompletionAction::Set,
             // 26.3 reads an id out of range as the first action (`OutOfBoundsStrategy.ZERO`).
-            _ if photon_core::versions::behaviour::out_of_range_enum_ids_read_as_first() => {
+            _ if photon_core::versions::rules()
+                .protocol
+                .out_of_range_enum_ids_read_as_first =>
+            {
                 CompletionAction::Add
             }
             _ => return Err(ConnectionError::Codec("completion action")),

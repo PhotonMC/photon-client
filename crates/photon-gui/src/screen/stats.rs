@@ -576,7 +576,7 @@ impl StatsScreen {
 fn numeric_key_value(key: i32) -> Option<i32> {
     match key {
         48..=57 => Some(key - 48),
-        320..=329 if photon_core::versions::behaviour::keypad_digits_choose_tabs() => {
+        320..=329 if photon_core::versions::rules().hud.keypad_digits_choose_tabs => {
             Some(key - 320)
         }
         _ => None,
