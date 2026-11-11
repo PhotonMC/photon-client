@@ -142,10 +142,10 @@ pub(super) fn container_lines(values: &Values, registries: &Registries, out: &mu
                 Values::with_registries(stack.item_registry_id(), stack.patch_bytes(), registries);
             out.push(Component::translatable_with(
                 "item.container.item_count",
-                vec![
+                container_line_args(
                     Component::literal(stack.item_count().to_string()),
                     hover_name(&stack, &inner),
-                ],
+                ),
             ));
         }
     }
@@ -233,11 +233,7 @@ pub(super) fn advanced_lines(
         ));
     }
     out.push(Component::literal(item_name_of(stack)).with_colour("dark_gray"));
-    let own = usize::try_from(stack.item_registry_id().0)
-        .ok()
-        .and_then(|id| photon_data::item::component_sets::DEFAULT_COMPONENT_SETS.get(id))
-        .copied()
-        .unwrap_or(0);
+    let own = super::name::own_components(stack);
     let count = values.count(own);
     if count > 0 {
         out.push(
@@ -247,5 +243,14 @@ pub(super) fn advanced_lines(
             )
             .with_colour("dark_gray"),
         );
+    }
+}
+
+/// The arguments of a container content line: the count and the name, in the active version's order.
+fn container_line_args(count: Component, name: Component) -> Vec<Component> {
+    if photon_core::versions::behaviour::container_line_count_first() {
+        vec![count, name]
+    } else {
+        vec![name, count]
     }
 }

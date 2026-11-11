@@ -425,3 +425,21 @@ pub fn styled_name(stack: &Stack, values: &Values) -> Component {
     }
     name
 }
+
+/// The item's own component set (canonical ids). Before 26.3 a map also carries a map colour,
+/// the component 26.3 dropped, so it is added back where the active version registers it.
+pub(super) fn own_components(stack: &Stack) -> u128 {
+    use photon_data::item::component_types::MAP_COLOR;
+    let own = usize::try_from(stack.item_registry_id().0)
+        .ok()
+        .and_then(|id| photon_data::item::component_sets::DEFAULT_COMPONENT_SETS.get(id))
+        .copied()
+        .unwrap_or(0);
+    if item_name_of(stack).ends_with("filled_map")
+        && photon_data::version_registries::component_registered(MAP_COLOR)
+    {
+        own | (1_u128 << MAP_COLOR)
+    } else {
+        own
+    }
+}

@@ -351,6 +351,11 @@ impl VersionRegistries {
     }
 }
 
+/// Whether the active version registers the item component type of canonical id `id`.
+pub fn component_registered(id: i32) -> bool {
+    crate::item::component_types::exists_in(id, photon_core::version::Version::active())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

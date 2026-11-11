@@ -47,6 +47,7 @@ impl Values {
     /// the item's own, given as a set of type ids (`DEFAULT_COMPONENT_SETS`),
     /// with what the patch adds and less what it removes.
     pub fn count(&self, own: u128) -> usize {
+        let own = Self::own_in_active_version(own);
         let bit = |id: &i32| {
             u32::try_from(*id)
                 .ok()
@@ -162,5 +163,29 @@ impl Values {
                 (red / weight) << 16 | (green / weight) << 8 | (blue / weight)
             }
         })
+    }
+}
+
+impl Values {
+    /// An item's own component set (canonical ids, as 26.3 declares it) as the active version
+    /// has it: the types it does not register are gone, and before 26.3 the one swing animation
+    /// stands for the attack and interact animations.
+    fn own_in_active_version(own: u128) -> u128 {
+        use photon_data::item::component_types as types;
+        let mut set = own;
+        let has = |set: u128, id: i32| set & (1_u128 << id) != 0;
+        if !photon_data::version_registries::component_registered(types::ATTACK_ANIMATION) {
+            if has(set, types::ATTACK_ANIMATION) || has(set, types::INTERACT_ANIMATION) {
+                set |= 1_u128 << types::SWING_ANIMATION;
+            }
+            set &= !(1_u128 << types::ATTACK_ANIMATION);
+            set &= !(1_u128 << types::INTERACT_ANIMATION);
+        }
+        for id in 0..128 {
+            if has(set, id) && !photon_data::version_registries::component_registered(id) {
+                set &= !(1_u128 << id);
+            }
+        }
+        set
     }
 }

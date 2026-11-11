@@ -53,6 +53,18 @@ pub fn unihex_advance_is_whole() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether the attack and interact animations are separate item components (26.3); before, one
+/// swing animation component held both.
+pub fn swing_animation_is_split() -> bool {
+    !Version::active_before_26_3()
+}
+
+/// Whether a shulker box tooltip line names the count before the item (26.3) or the item before
+/// the count (26.2).
+pub fn container_line_count_first() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// The data version the active version's files carry (`world_version` of its `version.json`).
 pub fn data_version() -> i32 {
     if Version::active_before_26_3() {
