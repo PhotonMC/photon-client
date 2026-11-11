@@ -167,6 +167,7 @@ impl Controls {
     ) {
         match action {
             OptionsAction::Online => self.open_online(surface, assets),
+            OptionsAction::WorldOptions => self.open_world(surface, assets),
             OptionsAction::Video => self.open_video(surface, assets),
             OptionsAction::Chat => self.open_chat_options(surface, assets),
             OptionsAction::Accessibility => self.open_accessibility(surface, assets),

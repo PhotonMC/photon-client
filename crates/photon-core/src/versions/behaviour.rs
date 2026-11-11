@@ -86,6 +86,12 @@ pub fn world_options_is_sectioned() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether the options screen opened in a world offers the online options (26.3) instead of the
+/// world options (26.2, where the pause menu's own button is the same screen).
+pub fn in_world_options_offer_online() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// The data version the active version's files carry (`world_version` of its `version.json`).
 pub fn data_version() -> i32 {
     if Version::active_before_26_3() {
