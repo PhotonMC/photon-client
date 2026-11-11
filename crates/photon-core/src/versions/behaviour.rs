@@ -3,6 +3,12 @@
 
 use crate::version::Version;
 
+/// Where the active version keeps a table that is worked out once per version (an index below
+/// `Version::ALL.len()`).
+pub fn table_slot() -> usize {
+    Version::active().index()
+}
+
 /// Whether a negative element count in a tag list is refused, because the list is sized from
 /// the count (26.3; before it the loop simply reads nothing).
 pub fn negative_tag_counts_fail() -> bool {

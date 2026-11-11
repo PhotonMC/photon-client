@@ -1,10 +1,12 @@
 use super::*;
 use photon_core::ids::BlockStateId;
 
-/// The cache, worked out on first use.
+/// The cache of the version being played, worked out on its first use: some of a state's values
+/// differ by version, so each version has its own table.
 pub fn states() -> &'static States {
-    static STATES: OnceLock<States> = OnceLock::new();
-    STATES.get_or_init(build)
+    static STATES: [OnceLock<States>; photon_core::version::Version::ALL.len()] =
+        [const { OnceLock::new() }; photon_core::version::Version::ALL.len()];
+    STATES[photon_core::versions::behaviour::table_slot()].get_or_init(build)
 }
 
 /// A state's values; `None` outside the registry.
