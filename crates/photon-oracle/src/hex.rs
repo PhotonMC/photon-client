@@ -410,9 +410,14 @@ fn award_stats_result(request: &Value) -> Result<Value, String> {
     Ok(
         match AwardStats::decode(&bytes, &crate::case_ids::registries()) {
             Ok(AwardStats(stats)) => {
+                let registries = crate::case_ids::registries();
                 let mut last = std::collections::HashMap::new();
                 for (key, amount) in stats {
-                    last.insert((key.stat_type, key.value), amount);
+                    // The reference's rows hold the ids as the version numbers them.
+                    let value = registries
+                        .stat_value_to_wire(key.stat_type, key.value)
+                        .ok_or("a statistic value without a wire id")?;
+                    last.insert((key.stat_type, value), amount);
                 }
                 let mut rows: Vec<_> = last.into_iter().collect();
                 rows.sort_unstable();

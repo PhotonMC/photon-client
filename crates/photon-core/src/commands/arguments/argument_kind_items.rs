@@ -7,6 +7,21 @@ impl ArgumentKind {
         self.read_as(reader, true)
     }
 
+    /// The kinds that take one word out of a fixed list.
+    fn read_choice(&self, reader: &mut StringReader) -> Read {
+        let (words, error): (&[&str], &str) = match self {
+            Self::SwingAnimation => (
+                &["none", "whack", "stab"],
+                "argument.swing_animation.invalid",
+            ),
+            _ => (
+                &["survival", "creative", "adventure", "spectator"],
+                "argument.gamemode.invalid",
+            ),
+        };
+        one_of(reader, words, error, false)
+    }
+
     /// `ArgumentType.parse(reader, source)`: the source's permission to use
     /// entity selectors is the one thing a kind reads from it.
     pub fn read_as(&self, reader: &mut StringReader, selectors: bool) -> Read {
@@ -165,12 +180,7 @@ impl ArgumentKind {
                 Ok(())
             }
             Self::Identifier => identifier(reader),
-            Self::GameMode => one_of(
-                reader,
-                &["survival", "creative", "adventure", "spectator"],
-                "argument.gamemode.invalid",
-                false,
-            ),
+            Self::GameMode | Self::SwingAnimation => self.read_choice(reader),
             Self::EntityAnchor => {
                 one_of(reader, &["feet", "eyes"], "argument.anchor.invalid", true)
             }

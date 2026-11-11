@@ -367,7 +367,7 @@ impl Environment {
             if sky_flash {
                 value = match attribute {
                     Attribute::SkyColor => {
-                        Value::Color(srgb_lerp_vec(0.22, value.color(), FLASH_COLOUR))
+                        Value::Color((colour_ops().lerp)(0.22, value.color(), FLASH_COLOUR))
                     }
                     Attribute::SkyLightFactor => Value::Float(1.0),
                     _ => value,

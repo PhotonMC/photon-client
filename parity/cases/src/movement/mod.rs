@@ -1,5 +1,6 @@
 //! The `movement` family: the player, the entities, the sky and the elytra.
 
+mod biome_noise;
 mod elytra;
 mod entities;
 mod fog;
@@ -14,6 +15,7 @@ pub fn cases() -> Vec<Value> {
     let mut cases = player::cases();
     cases.extend(entities::cases());
     cases.push(sky::sky_flash());
+    cases.push(biome_noise::biome_noise());
     cases.push(fog::fog_data());
     cases.push(fog::lightmap_data());
     cases.push(elytra::elytra_state());

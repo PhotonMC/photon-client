@@ -29,7 +29,14 @@ pub(crate) fn note_in_use(root: &str) {
 /// Bake the blocks of the assets folder `root`, as the thread that does it and as a join that
 /// found nothing ready does.
 pub(crate) fn bake(root: &str) -> Result<Baked, String> {
-    let stack = crate::resources::stack_for(std::path::Path::new(root));
+    bake_over(
+        root,
+        crate::resources::stack_for(std::path::Path::new(root)),
+    )
+}
+
+/// [`bake`] over a stack the caller made, such as one with the server's packs on top.
+pub(crate) fn bake_over(root: &str, stack: Arc<ResourceStack>) -> Result<Baked, String> {
     let renderer = crate::resources::preparing(Arc::clone(&stack), || {
         super::bake_renderer(root).map_err(|error| error.to_string())
     })?;
@@ -66,4 +73,26 @@ pub(crate) fn take(root: &str) -> Option<Result<Baked, String>> {
             .join()
             .unwrap_or_else(|_| Err("the bake thread panicked".to_owned())),
     )
+}
+
+/// Make the assets of `version` the ones every reader sees, with the server's packs over them,
+/// before the window bakes its blocks.
+pub(super) fn use_assets_of(version: photon_core::version::Version) -> super::Result<()> {
+    if !photon_core::content_root::select_version(version) {
+        log::warn!(
+            "no assets for {}: playing with the current ones",
+            version.name()
+        );
+        return Ok(());
+    }
+    let root = photon_core::content_root::assets()
+        .map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
+    let root = std::path::Path::new(&root);
+    let packs = crate::resources::server_packs();
+    crate::resources::replace(if packs.is_empty() {
+        crate::resources::stack_for(root)
+    } else {
+        Arc::new(crate::resources::with_packs(root, &packs)?)
+    });
+    Ok(())
 }

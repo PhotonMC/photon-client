@@ -90,6 +90,16 @@ fn read_versioned_kind(
     read_argument_kind(input, id)
 }
 
+/// The parsers that take one word of a fixed list.
+fn choice_kind(id: i32) -> photon_core::commands::ArgumentKind {
+    use photon_core::commands::ArgumentKind as K;
+    if id == 42 {
+        K::GameMode
+    } else {
+        K::SwingAnimation
+    }
+}
+
 pub(super) fn read_argument_kind(
     input: &mut &[u8],
     id: i32,
@@ -184,7 +194,7 @@ pub(super) fn read_argument_kind(
         17 => K::HexColor,
         20 => K::Greedy,
         24 | 33 => K::Unquoted,
-        25 | 27 | 34 | 35 | 39 | 40 | 49..=51 | 60 => K::Word,
+        25 | 27 | 34 | 35 | 39 | 40 | 49..=51 => K::Word,
         26 => K::Operation,
         28 => K::Angle,
         29 => K::Rotation,
@@ -192,7 +202,8 @@ pub(super) fn read_argument_kind(
         32 => K::Swizzle,
         36 | 41 => K::Identifier,
         38 => K::EntityAnchor,
-        42 => K::GameMode,
+        // 60 is 26.3's swing animation parser; the count of the version's parsers keeps 26.2 from it.
+        42 | 60 => choice_kind(id),
         43 => K::Time {
             min: read_i32(input, name)?,
         },

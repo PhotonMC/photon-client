@@ -60,7 +60,7 @@ The table is computed by `cargo xtask progress` and checked in CI. Counts of thi
 | Entity types with a renderer, named by the client | 157 / 159 |
 | Block entity types with a renderer, named by the client | 24 / 26 |
 | Particle types named by the client | 124 / 129 |
-| Parity cases | 27,662 in 19 families |
+| Parity cases | 27,679 in 19 families |
 | Lint baseline entries | 925 (at introduction: 1,234) |
 <!-- progress:end -->
 

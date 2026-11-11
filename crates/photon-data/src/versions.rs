@@ -27,3 +27,12 @@ pub fn item_patch(version: Version) -> &'static [&'static [&'static str]] {
         _ => &[],
     }
 }
+
+/// The custom statistics the version does not register (a version's registry has no entry for
+/// them, so the ids it sends skip them). Names without the namespace.
+pub fn custom_stats_lacking(version: Version) -> &'static [&'static str] {
+    match version {
+        Version::V26_1 | Version::V26_2 => &["sleep_in_straw_bed"],
+        _ => &[],
+    }
+}

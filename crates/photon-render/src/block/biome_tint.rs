@@ -12,6 +12,7 @@
 
 use std::path::Path;
 
+use crate::block::biome_noise::{FrozenNoise, SimplexNoise};
 use crate::block::tint::{ColourMap, colour_map_lookup};
 use photon_core::identifier::Identifier;
 use photon_core::json::JsonObject;
@@ -57,91 +58,6 @@ struct BiomeColours {
     modifier: GrassModifier,
 }
 
-/// `SimplexNoise`, the two-dimensional half, as one octave of the biome
-/// information noise uses it.
-#[derive(Clone, Debug)]
-struct SimplexNoise {
-    permutation: [i32; 512],
-}
-
-const GRADIENT: [[i32; 3]; 16] = [
-    [1, 1, 0],
-    [-1, 1, 0],
-    [1, -1, 0],
-    [-1, -1, 0],
-    [1, 0, 1],
-    [-1, 0, 1],
-    [1, 0, -1],
-    [-1, 0, -1],
-    [0, 1, 1],
-    [0, -1, 1],
-    [0, 1, -1],
-    [0, -1, -1],
-    [1, 1, 0],
-    [0, -1, 1],
-    [-1, 1, 0],
-    [0, -1, -1],
-];
-
-impl SimplexNoise {
-    fn new(random: &mut RandomSource) -> Self {
-        // The origin offsets are drawn but unused by the two-dimensional
-        // lookup without a noise start.
-        for _ in 0..3 {
-            random.next_double();
-        }
-        let mut permutation = [0_i32; 512];
-        for (index, slot) in permutation.iter_mut().take(256).enumerate() {
-            *slot = index as i32;
-        }
-        for index in 0..256 {
-            let offset = random
-                .next_int_bound(256 - index as i32)
-                .expect("a positive bound") as usize;
-            permutation.swap(index, offset + index);
-        }
-        Self { permutation }
-    }
-
-    fn p(&self, index: i32) -> i32 {
-        self.permutation[(index & 0xFF) as usize]
-    }
-
-    fn corner(index: i32, x: f64, y: f64) -> f64 {
-        let t = 0.5 - x * x - y * y;
-        if t < 0.0 {
-            0.0
-        } else {
-            let t = t * t;
-            let g = GRADIENT[index as usize];
-            t * t * (f64::from(g[0]) * x + f64::from(g[1]) * y)
-        }
-    }
-
-    fn value(&self, x_in: f64, y_in: f64) -> f64 {
-        let sqrt3 = 3.0_f64.sqrt();
-        let f2 = 0.5 * (sqrt3 - 1.0);
-        let g2 = (3.0 - sqrt3) / 6.0;
-        let s = (x_in + y_in) * f2;
-        let i = (x_in + s).floor() as i32;
-        let j = (y_in + s).floor() as i32;
-        let t = f64::from(i + j) * g2;
-        let x0 = x_in - (f64::from(i) - t);
-        let y0 = y_in - (f64::from(j) - t);
-        let (i1, j1) = if x0 > y0 { (1, 0) } else { (0, 1) };
-        let x1 = x0 - f64::from(i1) + g2;
-        let y1 = y0 - f64::from(j1) + g2;
-        let x2 = x0 - 1.0 + 2.0 * g2;
-        let y2 = y0 - 1.0 + 2.0 * g2;
-        let ii = i & 0xFF;
-        let jj = j & 0xFF;
-        let gi0 = self.p(ii + self.p(jj)) % 12;
-        let gi1 = self.p(ii + i1 + self.p(jj + j1)) % 12;
-        let gi2 = self.p(ii + 1 + self.p(jj + 1)) % 12;
-        70.0 * (Self::corner(gi0, x0, y0) + Self::corner(gi1, x1, y1) + Self::corner(gi2, x2, y2))
-    }
-}
-
 /// Biome colours for a world, by the server's biome numbering.
 #[derive(Clone, Debug)]
 pub struct BiomeTints {
@@ -160,7 +76,7 @@ pub struct BiomeTints {
     temperature_noise: SimplexNoise,
     /// `Biome.FROZEN_TEMPERATURE_NOISE`'s three octaves, highest frequency
     /// first.
-    frozen_noise: [SimplexNoise; 3],
+    frozen_noise: FrozenNoise,
 }
 
 fn hex_colour(object: &JsonObject, key: &str) -> Option<u32> {
@@ -265,11 +181,7 @@ impl BiomeTints {
         let mut temperature_random = RandomSource::create(1234);
         let mut frozen_random = RandomSource::create(3456);
         // The zero octave is drawn first, then the lower ones in turn.
-        let frozen_noise = [
-            SimplexNoise::new(&mut frozen_random),
-            SimplexNoise::new(&mut frozen_random),
-            SimplexNoise::new(&mut frozen_random),
-        ];
+        let frozen_noise = FrozenNoise::new(&mut frozen_random);
         Some(Self {
             biomes,
             plains,
@@ -363,19 +275,6 @@ impl BiomeTints {
             .unwrap_or(self.plains)
     }
 
-    /// `PerlinSimplexNoise.getValue` over the frozen noise's octaves -2 to 0.
-    fn frozen_value(&self, x: f64, z: f64) -> f64 {
-        let mut value = 0.0;
-        let mut factor = 1.0;
-        let mut value_factor = 1.0 / 7.0;
-        for level in &self.frozen_noise {
-            value += level.value(x * factor, z * factor) * value_factor;
-            factor /= 2.0;
-            value_factor *= 2.0;
-        }
-        value
-    }
-
     /// `Biome.getHeightAdjustedTemperature`: the biome's temperature, the
     /// frozen modifier's cold patches, and the cooling above the snow line.
     fn temperature(&self, biome: usize, position: [i32; 3], sea_level: i32) -> f32 {
@@ -383,7 +282,7 @@ impl BiomeTints {
         let mut temperature = colours.temperature;
         if colours.frozen {
             let [x, _, z] = position.map(f64::from);
-            let large = self.frozen_value(x * 0.05, z * 0.05) * 7.0;
+            let large = self.frozen_noise.scaled(x * 0.05, z * 0.05);
             let edge = self.swamp_noise.value(x * 0.2, z * 0.2);
             if large + edge < 0.3 && self.swamp_noise.value(x * 0.09, z * 0.09) < 0.8 {
                 temperature = 0.2;

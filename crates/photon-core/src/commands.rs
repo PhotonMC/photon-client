@@ -58,6 +58,8 @@ pub enum ArgumentKind {
     Angle,
     Identifier,
     GameMode,
+    /// A swing animation name (26.3's parser 60).
+    SwingAnimation,
     EntityAnchor,
     Operation,
     ScoreboardSlot,

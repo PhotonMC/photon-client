@@ -11,11 +11,6 @@ pub fn table_slot() -> usize {
     Version::active().index()
 }
 
-/// Whether the custom statistic exists in the active version (the straw bed one is new in 26.3).
-pub fn custom_stat_exists(name: &str) -> bool {
-    !name.ends_with(":sleep_in_straw_bed") || !Version::active_before_26_3()
-}
-
 /// The number of command argument parser types the active version registers: 26.3 added five
 /// after the template and heightmap parsers, moving the UUID one from 56 to 61.
 pub fn command_parser_count() -> i32 {

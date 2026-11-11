@@ -13,10 +13,11 @@ use crate::block::registry::BLOCKS;
 use crate::item::registry::ITEMS;
 use crate::named::presence;
 use crate::particle_type::PARTICLE_TYPES;
+use crate::stat::{ValueRegistry, value_registry};
 use crate::tables::entity_types::ENTITY_TYPES;
 use crate::tables::item::attributes::ATTRIBUTES;
 use crate::tables::item::component_types;
-use crate::tables::registry_names::{BLOCK_ENTITY_TYPES, MENU_TYPES};
+use crate::tables::registry_names::{BLOCK_ENTITY_TYPES, CUSTOM_STATS, MENU_TYPES};
 use crate::tables::sound_events::SOUND_EVENTS;
 use crate::versions;
 
@@ -194,6 +195,8 @@ pub struct VersionRegistries {
     pub attributes: IdMap,
     /// The data component types, which an item's component patch names its entries by.
     pub component_types: IdMap,
+    /// The custom statistics, which the statistics packet names by id.
+    pub custom_stats: IdMap,
 }
 
 impl VersionRegistries {
@@ -235,6 +238,10 @@ impl VersionRegistries {
                 (0..component_types::NAMES.len() as i32)
                     .map(|id| component_types::exists_in(id, version)),
             ),
+            custom_stats: IdMap::from_presence(CUSTOM_STATS.iter().map(|name| {
+                !versions::custom_stats_lacking(version)
+                    .contains(&name.trim_start_matches("minecraft:"))
+            })),
         }
     }
 
@@ -257,6 +264,7 @@ impl VersionRegistries {
             block_entity_types: dense(&real.block_entity_types),
             attributes: dense(&real.attributes),
             component_types: dense(&real.component_types),
+            custom_stats: dense(&real.custom_stats),
         }
     }
 
@@ -346,7 +354,7 @@ impl VersionRegistries {
     }
 
     /// Every registry's name and map, for checks that cover them all.
-    pub fn all(&self) -> [(&'static str, &IdMap); 10] {
+    pub fn all(&self) -> [(&'static str, &IdMap); 11] {
         [
             ("items", &self.items),
             ("blocks", &self.blocks),
@@ -358,7 +366,58 @@ impl VersionRegistries {
             ("block_entity_types", &self.block_entity_types),
             ("attributes", &self.attributes),
             ("component_types", &self.component_types),
+            ("custom_stats", &self.custom_stats),
         ]
+    }
+
+    /// The map of the registry a statistic type counts the values of, nothing for a type that
+    /// is not one.
+    fn stat_values(&self, stat_type: i32) -> Option<&IdMap> {
+        Some(match value_registry(stat_type)? {
+            ValueRegistry::Block => &self.blocks,
+            ValueRegistry::Item => &self.items,
+            ValueRegistry::EntityType => &self.entity_types,
+            ValueRegistry::Custom => &self.custom_stats,
+        })
+    }
+
+    /// The canonical id of a statistic's value as the wire names it (`Stat.STREAM_CODEC` reads
+    /// the id in the registry the type counts); nothing for an id the version does not have,
+    /// except in the block, item and entity type registries, which are defaulted ones and
+    /// answer their default (air, air, the pig) for an id they do not know.
+    pub fn stat_value_to_canonical(&self, stat_type: i32, wire: i32) -> Option<i32> {
+        let found = u32::try_from(wire).ok().and_then(|wire| {
+            self.stat_values(stat_type)?
+                .to_canonical(wire)
+                .map(|id| id as i32)
+        });
+        found.or_else(|| default_stat_value(value_registry(stat_type)?))
+    }
+
+    /// The wire id of a canonical statistic value, nothing where the version has none.
+    pub fn stat_value_to_wire(&self, stat_type: i32, canonical: i32) -> Option<i32> {
+        let canonical = u32::try_from(canonical).ok()?;
+        self.stat_values(stat_type)?
+            .to_wire(canonical)
+            .map(|id| id as i32)
+    }
+}
+
+/// The canonical id a defaulted registry answers for an id it does not have: air for blocks and
+/// items, the pig for entity types, nothing for the custom statistics (a plain registry).
+fn default_stat_value(registry: ValueRegistry) -> Option<i32> {
+    fn position<'a>(mut names: impl Iterator<Item = &'a str>, default: &str) -> Option<i32> {
+        names
+            .position(|name| name.ends_with(default))
+            .map(|index| index as i32)
+    }
+    match registry {
+        ValueRegistry::Block => position(BLOCKS.iter().map(|block| block.name), ":air"),
+        ValueRegistry::Item => position(ITEMS.iter().map(|item| item.name), ":air"),
+        ValueRegistry::EntityType => {
+            position(ENTITY_TYPES.iter().map(|entity| entity.name), ":pig")
+        }
+        ValueRegistry::Custom => None,
     }
 }
 

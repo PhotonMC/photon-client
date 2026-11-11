@@ -34,10 +34,15 @@ impl GeneralList {
             .iter()
             .position(|name| *name == CUSTOM_TYPE)
             .unwrap_or(0) as i32;
+        let registries = photon_data::version_registries::VersionRegistries::active();
         let mut keyed: Vec<(Vec<u16>, Entry)> = stat::custom_names()
             .iter()
             .enumerate()
-            .filter(|(_, name)| photon_core::versions::behaviour::custom_stat_exists(name))
+            .filter(|(index, _)| {
+                registries
+                    .stat_value_to_wire(custom_type, *index as i32)
+                    .is_some()
+            })
             .map(|(index, name)| {
                 let key = format!("stat.{}", name.replace(':', "."));
                 let id = index as i32;

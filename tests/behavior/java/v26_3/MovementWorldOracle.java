@@ -17,6 +17,14 @@ class MovementWorldOracle extends MovementLivingOracle {
         setField(scene.minecraft(), "level", level);
         scene.options().hideLightningFlash().set(row.get("hide").getAsBoolean());
         level.setSkyFlashTime(row.get("flash").getAsInt());
+        if (row.has("clock")) {
+            // The overworld's clock told to the level, as the server's clock update does.
+            var clock = level.registryAccess()
+                .lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
+                .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+            level.clockManager().handleUpdates(level.getGameTime(), java.util.Map.of(clock,
+                new net.minecraft.world.clock.ClockNetworkState(row.get("clock").getAsLong(), 0.0F, 1.0F)));
+        }
         level.environmentAttributes().invalidateTickCache();
         var at = new net.minecraft.world.phys.Vec3(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"));
         // The sky colour is a vector of channels now; the row keeps it as the packed colour.
@@ -26,7 +34,43 @@ class MovementWorldOracle extends MovementLivingOracle {
         float factor = level.environmentAttributes().getValue(
             net.minecraft.world.attribute.EnvironmentAttributes.SKY_LIGHT_FACTOR, at);
         entry.addProperty("sky_color", color);
+        var attributes = level.environmentAttributes();
+        var colours = new JsonObject();
+        colours.addProperty("fog", net.minecraft.util.ARGB.colorFromVector3f(attributes.getValue(
+            net.minecraft.world.attribute.EnvironmentAttributes.FOG_COLOR, at)));
+        colours.addProperty("cloud", net.minecraft.util.ARGB.colorFromVector4f(attributes.getValue(
+            net.minecraft.world.attribute.EnvironmentAttributes.CLOUD_COLOR, at)));
+        colours.addProperty("sunrise", net.minecraft.util.ARGB.colorFromVector4f(attributes.getValue(
+            net.minecraft.world.attribute.EnvironmentAttributes.SUNRISE_SUNSET_COLOR, at)));
+        colours.addProperty("sky_light", net.minecraft.util.ARGB.colorFromVector3f(attributes.getValue(
+            net.minecraft.world.attribute.EnvironmentAttributes.SKY_LIGHT_COLOR, at)));
+        entry.add("colours", colours);
         entry.addProperty("sky_light_factor", Oracle.bits(factor));
+        return entry;
+    }
+
+    /**
+     * What a biome says of the weather and the grass at a block: the precipitation at the
+     * position (the temperature modifier and the cooling above the snow line included) and the
+     * grass colour at its column.
+     */
+    static JsonObject biomeNoise(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var level = buildScene(row).level();
+        var key = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.BIOME,
+            net.minecraft.resources.Identifier.parse(row.get("biome").getAsString()));
+        var biome = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BIOME)
+            .getOrThrow(key).value();
+        int x = row.get("x").getAsInt();
+        int y = row.get("y").getAsInt();
+        int z = row.get("z").getAsInt();
+        entry.addProperty("precipitation",
+            biome.getPrecipitationAt(new BlockPos(x, y, z), row.get("sea_level").getAsInt()).name());
+        // Only the rows that ask: the colour map a plain biome reads is a client resource.
+        if (row.get("grass").getAsBoolean()) {
+            entry.addProperty("grass", biome.getGrassColor(x, z));
+        }
         return entry;
     }
 

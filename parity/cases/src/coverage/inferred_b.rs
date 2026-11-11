@@ -147,6 +147,7 @@ pub const INFERRED: &[(&str, &str, &str)] = &[
     ("movement", "item_pickup", "world/level/levelgen/Heightmap, core/registries/Registries"),
     ("movement", "leaf_particles", "world/level/block/LeavesBlock, world/level/block/UntintedParticleLeavesBlock"),
     ("movement", "light_changes", "world/level/levelgen/Heightmap, core/registries/Registries"),
+    ("movement", "biome_noise", "core/registries/Registries, world/level/biome/Biome"),
     ("movement", "lightmap_data", "world/level/levelgen/Heightmap, world/attribute/EnvironmentAttributes"),
     ("movement", "local_player_ticks", "resources/Identifier, world/item/ItemStack"),
     ("movement", "particle_engine", "core/particles/ParticleTypes, world/level/levelgen/Heightmap"),

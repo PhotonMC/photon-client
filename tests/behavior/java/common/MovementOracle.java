@@ -35,6 +35,7 @@ public final class MovementOracle extends MovementFireOracle {
                 case "entity_shadows" -> rows.add(entityShadows(element.getAsJsonObject()));
                 case "entity_pick_table" -> rows.add(entityPickTable(element.getAsJsonObject()));
                 case "light_changes" -> rows.add(lightChanges(element.getAsJsonObject()));
+                case "biome_noise" -> rows.add(biomeNoise(element.getAsJsonObject()));
                 case "sky_flash" -> rows.add(skyFlash(element.getAsJsonObject()));
                 case "elytra_state" -> rows.add(elytraState(element.getAsJsonObject()));
                 case "fog_data" -> rows.add(fogData(element.getAsJsonObject()));

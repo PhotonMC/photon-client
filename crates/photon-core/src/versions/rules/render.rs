@@ -14,6 +14,11 @@ rules! {
         /// The atmosphere's fog colour is worked out on packed 8-bit colours (26.2); 26.3 keeps
         /// float vectors.
         fog_colour_is_packed: before V26_3,
+        /// A colour attribute (sky, fog, cloud, sunrise, light colours) is a packed 8-bit int
+        /// through every blend, keyframe lerp and modifier, each channel truncated (26.2); 26.3
+        /// holds float vectors. Not the fog colour's own working (`fog_colour_is_packed`), which is
+        /// another class. Proved by the `movement/sky-flash` rows between keyframes and in weather.
+        attribute_colours_are_packed: before V26_3,
         /// Every tooltip leaves a gap after its first line, not only an item's (before 26.3).
         every_tooltip_gaps_after_first_line: before V26_3,
         /// `PoseStack.Pose.rotate(axis, angle)` goes through a quaternion (before 26.3).
@@ -73,5 +78,11 @@ rules! {
         /// suffix, and the material's `override_armor_assets` choose that suffix per armor.
         /// Source-derived, no golden: the oracle proves the names only.
         armor_trims_are_recoloured_on_demand: since V26_3,
+        /// The biome noise (the temperature above the snow line, the frozen biome's cold patches,
+        /// the swamp's grass colour) hands back a float, and the frozen patches sum their three
+        /// octaves in floats (26.3); 26.2 hands back doubles and sums them in doubles. A noise
+        /// value that lies close to a threshold can fall on either side. Proved by the
+        /// `movement/biome-noise` rows at positions where the two disagree.
+        biome_noise_is_float: since V26_3,
     }
 }

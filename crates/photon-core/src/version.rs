@@ -2,10 +2,10 @@
 //! one binary, the version chosen at connect time from the protocol number.
 
 /// Declares the versions, oldest first. Adding a version is one line here: the enum, the list,
-/// the position, the protocol number and the name all follow from it, and the newest version is
+/// the position, the protocol number, the asset index and the name all follow from it, and the newest version is
 /// the last line.
 macro_rules! versions {
-    ($($(#[$doc:meta])* $variant:ident = ($name:literal, $protocol:literal);)+) => {
+    ($($(#[$doc:meta])* $variant:ident = ($name:literal, $protocol:literal, $index:literal);)+) => {
         /// A supported game version. Behaviour defaults to the newest; older versions differ by
         /// code in `versions/` modules.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -24,6 +24,14 @@ macro_rules! versions {
                 }
             }
 
+            /// The id of the asset index the release's version file names (`32`): which sound and
+            /// language files the release ships.
+            pub const fn asset_index(self) -> &'static str {
+                match self {
+                    $(Version::$variant => $index,)+
+                }
+            }
+
             /// The release name (`26.2`).
             pub const fn name(self) -> &'static str {
                 match self {
@@ -36,11 +44,11 @@ macro_rules! versions {
 
 versions! {
     /// Java Edition 26.1, protocol 775.
-    V26_1 = ("26.1", 775);
+    V26_1 = ("26.1", 775, "30");
     /// Java Edition 26.2, protocol 776.
-    V26_2 = ("26.2", 776);
+    V26_2 = ("26.2", 776, "32");
     /// Java Edition 26.3, protocol 777.
-    V26_3 = ("26.3", 777);
+    V26_3 = ("26.3", 777, "34");
 }
 
 impl Default for Version {

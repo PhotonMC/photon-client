@@ -72,6 +72,8 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<()> {
         .map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
     let mut session = join_with_packs(server, &packs::unattended(), std::path::Path::new(&root))?;
     session.use_renderer_sections();
+    // The window bakes the blocks of the version the server speaks, as the menu's join does.
+    prefetch::use_assets_of(session.versions().version())?;
     let client = Client::open((width, height))?;
     Play::start(client, session)?.run()?;
     Ok(())

@@ -100,10 +100,11 @@ pub(super) fn entity_pick_table_result(request: &Value) -> Value {
     json!({"rows": rows})
 }
 
-/// `sky_flash`: the overworld's sky colour and sky light factor where nothing is loaded
-/// (plains, no weather, the clocks at zero), with the lightning flash on or off.
+/// `sky_flash`: the overworld's colours and sky light factor where nothing is loaded (plains), at
+/// a clock and in a weather a row names (the clocks at zero and no weather when it names none),
+/// with the lightning flash on or off.
 pub(super) fn sky_flash_result(request: &Value) -> Result<Value, String> {
-    use photon_render::sky::{Attribute, Environment, Value as Attr, Weather};
+    use photon_render::sky::{Attribute, Environment, Value as Attr};
     let data_root = crate::jar_root().join("data");
     let mut biomes: Vec<String> = std::fs::read_dir(data_root.join("minecraft/worldgen/biome"))
         .map_err(|error| error.to_string())?
@@ -124,41 +125,130 @@ pub(super) fn sky_flash_result(request: &Value) -> Result<Value, String> {
         };
         let flash =
             row["flash"].as_i64().ok_or("flash")? > 0 && !row["hide"].as_bool().ok_or("hide")?;
+        let ticks = row["clock"].as_i64().unwrap_or(0);
         let attributes = environment.evaluate(
             [number("x")?, number("y")?, number("z")?],
             |_, _, _| None,
-            |_| 0,
-            Weather {
-                rain: 0.0,
-                thunder: 0.0,
-            },
+            |_| ticks,
+            weather_of(row)?,
             flash,
         );
-        let Attr::Color(colour) = attributes.get(Attribute::SkyColor) else {
-            return Err("the sky colour is not a colour".into());
+        let colour = |attribute: Attribute| -> Result<i32, String> {
+            match attributes.get(attribute) {
+                Attr::Color(colour) => Ok(packed(colour)),
+                _ => Err(format!("{attribute:?} is not a colour")),
+            }
         };
         let Attr::Float(factor) = attributes.get(Attribute::SkyLightFactor) else {
             return Err("the sky light factor is not a float".into());
         };
         rows.push(json!({
             "label": row["label"],
-            // `ARGB.colorFromFloat(1.0F, ...)`: the row keeps the colour packed.
-            "sky_color": packed(colour),
+            "sky_color": colour(Attribute::SkyColor)?,
+            "colours": {
+                "fog": colour(Attribute::FogColor)?,
+                "cloud": colour(Attribute::CloudColor)?,
+                "sunrise": colour(Attribute::SunriseSunsetColor)?,
+                "sky_light": colour(Attribute::SkyLightColor)?,
+            },
             "sky_light_factor": format!("{:08x}", factor.to_bits()),
         }));
     }
     Ok(json!({"rows": rows}))
 }
 
-/// `ARGB.colorFromFloat(1.0F, red, green, blue)` as the signed int the rows hold.
+/// The rain and thunder levels a row names as float bit patterns, or none.
+fn weather_of(row: &Value) -> Result<photon_render::sky::Weather, String> {
+    let level = |index: usize| -> Result<f32, String> {
+        let Some(text) = row["weather"].get(index).and_then(Value::as_str) else {
+            return Ok(0.0);
+        };
+        u32::from_str_radix(text, 16)
+            .map(f32::from_bits)
+            .map_err(|error| format!("weather: {error}"))
+    };
+    // The level reports the thunder scaled by the rain.
+    let rain = level(0)?;
+    Ok(photon_render::sky::Weather {
+        rain,
+        thunder: level(1)? * rain,
+    })
+}
+
+/// The colour as the signed int the reference's rows hold: the version's own conversion of the
+/// attribute's value (`ARGB.colorFromVector4f` floors each channel; 26.2 held the packed int, and
+/// the channel is the nearest to the float that stands for it).
 fn packed(colour: [f32; 4]) -> i32 {
-    let channel = |value: f32| (value * 255.0).floor() as u32;
-    (0xFF00_0000 | channel(colour[0]) << 16 | channel(colour[1]) << 8 | channel(colour[2])) as i32
+    let before = crate::case_ids::before_26_3();
+    let channel = |value: f32| {
+        let scaled = value * 255.0;
+        (if before {
+            scaled.round()
+        } else {
+            scaled.floor()
+        }) as u32
+    };
+    (channel(colour[3]) << 24
+        | channel(colour[0]) << 16
+        | channel(colour[1]) << 8
+        | channel(colour[2])) as i32
+}
+
+/// `biome_noise`: the precipitation and the grass colour a biome gives at a block, from the
+/// biome tables read off the data folder.
+pub(super) fn biome_noise_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block::biome_tint::{BiomeTints, Precipitation, TintKind};
+    let data_root = crate::jar_root().join("data");
+    let resources = photon_core::resources::FolderResources::new(crate::jar_root().join("assets"));
+    let mut names: Vec<String> = std::fs::read_dir(data_root.join("minecraft/worldgen/biome"))
+        .map_err(|error| error.to_string())?
+        .filter_map(|entry| {
+            let name = entry.ok()?.file_name().to_string_lossy().into_owned();
+            Some(format!("minecraft:{}", name.strip_suffix(".json")?))
+        })
+        .collect();
+    names.sort();
+    let tints = BiomeTints::load(&data_root, &resources, &names, 0)
+        .ok_or("the biome tables could not be read")?;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let whole = |key: &str| -> Result<i32, String> {
+            row[key]
+                .as_i64()
+                .and_then(|value| i32::try_from(value).ok())
+                .ok_or_else(|| format!("{key} is not an int"))
+        };
+        let name = string(row, "biome")?;
+        let index = names
+            .iter()
+            .position(|candidate| candidate == name)
+            .ok_or_else(|| format!("{name} is not a biome"))?;
+        let (x, y, z) = (whole("x")?, whole("y")?, whole("z")?);
+        let precipitation = tints.precipitation_at(
+            [x, y, z],
+            &|_, _, _| i32::try_from(index).ok(),
+            whole("sea_level")?,
+        );
+        let mut out = json!({
+            "label": row["label"],
+            "precipitation": match precipitation {
+                Precipitation::None => "NONE",
+                Precipitation::Rain => "RAIN",
+                Precipitation::Snow => "SNOW",
+            },
+        });
+        if row["grass"].as_bool() == Some(true) {
+            out["grass"] = json!(tints.colour(TintKind::Grass, index, x, z) as i32);
+        }
+        rows.push(out);
+    }
+    Ok(json!({"rows": rows}))
 }
 
 /// The sky operations of the movement family, by name; none for another kind.
 pub(super) fn sky_result(operation: &str, request: &Value) -> Option<Result<Value, String>> {
     match operation {
+        "biome_noise" => Some(biome_noise_result(request)),
         "sky_flash" => Some(sky_flash_result(request)),
         "fog_data" => Some(super::view_state::fog_data_result(request)),
         "lightmap_data" => Some(super::view_state::lightmap_data_result(request)),

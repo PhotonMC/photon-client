@@ -14,9 +14,18 @@ pub(crate) struct IndexedAssets {
     hashes: HashMap<String, String>,
 }
 
-/// The asset index file under `root`: the one the installed game's version metadata names, else
-/// the only one there is (the development setup keeps no version metadata beside its index).
-fn index_file(root: &Path) -> Option<PathBuf> {
+/// The asset index file under `root`: the one of the game version the jar's assets belong to,
+/// else the one the installed game's version metadata names, else the only one there is (the
+/// development setup keeps no version metadata beside its index).
+fn index_file(root: &Path, version: Option<photon_core::version::Version>) -> Option<PathBuf> {
+    if let Some(version) = version {
+        let own = root
+            .join("indexes")
+            .join(format!("{}.json", version.asset_index()));
+        if own.is_file() {
+            return Some(own);
+        }
+    }
     if let Some(id) = photon_content::asset_index_id(root) {
         return Some(root.join("indexes").join(format!("{}.json", id.as_str())));
     }
@@ -61,7 +70,10 @@ impl IndexedAssets {
             .take(2)
             .find(|folder| folder.join("indexes").is_dir())?
             .to_path_buf();
-        let index = photon_core::json::read_object(&index_file(&root)?)?;
+        let index = photon_core::json::read_object(&index_file(
+            &root,
+            photon_core::content_root::assets_version(jar_assets),
+        )?)?;
         let hashes = index
             .object("objects")?
             .entries()
@@ -124,9 +136,26 @@ mod tests {
     fn the_only_index_is_taken_and_of_two_without_metadata_the_newest() {
         let root = scratch("only");
         std::fs::write(root.join("indexes/32.json"), "{}").unwrap();
-        assert_eq!(super::index_file(&root), Some(root.join("indexes/32.json")));
+        assert_eq!(
+            super::index_file(&root, None),
+            Some(root.join("indexes/32.json"))
+        );
         std::fs::write(root.join("indexes/33.json"), "{}").unwrap();
-        assert_eq!(super::index_file(&root), Some(root.join("indexes/33.json")));
+        assert_eq!(
+            super::index_file(&root, None),
+            Some(root.join("indexes/33.json"))
+        );
+        // A jar of a known version takes that version's own index, whatever else is there.
+        std::fs::write(root.join("indexes/34.json"), "{}").unwrap();
+        let version = photon_core::version::Version::V26_2;
+        assert_eq!(
+            super::index_file(&root, Some(version)),
+            Some(root.join("indexes/32.json"))
+        );
+        assert_eq!(
+            super::index_file(&root, None),
+            Some(root.join("indexes/34.json"))
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
 

@@ -31,6 +31,8 @@ mod ambience;
 pub use ambience::SkyAmbience;
 mod attribute;
 pub use attribute::*;
+mod colour_ops;
+use colour_ops::colour_ops;
 mod end_sky;
 pub use end_sky::{build_sky_frame, end_flash_pose, end_sky_vertices};
 mod environment;

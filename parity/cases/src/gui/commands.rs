@@ -108,6 +108,22 @@ fn number_branch(tree: &mut Tree) -> usize {
     tree.literal("num", vec![float], false)
 }
 
+/// The parser id of the UUID argument: the last one registered, after the five 26.3 added to the
+/// parsers of resources.
+fn uuid_parser() -> i64 {
+    if crate::components::is_26_2() { 56 } else { 61 }
+}
+
+/// What 26.3 added to the parsers: the context float and int providers (55, 56) and the swing
+/// animation (60); nothing before it.
+fn added_parsers() -> Vec<(&'static str, &'static str, i64)> {
+    if crate::components::is_26_2() {
+        Vec::new()
+    } else {
+        vec![("f", "floatprov", 55), ("n", "intprov", 56), ("k", "swing", 60)]
+    }
+}
+
 fn misc_branch(tree: &mut Tree) -> usize {
     let kinds = [
         ("a", "angle", 28),
@@ -118,14 +134,16 @@ fn misc_branch(tree: &mut Tree) -> usize {
         ("w", "swizzle", 32),
         ("o", "op", 26),
         ("e", "anchor", 38),
-        ("u", "uuid", 56),
+        ("u", "uuid", uuid_parser()),
         ("t", "color", 16),
         ("h", "hex", 17),
     ];
     let branches = kinds
         .iter()
+        .copied()
+        .chain(added_parsers())
         .map(|(literal, name, id)| {
-            let argument = tree.argument(name, plain(*id), vec![], true);
+            let argument = tree.argument(name, plain(id), vec![], true);
             tree.literal(literal, vec![argument], false)
         })
         .collect();
@@ -251,7 +269,12 @@ const NO_SELECTORS: &[&str] = &[
 /// and error lines under it.
 pub fn command_parse() -> Value {
     let mut rows = Vec::new();
-    for (number, text) in TEXTS.iter().enumerate() {
+    let added: &[&str] = if crate::components::is_26_2() {
+        &[]
+    } else {
+        &["/misc k stab", "/misc k none", "/misc k nope", "/misc k ", "/misc n 5", "/misc f 2.5"]
+    };
+    for (number, text) in TEXTS.iter().chain(added).enumerate() {
         for empty in [true, false] {
             rows.push(
                 json!({"label": format!("{number}-{text}-{}", title(empty)), "text": text, "suggestions_empty": empty}),
