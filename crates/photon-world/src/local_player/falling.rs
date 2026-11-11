@@ -136,7 +136,9 @@ impl LocalPlayer {
         }
         if self.vertical_collision {
             if self.vertical_collision_below {
-                restitution = if !(-current.y < self.effective_gravity())
+                let slow =
+                    crate::item_physics::too_slow_to_bounce(-current.y, self.effective_gravity());
+                restitution = if !slow
                     && !suppressing_bounce
                     && effect_state.flags & flag::SUPPRESSES_BOUNCE == 0
                 {

@@ -167,7 +167,8 @@ impl MountBody {
         }
         if self.state.vertical_collision {
             if self.state.vertical_collision_below {
-                let falls_slowly = -current.y < self.gravity();
+                let falls_slowly =
+                    crate::item_physics::too_slow_to_bounce(-current.y, self.gravity());
                 restitution = if !falls_slowly && !suppresses_bounce {
                     java_math::max(restitution, f64::from(block_bounce))
                 } else {
