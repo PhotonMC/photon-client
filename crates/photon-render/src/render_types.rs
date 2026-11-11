@@ -7,7 +7,7 @@
 /// What a render type's pipeline is made of (`RenderPipeline`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PipelineState {
-    /// The pipeline's location (`pipeline/eyes`).
+    /// The pipeline's location in the game's own namespace (`pipeline/eyes`).
     pub location: &'static str,
     /// The shader's switches, sorted, joined by commas.
     pub flags: &'static str,
@@ -21,10 +21,17 @@ pub struct PipelineState {
     pub cull: bool,
 }
 
+impl PipelineState {
+    /// The pipeline's full id, with the namespace.
+    pub fn id(&self) -> String {
+        format!("minecraft:{}", self.location)
+    }
+}
+
 /// `RenderPipelines.EYES`: the entity shader with no light, no overlay and no
 /// per-face shading, blended and tested against the depth but not written to it.
 pub const EYES: PipelineState = PipelineState {
-    location: "minecraft:pipeline/eyes",
+    location: "pipeline/eyes",
     flags: "EMISSIVE,NO_CARDINAL_LIGHTING,NO_OVERLAY",
     values: "",
     blend: "TRANSLUCENT",
@@ -55,7 +62,7 @@ pub fn eyes_texture(entity_type: &str) -> Option<&'static str> {
 /// offset, cut out below a tenth of alpha, added to what is behind, drawn on
 /// both faces and written to the depth.
 pub const ENERGY_SWIRL: PipelineState = PipelineState {
-    location: "minecraft:pipeline/energy_swirl",
+    location: "pipeline/energy_swirl",
     flags: "APPLY_TEXTURE_MATRIX,EMISSIVE,NO_CARDINAL_LIGHTING,NO_OVERLAY",
     values: "ALPHA_CUTOUT=0.1,",
     blend: "ADDITIVE",
@@ -74,6 +81,61 @@ pub const POWER_COLOUR: i32 = -8_355_712;
 pub fn swirl_offset(age_in_ticks: f32) -> [f32; 2] {
     let offset = age_in_ticks * 0.01 % 1.0;
     [offset, offset]
+}
+
+/// `RenderPipelines.ARMOR_CUTOUT_NO_CULL_GLINT`: since 26.3 the glint is a shader define of the
+/// pipeline that draws the armor itself, not a pass over it: one draw, with no blend of its own,
+/// cut out below a tenth of alpha, on both faces.
+pub const ARMOR_GLINT: PipelineState = PipelineState {
+    location: "pipeline/armor_cutout_no_cull_glint",
+    flags: "GLINT,NO_OVERLAY,PER_FACE_LIGHTING",
+    values: "ALPHA_CUTOUT=0.1,",
+    blend: "NONE",
+    depth_test: "GREATER_THAN_OR_EQUAL",
+    depth_write: true,
+    cull: false,
+};
+
+/// `RenderPipelines.ITEM_CUTOUT_GLINT`: the same for an item, which keeps its faces' culling.
+pub const ITEM_GLINT: PipelineState = PipelineState {
+    location: "pipeline/item_cutout",
+    flags: "GLINT",
+    values: "ALPHA_CUTOUT=0.1,",
+    blend: "NONE",
+    depth_test: "GREATER_THAN_OR_EQUAL",
+    depth_write: true,
+    cull: true,
+};
+
+/// `RenderPipelines.GLINT`: before 26.3 the glint is a pass of its own over the model, armor and
+/// item alike: blended onto what is there (`BlendFunction.GLINT`), drawn only where the model
+/// wrote its depth, on both faces, and not written to the depth.
+pub const GLINT_PASS: PipelineState = PipelineState {
+    location: "pipeline/glint",
+    flags: "",
+    values: "",
+    blend: "GLINT",
+    depth_test: "EQUAL",
+    depth_write: false,
+    cull: false,
+};
+
+/// The pipeline the glint of armor is drawn with in the version being played.
+pub fn armor_glint_pipeline() -> PipelineState {
+    if photon_core::versions::rules().render.glint_is_own_pass {
+        GLINT_PASS
+    } else {
+        ARMOR_GLINT
+    }
+}
+
+/// The pipeline the glint of an item is drawn with in the version being played.
+pub fn item_glint_pipeline() -> PipelineState {
+    if photon_core::versions::rules().render.glint_is_own_pass {
+        GLINT_PASS
+    } else {
+        ITEM_GLINT
+    }
 }
 
 /// `ItemFeatureRenderer.ENCHANTED_GLINT_ARMOR`: the texture (under `textures/`) the glint on armor

@@ -42,5 +42,8 @@ rules! {
         /// The box an entity is culled by is drawn between its last and current position at the
         /// frame's partial tick (26.3); 26.2 culls by the current box alone.
         culling_box_interpolates: since V26_3,
+        /// The enchantment glint is a pass of its own over the model (`pipeline/glint`); from
+        /// 26.3 it is a switch of the pipeline that draws the model itself.
+        glint_is_own_pass: before V26_3,
     }
 }
