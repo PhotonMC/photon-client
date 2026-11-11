@@ -150,7 +150,13 @@ impl GameRulesScreen {
                     };
                     crate::screen::dialog_body::outline(frame, atlas, outline);
                 }
-                frame.styled_text(atlas, font, label, (at, y + 6), white, true);
+                // 26.3 centres the label in a focusable widget; 26.2 draws plain text five down.
+                let top = if photon_core::versions::behaviour::debug_option_categories_styled() {
+                    6
+                } else {
+                    5
+                };
+                frame.styled_text(atlas, font, label, (at, y + top), white, true);
             }
             Row::Rule { entry, control, .. } => {
                 let lines = &self.entries[*entry].lines;

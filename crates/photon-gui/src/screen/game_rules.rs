@@ -511,7 +511,9 @@ fn categories_of(entries: &[Entry], lang: &Lang) -> Vec<(&'static str, Vec<Run>)
     let style = Style {
         colour: Some(YELLOW),
         bold: Some(true),
-        underlined: Some(true),
+        // 26.3 underlines the label too.
+        underlined: photon_core::versions::behaviour::debug_option_categories_styled()
+            .then_some(true),
         ..Style::default()
     };
     let mut seen: Vec<(&'static str, Vec<Run>)> = Vec::new();

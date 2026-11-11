@@ -41,6 +41,11 @@ impl GameRulesScreen {
         self.rows
             .iter()
             .enumerate()
+            // 26.2 labels never take the focus.
+            .filter(|(_, row)| {
+                !matches!(row, Row::Category(..))
+                    || photon_core::versions::behaviour::debug_option_categories_styled()
+            })
             .map(|(index, row)| match row {
                 Row::Rule { entry, control, .. } => (
                     Focus::Control(*entry),

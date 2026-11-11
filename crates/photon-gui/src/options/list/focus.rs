@@ -26,10 +26,14 @@ impl OptionsList {
     /// `addHeader`: a line of text, with room above it unless it is first.
     pub fn add_header(&mut self, font: &Font, lang: &Lang, key: &str) {
         let padding_top = if self.entries.is_empty() { 0 } else { 9 * 2 };
-        let style = Style {
-            bold: Some(true),
-            underlined: Some(true),
-            ..Style::default()
+        let style = if photon_core::versions::behaviour::debug_option_categories_styled() {
+            Style {
+                bold: Some(true),
+                underlined: Some(true),
+                ..Style::default()
+            }
+        } else {
+            Style::default()
         };
         let text = lang.runs(&Component::translatable(key), &style);
         let rect = self.arena.add(font.width_of_runs(&text), 9);
@@ -376,7 +380,9 @@ impl OptionsList {
     pub(super) fn widgets_in(&self, entry: usize) -> usize {
         match &self.entries[entry].content {
             Content::Row(children) => children.len(),
-            Content::Header { .. } => 1,
+            Content::Header { .. } => {
+                usize::from(photon_core::versions::behaviour::debug_option_categories_styled())
+            }
         }
     }
 
