@@ -65,6 +65,21 @@ pub fn container_line_count_first() -> bool {
     !Version::active_before_26_3()
 }
 
+/// The number of command argument parser types the active version registers: 26.3 added five
+/// after the template and heightmap parsers, moving the UUID one from 56 to 61.
+pub fn command_parser_count() -> i32 {
+    if Version::active_before_26_3() {
+        57
+    } else {
+        62
+    }
+}
+
+/// The id of the UUID command argument parser (the last one registered).
+pub fn command_uuid_parser_id() -> i32 {
+    command_parser_count() - 1
+}
+
 /// The data version the active version's files carry (`world_version` of its `version.json`).
 pub fn data_version() -> i32 {
     if Version::active_before_26_3() {

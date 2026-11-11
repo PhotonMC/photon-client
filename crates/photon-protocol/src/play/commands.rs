@@ -48,7 +48,7 @@ pub fn parse_commands_packet(
             2 => {
                 let name = read_chat_string(input, 32767, "command argument name")?;
                 let id = read_varint(input, "command argument type")?;
-                let kind = read_argument_kind(input, id)?;
+                let kind = read_versioned_kind(input, id)?;
                 type_id = u8::try_from(id).unwrap_or(u8::MAX);
                 if flags & 16 != 0 {
                     read_chat_string(input, 32767, "command suggestion id")?;
@@ -74,6 +74,22 @@ pub fn parse_commands_packet(
 
 /// An argument type by registry id with its parameters
 /// (`ArgumentTypeInfo.deserializeFromNetwork`).
+/// `read_argument_kind` for the active version's numbering of the parsers: the ones it does not
+/// register are errors, and its UUID parser is found wherever it is numbered.
+fn read_versioned_kind(
+    input: &mut &[u8],
+    id: i32,
+) -> Result<photon_core::commands::ArgumentKind, ConnectionError> {
+    use photon_core::versions::behaviour::{command_parser_count, command_uuid_parser_id};
+    if id >= command_parser_count() {
+        return Err(ConnectionError::Codec("command argument type"));
+    }
+    if id == command_uuid_parser_id() {
+        return Ok(photon_core::commands::ArgumentKind::Uuid);
+    }
+    read_argument_kind(input, id)
+}
+
 pub(super) fn read_argument_kind(
     input: &mut &[u8],
     id: i32,
@@ -185,7 +201,6 @@ pub(super) fn read_argument_kind(
             read_chat_string(input, 32767, name)?;
             K::Word
         }
-        61 => K::Uuid,
         _ => return Err(ConnectionError::Codec("command argument type")),
     })
 }

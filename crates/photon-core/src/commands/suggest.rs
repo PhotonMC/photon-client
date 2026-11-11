@@ -229,6 +229,20 @@ fn time(remaining: &str, start: usize) -> Argument {
     Argument::here(suggest_values(&["d", "s", "t", ""], &tail), start + offset)
 }
 
+/// `argument`, with the UUID parser (which suggests nothing) found wherever the version numbers it.
+fn versioned_argument(
+    type_id: u8,
+    kind: &ArgumentKind,
+    remaining: &str,
+    start: usize,
+    ctx: &SuggestContext,
+) -> Argument {
+    if i32::from(type_id) == crate::versions::behaviour::command_uuid_parser_id() {
+        return Argument::here(Vec::new(), start);
+    }
+    argument(type_id, kind, remaining, start, ctx)
+}
+
 /// One argument type's suggestions for the text typed of it (`start` is
 /// where that text starts).
 fn argument(
@@ -335,7 +349,7 @@ impl CommandTree {
                 }
                 NodeKind::Argument { .. } if node.custom_suggestions => ask_server = true,
                 NodeKind::Argument { kind, .. } => {
-                    let found = argument(node.type_id, kind, &remaining, start, ctx);
+                    let found = versioned_argument(node.type_id, kind, &remaining, start, ctx);
                     ask_server |= found.ask_server;
                     add(found.matches, found.start);
                 }
