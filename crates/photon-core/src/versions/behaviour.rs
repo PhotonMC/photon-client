@@ -80,6 +80,12 @@ pub fn command_uuid_parser_id() -> i32 {
     command_parser_count() - 1
 }
 
+/// Whether the world options screen has a General header, separators and Apply Changes (26.3);
+/// 26.2 is a plain grid of buttons with a Done button.
+pub fn world_options_is_sectioned() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// The data version the active version's files carry (`world_version` of its `version.json`).
 pub fn data_version() -> i32 {
     if Version::active_before_26_3() {
