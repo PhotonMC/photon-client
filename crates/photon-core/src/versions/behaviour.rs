@@ -14,11 +14,6 @@ pub fn has_improved_transparency() -> bool {
     !Version::active_before_26_3()
 }
 
-/// Whether the quit shortcuts option exists (new in 26.3).
-pub fn has_quit_shortcuts_option() -> bool {
-    !Version::active_before_26_3()
-}
-
 /// Whether the name tag text is the fixed half-transparent white instead of a colour derived
 /// from the background opacity (26.2 submits a constant; 26.3 derives it).
 pub fn name_tag_text_is_constant() -> bool {
@@ -53,12 +48,6 @@ pub fn unihex_advance_is_whole() -> bool {
     !Version::active_before_26_3()
 }
 
-/// Whether the attack and interact animations are separate item components (26.3); before, one
-/// swing animation component held both.
-pub fn swing_animation_is_split() -> bool {
-    !Version::active_before_26_3()
-}
-
 /// Whether a shulker box tooltip line names the count before the item (26.3) or the item before
 /// the count (26.2).
 pub fn container_line_count_first() -> bool {
@@ -78,18 +67,6 @@ pub fn command_parser_count() -> i32 {
 /// The id of the UUID command argument parser (the last one registered).
 pub fn command_uuid_parser_id() -> i32 {
     command_parser_count() - 1
-}
-
-/// Whether the world options screen has a General header, separators and Apply Changes (26.3);
-/// 26.2 is a plain grid of buttons with a Done button.
-pub fn world_options_is_sectioned() -> bool {
-    !Version::active_before_26_3()
-}
-
-/// Whether the options screen opened in a world offers the online options (26.3) instead of the
-/// world options (26.2, where the pause menu's own button is the same screen).
-pub fn in_world_options_offer_online() -> bool {
-    !Version::active_before_26_3()
 }
 
 /// Whether the level events for a splashed potion and a waxed block sound here as well as showing
@@ -167,17 +144,6 @@ pub fn length_sums_squares_as_floats() -> bool {
 /// within a quarter turn, previous yaw moved along, head set to the yaw. 26.3 treats mobs apart.
 pub fn boat_clamp_is_uniform() -> bool {
     Version::active_before_26_3()
-}
-
-/// Whether changing the exclusive fullscreen option asks for a restart (26.2); 26.3 applies it.
-pub fn exclusive_fullscreen_needs_restart() -> bool {
-    Version::active_before_26_3()
-}
-
-/// Whether the fullscreen resolution option is the exclusive mode one with a tooltip (26.3); 26.2
-/// calls it the fullscreen resolution and has no tooltip.
-pub fn fullscreen_resolution_is_exclusive_mode() -> bool {
-    !Version::active_before_26_3()
 }
 
 /// The data version the active version's files carry (`world_version` of its `version.json`).
@@ -318,10 +284,5 @@ pub fn brewing_ingredients_are_hard_coded() -> bool {
 
 /// Whether the spruce leaves exist as the tinted-particle class of the older versions.
 pub fn spruce_leaves_are_tinted() -> bool {
-    Version::active_before_26_3()
-}
-
-/// Whether option list headers are a left aligned string widget, a line and 4 tall (before 26.3).
-pub fn option_headers_are_plain() -> bool {
     Version::active_before_26_3()
 }

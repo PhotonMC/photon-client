@@ -92,16 +92,8 @@ impl VideoSettingsScreen {
             .find(GRAPHICS_API)
             .and_then(|control| control.as_any().downcast_ref::<CycleButton<Named>>())
             .is_some_and(|button| *button.value() != "options.graphicsApi.default");
-        let exclusive_changed =
-            photon_core::versions::behaviour::exclusive_fullscreen_needs_restart()
-                && list
-                    .find(EXCLUSIVE_FULLSCREEN)
-                    .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
-                    .is_some_and(|button| *button.value());
-        self.screen.set_header_line(
-            (&self.restart.0, self.restart.1),
-            api_changed || exclusive_changed,
-        );
+        self.screen
+            .set_header_line((&self.restart.0, self.restart.1), api_changed);
         let anisotropic = self
             .screen
             .list
@@ -347,36 +339,20 @@ impl VideoSettingsScreen {
 /// The fullscreen resolution slider: since 26.3 the exclusive mode one with a tooltip.
 fn resolution_entry(fullscreen: FullscreenModes) -> Build {
     let initial = fullscreen.initial();
-    if photon_core::versions::behaviour::fullscreen_resolution_is_exclusive_mode() {
-        slider_tip(
-            "options.fullscreen.exclusive.mode",
-            fullscreen,
-            fullscreen_resolution,
-            initial,
-            constant_tip("options.fullscreen.exclusive.mode.tooltip"),
-        )
-    } else {
-        slider(
-            "options.fullscreen.resolution",
-            fullscreen,
-            fullscreen_resolution,
-            initial,
-        )
-    }
+    slider_tip(
+        "options.fullscreen.exclusive.mode",
+        fullscreen,
+        fullscreen_resolution,
+        initial,
+        constant_tip("options.fullscreen.exclusive.mode.tooltip"),
+    )
 }
 
-/// The exclusive fullscreen tooltip. 26.2 puts the restart notice first once the value differs
-/// from the one the game started with (always off here).
+/// The exclusive fullscreen tooltip.
 pub(super) fn exclusive_tip_lines(value: bool) -> Vec<Option<Component>> {
-    let mut lines = Vec::new();
-    if value && photon_core::versions::behaviour::exclusive_fullscreen_needs_restart() {
-        lines.push(Some(Component::translatable("options.needsRestart")));
-        lines.push(None);
-    }
-    lines.push(Some(Component::translatable(if value {
+    vec![Some(Component::translatable(if value {
         "options.exclusiveFullscreen.on.tooltip"
     } else {
         "options.exclusiveFullscreen.off.tooltip"
-    })));
-    lines
+    }))]
 }

@@ -488,9 +488,6 @@ fn category_key(id: &str) -> String {
 
 /// A category's name as 26.3 shows it: bold and underlined.
 fn category_runs(lang: &Lang, label: &Component) -> Vec<Run> {
-    if !photon_core::versions::behaviour::debug_option_categories_styled() {
-        return lang.runs(label, &Style::default());
-    }
     let style = Style {
         bold: Some(true),
         underlined: Some(true),

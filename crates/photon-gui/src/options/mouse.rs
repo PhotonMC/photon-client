@@ -295,17 +295,12 @@ impl ControlsScreen {
                                 constant_tip("options.sprintWindow.tooltip"),
                             ),
                         ),
-                    ]
-                    .into_iter()
-                    .chain(
-                        photon_core::versions::behaviour::has_quit_shortcuts_option()
-                            .then(|| quit_shortcuts(play.quit_shortcuts)),
-                    )
-                    .chain([(
-                        OPERATOR_ITEMS,
-                        boolean("options.operatorItemsTab", play.operator_items_tab),
-                    )])
-                    .collect(),
+                        quit_shortcuts(play.quit_shortcuts),
+                        (
+                            OPERATOR_ITEMS,
+                            boolean("options.operatorItemsTab", play.operator_items_tab),
+                        ),
+                    ],
                 );
             },
         );

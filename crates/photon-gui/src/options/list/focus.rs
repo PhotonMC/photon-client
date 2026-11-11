@@ -26,20 +26,16 @@ impl OptionsList {
     /// `addHeader`: a line of text, with room above it unless it is first.
     pub fn add_header(&mut self, font: &Font, lang: &Lang, key: &str) {
         let padding_top = if self.entries.is_empty() { 0 } else { 9 * 2 };
-        let style = if photon_core::versions::behaviour::debug_option_categories_styled() {
-            Style {
-                bold: Some(true),
-                underlined: Some(true),
-                ..Style::default()
-            }
-        } else {
-            Style::default()
+        let style = Style {
+            bold: Some(true),
+            underlined: Some(true),
+            ..Style::default()
         };
         let text = lang.runs(&Component::translatable(key), &style);
         let rect = self.arena.add(font.width_of_runs(&text), 9);
         self.push(Entry {
             y: 0,
-            height: padding_top + header_line_height(),
+            height: padding_top + 9 * 2,
             content: Content::Header {
                 text: Widget {
                     rect,
@@ -171,11 +167,6 @@ impl OptionsList {
             match &entry.content {
                 Content::Header { text, padding_top } => {
                     let rect = &mut self.arena.0[text.rect];
-                    if photon_core::versions::behaviour::option_headers_are_plain() {
-                        // A `StringWidget` at the row's left edge.
-                        (rect.x, rect.y) = (x, entry.y + PADDING + padding_top);
-                        continue;
-                    }
                     // A `FocusableTextWidget` centred in the row, its text 4 units inside.
                     let widget_width = rect.width + 2 * HEADER_PADDING;
                     (rect.x, rect.y) = (
@@ -380,9 +371,7 @@ impl OptionsList {
     pub(super) fn widgets_in(&self, entry: usize) -> usize {
         match &self.entries[entry].content {
             Content::Row(children) => children.len(),
-            Content::Header { .. } => {
-                usize::from(photon_core::versions::behaviour::debug_option_categories_styled())
-            }
+            Content::Header { .. } => 1,
         }
     }
 
@@ -525,13 +514,4 @@ impl OptionsList {
 /// Whether `(x, y)` is inside a widget's rectangle.
 fn over(rect: &crate::layout::Rect, (x, y): (i32, i32)) -> bool {
     x >= rect.x && x < rect.x + rect.width && y >= rect.y && y < rect.y + rect.height
-}
-
-/// The height a header takes below its padding: two lines in 26.3, a line and 4 before.
-fn header_line_height() -> i32 {
-    if photon_core::versions::behaviour::option_headers_are_plain() {
-        9 + 4
-    } else {
-        9 * 2
-    }
 }

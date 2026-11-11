@@ -40,8 +40,6 @@ pub enum OptionsAction {
     Done,
     /// "Online...".
     Online,
-    /// "World Options...", in a world before 26.3.
-    WorldOptions,
     SkinCustomisation,
     Sounds,
     Video,
@@ -123,7 +121,7 @@ impl OptionsScreen {
             ));
             rect
         };
-        let second = second_button(in_world, |key, action| button(&mut arena, key, action, 150));
+        let second = button(&mut arena, "options.online", OptionsAction::Online, 150);
         let grid_rects: Vec<usize> = [
             (
                 "options.skinCustomisation",
@@ -415,14 +413,5 @@ impl OptionsScreen {
             _ => {}
         }
         input
-    }
-}
-
-/// The header's second button: Online, or in a 26.2 world the world options.
-fn second_button(in_world: bool, add: impl FnOnce(&'static str, OptionsAction) -> usize) -> usize {
-    if in_world && !photon_core::versions::behaviour::in_world_options_offer_online() {
-        add("options.worldOptions.button", OptionsAction::WorldOptions)
-    } else {
-        add("options.online", OptionsAction::Online)
     }
 }

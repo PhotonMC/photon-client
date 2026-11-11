@@ -98,7 +98,7 @@ impl GameRulesScreen {
             && at.0 < rect.x + rect.width
             && at.1 >= rect.y
             && at.1 < rect.y + rect.height;
-        if inside && self.takes_focus_on_click(row) {
+        if inside && matches!(self.rows[row], Row::Category(..)) {
             self.set_focus(Some(Focus::Category(row)));
         } else if inside {
             self.press_control(row, at.0 - (rect.x + 4), font);
@@ -172,12 +172,6 @@ impl GameRulesScreen {
 
     /// Every widget Tab visits, in the order the screen added them (the list last), and whether
     /// each takes the focus.
-    /// Whether a click on the row's label focuses it: a category's does since 26.3.
-    fn takes_focus_on_click(&self, row: usize) -> bool {
-        matches!(self.rows[row], Row::Category(..))
-            && photon_core::versions::behaviour::debug_option_categories_styled()
-    }
-
     fn tab_order(&self) -> Vec<(Focus, bool)> {
         let mut order = vec![
             (Focus::Search, true),
@@ -187,13 +181,7 @@ impl GameRulesScreen {
         for (index, row) in self.rows.iter().enumerate() {
             match row {
                 Row::Rule { entry, .. } => order.push((Focus::Control(*entry), true)),
-                // 26.2 labels are plain text that never takes the focus.
-                Row::Category(..)
-                    if photon_core::versions::behaviour::debug_option_categories_styled() =>
-                {
-                    order.push((Focus::Category(index), true));
-                }
-                Row::Category(..) => {}
+                Row::Category(..) => order.push((Focus::Category(index), true)),
             }
         }
         order

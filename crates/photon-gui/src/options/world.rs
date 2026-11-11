@@ -22,8 +22,6 @@ use photon_render::gui::{GuiAtlas, GuiFrame};
 const BAR: i32 = 33;
 /// The padding of the content's cells (`defaultCellSetting().padding(8)`).
 const CONTENT_PADDING: i32 = 8;
-/// `HeaderAndFooterLayout.CONTENT_MARGIN_TOP`.
-const CONTENT_MARGIN_TOP: i32 = 30;
 /// `FocusableTextWidget.DEFAULT_PADDING`.
 const HEADER_PADDING: i32 = 4;
 
@@ -112,11 +110,7 @@ fn difficulty_label(lang: &Lang, id: u8) -> Vec<Run> {
 
 /// The buttons that change the difficulty are active for a gamemaster, unless it is locked.
 fn difficulty_active(facts: WorldFacts) -> bool {
-    // 26.2 lets only a singleplayer server's owner change it, and Photon has no such server.
-    photon_core::versions::behaviour::world_options_is_sectioned()
-        && facts.gamemaster
-        && !facts.locked
-        && !facts.hardcore
+    facts.gamemaster && !facts.locked && !facts.hardcore
 }
 
 /// What the difficulty button and its lock are made of.
@@ -144,15 +138,10 @@ fn widgets(
         text: general.to_vec(),
     };
     let header_width = Font::default().width_of_runs(general) + 2 * HEADER_PADDING;
-    let sectioned = photon_core::versions::behaviour::world_options_is_sectioned();
     let general = (
         Part::General,
-        if sectioned {
-            (header_width, 9 + 2 * HEADER_PADDING)
-        } else {
-            (0, 0)
-        },
-        sectioned,
+        (header_width, 9 + 2 * HEADER_PADDING),
+        true,
         header,
     );
     let rest = [
@@ -170,15 +159,11 @@ fn widgets(
         ),
         (
             Part::Apply,
-            if sectioned { (150, 20) } else { (0, 0) },
+            (150, 20),
             false,
             button("menu.multiplayerOptions.applyChanges"),
         ),
-        if sectioned {
-            (Part::Cancel, (150, 20), true, button("gui.cancel"))
-        } else {
-            (Part::Cancel, (200, 20), true, button("gui.done"))
-        },
+        (Part::Cancel, (150, 20), true, button("gui.cancel")),
     ];
     std::iter::once(general)
         .chain(difficulty_pair(lang, facts))
@@ -211,35 +196,22 @@ fn arrange(
     grid.column_spacing = 8;
     grid.row_spacing = 4;
     let cell = Settings::default().align_horizontally(0.5);
-    if photon_core::versions::behaviour::world_options_is_sectioned() {
-        grid.add_in_row(Item::Leaf(rect(Part::General)), 2, 2, cell);
-        grid.add_in_row(Item::Grid(Box::new(layout)), 2, 1, cell);
-        grid.add_in_row(Item::Leaf(rect(Part::GameRules)), 2, 1, cell);
-    } else {
-        grid.add_in_row(Item::Leaf(rect(Part::GameRules)), 2, 1, cell);
-        grid.add_in_row(Item::Grid(Box::new(layout)), 2, 1, cell);
-    }
+    grid.add_in_row(Item::Leaf(rect(Part::General)), 2, 2, cell);
+    grid.add_in_row(Item::Grid(Box::new(layout)), 2, 1, cell);
+    grid.add_in_row(Item::Leaf(rect(Part::GameRules)), 2, 1, cell);
     grid.add_in_row(Item::Leaf(rect(Part::Restrictions)), 2, 1, cell);
     grid.arrange(arena);
     // The content is a column of one cell with the padding around it, centred in the screen.
     let area_width = grid.width + 2 * CONTENT_PADDING;
-    let top = if photon_core::versions::behaviour::world_options_is_sectioned() {
-        BAR + CONTENT_PADDING
-    } else {
-        // 26.2 puts the content a fixed margin under the header, as high as the footer allows.
-        (BAR + CONTENT_MARGIN_TOP).min(height - BAR - grid.height)
-    };
-    let at = (width / 2 - area_width / 2 + CONTENT_PADDING, top);
+    let at = (
+        width / 2 - area_width / 2 + CONTENT_PADDING,
+        BAR + CONTENT_PADDING,
+    );
     let frame = (at.0, at.1, grid.width, grid.height);
     place_in_frame(arena, Item::Grid(Box::new(grid)), frame, (0.0, 0.0));
     place_in_frame(arena, Item::Leaf(title), (0, 0, width, BAR), (0.5, 0.5));
     let apply = rect(Part::Apply);
-    let buttons: &[usize] = if photon_core::versions::behaviour::world_options_is_sectioned() {
-        &[apply, rect(Part::Cancel)]
-    } else {
-        &[rect(Part::Cancel)]
-    };
-    let mut footer = horizontal(arena, buttons, 8);
+    let mut footer = horizontal(arena, &[apply, rect(Part::Cancel)], 8);
     footer.arrange(arena);
     let frame = (0, height - BAR, width, BAR);
     place_in_frame(arena, Item::Grid(Box::new(footer)), frame, (0.5, 0.5));
@@ -375,14 +347,14 @@ impl WorldOptionsScreen {
         };
         frame.tile_texture(atlas, background, (32, 32), (0, 0, width, height));
         let place = self.place();
-        draw_bars(&place, frame, atlas);
+        place.draw_header_separator(frame, atlas);
+        place.draw_background(frame, atlas, 0.0);
         self.title.draw(frame, atlas, font, &self.arena, false);
         let mut pending: Option<Pending> = None;
         for (index, (part, widget)) in self.widgets.iter().enumerate() {
-            if !is_drawn(*part) {
-                continue;
+            if *part == Part::Apply {
+                place.draw_footer_separator(frame, atlas);
             }
-            draw_footer_bar(*part, &place, frame, atlas);
             let focused = self.focus == Some(index);
             let hovered = widget.contains(&self.arena, mouse);
             if *part == Part::General {
@@ -440,8 +412,7 @@ impl WorldOptionsScreen {
 
     /// Whether a widget can take the focus or a press: the General header always can.
     fn focusable(part: Part, widget: &Widget) -> bool {
-        (part == Part::General && photon_core::versions::behaviour::world_options_is_sectioned())
-            || (part != Part::General && widget.is_active())
+        part == Part::General || widget.is_active()
     }
 
     /// Whether the difficulty or the lock differ from what the server said.
@@ -546,27 +517,6 @@ impl WorldOptionsScreen {
     pub fn scroll_amount(&self) -> f64 {
         0.0
     }
-}
-
-/// The separators and the list background around the content (26.3; 26.2 has none).
-fn draw_bars(place: &Place, frame: &mut GuiFrame, atlas: &GuiAtlas) {
-    if photon_core::versions::behaviour::world_options_is_sectioned() {
-        place.draw_header_separator(frame, atlas);
-        place.draw_background(frame, atlas, 0.0);
-    }
-}
-
-/// The footer's separator, drawn before its first button (Apply Changes).
-fn draw_footer_bar(part: Part, place: &Place, frame: &mut GuiFrame, atlas: &GuiAtlas) {
-    if part == Part::Apply {
-        place.draw_footer_separator(frame, atlas);
-    }
-}
-
-/// Whether a widget is drawn: 26.2 has neither the General header nor Apply Changes.
-fn is_drawn(part: Part) -> bool {
-    photon_core::versions::behaviour::world_options_is_sectioned()
-        || !matches!(part, Part::General | Part::Apply)
 }
 
 /// The widgets for a screen, the header's width from the font.

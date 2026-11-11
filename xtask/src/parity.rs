@@ -13,6 +13,7 @@ mod java;
 pub(crate) mod pins;
 mod records;
 mod report;
+mod scope;
 mod store;
 mod switch;
 mod translate;
@@ -234,12 +235,22 @@ pub fn compare(families: &[String], recapture: bool, version: Option<&str>) -> R
     let classpath = pins.classpath(&runtime())?;
     let jdk = java::Jdk::find(pins.java_major)?;
     let environment = environment(&pins, &jdk);
-    let cases = cases::generate(
+    let mut cases = cases::generate(
         families,
         &environment,
         &|family| pins.family_digest(family),
         Some(&pins.version),
     )?;
+    let newest = pins.version == photon_core::version::Version::NEWEST.name();
+    let before = cases.len();
+    cases.retain(|case| scope::in_scope(&case.id, newest));
+    if cases.len() < before {
+        println!(
+            "parity: {} menu cases out of scope for {}",
+            before - cases.len(),
+            pins.version
+        );
+    }
     let mut store = store::Store::open(&pins.version);
     store.load(families)?;
     let missing: Vec<&Case> = cases
