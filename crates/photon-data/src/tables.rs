@@ -1,5 +1,6 @@
-//! Everything here was taken from the reference's own answers and is now maintained by hand,
-//! checked by the parity families. The other modules re-export these under their usual paths (`block::blocks`, `item::items`, ...).
+//! Everything here was taken from the reference's own answers and is checked by the parity families. Some
+//! are written by `cargo xtask gen` and say so in their header; the rest are maintained by hand.
+//! The other modules re-export these under their usual paths (`block::blocks`, `item::items`, ...).
 
 pub mod animations;
 pub mod block;
@@ -8,6 +9,7 @@ pub mod compost;
 pub mod damage_effects;
 pub mod entity_attributes;
 pub mod entity_models;
+pub mod entity_models_older;
 pub mod entity_picks;
 pub mod entity_serializers;
 pub mod entity_shadows;

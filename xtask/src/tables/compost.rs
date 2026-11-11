@@ -1,9 +1,9 @@
 //! The items a composter takes, with the chance each fills a layer.
 
-use super::{capture, text};
+use super::{Versions, capture, text};
 
-pub fn render(version: &str) -> Result<String, String> {
-    let rows = capture::rows(version, "movement", "movement/compostables")?;
+pub fn render(versions: &Versions) -> Result<String, String> {
+    let rows = capture::rows(&versions.newest, "movement", "movement/compostables")?;
     let items = rows
         .first()
         .and_then(|row| row["items"].as_array())

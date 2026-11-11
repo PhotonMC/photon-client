@@ -2,10 +2,9 @@
 //! the size of its texture and the tree of parts (a pose, cubes and child
 //! parts) that the entity models bake and the renderers pose.
 //!
-//! The layers themselves are in `tables/entity_models.rs`; this holds the
-//! types they are written with and the lookup.
-
-use crate::tables::entity_models::LAYERS;
+//! The layers themselves are in `tables/entity_models.rs` (the newest version's) and
+//! `tables/entity_models_older.rs` (what older versions differ in); this holds the types they
+//! are written with and the lookup, which answers for the version being played.
 
 /// `Direction`, in the order of its names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -190,17 +189,18 @@ pub mod ids {
     pub const CAMEL_HUSK_SADDLE: &str = concat!("minecraft:", "camel_husk#saddle");
 }
 
-/// Every layer, in order of id.
+/// Every layer of the version being played, in order of id.
 pub fn layers() -> &'static [ModelLayer] {
-    &LAYERS
+    crate::versions::model_layers::layers()
 }
 
 /// The layer with this id (`minecraft:cow#main`).
 pub fn layer(id: &str) -> Option<&'static ModelLayer> {
-    LAYERS
+    let layers = layers();
+    layers
         .binary_search_by(|layer| layer.id.cmp(id))
         .ok()
-        .map(|index| &LAYERS[index])
+        .map(|index| &layers[index])
 }
 
 #[cfg(test)]

@@ -19,6 +19,17 @@ pub fn f32_from_bits(hex: &str) -> Result<String, String> {
     Ok(text)
 }
 
+/// An `f32` given as its bits, as the shortest decimal that reads back as the same bits. A value
+/// that is not finite has no literal.
+pub fn f32_literal(bits: u32) -> Result<String, String> {
+    let value = f32::from_bits(bits);
+    if value.is_finite() {
+        Ok(format!("{value:?}"))
+    } else {
+        Err(format!("{bits:08x} is not a finite float"))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

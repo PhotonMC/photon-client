@@ -20,8 +20,11 @@ pub struct CapeAngles {
 
 /// The cape cuboid on the back, in the layer `minecraft:player#cape`, as the mesh puts it.
 fn mesh() -> &'static Part {
-    static MESH: std::sync::OnceLock<Part> = std::sync::OnceLock::new();
-    MESH.get_or_init(|| {
+    use std::sync::OnceLock;
+    // One slot per version: the layers are the active version's.
+    static MESHES: [OnceLock<Part>; photon_core::version::Version::ALL.len()] =
+        [const { OnceLock::new() }; photon_core::version::Version::ALL.len()];
+    MESHES[photon_core::versions::behaviour::table_slot()].get_or_init(|| {
         let layer = photon_data::entity_model::layer("minecraft:player#cape")
             .expect("the cape layer is in the table");
         let definition = layer

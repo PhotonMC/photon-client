@@ -1,8 +1,9 @@
 //! What a version numbers differently from the union lists ([ADR 0013](../../../docs/adr/0013-multi-version-content-model.md)),
-//! one module per version that does.
+//! one module per version that does, and the lists that are worked out per version.
 
 use photon_core::version::Version;
 
+pub mod model_layers;
 pub mod v26_1;
 pub mod v26_2;
 

@@ -138,7 +138,8 @@ pub(super) fn eyes_layers_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
-/// The model layers of the data crate, written as the reference's layers are.
+/// The model layers of the data crate for the version being played, written as the reference's
+/// layers are.
 pub(super) fn model_layers_result() -> Value {
     use photon_data::entity_model::{ModelPart, layers};
     let hex = |value: f32| format!("{:08x}", value.to_bits());
@@ -167,7 +168,6 @@ pub(super) fn model_layers_result() -> Value {
     }
     let rows: Vec<Value> = layers()
         .iter()
-        .filter(|layer| layer_in_version(layer.id))
         .map(|layer| {
             json!({
                 "label": layer.id,
@@ -178,13 +178,4 @@ pub(super) fn model_layers_result() -> Value {
         })
         .collect();
     json!({"rows": rows})
-}
-
-/// The layers that 26.3 added: the cushion and the poplar boats.
-const NEW_IN_26_3: [&str; 3] = ["cushion#main", "boat/poplar#main", "chest_boat/poplar#main"];
-
-/// Whether the oracle's version has the layer.
-fn layer_in_version(id: &str) -> bool {
-    let name = id.strip_prefix("minecraft:").unwrap_or(id);
-    !(crate::case_ids::before_26_3() && NEW_IN_26_3.contains(&name))
 }
