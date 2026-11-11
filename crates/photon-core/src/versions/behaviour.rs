@@ -92,6 +92,17 @@ pub fn in_world_options_offer_online() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether the atmosphere's fog colour is worked out on packed 8-bit colours (26.2); 26.3 keeps
+/// float vectors.
+pub fn fog_colour_is_packed() -> bool {
+    Version::active_before_26_3()
+}
+
+/// Whether a fishing bobber falls by 0.03 as a double (26.2); 26.3 widens the float 0.03.
+pub fn bobber_gravity_is_double() -> bool {
+    Version::active_before_26_3()
+}
+
 /// Whether the dragon head's outline is half a pixel taller than the other heads' (26.3).
 pub fn dragon_head_outline_is_tall() -> bool {
     !Version::active_before_26_3()

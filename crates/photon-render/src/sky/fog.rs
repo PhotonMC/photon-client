@@ -299,42 +299,19 @@ pub struct AtmosphereAttributes {
 pub fn atmospheric_colour(
     attributes: &AtmosphereAttributes,
     (forward_x, render_distance): (f32, i32),
-    (rain, thunder): (f32, f32),
+    weather: (f32, f32),
 ) -> [f32; 3] {
+    let sun = sun_mix(attributes, forward_x, render_distance);
+    let mix = sky_mix(attributes, render_distance);
+    if photon_core::versions::behaviour::fog_colour_is_packed() {
+        return packed_colour(attributes, (sun, mix), weather);
+    }
     let vec4 = |colour: [f32; 3]| [colour[0], colour[1], colour[2], 1.0];
     let vec3 = |colour: [f32; 4]| [colour[0], colour[1], colour[2]];
     let mut fog = vec4(attributes.fog_colour);
-    if render_distance >= 4 {
-        let sun_angle = attributes.sun_angle * (std::f64::consts::PI / 180.0) as f32;
-        let sun_x = if mth_sin_f64(f64::from(sun_angle)) > 0.0 {
-            -1.0
-        } else {
-            1.0
-        };
-        let looking = forward_x * sun_x;
-        if looking > 0.0 {
-            let alpha = attributes.sunrise[3];
-            if alpha > 0.0 {
-                let sunrise = [
-                    attributes.sunrise[0],
-                    attributes.sunrise[1],
-                    attributes.sunrise[2],
-                    1.0,
-                ];
-                fog = srgb_lerp_vec(looking * alpha, fog, sunrise);
-            }
-        }
+    if let Some(sun) = sun {
+        fog = srgb_lerp_vec(sun, fog, vec4(vec3(attributes.sunrise)));
     }
-    let sky_fog_end = (attributes.sky_fog_end / 16.0).min(render_distance as f32);
-    let delta = sky_fog_end / 32.0;
-    let mix = if delta < 0.0 {
-        0.25
-    } else if delta > 1.0 {
-        1.0
-    } else {
-        0.25 + delta * 0.75
-    };
-    let mix = 1.0 - (f64::from(mix)).powf(0.25) as f32;
     // The sky colour the fog blends towards is darkened by the weather
     // (`AtmosphericFogEnvironment.applyWeatherDarken`).
     let scale = |colour: [f32; 4], red: f32, green: f32, blue: f32| {
@@ -345,6 +322,7 @@ pub fn atmospheric_colour(
             1.0,
         ]
     };
+    let (rain, thunder) = weather;
     let mut darkened = vec4(attributes.sky_colour);
     if rain > 0.0 {
         let modifier = 1.0 - rain * 0.5;
@@ -355,4 +333,71 @@ pub fn atmospheric_colour(
         darkened = scale(darkened, modifier, modifier, modifier);
     }
     vec3(srgb_lerp_vec(mix, fog, darkened))
+}
+
+/// How far the fog warms towards the sunrise colour: the part of the camera's forward direction
+/// that faces the sun, by the colour's alpha. None where it does not warm.
+fn sun_mix(attributes: &AtmosphereAttributes, forward_x: f32, render_distance: i32) -> Option<f32> {
+    if render_distance < 4 {
+        return None;
+    }
+    let sun_angle = attributes.sun_angle * (std::f64::consts::PI / 180.0) as f32;
+    let sun_x = if mth_sin_f64(f64::from(sun_angle)) > 0.0 {
+        -1.0
+    } else {
+        1.0
+    };
+    let looking = forward_x * sun_x;
+    let alpha = attributes.sunrise[3];
+    (looking > 0.0 && alpha > 0.0).then_some(looking * alpha)
+}
+
+/// How far the fog blends towards the sky's colour, from where the sky's fog ends.
+fn sky_mix(attributes: &AtmosphereAttributes, render_distance: i32) -> f32 {
+    let sky_fog_end = (attributes.sky_fog_end / 16.0).min(render_distance as f32);
+    let delta = sky_fog_end / 32.0;
+    let mix = if delta < 0.0 {
+        0.25
+    } else if delta > 1.0 {
+        1.0
+    } else {
+        0.25 + delta * 0.75
+    };
+    1.0 - (f64::from(mix)).powf(0.25) as f32
+}
+
+/// 26.2's `getBaseColor`, which works on packed colours: every blend and the weather's darkening
+/// land on whole 8-bit channels.
+fn packed_colour(
+    attributes: &AtmosphereAttributes,
+    (sun, mix): (Option<f32>, f32),
+    (rain, thunder): (f32, f32),
+) -> [f32; 3] {
+    use super::lerp::srgb_lerp;
+    let pack = |colour: [f32; 3]| {
+        let byte = |value: f32| (value * 255.0).round().clamp(0.0, 255.0) as u32;
+        0xFF00_0000 | byte(colour[0]) << 16 | byte(colour[1]) << 8 | byte(colour[2])
+    };
+    let scale = |colour: u32, by: [f32; 3]| {
+        let channel = |shift: u32, by: f32| {
+            let scaled = (((colour >> shift) & 0xFF) as f32 * by) as i32;
+            (scaled.clamp(0, 255) as u32) << shift
+        };
+        0xFF00_0000 | channel(16, by[0]) | channel(8, by[1]) | channel(0, by[2])
+    };
+    let mut fog = pack(attributes.fog_colour);
+    if let Some(sun) = sun {
+        let [red, green, blue, _] = attributes.sunrise;
+        fog = srgb_lerp(sun, fog, pack([red, green, blue]));
+    }
+    let mut sky = pack(attributes.sky_colour);
+    if rain > 0.0 {
+        let modifier = 1.0 - rain * 0.5;
+        sky = scale(sky, [modifier, modifier, 1.0 - rain * 0.4]);
+    }
+    if thunder > 0.0 {
+        sky = scale(sky, [1.0 - thunder * 0.5; 3]);
+    }
+    let mixed = srgb_lerp(mix, fog, sky);
+    [16, 8, 0].map(|shift| ((mixed >> shift) & 0xFF) as f32 / 255.0)
 }

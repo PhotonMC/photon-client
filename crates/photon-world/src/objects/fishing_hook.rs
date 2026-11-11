@@ -148,7 +148,7 @@ fn hook_step(
         delta = clip_flight(level, position, delta);
     }
     if !level.info(pos).is_water() && !on_ground && state.hooked == 0 {
-        delta = delta.add_vec3(Vec3::new(0.0, -f64::from(0.03_f32), 0.0));
+        delta = delta.add_vec3(Vec3::new(0.0, -bobber_gravity(), 0.0));
     }
     move_hook(
         level,
@@ -219,7 +219,7 @@ fn restitute_hook(level: &Level<'_>, position: Vec3, delta: Vec3, movement: Vec3
         &effect,
         (x_collision, z_collision, vertical && delta.y < 0.0),
         (delta, movement, vertical),
-        (f64::from(0.03_f32), 0.98),
+        (bobber_gravity(), 0.98),
     ))
 }
 
@@ -357,5 +357,14 @@ impl ClientWorld {
             entity.vel.motion.y = JavaF64::new(f64::from(sink));
             entity.vel.motion.z = JavaF64::new(dz);
         }
+    }
+}
+
+/// What a bobber in the air falls by each tick: 26.2 writes 0.03 as a double, 26.3 as a float.
+fn bobber_gravity() -> f64 {
+    if photon_core::versions::behaviour::bobber_gravity_is_double() {
+        0.03
+    } else {
+        f64::from(0.03_f32)
     }
 }
