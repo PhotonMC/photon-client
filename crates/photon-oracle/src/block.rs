@@ -93,7 +93,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                         .class
                         .is(photon_data::block::classes::BlockClass::IceBlock);
                     let sturdy = if ice { 0 } else { state.sturdy_faces };
-                    sturdy | u8::from(state.solid) << 6
+                    sturdy | u8::from(state.blocks_motion) << 6
                 };
                 let mut runs = Vec::new();
                 let mut last = None;

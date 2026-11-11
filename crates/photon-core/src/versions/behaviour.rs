@@ -92,6 +92,27 @@ pub fn in_world_options_offer_online() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether the dragon head's outline is half a pixel taller than the other heads' (26.3).
+pub fn dragon_head_outline_is_tall() -> bool {
+    !Version::active_before_26_3()
+}
+
+/// Whether the resin brick wall is declared solid whatever its shape (26.3).
+pub fn resin_brick_wall_is_forced_solid() -> bool {
+    !Version::active_before_26_3()
+}
+
+/// Whether `blocksMotion` is plain solidity (26.3); 26.2 says no for cobweb and bamboo sapling.
+pub fn blocks_motion_is_solidity() -> bool {
+    !Version::active_before_26_3()
+}
+
+/// Whether the motion blocking heightmap leaves out signs, cobweb and bamboo sapling by its own
+/// list (26.3); 26.2 counts whatever blocks motion.
+pub fn motion_heightmap_has_own_list() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// Whether a block can block the view only at the camera's near plane (26.3: stairs and slabs
 /// the player's eye sits inside); 26.2 has no such rule, a block blocks the view or it does not.
 pub fn blocks_view_at_near_plane() -> bool {

@@ -100,7 +100,7 @@ pub(super) fn compute(
         propagates_skylight_down(block, offset, facts.of(&outline).full, fluid);
     let collision_full_block = collision_full_block(block, facts.of(&collision).full);
     let solid = legacy_solid(block, &collision);
-    let blocks_motion = index != id::COBWEB && index != id::BAMBOO_SAPLING && solid;
+    let (blocks_motion, in_motion_heightmap) = motion_facts(solid, index, is_sign(block));
     let support = support_shape(block, offset, &outline, &collision);
     let support_facts = facts.of(&support);
     let sturdy_faces = support_facts.full_faces;
@@ -121,7 +121,7 @@ pub(super) fn compute(
         use_shape_for_light_occlusion: use_shape_for_light_occlusion(block, offset),
         can_occlude: block.can_occlude,
         blocks_motion,
-        in_motion_heightmap: blocks_motion && !is_sign(block),
+        in_motion_heightmap,
         solid,
         sturdy_faces,
         center_faces: support_facts.center_faces,
@@ -293,7 +293,7 @@ pub(super) fn collision_full_block(block: &Block, full_collision: bool) -> bool 
 /// `blocksMotion` reads. A block with a dynamic shape has no cache and so
 /// never counts as solid unless forced.
 pub(super) fn legacy_solid(block: &Block, collision: &VoxelShape) -> bool {
-    if block.force_solid_on {
+    if block.force_solid_on && forced_solid_in_version(block) {
         return true;
     }
     if block.force_solid_off || block.dynamic_shape {
@@ -352,4 +352,22 @@ fn view_blocking_rule(
 fn has_near_plane_rule(block: &photon_data::block::definition::Block) -> bool {
     photon_core::versions::behaviour::blocks_view_at_near_plane()
         && block.view_blocking == photon_data::block::definition::Rule::NearPlane
+}
+
+/// `blocksMotion` and whether the motion blocking heightmap counts the state. 26.2: cobweb and
+/// bamboo sapling do not block motion, and the heightmap counts what does. 26.3: every solid
+/// state blocks motion, and the heightmap leaves out signs and those two.
+fn motion_facts(solid: bool, index: usize, sign: bool) -> (bool, bool) {
+    use photon_core::versions::behaviour as version;
+    let web = index == id::COBWEB || index == id::BAMBOO_SAPLING;
+    let blocks_motion = solid && (version::blocks_motion_is_solidity() || !web);
+    let listed_out = version::motion_heightmap_has_own_list() && (sign || web);
+    (blocks_motion, blocks_motion && !listed_out)
+}
+
+/// Whether the block's forced solidity holds in the active version: the resin brick wall's is
+/// 26.3's.
+fn forced_solid_in_version(block: &Block) -> bool {
+    photon_core::versions::behaviour::resin_brick_wall_is_forced_solid()
+        || !block.name.ends_with(":resin_brick_wall")
 }

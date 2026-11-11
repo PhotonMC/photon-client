@@ -2,7 +2,9 @@ use super::*;
 
 /// `getShape`: the dragon head's outline is a little taller than its collision.
 fn skull_height(block: &Block) -> f64 {
-    if block.name.contains("dragon") {
+    if block.name.contains("dragon")
+        && photon_core::versions::behaviour::dragon_head_outline_is_tall()
+    {
         8.5
     } else {
         8.0
