@@ -5,24 +5,20 @@ use super::*;
 
 /// The reference's whole default patch of each item, kept as a fixture, is read by this port, and
 /// both forms are written back from what it read.
-pub(super) fn item_components(label: &str) -> Value {
+pub(super) fn item_components(label: &str) -> Result<Value, String> {
     let hex = |bytes: &[u8]| {
         bytes
             .iter()
             .map(|byte| format!("{byte:02x}"))
             .collect::<String>()
     };
-    // The reference's whole default patch of each item, kept as a
-    // fixture, is read by this port, and both forms are written
-    // back from what it read.
-    const PATCHES: &str = include_str!("../../../tests/behavior/fixtures/item-default-patches.txt");
-    use photon_data::item::component_sets::DEFAULT_COMPONENT_SETS;
-    let items: Vec<Value> = PATCHES
+    let patches = default_patches()?;
+    let items: Vec<Value> = patches
         .lines()
         .map(|line| {
             let (name, wire) = line.split_once(' ').expect("a name and its bytes");
             let index = photon_data::item::registry::index(name).expect("a listed item");
-            let set = DEFAULT_COMPONENT_SETS.get(index).copied().unwrap_or(0);
+            let set = photon_data::version_registries::default_component_set(index);
             let map = &crate::case_ids::registries().component_types;
             let types: Vec<u32> = (0..128u32)
                 .filter(|id| set >> id & 1 == 1)
@@ -65,7 +61,22 @@ pub(super) fn item_components(label: &str) -> Value {
             }
         })
         .collect();
-    json!({"label": label, "outcome": "listed", "items": items})
+    Ok(json!({"label": label, "outcome": "listed", "items": items}))
+}
+
+/// The fixture of the oracle's version: the newest version's is tracked; an older version's is
+/// written from its capture by `cargo xtask parity`.
+fn default_patches() -> Result<String, String> {
+    const NEWEST: &str = include_str!("../../../tests/behavior/fixtures/item-default-patches.txt");
+    if crate::case_ids::is_newest() {
+        return Ok(NEWEST.to_owned());
+    }
+    let dir =
+        std::env::var_os("PHOTON_PARITY_FIXTURES").ok_or("PHOTON_PARITY_FIXTURES is not set")?;
+    let path = std::path::Path::new(&dir)
+        .join(crate::case_ids::oracle_version().name())
+        .join("item-default-patches.txt");
+    std::fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))
 }
 
 /// An item's default components the client reads, as the codec's JSON and
@@ -85,6 +96,7 @@ pub(super) fn default_components(
             .collect::<String>()
     };
     let oracle = crate::case_ids::registries();
+    let outgoing = photon_game::item_components::Numbering::outgoing(&oracle);
     let mut put = |id: i32, json: Value, bytes: &[u8]| {
         // A component the oracle's version does not have is not one of its defaults.
         if oracle.component_types.to_wire(id as u32).is_none() {
@@ -92,7 +104,7 @@ pub(super) fn default_components(
         }
         let name = NAMES[id as usize];
         json_map.insert(name.to_owned(), json);
-        wire_map.insert(name.to_owned(), json!(hex(bytes)));
+        wire_map.insert(name.to_owned(), json!(hex(&numbered(id, bytes, &outgoing))));
     };
     let declared_name = item
         .components
@@ -114,4 +126,21 @@ pub(super) fn default_components(
         }
     }
     (Value::Object(json_map), Value::Object(wire_map))
+}
+
+/// A component's value as the version's server numbers the ids inside it (the item a use
+/// remainder names, an attribute, a sound).
+fn numbered(
+    id: i32,
+    bytes: &[u8],
+    outgoing: &photon_game::item_components::Numbering<'_>,
+) -> Vec<u8> {
+    let single = photon_game::item_components::Patch {
+        added: vec![(id, bytes.to_vec())],
+        removed: Vec::new(),
+    };
+    single
+        .renumbered(outgoing)
+        .and_then(|patch| patch.added.into_iter().next())
+        .map_or_else(|| bytes.to_vec(), |(_, value)| value)
 }

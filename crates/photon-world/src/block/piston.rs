@@ -94,7 +94,7 @@ fn reaction_verdict(
     if block.destroy_time == -1.0 {
         return Some(false);
     }
-    match block.push_reaction {
+    match block.declared_push_reaction() {
         PushReaction::Block => Some(false),
         PushReaction::Destroy => Some(allow_destroyable),
         PushReaction::PushOnly => Some(direction == connection),
@@ -184,7 +184,7 @@ impl Resolver<'_> {
     fn resolve(&mut self) -> bool {
         let next = self.state(self.start);
         if !self.pushable(self.start, self.piston_direction, false) {
-            if self.extending && next.block().push_reaction == PushReaction::Destroy {
+            if self.extending && next.block().declared_push_reaction() == PushReaction::Destroy {
                 self.to_destroy.push(self.start);
                 return true;
             }
@@ -268,7 +268,7 @@ impl Resolver<'_> {
             if !self.pushable(pos, self.push, true) || pos == self.piston {
                 return false;
             }
-            if next.block().push_reaction == PushReaction::Destroy {
+            if next.block().declared_push_reaction() == PushReaction::Destroy {
                 self.to_destroy.push(pos);
                 return true;
             }

@@ -13,6 +13,7 @@ macro_rules! items {
 
 items! {
     APPLE = apple,
+    BRICK = brick,
     BRUSH = brush,
     BUCKET = bucket,
     CARROT = carrot,

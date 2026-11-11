@@ -163,7 +163,7 @@ impl ClientWorld {
             return;
         }
         let block = beyond.block();
-        let keeps = block.push_reaction == PushReaction::Normal
+        let keeps = block.declared_push_reaction() == PushReaction::Normal
             || beyond.block == id::PISTON as u16
             || beyond.block == id::STICKY_PISTON as u16;
         let can_draw = b0 == 1

@@ -225,6 +225,7 @@ mod blockstate;
 use blockstate::*;
 mod boat_ticks;
 use boat_ticks::*;
+mod declaration_order;
 mod declarations;
 use declarations::*;
 mod entity_motion;

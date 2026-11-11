@@ -12,8 +12,6 @@ rules! {
         bobber_gravity_is_double: before V26_3,
         /// The dragon head's outline is half a pixel taller than the other heads' (26.3).
         dragon_head_outline_is_tall: since V26_3,
-        /// The resin brick wall is declared solid whatever its shape (26.3).
-        resin_brick_wall_is_forced_solid: since V26_3,
         /// `blocksMotion` is plain solidity (26.3); 26.2 says no for cobweb and bamboo sapling.
         blocks_motion_is_solidity: since V26_3,
         /// The motion blocking heightmap leaves out signs, cobweb and bamboo sapling by its own

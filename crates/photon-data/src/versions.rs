@@ -3,6 +3,8 @@
 
 use photon_core::version::Version;
 
+pub mod block_patches;
+pub mod component_sets;
 pub mod model_layers;
 pub mod v26_1;
 pub mod v26_2;

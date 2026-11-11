@@ -4,6 +4,7 @@
 
 pub mod animations;
 pub mod block;
+pub mod block_older;
 pub mod block_sounds;
 pub mod compost;
 pub mod damage_effects;

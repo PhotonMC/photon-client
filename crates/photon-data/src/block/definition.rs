@@ -131,8 +131,6 @@ pub struct Block {
     pub emissive_rendering: Rule,
     pub suffocating: Rule,
     pub view_blocking: Rule,
-    /// What the view-blocking rule was before 26.3 replaced it with the near plane one.
-    pub view_blocking_before_26_3: Rule,
     pub redstone_conductor: Rule,
     /// The fluid a `LiquidBlock` is made of.
     pub fluid: Fluid,
@@ -178,7 +176,6 @@ impl Block {
             emissive_rendering: Rule::Default,
             suffocating: Rule::Default,
             view_blocking: Rule::Default,
-            view_blocking_before_26_3: Rule::Default,
             redstone_conductor: Rule::Default,
             fluid: Fluid::Empty,
             item: None,
@@ -348,9 +345,6 @@ impl Block {
     }
 
     pub const fn is_view_blocking(mut self, rule: Rule) -> Self {
-        if matches!(rule, Rule::NearPlane) {
-            self.view_blocking_before_26_3 = self.view_blocking;
-        }
         self.view_blocking = rule;
         self
     }

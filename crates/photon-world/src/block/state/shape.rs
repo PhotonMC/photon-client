@@ -295,7 +295,7 @@ pub(super) fn collision_full_block(block: &Block, full_collision: bool) -> bool 
 /// `blocksMotion` reads. A block with a dynamic shape has no cache and so
 /// never counts as solid unless forced.
 pub(super) fn legacy_solid(block: &Block, collision: &VoxelShape) -> bool {
-    if block.force_solid_on && forced_solid_in_version(block) {
+    if block.declared_force_solid_on() {
         return true;
     }
     if block.force_solid_off || block.dynamic_shape {
@@ -336,20 +336,20 @@ pub(super) fn support_shape(
     collision.clone()
 }
 
-/// The block's view-blocking rule in the active version: 26.3's near plane rule replaced what
-/// 26.2 had.
+/// The block's view-blocking rule in the active version: the rule the version declares, where
+/// 26.3's near plane rule is only 26.3's (26.2 derives the answer).
 fn view_blocking_rule(
     block: &photon_data::block::definition::Block,
 ) -> photon_data::block::definition::Rule {
-    if photon_core::versions::rules()
+    use photon_data::block::definition::Rule;
+    let rule = block.declared_view_blocking();
+    let near_plane = photon_core::versions::rules()
         .world
-        .blocks_view_at_near_plane
-    {
-        block.view_blocking
-    } else if block.view_blocking == photon_data::block::definition::Rule::NearPlane {
-        block.view_blocking_before_26_3
+        .blocks_view_at_near_plane;
+    if rule == Rule::NearPlane && !near_plane {
+        Rule::Default
     } else {
-        block.view_blocking
+        rule
     }
 }
 
@@ -358,7 +358,7 @@ fn has_near_plane_rule(block: &photon_data::block::definition::Block) -> bool {
     photon_core::versions::rules()
         .world
         .blocks_view_at_near_plane
-        && block.view_blocking == photon_data::block::definition::Rule::NearPlane
+        && block.declared_view_blocking() == photon_data::block::definition::Rule::NearPlane
 }
 
 /// `blocksMotion` and whether the motion blocking heightmap counts the state. 26.2: cobweb and
@@ -370,13 +370,4 @@ fn motion_facts(solid: bool, index: usize, sign: bool) -> (bool, bool) {
     let blocks_motion = solid && (rules.world.blocks_motion_is_solidity || !web);
     let listed_out = rules.world.motion_heightmap_has_own_list && (sign || web);
     (blocks_motion, blocks_motion && !listed_out)
-}
-
-/// Whether the block's forced solidity holds in the active version: the resin brick wall's is
-/// 26.3's.
-fn forced_solid_in_version(block: &Block) -> bool {
-    photon_core::versions::rules()
-        .world
-        .resin_brick_wall_is_forced_solid
-        || !block.name.ends_with(":resin_brick_wall")
 }

@@ -256,7 +256,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "items": items}));
             }
-            "item_components" => out.push(item_components(label)),
+            "item_components" => out.push(item_components(label)?),
             "tooltip_registries" => out.push(tooltip_registries(label)),
             "potions" => out.push(potions(label)),
             "creative_tabs" => {

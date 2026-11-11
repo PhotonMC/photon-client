@@ -27,4 +27,5 @@ pub use cursor::*;
 mod numbering;
 pub use numbering::*;
 pub mod hash;
+mod pot_decorations;
 pub mod tag;

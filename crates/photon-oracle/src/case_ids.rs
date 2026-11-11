@@ -42,6 +42,11 @@ pub(crate) fn before_26_3() -> bool {
     oracle_version() < Version::V26_3
 }
 
+/// Whether [`oracle_version`] is the newest version.
+pub(crate) fn is_newest() -> bool {
+    oracle_version() == Version::NEWEST
+}
+
 /// The numbering of [`oracle_version`].
 pub(crate) fn registries() -> Arc<VersionRegistries> {
     static REGISTRIES: [OnceLock<Arc<VersionRegistries>>; Version::ALL.len()] =
@@ -220,6 +225,19 @@ pub(crate) fn reference_has_block_class(class: photon_data::block::classes::Bloc
         "ShelfMushroomBlock",
     ];
     !Version::active_before_26_3() || !NEW_IN_26_3.contains(&format!("{class:?}").as_str())
+}
+
+/// Whether [`oracle_version`]'s Java declares `method` on the block class itself: 26.3 gave the
+/// skull its own collision shape (it inherited the shape's before), which only shows in where
+/// the method is declared; the collision is the same shape.
+pub(crate) fn reference_declares(
+    class: photon_data::block::classes::BlockClass,
+    method: photon_data::block::classes::Method,
+) -> bool {
+    use photon_data::block::classes::{BlockClass as C, Method};
+    !(Version::active_before_26_3()
+        && class == C::SkullBlock
+        && method == Method::GetCollisionShape)
 }
 
 /// The asset index file of [`oracle_version`]'s game inside an assets folder: 26.3 moved to

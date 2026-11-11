@@ -253,6 +253,19 @@ struct Rewrite<'a> {
     out: Vec<u8>,
     mark: &'a [u8],
     flag: Flag,
+    pots: Pots,
+}
+
+/// How a rewrite carries the pot decorations component, which 26.3 changed from a list of item
+/// ids to four optional item stack templates (the canonical form).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Pots {
+    /// The bytes have the canonical form, or are not translated.
+    Keep,
+    /// The bytes are an older server's list of item ids: write the templates.
+    ToTemplates,
+    /// The bytes must be the older list, which an older server reads.
+    ToItems,
 }
 
 /// What a rewrite does with the fields only 26.3 and later send (the teleport effect's
@@ -282,7 +295,11 @@ impl<'a> Cursor<'a> {
     }
 
     /// A cursor that renumbers the ids it reads with `map`; [`Self::finish`] gives the bytes.
-    pub fn rewriting(data: &'a [u8], map: &'a dyn Fn(Site, i32) -> i32, flag: Flag) -> Self {
+    pub fn rewriting(
+        data: &'a [u8],
+        map: &'a dyn Fn(Site, i32) -> i32,
+        (flag, pots): (Flag, Pots),
+    ) -> Self {
         Self {
             data,
             rewrite: Some(Rewrite {
@@ -290,6 +307,7 @@ impl<'a> Cursor<'a> {
                 out: Vec::new(),
                 mark: data,
                 flag,
+                pots,
             }),
         }
     }
@@ -376,6 +394,30 @@ impl<'a> Cursor<'a> {
         photon_core::wire::write_varint(mapped, &mut rewrite.out);
         rewrite.mark = self.data;
         Ok(mapped)
+    }
+
+    pub(super) fn pots(&self) -> Pots {
+        self.rewrite
+            .as_ref()
+            .map_or(Pots::Keep, |rewrite| rewrite.pots)
+    }
+
+    /// The id of `site` the rewrite's numbering gives `id`.
+    pub(super) fn mapped(&self, site: Site, id: i32) -> i32 {
+        self.rewrite
+            .as_ref()
+            .map_or(id, |rewrite| (rewrite.map)(site, id))
+    }
+
+    /// Writes `bytes` in place of what the cursor has read since `before`.
+    pub(super) fn replaced(&mut self, before: &[u8], bytes: &[u8]) {
+        if let Some(rewrite) = &mut self.rewrite {
+            rewrite
+                .out
+                .extend_from_slice(&rewrite.mark[..rewrite.mark.len() - before.len()]);
+            rewrite.out.extend_from_slice(bytes);
+            rewrite.mark = self.data;
+        }
     }
 
     /// What `read` passes over, as the bytes it was (renumbered, with a rewrite).

@@ -118,11 +118,8 @@ impl ClientItemStackState {
                 .unwrap_or(0)
         };
         let patch = self.patch();
-        let mut has = usize::try_from(self.item_registry_id.0)
-            .ok()
-            .and_then(|index| crate::item::component_sets::DEFAULT_COMPONENT_SETS.get(index))
-            .copied()
-            .unwrap_or(0);
+        let mut has =
+            usize::try_from(self.item_registry_id.0).map_or(0, crate::versions::component_sets::of);
         let added = patch.added.iter().fold(0, |set, (id, _)| set | bit(*id));
         let removed = patch.removed.iter().fold(0, |set, id| set | bit(*id));
         has = (has | added) & !removed;

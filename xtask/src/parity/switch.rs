@@ -9,10 +9,14 @@ use super::{ADAPTER_TIMEOUT, assets, cases, java};
 
 /// The adapter's answers to `input`, one line each, started as the version `first`.
 fn answers(first: &str, input: &str, stage: &str) -> Result<Vec<String>, String> {
+    for version in crate::parity::pins::versions() {
+        super::fixtures::prepare(&version)?;
+    }
     let mut command =
         std::process::Command::new(process::root().join("target/release/photon-oracle"));
     command.env("PHOTON_ASSETS", assets(first));
     command.env("PHOTON_ORACLE_VERSION", first);
+    command.env("PHOTON_PARITY_FIXTURES", super::fixtures::dir());
     let raw = java::run_with_timeout(command, input, ADAPTER_TIMEOUT)
         .map_err(|error| format!("Rust adapter ({stage}): {error}"))?;
     Ok(raw.lines().map(str::to_owned).collect())

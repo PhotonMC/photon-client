@@ -156,12 +156,7 @@ impl Cursor<'_> {
                 })?;
                 cursor.varint().map(|_| ())
             }),
-            ids::POT_DECORATIONS => {
-                for _ in 0..4 {
-                    self.optional(Cursor::template)?;
-                }
-                Ok(())
-            }
+            ids::POT_DECORATIONS => self.pot_decorations(),
             ids::CONTAINER => self.list(|cursor| cursor.optional(Cursor::template)),
             ids::BLOCK_STATE => self.list(|cursor| {
                 cursor.string()?;

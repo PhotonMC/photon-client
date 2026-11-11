@@ -260,10 +260,8 @@ fn describe_tool(tool: &photon_data::item::definition::Tool) -> Value {
 
 /// The item classes [`crate::case_ids::oracle_version`]'s Java has, in its order.
 fn item_classes() -> Vec<Value> {
-    use photon_data::item::classes::ItemClass;
-    ItemClass::ALL
+    crate::declaration_order::item_classes(crate::case_ids::items())
         .iter()
-        .filter(|class| crate::case_ids::reference_has_class(**class))
         .map(|class| {
             let declares: Vec<String> = class
                 .declares()
@@ -282,6 +280,27 @@ fn item_classes() -> Vec<Value> {
             })
         })
         .collect()
+}
+
+/// What burns in a furnace or a brewing stand. 26.3 keeps it as a component of the item, and the
+/// ingredients a stand takes come from the server's recipes; before, the oracle's Java reads the
+/// client's own fuel and ingredient lists.
+fn describe_fuel(item: &photon_data::item::definition::Item, described: &mut Value) {
+    if crate::case_ids::before_26_3() {
+        if item.brewing_ingredient {
+            described["brewing_ingredient"] = json!(true);
+        }
+        if item.burn_time > 0 {
+            described["burn_time"] = json!(item.burn_time);
+        }
+        return;
+    }
+    if item.burn_time > 0 {
+        described["cooking_fuel"] = json!(true);
+    }
+    if item.name == "minecraft:blaze_powder" {
+        described["brewing_fuel"] = json!(true);
+    }
 }
 
 /// The component types of the oracle's version, in its registry order.
@@ -325,14 +344,7 @@ pub(super) fn item_declarations(label: &str) -> Value {
             if let Some(tool) = item.tool {
                 described["tool"] = describe_tool(tool);
             }
-            // The newest version keeps what burns as a component of the item, and the
-            // ingredients a brewing stand takes come from the server's recipes.
-            if item.burn_time > 0 {
-                described["cooking_fuel"] = json!(true);
-            }
-            if item.name == "minecraft:blaze_powder" {
-                described["brewing_fuel"] = json!(true);
-            }
+            describe_fuel(item, &mut described);
             if let Some(block) = item.block {
                 described["block"] = json!(block);
             }

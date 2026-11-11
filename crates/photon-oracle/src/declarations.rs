@@ -1,4 +1,5 @@
 use super::*;
+use photon_data::block::classes::{BlockClass, BlockInterface};
 
 /// `block_declarations`: the declarations as the oracle describes them.
 /// Whether each state of a block blocks the view, for the declarations.
@@ -16,85 +17,60 @@ fn view_blocking(
         .collect()
 }
 
-/// Lists the view blocking of the block's states where its declarations do.
+/// Lists the view blocking of the block's states where its declarations do: the newest version
+/// lists every block's, an older version only the blocks that name a rule.
 fn insert_view_blocking(
     per_state: &mut serde_json::Map<String, Value>,
     block: &photon_data::block::registry::Block,
     states: &photon_world::block::state::States,
 ) {
-    if !lists_view_blocking(block) {
-        return;
+    if crate::case_ids::is_newest() || block.names_view_blocking() {
+        per_state.insert("isViewBlocking".into(), json!(view_blocking(block, states)));
     }
-    let name = block.name.strip_prefix("minecraft:").unwrap_or(block.name);
-    let values = if crate::case_ids::before_26_3() && LEGACY_VIEW_BLOCKING.contains(&name) {
-        // Their 26.2 declarations name the answer for every state.
-        let always = ["farmland", "soul_sand", "dirt_path", "mud"].contains(&name);
-        vec![always; block.state_count() as usize]
-    } else {
-        view_blocking(block, states)
-    };
-    per_state.insert("isViewBlocking".into(), json!(values));
 }
 
-/// Blocks whose 26.2 declaration names a view blocking rule the newest version derives instead.
-const LEGACY_VIEW_BLOCKING: [&str; 13] = [
-    "mangrove_roots",
-    "cherry_leaves",
-    "pale_oak_leaves",
-    "glass",
-    "moving_piston",
-    "farmland",
-    "soul_sand",
-    "dirt_path",
-    "test_instance_block",
-    "tinted_glass",
-    "mud",
-    "trial_spawner",
-    "vault",
-];
-
-/// Whether the block's declarations list a view blocking rule: 26.3 lists every block's, earlier
-/// versions only an explicit one.
-fn lists_view_blocking(block: &photon_data::block::registry::Block) -> bool {
-    let name = block.name.strip_prefix("minecraft:").unwrap_or(block.name);
-    !crate::case_ids::before_26_3()
-        || LEGACY_VIEW_BLOCKING.contains(&name)
-        || !matches!(
-            block.view_blocking,
-            photon_data::block::definition::Rule::Default
-                | photon_data::block::definition::Rule::NearPlane
-        )
+/// A class the reference lacks is folded into its child: the child hangs from the missing
+/// class's parent and declares what it declared. The classes folded into `class` (itself last)
+/// and the class it hangs from.
+fn folded(class: photon_data::block::classes::BlockClass) -> (Vec<BlockClass>, Option<BlockClass>) {
+    let mut folded = vec![class];
+    let mut above = class.parent();
+    while let Some(candidate) = above.filter(|c| !crate::case_ids::reference_has_block_class(*c)) {
+        folded.push(candidate);
+        above = candidate.parent();
+    }
+    (folded, above)
 }
 
-/// The block classes with their parent, interfaces and declared methods.
-fn class_declarations() -> Vec<Value> {
-    use photon_data::block::classes::BlockClass;
-    BlockClass::ALL
+/// The interfaces `class` implements as the reference's own class does.
+fn class_interfaces(class: BlockClass) -> Vec<BlockInterface> {
+    let (folded, _) = folded(class);
+    folded
         .iter()
-        .filter(|class| crate::case_ids::reference_has_block_class(**class))
+        .rev()
+        .flat_map(|class| class.interfaces().iter().copied())
+        .collect()
+}
+
+/// The block classes, in the order the reference meets them, with their parent, interfaces and
+/// declared methods; and the interfaces in the order it lists them.
+fn class_declarations() -> (Vec<Value>, Vec<BlockInterface>) {
+    let order = crate::declaration_order::classes(crate::case_ids::blocks());
+    let classes = order
+        .iter()
         .map(|class| {
-            // A class the reference lacks is folded into its child: the child hangs from the
-            // missing class's parent and declares what it declared.
-            let mut folded = vec![*class];
-            let mut above = class.parent();
-            while let Some(candidate) =
-                above.filter(|c| !crate::case_ids::reference_has_block_class(*c))
-            {
-                folded.push(candidate);
-                above = candidate.parent();
-            }
+            let (folded, above) = folded(*class);
             let parent = above.map_or(String::new(), crate::case_ids::reference_class_name);
-            let interfaces: Vec<String> = folded
+            let interfaces: Vec<String> = class_interfaces(*class)
                 .iter()
-                .rev()
-                .flat_map(|class| class.interfaces().iter())
                 .map(|interface| format!("{interface:?}"))
                 .collect();
             let declares: Vec<String> = folded
                 .iter()
                 .rev()
-                .flat_map(|class| class.declares().iter())
-                .map(|method| {
+                .flat_map(|class| class.declares().iter().map(move |method| (*class, *method)))
+                .filter(|(class, method)| crate::case_ids::reference_declares(*class, *method))
+                .map(|(_, method)| {
                     let name = format!("{method:?}");
                     name[..1].to_lowercase() + &name[1..]
                 })
@@ -106,16 +82,17 @@ fn class_declarations() -> Vec<Value> {
                 "declares": declares,
             })
         })
-        .collect()
+        .collect();
+    let per_class: Vec<Vec<BlockInterface>> = order.iter().map(|c| class_interfaces(*c)).collect();
+    (classes, crate::declaration_order::interfaces(&per_class))
 }
 
 pub(super) fn block_declarations(label: &str) -> Value {
-    use photon_data::block::classes::BlockClass;
     use photon_data::block::definition::{Emission, Fluid, Rule};
     use photon_data::block::properties::FIELDS;
     use photon_data::block::registry::{self, PropertyKind};
-    let classes = class_declarations();
-    let interfaces: Vec<Value> = photon_data::block::classes::BlockInterface::ALL
+    let (classes, listed_interfaces) = class_declarations();
+    let interfaces: Vec<Value> = listed_interfaces
         .iter()
         .map(|interface| {
             let parents: Vec<String> = interface
@@ -126,8 +103,8 @@ pub(super) fn block_declarations(label: &str) -> Value {
             json!({"name": format!("{interface:?}"), "parents": parents})
         })
         .collect();
-    let properties: Vec<Value> = FIELDS
-        .iter()
+    let properties: Vec<Value> = crate::declaration_order::properties(crate::case_ids::blocks())
+        .into_iter()
         .map(|(field, property)| {
             json!({
                 "field": field,
@@ -226,12 +203,14 @@ pub(super) fn face_occlusion(label: &str) -> Result<Value, String> {
             .get(block.state_at(offset))
             .expect("a registry state")
     };
+    // The reference numbers partial faces by first meeting, walking its own registry.
+    let mut numbers = crate::declaration_order::FaceNumbers::new();
     let mut tuples: Vec<[u16; 6]> = Vec::new();
     let mut blocks = Vec::new();
     for block in crate::case_ids::blocks() {
         let per_state: Vec<usize> = (0..block.state_count())
             .map(|offset| {
-                let faces = info(block, offset).faces;
+                let faces = info(block, offset).faces.map(|face| numbers.number(face));
                 tuples
                     .iter()
                     .position(|tuple| *tuple == faces)
@@ -248,18 +227,9 @@ pub(super) fn face_occlusion(label: &str) -> Result<Value, String> {
         };
         blocks.push(json!({"name": block.name, "tuples": listed}));
     }
-    let count = states.faces().len();
-    let matrix = |test: &dyn Fn(u16, u16) -> bool| -> Vec<String> {
-        (0..count as u16)
-            .map(|shape| {
-                (0..count as u16)
-                    .map(|occluder| if test(shape, occluder) { '1' } else { '0' })
-                    .collect()
-            })
-            .collect()
-    };
-    let joins = matrix(&|shape, occluder| states.joins(shape, occluder));
-    let covers = matrix(&|shape, occluder| states.covers(shape, occluder));
+    let count = numbers.count();
+    let joins = numbers.table(&|shape, occluder| states.joins(shape, occluder));
+    let covers = numbers.table(&|shape, occluder| states.covers(shape, occluder));
     let mut skips = Vec::new();
     for block in crate::case_ids::blocks() {
         let own = info(block, block.default_offset());
@@ -386,34 +356,11 @@ pub(super) fn vanilla_tags_of(
     )]))
 }
 
-/// Whether the reference declares the block as forced solid: the resin brick wall only
-/// does from 26.3.
-fn force_solid_on(block: &photon_data::block::definition::Block) -> bool {
-    block.force_solid_on
-        && !(crate::case_ids::before_26_3() && block.name.ends_with(":resin_brick_wall"))
-}
-
-/// The blast resistance the reference declares: before 26.3 three slabs set their own 6.0
-/// where the newest version copies their block's.
-fn explosion_resistance(block: &photon_data::block::definition::Block) -> f32 {
-    let own = [
-        "quartz_slab",
-        "red_sandstone_slab",
-        "cut_red_sandstone_slab",
-    ];
-    let name = block.name.strip_prefix("minecraft:").unwrap_or(block.name);
-    if crate::case_ids::before_26_3() && own.contains(&name) {
-        6.0
-    } else {
-        block.explosion_resistance
-    }
-}
-
 /// The `Properties` a block declares, as the reference's own fields read back.
 fn declared(block: &photon_data::block::definition::Block) -> Value {
     json!({
         "destroyTime": bits(block.destroy_time),
-        "explosionResistance": bits(explosion_resistance(block)),
+        "explosionResistance": bits(block.declared_explosion_resistance()),
         "friction": bits(block.friction),
         "speedFactor": bits(block.speed_factor),
         "jumpFactor": bits(block.jump_factor),
@@ -426,7 +373,7 @@ fn declared(block: &photon_data::block::definition::Block) -> Value {
         "ignitedByLava": block.ignited_by_lava,
         "liquid": block.liquid,
         "forceSolidOff": block.force_solid_off,
-        "forceSolidOn": force_solid_on(block),
+        "forceSolidOn": block.declared_force_solid_on(),
         "spawnTerrainParticles": block.spawn_terrain_particles,
         "replaceable": block.replaceable,
         "dynamicShape": block.dynamic_shape,
@@ -445,8 +392,7 @@ pub(crate) fn bits(value: f32) -> String {
     format!("{:08x}", value.to_bits())
 }
 
-/// The name the oracle's Java gives a block's push reaction: 26.3 renamed all five, and moved
-/// the pistons' list of unmovable blocks into the blocks.
+/// The name the oracle's Java gives a block's push reaction: 26.3 renamed all five.
 fn push_reaction_name(block: &photon_data::block::registry::Block) -> &'static str {
     use photon_data::block::definition::PushReaction;
     const NAMES: [(PushReaction, &str, &str); 5] = [
@@ -456,20 +402,14 @@ fn push_reaction_name(block: &photon_data::block::registry::Block) -> &'static s
         (PushReaction::Ignore, "IGNORE_ENTITY", "IGNORE"),
         (PushReaction::PushOnly, "PUSH", "PUSH_ONLY"),
     ];
-    let before = crate::case_ids::before_26_3();
-    let hard_coded = [
-        "obsidian",
-        "crying_obsidian",
-        "respawn_anchor",
-        "reinforced_deepslate",
-    ];
-    let reaction = match block.name.strip_prefix("minecraft:") {
-        Some(name) if before && hard_coded.contains(&name) => PushReaction::Normal,
-        _ => block.push_reaction,
-    };
+    let reaction = block.declared_push_reaction();
     let (_, newest, oldest) = NAMES
         .iter()
         .find(|(kind, ..)| *kind == reaction)
         .expect("a reaction");
-    if before { oldest } else { newest }
+    if crate::case_ids::before_26_3() {
+        oldest
+    } else {
+        newest
+    }
 }

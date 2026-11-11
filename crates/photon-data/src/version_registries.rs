@@ -285,6 +285,12 @@ impl VersionRegistries {
         self.version >= Version::V26_3
     }
 
+    /// Whether the pot decorations component carries each side as an optional item stack
+    /// template (26.3 and later) instead of a list of item ids with the brick standing for none.
+    pub fn has_pot_decoration_templates(&self) -> bool {
+        self.version >= Version::V26_3
+    }
+
     /// Whether bit sets travel as byte arrays (the light masks and a chat filter mask, 26.3 and
     /// later) instead of arrays of longs.
     pub fn has_byte_bit_sets(&self) -> bool {
@@ -359,6 +365,12 @@ impl VersionRegistries {
 /// Whether the active version registers the item component type of canonical id `id`.
 pub fn component_registered(id: i32) -> bool {
     crate::item::component_types::exists_in(id, photon_core::version::Version::active())
+}
+
+/// The component types the item of canonical id `index` has of its own in the active version, as
+/// a set of canonical type ids.
+pub fn default_component_set(index: usize) -> u128 {
+    versions::component_sets::of(index)
 }
 
 /// The runs of creative tab stacks `version` orders unlike the tables, each in its own order.

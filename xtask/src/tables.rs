@@ -9,7 +9,9 @@
 //! fails on a difference, so a table that drifted from its generator is caught; the parity
 //! families keep comparing the tables with the reference.
 
-mod capture;
+mod block_older;
+pub(crate) mod capture;
+mod component_sets;
 mod compost;
 mod entity_models;
 mod text;
@@ -36,8 +38,16 @@ struct Table {
 
 const TABLES: &[Table] = &[
     Table {
+        path: "crates/photon-data/src/tables/block_older.rs",
+        render: block_older::render,
+    },
+    Table {
         path: "crates/photon-data/src/tables/compost.rs",
         render: compost::render,
+    },
+    Table {
+        path: "crates/photon-data/src/tables/item/component_sets_older.rs",
+        render: component_sets::render,
     },
     Table {
         path: "crates/photon-data/src/tables/entity_models.rs",

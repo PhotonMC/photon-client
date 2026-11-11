@@ -60,9 +60,25 @@ impl<'a> Numbering<'a> {
         }
     }
 
+    /// How the version carries the pot decorations component.
+    fn pots(&self) -> Pots {
+        if self.registries.has_pot_decoration_templates() {
+            Pots::Keep
+        } else if self.outgoing {
+            Pots::ToItems
+        } else {
+            Pots::ToTemplates
+        }
+    }
+
+    /// What a rewrite does with the fields and layouts the versions differ in.
+    fn layout(&self) -> (Flag, Pots) {
+        (self.flag(), self.pots())
+    }
+
     /// Whether no id this reads changes, so the bytes can stay as they are.
     pub fn is_identity(&self) -> bool {
-        self.flag() == Flag::Keep
+        self.layout() == (Flag::Keep, Pots::Keep)
             && [
                 Site::ComponentType,
                 Site::Attribute,
@@ -85,7 +101,7 @@ pub fn read_wire_patch(input: &mut &[u8], registries: &VersionRegistries) -> R<P
     }
     let map = |site, id| numbering.map(site, id);
     let data: &[u8] = input;
-    let mut cursor = Cursor::rewriting(data, &map, numbering.flag());
+    let mut cursor = Cursor::rewriting(data, &map, numbering.layout());
     let patch = cursor.patch()?;
     let left = cursor.data.len();
     *input = &data[data.len() - left..];
@@ -110,14 +126,16 @@ impl Patch {
         Some(self.renumbered(numbering)?.write(false))
     }
 
-    fn renumbered(&self, numbering: &Numbering<'_>) -> Option<Patch> {
+    /// The patch with every id, its component types included, numbered as `numbering` has it;
+    /// `None` when a value is not one this reads.
+    pub fn renumbered(&self, numbering: &Numbering<'_>) -> Option<Patch> {
         let map = |site, id| numbering.map(site, id);
         let mut wire = Patch {
             added: Vec::new(),
             removed: Vec::new(),
         };
         for (id, value) in &self.added {
-            let mut cursor = Cursor::rewriting(value, &map, numbering.flag());
+            let mut cursor = Cursor::rewriting(value, &map, numbering.layout());
             cursor.component(*id).ok()?;
             if !cursor.data.is_empty() {
                 return None;

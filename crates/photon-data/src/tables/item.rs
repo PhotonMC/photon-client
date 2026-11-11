@@ -3,6 +3,7 @@
 pub mod attributes;
 pub mod classes;
 pub mod component_sets;
+pub mod component_sets_older;
 pub mod component_types;
 pub mod creative_tabs;
 pub mod items;
