@@ -527,5 +527,6 @@ pub(super) fn share_registries(
             .collect(),
     );
     session.set_instruments(photon_game::item::instrument::instruments_of(registries));
+    session.set_block_transformers(&registries.block_transformers);
     particles.set_jukebox_songs(registries);
 }

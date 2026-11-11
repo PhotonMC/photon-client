@@ -46,6 +46,8 @@ pub struct Held {
     pub lectern_book: bool,
     /// A stack the campfire cooks (`RecipePropertySet.CAMPFIRE_INPUT`).
     pub campfire_input: bool,
+    /// `ItemTags.DOUSES_CAMPFIRES`.
+    pub douses_campfires: bool,
     /// A stack with the `jukebox_playable` component.
     pub record: bool,
     /// The name of a candle item (`ItemTags.CANDLES`).
@@ -101,6 +103,8 @@ pub struct ItemOn {
     /// A bottle of honey is taken: the stack shrinks whatever the game mode, the bottle fill is
     /// heard and the honey goes to the hand or the inventory.
     pub honey: bool,
+    /// A lit campfire is put out: the client shows its smoke (`CampfireBlock.douse`).
+    pub dowse: bool,
 }
 
 impl ItemOn {
@@ -110,6 +114,7 @@ impl ItemOn {
             write: None,
             shrink: false,
             honey: false,
+            dowse: false,
         }
     }
 
@@ -119,6 +124,7 @@ impl ItemOn {
             write: state.map(|state| Write { pos, state, flags }),
             shrink,
             honey: false,
+            dowse: false,
         }
     }
 }
@@ -297,10 +303,20 @@ fn candle_cake(use_: &Use) -> Option<ItemOn> {
     empty_hand()
 }
 
-/// `CampfireBlock`: food is placed on the server.
+/// `CampfireBlock`: food is placed on the server; an item that douses campfires puts a lit one
+/// out (26.3; before, the shovel's own `useOn` did).
 fn campfire(use_: &Use) -> Option<ItemOn> {
     if use_.user.block_entity && use_.held.campfire_input {
         return Some(ItemOn::answer(SERVER));
+    }
+    if photon_core::versions::rules().game.campfire_douses_by_tag
+        && use_.held.douses_campfires
+        && is(use_, "lit", "true")
+    {
+        let mut doused = unlit(use_);
+        doused.write = doused.write.map(|write| Write { flags: 3, ..write });
+        doused.dowse = true;
+        return Some(doused);
     }
     empty_hand()
 }

@@ -24,6 +24,7 @@ mod solid_bucket;
 mod spawn_egg;
 mod stepping;
 mod throwing;
+mod tools;
 mod utility;
 
 use serde_json::{Value, json};
@@ -297,6 +298,7 @@ pub fn cases() -> Vec<Value> {
                 bone_meal::rows(),
                 spawn_egg::rows(),
                 frames::rows(),
+                tools::rows(),
             ]
             .concat(),
         ),

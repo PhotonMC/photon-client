@@ -96,6 +96,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
             setField(minecraft, "blockColors", net.minecraft.client.color.block.BlockColors.createDefault());
             setField(level, "levelExtractor", unsafe.allocateInstance(NoRebuilds.class));
             setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+            // A campfire asks the level's recipes whether the held item cooks; none are sent.
+            setField(listener, "recipes", new net.minecraft.client.multiplayer.ClientRecipeContainer(
+                java.util.Map.of(), net.minecraft.world.item.crafting.SelectableRecipe.SingleInputSet.empty()));
             var breaking_ = row.getAsJsonObject("breaking");
             if (breaking_.has("main_hand")) {
                 var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(

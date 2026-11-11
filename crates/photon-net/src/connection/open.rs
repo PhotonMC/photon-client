@@ -276,19 +276,7 @@ pub fn configure_connection(
                     .entry(packet.registry.as_string())
                     .or_default()
                     .extend(packet.entries.iter().map(|entry| entry.id.as_string()));
-                if packet.registry.as_string() == "minecraft:dialog" {
-                    state
-                        .dialog_registry
-                        .extend(packet.entries.iter().map(|entry| {
-                            entry
-                                .data
-                                .as_ref()
-                                .and_then(photon_game::dialog::Dialog::from_nbt)
-                        }));
-                }
-                if packet.registry.as_string() == "minecraft:dimension_type" {
-                    state.note_dimension_types(packet.entries)?;
-                }
+                state.note_registry_entries(packet)?;
             }
             CONFIG_UPDATE_TAGS_PACKET_ID => {
                 let mut input = payload;

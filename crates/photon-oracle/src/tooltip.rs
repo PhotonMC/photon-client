@@ -121,7 +121,7 @@ pub(super) fn component_json(component: &photon_data::item::component::Component
                 .map(|(name, level)| ((*name).to_owned(), json!(level)))
                 .collect(),
         ),
-        Component::PaintingVariant(name) => json!(name),
+        Component::PaintingVariant(name) | Component::BlockTransformer(name) => json!(name),
         Component::SuspiciousStewEffects(effects) => Value::Array(
             effects
                 .iter()

@@ -345,32 +345,34 @@ pub(super) fn hold_main_hand(
     Ok(())
 }
 
-/// The instruments of the vanilla data pack, by registry id.
-pub(super) fn vanilla_instruments() -> Vec<Option<photon_game::item::instrument::Instrument>> {
-    let data_root = crate::jar_root().join("data");
-    photon_game::item::instrument::instruments_of(&photon_game::registries::Registries::vanilla(
-        &data_root,
-    ))
+/// What the game reads from the registries of the vanilla data pack, each by registry id.
+pub(super) struct VanillaRegistries {
+    pub instruments: Vec<Option<photon_game::item::instrument::Instrument>>,
+    /// Which enchantments carry the trident spin attack effect.
+    pub spin_attack: Vec<Option<photon_game::registries::SpinStrength>>,
+    /// Which enchantments carry the prevent armor change effect.
+    pub prevents_armor_change: Vec<bool>,
+    pub block_transformers: Vec<photon_game::block_transformer::Transformer>,
 }
 
-/// Which enchantments of the vanilla data pack carry the trident spin attack effect, by registry id.
-pub(super) fn vanilla_spin_attack() -> Vec<Option<photon_game::registries::SpinStrength>> {
-    let data_root = crate::jar_root().join("data");
-    photon_game::registries::Registries::vanilla(&data_root)
-        .enchantments
-        .iter()
-        .map(|entry| entry.trident_spin_attack)
-        .collect()
-}
-
-/// Which enchantments of the vanilla data pack stop armor from being taken off, by registry id.
-pub(super) fn vanilla_prevents_armor_change() -> Vec<bool> {
-    let data_root = crate::jar_root().join("data");
-    photon_game::registries::Registries::vanilla(&data_root)
-        .enchantments
-        .iter()
-        .map(|entry| entry.prevents_armor_change)
-        .collect()
+impl VanillaRegistries {
+    pub(super) fn load() -> Self {
+        let data_root = crate::jar_root().join("data");
+        let registries = photon_game::registries::Registries::vanilla(&data_root);
+        let enchantments = &registries.enchantments;
+        Self {
+            instruments: photon_game::item::instrument::instruments_of(&registries),
+            spin_attack: enchantments
+                .iter()
+                .map(|entry| entry.trident_spin_attack)
+                .collect(),
+            prevents_armor_change: enchantments
+                .iter()
+                .map(|entry| entry.prevents_armor_change)
+                .collect(),
+            block_transformers: registries.block_transformers,
+        }
+    }
 }
 
 /// The entity events a tick brings to the player: a damage event, the death event and the end of

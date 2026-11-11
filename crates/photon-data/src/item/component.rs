@@ -91,4 +91,6 @@ pub enum Component {
     BannerPatterns(&'static [(&'static str, &'static str)]),
     /// A tooltip that hides none but the named components.
     TooltipDisplay(&'static [&'static str]),
+    /// `block_transformer` (26.3): a block transformer, by registry name.
+    BlockTransformer(&'static str),
 }

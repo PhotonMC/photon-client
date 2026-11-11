@@ -17,6 +17,7 @@ pub const RARITY: i64 = 12;
 pub const ENCHANTMENTS: i64 = 13;
 pub const CAN_PLACE_ON: i64 = 14;
 pub const CAN_BREAK: i64 = 15;
+pub const BLOCK_TRANSFORMER: i64 = 43;
 pub const REPAIR_COST: i64 = 19;
 pub const GLINT: i64 = 21;
 pub const STORED_ENCHANTMENTS: i64 = 45;

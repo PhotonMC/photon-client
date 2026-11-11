@@ -98,8 +98,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
         .as_array()
         .ok_or("movement rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
-    let (instruments, spin_attack) = (vanilla_instruments(), vanilla_spin_attack());
-    let prevents_armor_change = vanilla_prevents_armor_change();
+    let vanilla = movement_gear::VanillaRegistries::load();
     for row in rows {
         let label = string(row, "label")?;
         let mut world = particles::sky_world(row)?;
@@ -285,9 +284,10 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     mode: game_mode_of_row,
                     selected_slot: 0,
                     cooldowns: &mut cooldowns,
-                    instruments: &instruments,
-                    spin_attack: &spin_attack,
-                    prevents_armor_change: &prevents_armor_change,
+                    instruments: &vanilla.instruments,
+                    block_transformers: &vanilla.block_transformers,
+                    spin_attack: &vanilla.spin_attack,
+                    prevents_armor_change: &vanilla.prevents_armor_change,
                     // The reference's level is built peaceful.
                     difficulty: 0,
                     game_master: false,

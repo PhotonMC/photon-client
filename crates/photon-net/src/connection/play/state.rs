@@ -268,6 +268,30 @@ impl PlaySession {
         self.local.instruments = std::sync::Arc::new(instruments);
     }
 
+    /// The block transformers (26.3): each entry the server named, with its own data where it
+    /// sent some and the game's (`from_data`, by registry id) where it left it to a known pack.
+    pub fn set_block_transformers(
+        &mut self,
+        from_data: &[photon_game::block_transformer::Transformer],
+    ) {
+        let names = self.registry_names(photon_game::block_transformer::REGISTRY);
+        let merged = (0..names.len())
+            .map(|id| {
+                self.state
+                    .block_transformer_registry
+                    .get(id)
+                    .cloned()
+                    .flatten()
+                    .or_else(|| from_data.get(id).cloned())
+                    .unwrap_or_else(|| photon_game::block_transformer::Transformer {
+                        name: names[id].clone(),
+                        transforms: None,
+                    })
+            })
+            .collect();
+        self.local.block_transformers = std::sync::Arc::new(merged);
+    }
+
     /// The numbering of the version the connection speaks.
     pub fn versions(&self) -> &std::sync::Arc<VersionRegistries> {
         &self.registries

@@ -1,6 +1,7 @@
 //! Items, menus and the player's actions, built on the client's world copy.
 
 pub mod advancements;
+pub mod block_transformer;
 pub use photon_core::chat;
 pub mod chat_abilities;
 pub use photon_core::commands;

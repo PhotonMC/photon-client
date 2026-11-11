@@ -45,6 +45,9 @@ pub struct ConnectionState {
     /// The dialog registry's entries, in network order; one without data (a known pack's own) is
     /// `None`.
     pub dialog_registry: Vec<Option<photon_game::dialog::Dialog>>,
+    /// The block transformer registry's entries, in network order: the server's own where it
+    /// sent data, `None` for one a known pack leaves to the game's data.
+    pub block_transformer_registry: Vec<Option<photon_game::block_transformer::Transformer>>,
     pub dimension_type_registry_bounds: Vec<Option<DimensionBounds>>,
     /// The names of the dimension type registry's entries, in network order.
     pub dimension_type_names: Vec<String>,
@@ -116,6 +119,38 @@ impl ConnectionState {
 }
 
 impl ConnectionState {
+    /// What a registry data packet's entries tell the game: the dialogs, the block transformers
+    /// and the dimension types are kept in their own form.
+    pub(super) fn note_registry_entries(
+        &mut self,
+        packet: photon_protocol::registry_data::ClientboundRegistryDataPacket,
+    ) -> Result<(), super::ConnectionError> {
+        let registry = packet.registry.as_string();
+        if registry == "minecraft:dialog" {
+            self.dialog_registry
+                .extend(packet.entries.iter().map(|entry| {
+                    entry
+                        .data
+                        .as_ref()
+                        .and_then(photon_game::dialog::Dialog::from_nbt)
+                }));
+        } else if registry == photon_game::block_transformer::REGISTRY {
+            self.block_transformer_registry
+                .extend(packet.entries.iter().map(|entry| {
+                    entry
+                        .data
+                        .as_ref()
+                        .map(|data| photon_game::block_transformer::Transformer {
+                            name: entry.id.as_string(),
+                            transforms: photon_game::block_transformer::from_nbt(data),
+                        })
+                }));
+        } else if registry == "minecraft:dimension_type" {
+            self.note_dimension_types(packet.entries)?;
+        }
+        Ok(())
+    }
+
     /// What the dimension type registry's entries tell: their names, vertical extents and light.
     pub(super) fn note_dimension_types(
         &mut self,

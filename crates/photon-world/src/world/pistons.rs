@@ -534,11 +534,7 @@ impl ClientWorld {
     }
 
     /// `Block.updateFromNeighbourShapes`: the state as the blocks about it shape it.
-    pub(crate) fn update_from_neighbour_shapes(
-        &self,
-        state: BlockStateId,
-        pos: Pos,
-    ) -> BlockStateId {
+    pub fn update_from_neighbour_shapes(&self, state: BlockStateId, pos: Pos) -> BlockStateId {
         let read = |x: i32, y: i32, z: i32| self.block_state_or_air(x, y, z);
         let mut shaped = state;
         for direction in SHAPE_ORDER {

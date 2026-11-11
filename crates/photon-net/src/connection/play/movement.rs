@@ -20,6 +20,7 @@ impl PlaySession {
             player.set_hand_state(hands);
         }
         let instruments = self.local.instruments.clone();
+        let block_transformers = self.local.block_transformers.clone();
         let spin_attack = self.local.spin_attack.clone();
         let prevents_armor_change = self.local.prevents_armor_change.clone();
         let mut ctx = Context {
@@ -30,6 +31,7 @@ impl PlaySession {
             selected_slot: self.local.status.selected_slot,
             cooldowns: &mut self.local.item_cooldowns,
             instruments: &instruments,
+            block_transformers: &block_transformers,
             spin_attack: &spin_attack,
             prevents_armor_change: &prevents_armor_change,
             difficulty: self.local.difficulty,

@@ -69,6 +69,8 @@ pub struct Context<'a> {
     pub spin_attack: &'a [Option<crate::registries::SpinStrength>],
     /// Whether each enchantment of the registry, by id, has the prevent armor change effect.
     pub prevents_armor_change: &'a [bool],
+    /// The block transformers of the registry, by id (`block_transformer`, 26.3).
+    pub block_transformers: &'a [crate::block_transformer::Transformer],
     /// The level's difficulty, 0 (peaceful) to 3 (hard).
     pub difficulty: u8,
     /// The permission level is at least game master (`COMMANDS_GAMEMASTER`).

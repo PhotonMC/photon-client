@@ -39,5 +39,13 @@ rules! {
         /// A trade's result can be taken only while the payments satisfy the active offer, in
         /// either order (26.3); before, a result in the slot could always be picked up.
         merchant_result_needs_payment: since V26_3,
+        /// An axe, hoe or shovel changes the block it is used on by the `block_transformer`
+        /// component of its stack, a patch counting (26.3); before, the item classes carry
+        /// the tables themselves.
+        tools_transform_by_component: since V26_3,
+        /// A lit campfire is doused by what the `douses_campfires` tag lists, through the
+        /// block's own `useItemOn` and for any face (26.3); before, only the shovel's
+        /// `useOn` did, not on the bottom face.
+        campfire_douses_by_tag: since V26_3,
     }
 }

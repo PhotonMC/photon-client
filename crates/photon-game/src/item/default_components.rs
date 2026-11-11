@@ -127,6 +127,29 @@ fn holder(names: impl Iterator<Item = String>, wanted: &str, out: &mut Vec<u8>) 
     Some(())
 }
 
+/// `block_transformer`: the entry's place in the registry, written as it is (a registry holder
+/// has no direct form, so no offset). Its type id.
+fn block_transformer(name: &str, registries: &Registries, out: &mut Vec<u8>) -> Option<i32> {
+    let place = registries
+        .block_transformers
+        .iter()
+        .position(|entry| entry.name == name)?;
+    write_varint(place as i32, out);
+    Some(ids::BLOCK_TRANSFORMER)
+}
+
+/// The components that need no more than their value: a number, a flag or one registry entry.
+fn value_only(
+    component: &Component,
+    registries: Option<&Registries>,
+    out: &mut Vec<u8>,
+) -> Option<i32> {
+    match component {
+        Component::BlockTransformer(name) => block_transformer(name, registries?, out),
+        _ => scalar(component, out),
+    }
+}
+
 /// The components whose value is a number or a flag: their type id, the value written to `out`.
 fn scalar(component: &Component, out: &mut Vec<u8>) -> Option<i32> {
     Some(match component {
@@ -166,7 +189,7 @@ fn scalar(component: &Component, out: &mut Vec<u8>) -> Option<i32> {
 /// entry of a registry that is not known.
 pub fn encode(component: &Component, registries: Option<&Registries>) -> Option<(i32, Vec<u8>)> {
     let mut out = Vec::new();
-    if let Some(id) = scalar(component, &mut out) {
+    if let Some(id) = value_only(component, registries, &mut out) {
         return Some((id, out));
     }
     let id = match component {
@@ -293,7 +316,7 @@ pub fn encode(component: &Component, registries: Option<&Registries>) -> Option<
             }
             ids::TOOLTIP_DISPLAY
         }
-        // Written by `scalar`.
+        // Written by `value_only`.
         _ => return None,
     };
     Some((id, out))

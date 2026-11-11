@@ -8,6 +8,7 @@ pub(crate) mod entity;
 pub mod fire;
 pub mod menu_provider;
 pub mod multiface;
+pub mod named_state;
 pub(crate) mod piston;
 pub mod registry;
 pub mod rules;

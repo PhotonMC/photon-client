@@ -11,6 +11,9 @@ use photon_world::block::rules::{self, CauldronStack, Held, ItemUser, Rule};
 
 const GLOWSTONE: &str = "minecraft:glowstone";
 
+/// The item tag a campfire is doused by (26.3).
+const DOUSES_CAMPFIRES: &str = concat!("minecraft:", "douses_campfires");
+
 fn name_of(item: photon_core::ids::ItemId) -> &'static str {
     rules::item(item).map_or("", |row| row.name)
 }
@@ -41,6 +44,7 @@ fn describe(ctx: &Context<'_>, hand: u8) -> Held {
         note_block_top: tagged("minecraft:noteblock_top_instruments"),
         glowstone: name == GLOWSTONE,
         lectern_book: tagged("minecraft:lectern_books"),
+        douses_campfires: tagged(DOUSES_CAMPFIRES),
         campfire_input: ctx
             .world
             .recipe_property_set("minecraft:campfire_input")
@@ -183,6 +187,9 @@ impl GameMode {
         }
         if answer.honey {
             super::bottles::take_honey(ctx, hand);
+        }
+        if answer.dowse {
+            super::tools::dowse_lit_campfire(ctx, pos, state);
         }
         Some(answer.result)
     }

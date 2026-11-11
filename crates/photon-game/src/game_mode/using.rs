@@ -358,7 +358,20 @@ impl GameMode {
         if ctx.mode == ClientPlayerGameMode::Adventure && !ctx.can_place_on(hand, aim) {
             return UseResult::Pass;
         }
-        match rules::item_use_on_owner(item) {
+        let owner = rules::item_use_on_owner(item);
+        // The one place the two paths part: a tool works through its stack's component, or
+        // through its class.
+        if photon_core::versions::rules()
+            .game
+            .tools_transform_by_component
+            && matches!(
+                owner,
+                ItemClass::Item | ItemClass::AxeItem | ItemClass::HoeItem | ItemClass::ShovelItem
+            )
+        {
+            return super::tools::component::use_on(ctx, hand, item, aim);
+        }
+        match owner {
             ItemClass::Item => UseResult::Pass,
             // `PlaceOnWaterBlockItem.useOn` passes: the item is placed by its `use`.
             ItemClass::PlaceOnWaterBlockItem => UseResult::Pass,

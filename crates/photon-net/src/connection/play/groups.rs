@@ -114,6 +114,8 @@ pub(super) struct LocalState {
     pub(super) prevents_armor_change: std::sync::Arc<Vec<bool>>,
     /// The instruments of the registry, by id, from the data pack.
     pub(super) instruments: std::sync::Arc<Vec<Option<photon_game::item::instrument::Instrument>>>,
+    /// The block transformers of the registry, by id (26.3).
+    pub(super) block_transformers: std::sync::Arc<Vec<photon_game::block_transformer::Transformer>>,
 }
 
 /// The menus the server opened and what they read.
@@ -339,6 +341,7 @@ impl Default for LocalState {
             renderer_sections: false,
             item_cooldowns: photon_game::item::cooldowns::ItemCooldowns::default(),
             instruments: std::sync::Arc::default(),
+            block_transformers: std::sync::Arc::default(),
             spin_attack: std::sync::Arc::default(),
             prevents_armor_change: std::sync::Arc::default(),
         }

@@ -92,7 +92,7 @@ pub(super) fn enchantment_ids(stack: &Stack) -> impl Iterator<Item = i32> {
 }
 
 /// `ItemStack.isStackable`.
-pub(super) fn is_stackable(stack: &Stack) -> bool {
+pub fn is_stackable(stack: &Stack) -> bool {
     max_stack_size(stack) > 1 && !is_damaged(stack)
 }
 

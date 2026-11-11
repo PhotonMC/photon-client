@@ -363,6 +363,7 @@ mod tests {
             selected_slot: 0,
             cooldowns: &mut cooldowns,
             instruments: &[],
+            block_transformers: &[],
             spin_attack: &[],
             prevents_armor_change: &[],
             difficulty: 2,

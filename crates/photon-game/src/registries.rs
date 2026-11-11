@@ -79,10 +79,12 @@ pub struct Registries {
     pub banner_patterns: Vec<BannerEntry>,
     /// The chat types' decorations for chat, by registry id.
     pub chat_types: Vec<crate::chat::ChatDecoration>,
+    /// The block transformers (26.3), by registry id.
+    pub block_transformers: Vec<crate::block_transformer::Transformer>,
 }
 
 /// Where a registry entry's file sits in the data pack.
-fn entry_path(data_root: &Path, directory: &str, name: &str) -> PathBuf {
+pub(crate) fn entry_path(data_root: &Path, directory: &str, name: &str) -> PathBuf {
     let (namespace, path) = name.split_once(':').unwrap_or(("minecraft", name));
     data_root
         .join(namespace)
@@ -217,42 +219,47 @@ fn described_entry(data_root: &Path, directory: &str, name: String) -> Described
     }
 }
 
+/// The enchantments of the data pack, one for each name, in that order.
+fn enchantment_entries(data_root: &Path, names: Vec<String>) -> Vec<EnchantmentEntry> {
+    let curse = tag_values(data_root, "enchantment", "minecraft:curse");
+    let order = tag_values(data_root, "enchantment", "minecraft:tooltip_order");
+    names
+        .into_iter()
+        .map(|name| {
+            let entry = read_entry(data_root, "enchantment", &name);
+            EnchantmentEntry {
+                prevents_armor_change: has_effect(&entry, PREVENT_ARMOR_CHANGE),
+                trident_spin_attack: spin_strength(&entry),
+                description: component(&entry, "description"),
+                anvil_cost: entry.i32("anvil_cost").unwrap_or(1),
+                supported_items: entry
+                    .text("supported_items")
+                    .map(|tag| tag.trim_start_matches('#').to_owned())
+                    .unwrap_or_default(),
+                exclusive_set: match entry.text("exclusive_set") {
+                    Some(set) => match set.strip_prefix('#') {
+                        Some(tag) => tag_values(data_root, "enchantment", tag),
+                        None => vec![set],
+                    },
+                    None => Vec::new(),
+                },
+                curse: curse.contains(&name),
+                max_level: entry.i32("max_level").unwrap_or(1),
+                tooltip_order: order
+                    .iter()
+                    .position(|ordered| *ordered == name)
+                    .map_or(-1, |place| place as i32),
+                name,
+            }
+        })
+        .collect()
+}
+
 impl Registries {
     /// The registries from the data pack at `data_root`, each entry named by
     /// `names(registry)` in the order given (the server's sync order).
     pub fn load(data_root: &Path, names: impl Fn(&str) -> Vec<String>) -> Self {
-        let curse = tag_values(data_root, "enchantment", "minecraft:curse");
-        let order = tag_values(data_root, "enchantment", "minecraft:tooltip_order");
-        let enchantments = names("minecraft:enchantment")
-            .into_iter()
-            .map(|name| {
-                let entry = read_entry(data_root, "enchantment", &name);
-                EnchantmentEntry {
-                    prevents_armor_change: has_effect(&entry, PREVENT_ARMOR_CHANGE),
-                    trident_spin_attack: spin_strength(&entry),
-                    description: component(&entry, "description"),
-                    anvil_cost: entry.i32("anvil_cost").unwrap_or(1),
-                    supported_items: entry
-                        .text("supported_items")
-                        .map(|tag| tag.trim_start_matches('#').to_owned())
-                        .unwrap_or_default(),
-                    exclusive_set: match entry.text("exclusive_set") {
-                        Some(set) => match set.strip_prefix('#') {
-                            Some(tag) => tag_values(data_root, "enchantment", tag),
-                            None => vec![set],
-                        },
-                        None => Vec::new(),
-                    },
-                    curse: curse.contains(&name),
-                    max_level: entry.i32("max_level").unwrap_or(1),
-                    tooltip_order: order
-                        .iter()
-                        .position(|ordered| *ordered == name)
-                        .map_or(-1, |place| place as i32),
-                    name,
-                }
-            })
-            .collect();
+        let enchantments = enchantment_entries(data_root, names("minecraft:enchantment"));
         let painting_variants = names("minecraft:painting_variant")
             .into_iter()
             .map(|name| {
@@ -289,8 +296,13 @@ impl Registries {
             .into_iter()
             .map(|name| chat_decoration(&read_entry(data_root, "chat_type", &name)))
             .collect();
+        let block_transformers = names(crate::block_transformer::REGISTRY)
+            .into_iter()
+            .map(|name| crate::block_transformer::Transformer::from_pack(data_root, name))
+            .collect();
         Self {
             chat_types,
+            block_transformers,
             enchantments,
             painting_variants,
             instruments: described("minecraft:instrument", "instrument"),
