@@ -2,6 +2,7 @@
 
 pub mod boat;
 pub mod crystal_beam;
+pub mod cushion;
 pub mod display;
 pub mod dragon_rays;
 pub mod fishing;

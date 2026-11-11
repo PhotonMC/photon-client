@@ -323,11 +323,24 @@ fn mob_class_rows() -> Vec<Value> {
     ]
 }
 
+/// The poplar boats, which only the newest version has, are pickable like the other boats.
+fn poplar_boat_rows() -> Vec<Value> {
+    if crate::components::is_26_2() {
+        return Vec::new();
+    }
+    let hit = || [aims(1).clicks(1).go(), aims(3).go()].concat();
+    ["poplar_boat", "poplar_chest_boat"]
+        .into_iter()
+        .map(|kind| facing(&format!("{kind}-ahead"), vec![mob(29, kind, 0.5, 64.0, 2.5)], hit()).x_rot(20.0).row())
+        .collect()
+}
+
 pub fn rows() -> Vec<Value> {
     [
         entity_rows_1(),
         entity_rows_2(),
         entity_rows_3(),
+        poplar_boat_rows(),
         minecart_rows(),
         decoration_rows(),
         mob_class_rows(),

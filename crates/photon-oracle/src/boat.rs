@@ -154,6 +154,32 @@ pub(super) fn boat_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `cushion_pose`: where a cushion's model is drawn from an identity pose moved to the feet,
+/// from the side its turn snaps to.
+pub(super) fn cushion_pose_result(request: &Value) -> Result<Value, String> {
+    use photon_core::direction::Direction;
+    use photon_render::joml::Pose;
+    use photon_render::objects::cushion::cushion_pose;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut base = Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let direction = Direction::from_y_rot(f64::from(bits("y_rot")?));
+        out.push(
+            json!({"label": row["label"], "poses": [matrix_bits(&cushion_pose(&base, direction))]}),
+        );
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `thrown_item_pose`: the pose a thrown item (or a firework rocket) is drawn from, seen by a camera.
 pub(super) fn thrown_item_pose_result(request: &Value) -> Result<Value, String> {
     use photon_render::entity::name_tag::camera_orientation;

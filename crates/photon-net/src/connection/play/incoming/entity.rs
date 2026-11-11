@@ -301,6 +301,21 @@ impl PlaySession {
         Ok(())
     }
 
+    /// The message that tells a new rider how to get off: a cushion says how to stand up from it,
+    /// any other vehicle how to get off.
+    fn boarding_hint_key(&self, vehicle_id: EntityId) -> &'static str {
+        let on_cushion = self
+            .world
+            .entities()
+            .at(vehicle_id)
+            .is_some_and(|vehicle| vehicle.type_id == photon_data::entity_type::ids::CUSHION);
+        if on_cushion {
+            "mount.sit"
+        } else {
+            "mount.onboard"
+        }
+    }
+
     fn on_set_passengers(
         &mut self,
         packet: EntityPassengersObservation,
@@ -319,9 +334,10 @@ impl PlaySession {
         if was_aboard != Some(packet.vehicle_id)
             && self.world.ridden_vehicle_of_local_player() == Some(packet.vehicle_id)
         {
+            let key = self.boarding_hint_key(packet.vehicle_id);
             self.social.hud_events.push(HudEvent::ActionBar(
                 photon_game::text::Component::translatable_with(
-                    "mount.onboard",
+                    key,
                     vec![photon_game::text::Component::translatable(
                         "key.keyboard.left.shift",
                     )],

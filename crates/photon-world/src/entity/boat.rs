@@ -88,7 +88,10 @@ pub(crate) fn vanilla_boat_max_passengers(vehicle_type_id: EntityTypeId) -> Opti
         .iter()
         .any(|&(type_id, _, _)| type_id == vehicle_type_id.0)
         .then(|| {
-            if VANILLA_CHEST_BOAT_ENTITY_TYPE_IDS.contains(&vehicle_type_id.0) {
+            if VANILLA_CHEST_BOAT_ENTITY_TYPE_IDS.contains(&vehicle_type_id.0)
+                // The poplar chest boat only the newest version has.
+                || vehicle_type_id == photon_data::entity_type::ids::POPLAR_CHEST_BOAT
+            {
                 1
             } else {
                 2

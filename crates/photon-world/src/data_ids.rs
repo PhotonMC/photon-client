@@ -186,3 +186,10 @@ pub const DATA_IDS: &[(&str, &str, u8)] = &[
     ("net.minecraft.world.entity.monster.illager.SpellcasterIllager", "DATA_SPELL_CASTING_ID", SPELLCASTER_CASTING_DATA_ID),
     ("net.minecraft.world.entity.item.ItemEntity", "DATA_ITEM", ITEM_ENTITY_STACK_DATA_ID),
 ];
+
+/// The accessors of classes only the newest version has, which a client of an older version does
+/// not read.
+#[rustfmt::skip]
+pub const DATA_IDS_26_3: &[(&str, &str, u8)] = &[
+    ("net.minecraft.world.entity.decoration.Cushion", "DATA_COLOR", CUSHION_COLOR_DATA_ID),
+];

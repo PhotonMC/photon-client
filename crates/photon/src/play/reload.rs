@@ -38,8 +38,12 @@ pub(super) fn entity_textures(
             .map(|name| match texture(root, &name, "entity texture") {
                 Ok(image) => Ok(Some((name, image))),
                 // A map decoration the pack's version does not have (the server may number more
-                // than the installed assets draw) is left out, not fatal.
-                Err(error) if name.starts_with("map/decorations/") => {
+                // than the installed assets draw) is left out, not fatal; so is a texture of content
+                // only the newest version has, on an older version's assets.
+                Err(error)
+                    if name.starts_with("map/decorations/")
+                        || crate::objects::cushions::is_newer_texture(&name) =>
+                {
                     log::warn!("{error}");
                     Ok(None)
                 }

@@ -2,6 +2,18 @@
 
 use super::*;
 
+/// A falling leaf (a cherry petal, a pale oak, poplar or tinted leaf) made by its provider.
+fn falling_leaves(
+    name: &str,
+    (random, at): (RandomSource, (f64, f64, f64)),
+    sprites: &Arc<SpriteSet>,
+    (engine_random, color): (&mut RandomSource, u32),
+) -> Result<Particle, String> {
+    let data = photon_world::particles::ParticleData::Color(color);
+    Particle::falling_leaves_provider(name, random, at, sprites, (engine_random, data))
+        .ok_or_else(|| format!("unknown particle {name}"))
+}
+
 /// The particle a row asks for, made by its type's provider with the row's seeds.
 pub(super) fn particle_of(
     row: &Value,
@@ -183,18 +195,13 @@ pub(super) fn particle_of(
             (None, &mut engine_random),
         )
         .ok_or_else(|| "no goo".to_owned()),
-        name @ ("cherry_leaves" | "pale_oak_leaves" | "tinted_leaves") => {
-            Particle::falling_leaves_provider(
-                name,
-                random,
-                at,
-                sprites,
-                (
-                    &mut engine_random,
-                    photon_world::particles::ParticleData::Color(color),
-                ),
-            )
-            .ok_or_else(|| format!("unknown particle {name}"))
+        name @ ("cherry_leaves"
+        | "pale_oak_leaves"
+        | "tinted_leaves"
+        | "red_poplar_leaves"
+        | "orange_poplar_leaves"
+        | "yellow_poplar_leaves") => {
+            falling_leaves(name, (random, at), sprites, (&mut engine_random, color))
         }
         name @ ("glow" | "electric_spark" | "scrape" | "wax_on" | "wax_off") => Ok(Particle::glow(
             name,

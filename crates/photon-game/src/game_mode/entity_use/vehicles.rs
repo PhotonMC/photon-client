@@ -11,7 +11,26 @@ fn is_boat(name: &str) -> bool {
         || name.ends_with("_chest_raft")
 }
 
+/// Whether the entity type is the cushion (26.3).
+fn is_cushion(name: &str) -> bool {
+    photon_data::entity_type::name(photon_data::entity_type::ids::CUSHION) == Some(name)
+}
+
 impl Context<'_> {
+    /// `Cushion.interact`: a sitter gets on unless sneaking or the cushion is taken; the client's
+    /// answer is a consume, which is a success without a swing, and the server seats the rider.
+    fn interact_cushion(&self, id: EntityId) -> EntityUse {
+        let taken = self
+            .world
+            .entity_passengers(id)
+            .is_some_and(|riders| !riders.is_empty());
+        if self.player.is_shift_key_down() || taken {
+            EntityUse::Pass
+        } else {
+            EntityUse::Success { swing: false }
+        }
+    }
+
     /// The answer of an entity that has no `Mob.mobInteract`, or the mob class when it is one.
     pub(super) fn interact_other_entity(
         &mut self,
@@ -39,6 +58,8 @@ impl Context<'_> {
                     EntityUse::Success { swing: true }
                 }
             }
+            // `Cushion.interact`.
+            n if is_cushion(n) => self.interact_cushion(id),
             // `Interaction.interact` on the client: consume, or succeed when it answers.
             "minecraft:interaction" => {
                 let responds = self

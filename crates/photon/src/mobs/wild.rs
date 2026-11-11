@@ -34,6 +34,7 @@ use crate::objects::arrows;
 use crate::objects::boats;
 use crate::objects::bullets;
 use crate::objects::charges;
+use crate::objects::cushions;
 use crate::objects::end_crystals;
 use crate::objects::fishing_hooks;
 use crate::objects::item_frames;
@@ -125,6 +126,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(nautilus::textures())
         .chain(happy_ghasts::textures())
         .chain(boats::textures())
+        .chain(cushions::textures())
         .chain(copper_golems::textures())
         .chain([armor_stands::TEXTURE])
 }
@@ -390,6 +392,7 @@ pub(super) fn remote_wild_animals(
     sniffers::remote_sniffers(session, models, textures, view, vertices);
     ender_dragons::remote_ender_dragons(session, models, textures, view, vertices);
     end_crystals::remote_end_crystals(session, models, textures, view, vertices);
+    cushions::remote_cushions(session, models, textures, view, vertices);
     block_entities::block_entities(session, models, textures, view, vertices);
     crate::world::end_portals::end_portals(session, models, view);
     crate::objects::displays::special_displays(session, (models, textures), view, vertices);

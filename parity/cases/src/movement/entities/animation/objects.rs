@@ -32,6 +32,8 @@ fn boat_woods() -> Vec<Value> {
         "bamboo_chest_raft",
     ]
     .iter()
+    // The poplar boats, which only the newest version has.
+    .chain(if crate::components::is_26_2() { [].iter() } else { ["poplar_boat", "poplar_chest_boat"].iter() })
     .map(|kind| fish(&format!("afloat-{kind}"), kind, 6, vec![]).tag("boat").row())
     .collect()
 }

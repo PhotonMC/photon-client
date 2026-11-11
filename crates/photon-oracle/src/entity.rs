@@ -2,8 +2,10 @@ use super::*;
 
 mod player;
 use player::*;
+mod bed;
 mod data_fields;
 mod spawner_cage;
+use bed::bed_sleeping_position_result;
 use spawner_cage::spawner_cage_pose_result;
 mod map_data;
 use map_data::map_data_case;
@@ -14,6 +16,8 @@ pub(super) fn entity_family_result(request: &Value) -> Result<Value, String> {
     match string(request, "operation")? {
         "entity_data_ids" => return entity_data_ids_result(request),
         "spawner_cage_pose" => return spawner_cage_pose_result(request),
+        "bed_sleeping_position" => return bed_sleeping_position_result(request),
+        "cushion_pose" => return cushion_pose_result(request),
         _ => {}
     }
     entity_result(request)
@@ -140,11 +144,16 @@ fn entity_result(request: &Value) -> Result<Value, String> {
 /// entry must be asked for, and entries for one accessor must agree.
 fn entity_data_ids_result(request: &Value) -> Result<Value, String> {
     let asked = request["rows"].as_array().ok_or("rows")?;
+    let newer: &[(&str, &str, u8)] = if crate::case_ids::before_26_3() {
+        &[]
+    } else {
+        photon_world::DATA_IDS_26_3
+    };
+    let known = || photon_world::DATA_IDS.iter().chain(newer);
     let mut rows = Vec::new();
     for row in asked {
         let (class, field) = (string(row, "class")?, string(row, "field")?);
-        let mut ids = photon_world::DATA_IDS
-            .iter()
+        let mut ids = known()
             .filter(|(known, name, _)| *known == class && *name == field)
             .map(|(_, _, id)| *id);
         let id = ids
@@ -155,7 +164,7 @@ fn entity_data_ids_result(request: &Value) -> Result<Value, String> {
         }
         rows.push(json!({"label": row["label"], "id": id}));
     }
-    for (class, field, _) in photon_world::DATA_IDS {
+    for (class, field, _) in known() {
         let known = |row: &&Value| row["class"] == *class && row["field"] == *field;
         if !asked.iter().any(|row| known(&row)) {
             return Err(format!("{class}.{field} is in the table but not asked for"));

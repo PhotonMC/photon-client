@@ -444,7 +444,7 @@
 "crates/photon-world/src/particles/particle.rs::Particle::move_by" = 17
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create" = 35
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create_own" = 12
-"crates/photon-world/src/particles/resources.rs::provider_of" = 49
+"crates/photon-world/src/particles/resources.rs::provider_of" = 48
 "crates/photon-world/src/particles/water.rs::Particle::water_tick" = 19
 "crates/photon-world/src/pick.rs::ClientWorld::entity_hit_result" = 11
 "crates/photon-world/src/region_copy.rs::ClientWorld::clip_with" = 12
@@ -691,7 +691,7 @@
 "crates/photon-oracle/src/particles.rs::particle_engine_result" = 152
 "crates/photon-oracle/src/particles.rs::particle_quads_result" = 62
 "crates/photon-oracle/src/particles.rs::particle_terrain_result" = 148
-"crates/photon-oracle/src/particles/factory.rs::particle_of" = 285
+"crates/photon-oracle/src/particles/factory.rs::particle_of" = 280
 "crates/photon-oracle/src/passenger_positions.rs::client_world_entity_passenger_player_position_result" = 133
 "crates/photon-oracle/src/passenger_positions.rs::client_world_entity_passenger_position_result" = 151
 "crates/photon-oracle/src/passenger_positions.rs::client_world_entity_passengers_result" = 78
@@ -823,7 +823,7 @@
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::sculk_charge" = 104
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create" = 96
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create_own" = 84
-"crates/photon-world/src/particles/resources.rs::provider_of" = 73
+"crates/photon-world/src/particles/resources.rs::provider_of" = 72
 "crates/photon-world/src/particles/water.rs::Particle::water_tick" = 91
 "crates/photon-world/src/player/motion.rs::ClientPlayerState::new" = 66
 "crates/photon-world/src/ride/boat/physics.rs::BoatBody::move_self" = 77

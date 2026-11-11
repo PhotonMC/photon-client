@@ -492,6 +492,10 @@ class MovementParticleOracle extends MovementMenuOracle {
     static JsonObject particleEngine(JsonObject row) throws Exception {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
+        if (row.has("vanilla_tags") && row.get("vanilla_tags").getAsBoolean()) {
+            // The data pack's tags, bound as a server's are; without them a tag holds nothing.
+            Game26_3.vanillaRegistries();
+        }
         var scene = buildScene(row);
         var level = scene.level();
         var listener = scene.listener();

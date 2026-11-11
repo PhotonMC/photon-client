@@ -78,7 +78,7 @@ pub(crate) use chunk_store::*;
 pub use collision::*;
 pub use constants::*;
 pub use container::*;
-pub use data_ids::DATA_IDS;
+pub use data_ids::{DATA_IDS, DATA_IDS_26_3};
 pub use dimension::*;
 pub use entity::*;
 pub use heightmap::HeightmapType;

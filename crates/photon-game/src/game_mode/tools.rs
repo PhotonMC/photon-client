@@ -146,6 +146,7 @@ pub(super) fn use_on(
         C::EnderEyeItem | C::SpawnEggItem | C::HangingEntityItem | C::ItemFrameItem => {
             super::hanging::entity_use_on(ctx, (hand, class), aim)
         }
+        C::CushionItem => super::cushion::use_on(ctx, hand, aim),
         _ => return None,
     })
 }

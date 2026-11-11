@@ -218,6 +218,43 @@ fn a_passenger_of_an_armor_stand_follows_it() {
     }
 }
 
+/// Source-derived (`Entity.positionRider` with the default seat; the cushion declares none): a
+/// remote player sits on the top of a cushion's 0.25 tall box, less the 0.6 of its own attachment.
+#[test]
+fn a_remote_player_sits_on_a_cushion() {
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let (blocks, biomes) = section(0, 0);
+    world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+    for (id, name) in [(37, "minecraft:cushion"), (38, "minecraft:player")] {
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(id),
+            uuid: Uuid::new(1, u64::try_from(id).unwrap()),
+            type_id: photon_data::entity_type::named(name),
+            x: 3.5,
+            y: 5.0,
+            z: 1.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (90.0, 0.0, 0.0),
+            data: 0,
+        }));
+    }
+    assert!(world.apply_entity_passengers(EntityId(37), &[EntityId(38)]));
+    let mut vehicle = world.entities_mut().at_mut(EntityId(37)).expect("vehicle");
+    vehicle.set_position((3.5, 5.0, 1.5));
+    world.tick();
+    let rider = world.entities().at(EntityId(38)).expect("rider");
+    assert_eq!(rider.position(), (3.5, 5.0 + 0.25 - 0.6, 1.5));
+}
+
 #[test]
 fn a_boat_the_local_player_steers_ignores_the_servers_moves() {
     let mut world = ClientWorld::new(DimensionBounds::new(0, 16));

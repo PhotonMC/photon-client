@@ -419,8 +419,36 @@ fn minecart_rows() -> Vec<Value> {
     ]
 }
 
+/// Sitting on a cushion (26.3), which no one moves: the rider sits at its seat and keeps its own
+/// keys to itself, whichever way the cushion faces.
+fn cushion_rows() -> Vec<Value> {
+    let cushion = |label: &str, ticks: Vec<Value>| ride(label, floor(), ticks).kind("minecraft:cushion");
+    vec![
+        cushion("cushion-idle", keys(30, &[])).row(),
+        cushion("cushion-keys", [keys(20, &["forward", "left"]), keys(10, &["jump", "sneak"])].concat()).row(),
+        cushion("cushion-look", looking(keys(40, &[]), &[(0.0, 0.0), (90.0, 20.0), (-45.0, -60.0)])).row(),
+        cushion("cushion-turned", keys(30, &[])).y_rot(90.0).row(),
+        cushion("cushion-turned-between", keys(30, &[])).y_rot(37.0).row(),
+        cushion("cushion-air", keys(40, &[])).at(0.5, 70.0, 0.5).row(),
+        cushion("cushion-half-a-block-up", keys(30, &[])).at(0.5, 64.5, 0.5).row(),
+    ]
+}
+
+/// The poplar boats ride like the other boats.
+fn poplar_rows() -> Vec<Value> {
+    vec![
+        on_lake("boat-poplar", keys(20, &["forward"])).kind("minecraft:poplar_boat").row(),
+        on_lake("boat-chest-poplar", keys(20, &["forward"])).kind("minecraft:poplar_chest_boat").row(),
+        on_lake("boat-poplar-turning", keys(30, &["forward", "left"])).kind("minecraft:poplar_boat").row(),
+    ]
+}
+
 pub fn cases() -> Vec<Value> {
     let local = |id: &str, rows: Vec<Value>| case(id, "movement", "local_player_ticks", json!({"rows": rows}));
+    let mut cushion = local("movement/ride-cushion", cushion_rows());
+    cushion["version"] = json!("26.3");
+    let mut poplar = local("movement/ride-poplar-boats", poplar_rows());
+    poplar["version"] = json!("26.3");
     vec![
         local("movement/ride-boat", [lake_rows(), land_rows(), deep_rows()].concat()),
         local("movement/ride-horse", horse_rows()),
@@ -428,5 +456,7 @@ pub fn cases() -> Vec<Value> {
         local("movement/ride-pig", pig_rows()),
         local("movement/ride-strider", strider_rows()),
         local("movement/ride-minecart", minecart_rows()),
+        cushion,
+        poplar,
     ]
 }

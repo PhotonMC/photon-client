@@ -40,6 +40,28 @@ pub fn has_menu_provider(state: BlockStateId) -> bool {
     MENU_BLOCKS.binary_search(&block.name).is_ok()
 }
 
+/// `BlockState.showAsInteractableInSpectatorMode`: whether a spectator's outline and crosshair
+/// show on the state. A block with a menu provider does; from 26.3 a portal block does too.
+pub fn shows_as_interactable_in_spectator_mode(state: BlockStateId) -> bool {
+    if has_menu_provider(state) {
+        return true;
+    }
+    let portals = photon_core::versions::rules()
+        .world
+        .portals_show_in_spectator_mode;
+    portals
+        && photon_data::block::registry::block_for_state(state).is_some_and(|(block, _)| {
+            use photon_data::block::classes::BlockClass;
+            [
+                BlockClass::NetherPortalBlock,
+                BlockClass::EndPortalBlock,
+                BlockClass::EndGatewayBlock,
+            ]
+            .into_iter()
+            .any(|portal| block.class.lineage().any(|own| own == portal))
+        })
+}
+
 /// Whether the entities of the type are menu providers (`ContainerEntity`): the chest boats and
 /// rafts, and the chest and hopper minecarts.
 pub fn entity_has_menu_provider(name: &str) -> bool {

@@ -17,7 +17,7 @@ const WATER_PATCH_LAYER: &str = "minecraft:boat#water_patch";
 
 /// The textures (under `textures/`) of a boat and a chest boat of each wood (and
 /// the bamboo's rafts).
-const TEXTURES: [&str; 20] = [
+const TEXTURES: [&str; 22] = [
     "entity/boat/acacia",
     "entity/boat/bamboo",
     "entity/boat/birch",
@@ -27,6 +27,7 @@ const TEXTURES: [&str; 20] = [
     "entity/boat/mangrove",
     "entity/boat/oak",
     "entity/boat/pale_oak",
+    "entity/boat/poplar",
     "entity/boat/spruce",
     "entity/chest_boat/acacia",
     "entity/chest_boat/bamboo",
@@ -37,6 +38,7 @@ const TEXTURES: [&str; 20] = [
     "entity/chest_boat/mangrove",
     "entity/chest_boat/oak",
     "entity/chest_boat/pale_oak",
+    "entity/chest_boat/poplar",
     "entity/chest_boat/spruce",
 ];
 
@@ -169,7 +171,7 @@ mod tests {
     fn every_wood_has_its_texture_listed() {
         for wood in [
             "acacia", "birch", "cherry", "dark_oak", "jungle", "mangrove", "oak", "pale_oak",
-            "spruce",
+            "poplar", "spruce",
         ] {
             for kind in ["boat", "chest_boat"] {
                 let name = format!("minecraft:{wood}_{kind}");

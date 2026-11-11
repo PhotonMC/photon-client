@@ -6,6 +6,7 @@ pub(super) fn block_case(request: &Value) -> Result<Value, String> {
         "registry_names" => registry_names(request),
         "placement_rules" => placement_rules(request),
         "menu_providers" => menu_providers(request),
+        "spectator_interactable" => spectator_interactable(request),
         _ => block_result(request),
     }
 }
@@ -374,12 +375,30 @@ fn registry_names(request: &Value) -> Result<Value, String> {
 
 /// Which block states have a menu provider, as the bits of every state id.
 fn menu_providers(request: &Value) -> Result<Value, String> {
+    listed_states(
+        request,
+        photon_world::block::menu_provider::has_menu_provider,
+    )
+}
+
+/// Which block states a spectator's outline and crosshair show on: the menu providers, and from
+/// 26.3 the portal blocks.
+fn spectator_interactable(request: &Value) -> Result<Value, String> {
+    listed_states(
+        request,
+        photon_world::block::menu_provider::shows_as_interactable_in_spectator_mode,
+    )
+}
+
+/// The states a test holds for, as the bits of every state id.
+fn listed_states(
+    request: &Value,
+    holds: fn(photon_core::ids::BlockStateId) -> bool,
+) -> Result<Value, String> {
     let count = crate::case_ids::state_count();
     let mut words = vec![0_u64; count.div_ceil(64) as usize];
     for id in 0..count {
-        if photon_world::block::menu_provider::has_menu_provider(crate::case_ids::block_state(
-            id as i32,
-        )) {
+        if holds(crate::case_ids::block_state(id as i32)) {
             words[id as usize / 64] |= 1 << (id % 64);
         }
     }

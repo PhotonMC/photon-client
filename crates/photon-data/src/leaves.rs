@@ -25,3 +25,13 @@ pub fn all() -> Vec<LeafRow> {
     }
     rows
 }
+
+/// The sound a leaves block plays now and then and the tag of the block it needs beside it
+/// (`AmbientLeavesBlockSoundPlayer`): the poplar leaves' rustle, with a natural log; none for
+/// another block.
+pub fn ambient_sound(block: &str) -> Option<(&'static str, &'static str)> {
+    block.ends_with("_poplar_leaves").then_some((
+        concat!("minecraft:", "block.poplar_leaves.ambient"),
+        concat!("minecraft:", "required_for_poplar_leaf_ambience"),
+    ))
+}

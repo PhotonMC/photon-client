@@ -152,6 +152,12 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("boat_pose")) {
             return boatPose(request);
         }
+        if (operation.equals("cushion_pose")) {
+            return cushionPose(request);
+        }
+        if (operation.equals("bed_sleeping_position")) {
+            return bedSleepingPosition(request);
+        }
         if (operation.equals("minecart_pose")) {
             return minecartPose(request);
         }
@@ -483,6 +489,90 @@ public final class EntityOracle extends EntityWildOracle {
             var array = new JsonArray();
             quads.forEach(array::add);
             out.add("quads", array);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * Where the reference's own cushion renderer draws a cushion: the matrix it submits the model
+     * with, from the direction the entity's turn snaps to, from an identity pose moved to the
+     * feet.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject cushionPose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.entity.state.CushionRenderState();
+            state.direction = net.minecraft.core.Direction.fromYRot(Oracle.f32(row, "y_rot"));
+            var model = new net.minecraft.client.model.object.cushion.CushionModel(bakedLayer("minecraft:cushion#main"));
+            var renderType = net.minecraft.client.model.Model.class.getDeclaredField("renderType");
+            renderType.setAccessible(true);
+            renderType.set(model, (java.util.function.Function) texture -> null);
+            var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.CushionRenderer.class);
+            var modelField = net.minecraft.client.renderer.entity.CushionRenderer.class.getDeclaredField("model");
+            modelField.setAccessible(true);
+            modelField.set(renderer, model);
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            ((net.minecraft.client.renderer.entity.CushionRenderer) renderer).submit(state, stack, collector, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+    /**
+     * Where a sleeper lies over each bed a row names, as `LivingEntity.setPosToBed` places it:
+     * the position asks the bed block for its sleep height, and a block that is no bed (or a bed
+     * with none) leaves the sleeper where it is.
+     */
+    private static JsonObject bedSleepingPosition(final JsonObject request) throws Exception {
+        MovementSupport.bootstrap();
+        var sceneRow = new JsonObject();
+        sceneRow.add("blocks", request.get("blocks"));
+        sceneRow.addProperty("chunk_radius", 1);
+        var level = MovementSupport.buildScene(sceneRow).level();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var pos = new net.minecraft.core.BlockPos(
+                row.get("x").getAsInt(), row.get("y").getAsInt(), row.get("z").getAsInt());
+            var state = level.getBlockState(pos);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            if (state.getBlock() instanceof net.minecraft.world.level.block.AbstractBedBlock bed) {
+                var height = bed.getSleepHeight(state, level, pos);
+                if (height.isPresent()) {
+                    var at = new JsonArray();
+                    at.add(Oracle.bits(pos.getX() + 0.5));
+                    at.add(Oracle.bits(pos.getY() + height.getAsDouble() + 0.125));
+                    at.add(Oracle.bits(pos.getZ() + 0.5));
+                    out.add("position", at);
+                }
+            }
             rows.add(out);
         }
         var result = new JsonObject();

@@ -9,6 +9,8 @@ use photon_core::random::RandomSource;
 use photon_core::shape::{BooleanOp, Shapes};
 
 use super::super::ClientWorld;
+use super::super::local_player::{LocalSound, LocalSoundSource};
+use super::animate::local_sound;
 use super::engine::{ParticleData, ParticleEngine};
 use super::level_events::LevelEventContext;
 use super::particle::{Kind, Particle};
@@ -28,12 +30,31 @@ pub(super) struct Leaf {
     swirl_period: f64,
 }
 
+/// `AmbientLeavesBlockSoundPlayer`: one pick in this many tries the sound, and the sides must hold
+/// this many of the required block and this many leaves of the block's own kind.
+const AMBIENT_SOUND_CHANCE: i32 = 300;
+const AMBIENT_LOGS_REQUIRED: i32 = 1;
+const AMBIENT_LEAVES_REQUIRED: i32 = 3;
+
 /// `FallingLeavesParticle.INITIAL_LIFETIME`, and the age its curve ends at.
 const INITIAL_LIFETIME: i32 = 300;
 
 impl Particle {
-    /// The falling leaves' providers: a cherry petal, a pale oak leaf, and a tinted leaf (with the
-    /// colour its options carry); nothing for another type.
+    /// Whether a particle type is one of the falling leaves' (the poplar ones only in 26.3).
+    pub fn is_falling_leaves(name: &str) -> bool {
+        matches!(
+            name,
+            "cherry_leaves"
+                | "pale_oak_leaves"
+                | "tinted_leaves"
+                | "red_poplar_leaves"
+                | "orange_poplar_leaves"
+                | "yellow_poplar_leaves"
+        )
+    }
+
+    /// The falling leaves' providers: a cherry petal, a pale oak leaf, a poplar leaf, and a tinted
+    /// leaf (with the colour its options carry); nothing for another type.
     pub fn falling_leaves_provider(
         name: &str,
         random: RandomSource,
@@ -44,7 +65,11 @@ impl Particle {
         // Fall and side acceleration, swirl, flow away, scale, start velocity.
         let shape = match name {
             "cherry_leaves" => (0.25, 2.0, false, true, 1.0, 0.0),
-            "pale_oak_leaves" | "tinted_leaves" => (0.07, 10.0, true, false, 2.0, 0.021),
+            "pale_oak_leaves"
+            | "tinted_leaves"
+            | "red_poplar_leaves"
+            | "orange_poplar_leaves"
+            | "yellow_poplar_leaves" => (0.07, 10.0, true, false, 2.0, 0.021),
             _ => return None,
         };
         let colour = match (name, data) {
@@ -161,6 +186,39 @@ fn raining_at(
     world.raining_at_with(materials, photon_core::binary::BlockPos::new(x, y, z))
 }
 
+/// `AmbientLeavesBlockSoundPlayer.playAmbientLeavesSounds`: leaves with a sound of their own draw
+/// for it, and play it when the four sides hold exactly the one required log and three of the
+/// leaves' own kind (judged after each side, so a later side cannot undo it).
+fn ambient_sound<F: FnMut() -> RandomSource>(
+    state: BlockStateId,
+    (x, y, z): (i32, i32, i32),
+    random: &mut RandomSource,
+    context: &mut LevelEventContext<'_, F>,
+) -> Option<LocalSound> {
+    let block = crate::block::state_or_air(state).block();
+    let (event, tag) = photon_data::leaves::ambient_sound(block.name)?;
+    if random.next_int_bound(AMBIENT_SOUND_CHANCE) != Ok(0) {
+        return None;
+    }
+    let (mut logs, mut leaves) = (0, 0);
+    // `Direction.Plane.HORIZONTAL`: north, east, south, west.
+    for (dx, dz) in [(0, -1), (1, 0), (0, 1), (-1, 0)] {
+        let side = context.world.block_state_or_air(x + dx, y, z + dz);
+        if super::animate_falling::in_tag(context.world, side, tag) {
+            logs += 1;
+        }
+        if crate::block::state_or_air(side).block().name == block.name {
+            leaves += 1;
+        }
+        if logs == AMBIENT_LOGS_REQUIRED && leaves == AMBIENT_LEAVES_REQUIRED {
+            let at = (f64::from(x), f64::from(y), f64::from(z));
+            let sound = (event, LocalSoundSource::Ambient);
+            return Some(local_sound(sound, (1.0, 1.0), at, context));
+        }
+    }
+    None
+}
+
 impl ParticleEngine {
     /// `LeavesBlock.makeDrippingWaterParticles`: in the rain, one time in fifteen a drop falls from
     /// leaves with nothing sturdy below.
@@ -196,12 +254,21 @@ impl ParticleEngine {
         (x, y, z): (i32, i32, i32),
         random: &mut RandomSource,
         (context, materials): (&mut LevelEventContext<'_, F>, Option<&dyn TerrainMaterials>),
+        sounds: &mut Vec<LocalSound>,
     ) {
         let Some((chance, particle, colour)) = photon_data::leaves::of(name) else {
             return;
         };
         let world = context.world;
         self.leaves_drip((x, y, z), random, (context, materials));
+        if let Some(sound) = ambient_sound(
+            world.block_state_or_air(x, y, z),
+            (x, y, z),
+            random,
+            context,
+        ) {
+            sounds.push(sound);
+        }
         if random.next_float() >= chance {
             return;
         }

@@ -165,9 +165,13 @@ pub fn aim_has_menu_provider(
     aim: &photon_game::game_mode::Aim,
 ) -> bool {
     use photon_game::game_mode::Aim;
-    use photon_world::block::menu_provider::{entity_has_menu_provider, has_menu_provider};
+    use photon_world::block::menu_provider::{
+        entity_has_menu_provider, shows_as_interactable_in_spectator_mode,
+    };
     match *aim {
-        Aim::Block { x, y, z, .. } => world.block_state_at(x, y, z).is_some_and(has_menu_provider),
+        Aim::Block { x, y, z, .. } => world
+            .block_state_at(x, y, z)
+            .is_some_and(shows_as_interactable_in_spectator_mode),
         Aim::Entity { id, .. } => world
             .entities()
             .at(id)

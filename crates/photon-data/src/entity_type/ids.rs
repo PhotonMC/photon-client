@@ -27,6 +27,7 @@ entity_types! {
     CAT = cat,
     COPPER_GOLEM = copper_golem,
     CREEPER = creeper,
+    CUSHION = cushion,
     ELDER_GUARDIAN = elder_guardian,
     ENDER_DRAGON = ender_dragon,
     ENDERMAN = enderman,
@@ -70,6 +71,8 @@ entity_types! {
     DOLPHIN = dolphin,
     CAMEL_HUSK = camel_husk,
     CAMEL = camel,
+    POPLAR_BOAT = poplar_boat,
+    POPLAR_CHEST_BOAT = poplar_chest_boat,
 }
 
 /// `Attributes.STEP_HEIGHT`, the name the registry gives it.

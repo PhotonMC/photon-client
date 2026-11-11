@@ -864,6 +864,15 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 steps.add(done);
             }
             out.add("steps", steps);
+            // The item each slot shows, in the order of the slots.
+            var icons = new JsonArray();
+            var iconType = Reflect.type("net.minecraft.client.gui.screens.debug.GameModeSwitcherScreen$GameModeIcon");
+            var stackField = Reflect.field(iconType, "renderStack");
+            for (var icon : iconType.getEnumConstants()) {
+                var stack = (net.minecraft.world.item.ItemStack) stackField.get(icon);
+                icons.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+            }
+            out.add("icons", icons);
             rows.add(out);
         }
         var result = new JsonObject();

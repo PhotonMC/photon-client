@@ -176,6 +176,17 @@ pub(crate) const VANILLA_BOAT_PASSENGER_GEOMETRY: &[(i32, f32, f32)] = &[
         VANILLA_BOAT_RIDE_HEIGHT,
         VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
     ),
+    // The poplar boats, which only the newest version has.
+    (
+        photon_data::entity_type::ids::POPLAR_BOAT.0,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        0.0,
+    ),
+    (
+        photon_data::entity_type::ids::POPLAR_CHEST_BOAT.0,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
 ];
 pub(crate) const VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y: f64 = 0.6;
 pub const VANILLA_AIR_BLOCK_STATE_ID: BlockStateId =
@@ -307,6 +318,12 @@ pub const SULFUR_CUBE_FUSE_DATA_ID: u8 = 19;
 pub const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
 pub const SHULKER_PEEK_DATA_ID: u8 = 17;
 pub const SHULKER_COLOR_DATA_ID: u8 = 18;
+/// Where a cushion's colour (`Cushion.DATA_COLOR`, a dye id) sits among its data: `BlockAttachedEntity`
+/// defines none, so it follows the shared entity data.
+pub const CUSHION_COLOR_DATA_ID: u8 = 8;
+/// The dye colour serializer (`EntityDataSerializers.DYE_COLOR`, a var int), new in 26.3.
+pub(crate) const DYE_COLOR_SERIALIZER_ID: i32 =
+    photon_data::entity_type::serializer_named("DYE_COLOR");
 /// The direction serializer (`EntityDataSerializers.DIRECTION`).
 pub(crate) const DIRECTION_SERIALIZER_ID: i32 = 12;
 /// Where a copper golem's weathering and its action sit among its data, and

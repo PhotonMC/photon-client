@@ -5,6 +5,7 @@ pub(crate) mod block_entity_items;
 pub(crate) mod boats;
 pub(crate) mod bullets;
 pub(crate) mod charges;
+pub(crate) mod cushions;
 pub(crate) mod displays;
 pub(crate) mod dropped_items;
 pub(crate) mod end_crystals;

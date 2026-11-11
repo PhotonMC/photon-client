@@ -71,6 +71,10 @@ pub fn cases() -> Vec<Value> {
         "operation": "spectator_menu", "rows": spectator_rows(),
     }));
     cases.extend(crate::block_placement::cases());
+    // The newest version also shows a spectator's outline on the portal blocks.
+    let mut interactable = table("spectator-interactable", "spectator_interactable");
+    interactable["version"] = json!("26.3");
+    cases.push(interactable);
     cases.push(table("behaviours", "block_behaviours"));
     cases.push(table("tints", "block_tints"));
     cases

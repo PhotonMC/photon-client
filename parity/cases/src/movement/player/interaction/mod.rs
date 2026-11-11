@@ -9,6 +9,7 @@ mod cauldron;
 mod colliding;
 mod consuming;
 mod copper;
+mod cushions;
 mod digging;
 mod effects;
 mod frames;
@@ -298,6 +299,7 @@ pub fn cases() -> Vec<Value> {
                 bone_meal::rows(),
                 spawn_egg::rows(),
                 frames::rows(),
+                cushions::rows(),
                 tools::rows(),
             ]
             .concat(),

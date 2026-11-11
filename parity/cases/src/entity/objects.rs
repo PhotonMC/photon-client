@@ -45,7 +45,12 @@ fn boat_defaults() -> Vec<(&'static str, super::pose::Field)> {
 pub fn boat() -> Vec<Value> {
     let defaults = boat_defaults();
     let mut models = Vec::new();
-    for layer in ["boat/oak", "chest_boat/oak", "boat/bamboo", "chest_boat/bamboo", "boat/cherry"] {
+    let mut layers = vec!["boat/oak", "chest_boat/oak", "boat/bamboo", "chest_boat/bamboo", "boat/cherry"];
+    // The poplar boats, which only the newest version has.
+    if !crate::components::is_26_2() {
+        layers.extend(["boat/poplar", "chest_boat/poplar"]);
+    }
+    for layer in layers {
         let name = layer.replace('/', "-");
         for (label, left, right) in
             [("still", 0.0, 0.0), ("rowing", 0.7, 1.9), ("rowed-far", 3.2, 5.5), ("rowing-one-side", 2.4, 0.0)]

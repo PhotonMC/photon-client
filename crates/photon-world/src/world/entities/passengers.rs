@@ -107,8 +107,8 @@ impl ClientWorld {
     ) -> Option<photon_core::math::Vec3> {
         let vehicle = self.entities.at(vehicle_id)?;
         // Only the vehicles whose seat is Java's default point (the top of the box) are ported:
-        // the stand, the displays, and the small entities that hologram setups ride; the other types have seats of
-        // their own, which stay where they were.
+        // the stand, the displays, the cushion, and the small entities that hologram setups ride;
+        // the other types have seats of their own, which stay where they were.
         static DEFAULT_SEATS: std::sync::LazyLock<Vec<Option<EntityTypeId>>> =
             std::sync::LazyLock::new(|| {
                 [
@@ -117,6 +117,7 @@ impl ClientWorld {
                     "block_display",
                     "text_display",
                     "marker",
+                    "cushion",
                     "area_effect_cloud",
                     "falling_block",
                     "item",

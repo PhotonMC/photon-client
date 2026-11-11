@@ -115,7 +115,7 @@ fn fixed_value_size(serializer_id: i32) -> Option<usize> {
 }
 
 /// Int, block state, optional block state, optional unsigned int, direction, pose, humanoid
-/// arm, and the enums and registry holders: each a var int.
+/// arm, dye colour, and the enums and registry holders: each a var int.
 fn is_varint_value(serializer_id: i32) -> bool {
     matches!(
         serializer_id,
@@ -128,6 +128,7 @@ fn is_varint_value(serializer_id: i32) -> bool {
             | 21..=32
             | 35..=38
             | 42
+            | DYE_COLOR_SERIALIZER_ID
     )
 }
 
@@ -309,6 +310,16 @@ pub(crate) fn metadata_int_value(metadata: &[u8], target_data_id: u8) -> Option<
         return None;
     }
     Some(value)
+}
+
+/// `Cushion.DATA_COLOR`: the id of the cushion's dye colour (`DyeColor.getId`), when the data
+/// holds it.
+pub(crate) fn cushion_colour_from_metadata(metadata: &[u8]) -> Option<i32> {
+    let (serializer_id, mut value_input) = find_metadata_field(metadata, CUSHION_COLOR_DATA_ID)?;
+    if serializer_id != DYE_COLOR_SERIALIZER_ID {
+        return None;
+    }
+    photon_core::wire::read_varint(&mut value_input).ok()
 }
 
 /// An optional unsigned int: zero for none, else the value plus one.
@@ -687,6 +698,7 @@ mod tests {
             assert!(name(id).contains("STATE"), "{id}");
         }
         assert_eq!(name(42), "HUMANOID_ARM");
+        assert_eq!(name(DYE_COLOR_SERIALIZER_ID), "DYE_COLOR");
         assert_eq!(name(7), "ITEM_STACK");
         assert_eq!(name(41), "RESOLVABLE_PROFILE");
     }
@@ -694,7 +706,7 @@ mod tests {
     #[test]
     fn every_serializer_the_walk_knows_is_stepped_over() {
         // The value of each serializer, so the field after it is still found.
-        let values: [(i32, &[u8]); 41] = [
+        let values: [(i32, &[u8]); 42] = [
             (0, &[7]),
             (1, &[0x81, 0x01]),
             (2, &[0xFF, 0xFF, 0x03]),
@@ -739,6 +751,7 @@ mod tests {
             (39, &[0; 12]),
             (40, &[0; 16]),
             (42, &[1]),
+            (43, &[1]),
         ];
         for (serializer, value) in values {
             let metadata = data(&[(1, serializer, value), (2, 8, &[1])]);

@@ -291,6 +291,25 @@ fn boat_rows() -> Vec<Value> {
         in_the_way("use-oak_boat-into-border", "zombie", 4.0, 2.5).border(0.5, 0.5, 5.0).row(),
         in_the_way("use-oak_boat-eye-in-pickable", "zombie", 0.5, 0.5).row(),
     ]
+    .into_iter()
+    .chain(poplar_boat_rows())
+    .collect()
+}
+
+/// The poplar boats, which only the newest version has: the use is the boats' own.
+fn poplar_boat_rows() -> Vec<Value> {
+    if crate::components::is_26_2() {
+        return Vec::new();
+    }
+    let side = aim_at((0, 65, 2), "north", (0.5, 65.62, 2.0));
+    let beside = |label: &str, item: &'static str, block: &str| {
+        using(label, vec![put(0, 65, 2, block)], run(Some(&side))).main_hand(item).count(2).x_rot(0.0)
+    };
+    vec![
+        beside("use-poplar_boat-into-wall", "minecraft:poplar_boat", "minecraft:stone").row(),
+        beside("use-poplar_chest_boat-into-water", "minecraft:poplar_chest_boat", "minecraft:water").row(),
+        in_the_way("use-poplar_boat-into-poplar-boat", "poplar_boat", 1.0, 2.5).row(),
+    ]
 }
 
 /// A boat aimed at the floor beside the player's feet, where its box meets the player's.

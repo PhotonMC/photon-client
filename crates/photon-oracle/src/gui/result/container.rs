@@ -339,7 +339,11 @@ pub(super) fn game_mode_switcher_case(ctx: &mut GuiContext, row: &Value) -> Resu
             "selected": format!("{:?}", screen.selected()).to_uppercase(),
         }));
     }
-    Ok(json!({"label": row["label"], "steps": steps}))
+    Ok(json!({
+        "label": row["label"],
+        "steps": steps,
+        "icons": photon_gui::screen::game_mode::icon_items(),
+    }))
 }
 
 /// Item cooldowns the server set, then the player's ticks since.

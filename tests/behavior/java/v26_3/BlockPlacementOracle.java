@@ -158,6 +158,18 @@ class BlockPlacementOracle extends BlockItemOracle {
      * game cannot answer on this level is listed apart, so nothing is skipped silently.
      */
     static JsonObject menuProviders(JsonObject row) {
+        return menuProviders(row, false);
+    }
+
+    /**
+     * The same listing for what a spectator's outline and crosshair show on
+     * (`BlockState.showAsInteractableInSpectatorMode`): the menu providers, and the portal blocks.
+     */
+    static JsonObject spectatorInteractable(JsonObject row) {
+        return menuProviders(row, true);
+    }
+
+    private static JsonObject menuProviders(JsonObject row, boolean interactable) {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
         entry.addProperty("outcome", "listed");
@@ -178,7 +190,9 @@ class BlockPlacementOracle extends BlockItemOracle {
             level.states.clear();
             level.states.put(pos.asLong(), state);
             try {
-                if (state.getMenuProvider(level, pos) != null) {
+                if (interactable
+                    ? state.showAsInteractableInSpectatorMode(level, pos, null)
+                    : state.getMenuProvider(level, pos) != null) {
                     words[id / 64] |= 1L << (id % 64);
                 }
             } catch (RuntimeException error) {

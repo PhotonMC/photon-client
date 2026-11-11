@@ -7,6 +7,9 @@ rules! {
     HudRules {
         /// Keypad digits also count as digits for tab shortcuts (new in 26.3).
         keypad_digits_choose_tabs: since V26_3,
+        /// The game mode switcher (F3+F4) shows the buried treasure map for adventure mode
+        /// (26.3); 26.2 shows the plain map.
+        switcher_adventure_icon_is_the_treasure_map: since V26_3,
         /// A subtitle shows the closest place it was heard at (26.2) instead of the latest one
         /// within range (26.3).
         subtitles_show_closest: before V26_3,

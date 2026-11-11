@@ -4,7 +4,9 @@
 mod aquatic;
 mod banner;
 mod beacon;
+mod bed;
 mod bosses;
+mod cushion;
 mod data_ids;
 mod effects;
 mod farm;
@@ -159,6 +161,8 @@ const ORDER: &[Cases] = &[
     flyers::happy_ghast,
     flyers::flier_item,
     objects::boat,
+    cushion::cushion,
+    bed::bed_sleeping_position,
     golems::copper_golem,
     golems::copper_golem_layer,
     || vec![table("attributes", "entity_attributes")],

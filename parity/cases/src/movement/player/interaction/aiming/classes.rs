@@ -310,10 +310,25 @@ fn state_table() -> Vec<Placed> {
     }]
 }
 
+/// The classes only the newest version has. The cushion's click is a consume on the client (a
+/// success without a swing), and a pass when the player sneaks.
+fn newer_table() -> Vec<Placed> {
+    if crate::components::is_26_2() {
+        return Vec::new();
+    }
+    vec![
+        placed("use-cushion-with-stone", "cushion", "minecraft:stone"),
+        placed("use-cushion-with-cushion", "cushion", "minecraft:white_cushion"),
+        placed("use-cushion-empty-handed", "cushion", ""),
+        Placed { sneaking: true, ..placed("use-cushion-sneaking", "cushion", "minecraft:stone") },
+    ]
+}
+
 fn placed_rows() -> Vec<Value> {
     placed_table()
         .into_iter()
         .chain(state_table())
+        .chain(newer_table())
         .map(|row| {
             let [x, y, z] = row.at;
             let mut entity = super::mob(31, row.kind, x, y, z);

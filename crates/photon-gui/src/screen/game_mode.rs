@@ -22,14 +22,31 @@ const MODES: [ClientPlayerGameMode; 4] = [
     ClientPlayerGameMode::Spectator,
 ];
 
+/// The item the adventure slot shows: the plain map, or in 26.3 the buried treasure map.
+fn adventure_item() -> &'static str {
+    if photon_core::versions::rules()
+        .hud
+        .switcher_adventure_icon_is_the_treasure_map
+    {
+        concat!("minecraft:", "buried_treasure_map")
+    } else {
+        "minecraft:map"
+    }
+}
+
 /// The item each slot shows and the key of the mode's name.
 fn icon(mode: ClientPlayerGameMode) -> (&'static str, &'static str) {
     match mode {
         ClientPlayerGameMode::Creative => ("minecraft:grass_block", "gameMode.creative"),
         ClientPlayerGameMode::Survival => ("minecraft:iron_sword", "gameMode.survival"),
-        ClientPlayerGameMode::Adventure => ("minecraft:map", "gameMode.adventure"),
+        ClientPlayerGameMode::Adventure => (adventure_item(), "gameMode.adventure"),
         ClientPlayerGameMode::Spectator => ("minecraft:ender_eye", "gameMode.spectator"),
     }
+}
+
+/// The item each slot shows, in the order of the slots (`GameModeIcon.renderStack`).
+pub fn icon_items() -> [&'static str; 4] {
+    MODES.map(|mode| icon(mode).0)
 }
 
 /// `GameModeIcon.getNext`.

@@ -185,8 +185,15 @@ const ACCESSORS: &[(&str, &str)] = &[
 ];
 
 pub fn data_ids() -> Vec<Value> {
+    // The cushion came with 26.3.
+    let newer: &[(&str, &str)] = if crate::components::is_26_2() {
+        &[]
+    } else {
+        &[("net.minecraft.world.entity.decoration.Cushion", "DATA_COLOR")]
+    };
     let rows = ACCESSORS
         .iter()
+        .chain(newer)
         .map(|(class, field)| {
             let name = class.rsplit('.').next().unwrap_or(class);
             json!({"label": format!("{name}.{field}"), "class": class, "field": field})

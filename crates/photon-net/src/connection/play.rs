@@ -512,6 +512,51 @@ mod tests {
     }
 
     #[test]
+    fn a_rider_on_a_cushion_is_told_how_to_stand_up() {
+        let (mut session, _far_end) = detached();
+        session.local.player_id = Some(photon_core::ids::EntityId(1));
+        session
+            .world
+            .set_local_player_id(photon_core::ids::EntityId(1));
+        session.local.player = Some(LocalPlayer::new(
+            photon_core::ids::EntityId(1),
+            Vec3::new(8.0, 64.0, 8.0),
+            0.0,
+            0.0,
+            session.local.game_mode,
+            session.link.auto_jump,
+        ));
+        session
+            .handle_bytes(&add_entity_of_type(
+                1,
+                wire_entity_type("minecraft:player"),
+                8.0,
+            ))
+            .unwrap();
+        session
+            .handle_bytes(&add_entity_of_type(
+                7,
+                wire_entity_type("minecraft:cushion"),
+                8.0,
+            ))
+            .unwrap();
+        let mut passengers = varint(crate::connection::test_wire::play(
+            PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID,
+        ) as u32);
+        passengers.extend(varint(7));
+        passengers.extend(varint(1));
+        passengers.extend(varint(1));
+        session.handle_bytes(&passengers).unwrap();
+        assert!(matches!(
+            session.drain_hud().as_slice(),
+            [HudEvent::ActionBar(message)] if matches!(
+                &message.content,
+                photon_game::text::Content::Translatable { key, .. } if key == "mount.sit"
+            )
+        ));
+    }
+
+    #[test]
     fn set_camera_hands_the_view_to_a_known_entity_and_back() {
         let (mut session, _far_end) = detached();
         let own = EntityId(1);

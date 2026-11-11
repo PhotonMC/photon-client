@@ -128,7 +128,6 @@ fn provider_of(name: &str) -> Option<Provider> {
         "item" | "item_slime" | "item_cobweb" | "item_snowball" | "sulfur_cube_goo" => {
             Provider::BreakingItem
         }
-        "cherry_leaves" | "pale_oak_leaves" | "tinted_leaves" => Provider::FallingLeaves,
         name if name.starts_with("dripping_")
             || name.starts_with("landing_")
             || matches!(
@@ -145,10 +144,15 @@ fn provider_of(name: &str) -> Option<Provider> {
         {
             Provider::Drip
         }
-        _ => {
-            block_provider_of(name).or_else(|| Some(Provider::Mark(super::hit::Mark::of(name)?)))?
-        }
+        _ => leaves_provider_of(name)
+            .or_else(|| block_provider_of(name))
+            .or_else(|| Some(Provider::Mark(super::hit::Mark::of(name)?)))?,
     })
+}
+
+/// The falling leaves' provider, for the types that fall as leaves.
+fn leaves_provider_of(name: &str) -> Option<Provider> {
+    Particle::is_falling_leaves(name).then_some(Provider::FallingLeaves)
 }
 
 /// Whether the provider makes its particle from the level or the options rather than from a

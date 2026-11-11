@@ -28,9 +28,13 @@ fn uuid_of(value: &Value) -> Result<(Uuid, [i32; 4]), String> {
     ))
 }
 
-/// Put a row's `players` and `parrots` in the level, and give each of its `vaults` the shared
+/// Give a row's level the vanilla block tags when it asks for them, put its `players` and `parrots` in the level, and give each of its `vaults` the shared
 /// data the server would have sent with the chunk.
 pub(super) fn place(world: &mut ClientWorld, row: &Value) -> Result<(), String> {
+    if row["vanilla_tags"].as_bool() == Some(true) {
+        // The tags the server sends: without them every tag is empty, as in a level with none.
+        world.apply_update_tags_packet(&crate::vanilla_block_tags()?);
+    }
     if row["light"].as_bool() == Some(true) {
         world.light_from_sources();
         world.run_light_updates();

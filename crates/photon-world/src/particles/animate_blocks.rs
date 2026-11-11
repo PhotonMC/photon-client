@@ -55,7 +55,13 @@ impl ParticleEngine {
         let lit = crate::block::rules::property(state, "lit") == Some("true");
         if photon_data::leaves::of(full).is_some() {
             let materials = self.terrain_materials();
-            self.leaves_animate_tick((state, full), pos, random, (context, materials.as_deref()));
+            self.leaves_animate_tick(
+                (state, full),
+                pos,
+                random,
+                (context, materials.as_deref()),
+                sounds,
+            );
             return;
         }
         if photon_data::map::dust_color(full).is_some() {

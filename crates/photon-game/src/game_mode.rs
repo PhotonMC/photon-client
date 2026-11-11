@@ -94,6 +94,7 @@ mod block_use;
 mod bottles;
 mod buckets;
 mod context;
+mod cushion;
 mod stab;
 mod tools;
 pub use context::*;
