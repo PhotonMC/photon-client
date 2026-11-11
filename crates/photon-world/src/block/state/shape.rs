@@ -127,9 +127,10 @@ pub(super) fn compute(
         center_faces: support_facts.center_faces,
         rigid_faces: support_facts.rigid_faces,
         suffocating,
-        view_blocking: block.view_blocking.value(offset).unwrap_or(suffocating),
-        near_plane_view_blocking: block.view_blocking
-            == photon_data::block::definition::Rule::NearPlane,
+        view_blocking: view_blocking_rule(block)
+            .value(offset)
+            .unwrap_or(suffocating),
+        near_plane_view_blocking: has_near_plane_rule(block),
         redstone_conductor: block
             .redstone_conductor
             .value(offset)
@@ -331,4 +332,24 @@ pub(super) fn support_shape(
         }
     }
     collision.clone()
+}
+
+/// The block's view-blocking rule in the active version: 26.3's near plane rule replaced what
+/// 26.2 had.
+fn view_blocking_rule(
+    block: &photon_data::block::definition::Block,
+) -> photon_data::block::definition::Rule {
+    if photon_core::versions::behaviour::blocks_view_at_near_plane() {
+        block.view_blocking
+    } else if block.view_blocking == photon_data::block::definition::Rule::NearPlane {
+        block.view_blocking_before_26_3
+    } else {
+        block.view_blocking
+    }
+}
+
+/// Whether the view-blocking rule is the near plane one, which only 26.3 has.
+fn has_near_plane_rule(block: &photon_data::block::definition::Block) -> bool {
+    photon_core::versions::behaviour::blocks_view_at_near_plane()
+        && block.view_blocking == photon_data::block::definition::Rule::NearPlane
 }

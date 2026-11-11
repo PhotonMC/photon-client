@@ -92,6 +92,12 @@ pub fn in_world_options_offer_online() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether a block can block the view only at the camera's near plane (26.3: stairs and slabs
+/// the player's eye sits inside); 26.2 has no such rule, a block blocks the view or it does not.
+pub fn blocks_view_at_near_plane() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// Whether `Mth.length(float, float)` sums its squares as floats (26.3); 26.2 sums them as doubles.
 pub fn length_sums_squares_as_floats() -> bool {
     !Version::active_before_26_3()
