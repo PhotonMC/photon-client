@@ -266,13 +266,7 @@ fn display_options(gui_scale: i32, max_gui_scale: i32, display: &VideoValues) ->
                 vec![true, false],
                 toggle_text,
                 false,
-                Box::new(|value: &bool| {
-                    vec![Some(Component::translatable(if *value {
-                        "options.exclusiveFullscreen.on.tooltip"
-                    } else {
-                        "options.exclusiveFullscreen.off.tooltip"
-                    }))]
-                }),
+                Box::new(|value: &bool| size::exclusive_tip_lines(*value)),
             ),
         ),
         (

@@ -364,3 +364,19 @@ fn resolution_entry(fullscreen: FullscreenModes) -> Build {
         )
     }
 }
+
+/// The exclusive fullscreen tooltip. 26.2 puts the restart notice first once the value differs
+/// from the one the game started with (always off here).
+pub(super) fn exclusive_tip_lines(value: bool) -> Vec<Option<Component>> {
+    let mut lines = Vec::new();
+    if value && photon_core::versions::behaviour::exclusive_fullscreen_needs_restart() {
+        lines.push(Some(Component::translatable("options.needsRestart")));
+        lines.push(None);
+    }
+    lines.push(Some(Component::translatable(if value {
+        "options.exclusiveFullscreen.on.tooltip"
+    } else {
+        "options.exclusiveFullscreen.off.tooltip"
+    })));
+    lines
+}
