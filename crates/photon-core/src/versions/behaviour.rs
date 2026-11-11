@@ -47,6 +47,12 @@ pub fn brewing_totals_are_fixed() -> bool {
     Version::active_before_26_3()
 }
 
+/// Whether a unifont glyph advances by half its width in whole pixels (26.3) instead of exactly
+/// half (26.2).
+pub fn unihex_advance_is_whole() -> bool {
+    !Version::active_before_26_3()
+}
+
 /// The data version the active version's files carry (`world_version` of its `version.json`).
 pub fn data_version() -> i32 {
     if Version::active_before_26_3() {
