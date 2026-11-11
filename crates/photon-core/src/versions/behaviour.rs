@@ -92,6 +92,12 @@ pub fn in_world_options_offer_online() -> bool {
     !Version::active_before_26_3()
 }
 
+/// Whether the level events for a splashed potion and a waxed block sound here as well as showing
+/// their particles (26.2); in 26.3 the sounds are their own events.
+pub fn splash_and_wax_events_sound() -> bool {
+    Version::active_before_26_3()
+}
+
 /// Whether the client swings for a click that mounts a minecart or opens a grown wandering
 /// trader's trades (26.2); in 26.3 only the server's answer swings.
 pub fn mount_and_trade_clicks_swing() -> bool {

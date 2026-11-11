@@ -44,6 +44,7 @@ mod recipes;
 mod sounds;
 mod sulfur;
 pub use campfire::CampfireSmoke;
+pub(crate) use sounds::WAX_ON_SOUND;
 pub use sounds::{LevelEvent, LevelEventQueue, block_sound_of};
 pub(crate) use sulfur::{SulfurState, has_sulfur_ticker};
 pub(crate) mod boat_place;

@@ -149,6 +149,9 @@ impl ParticleEngine {
     ) {
         if event >= 2000 {
             self.splash_potion(pos, (event == 2007, data), context);
+            if photon_core::versions::behaviour::splash_and_wax_events_sound() {
+                splash_sound(pos, context, sounds);
+            }
         } else {
             splash_sound(pos, context, sounds);
         }

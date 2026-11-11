@@ -504,7 +504,7 @@ fn block_lines(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> Vec<String> {
     };
     lines.push(format!(
         "mov,{x},{y},{z},{},{},{},{},{:08x},{:08x}",
-        moving.moved_state.0,
+        crate::case_ids::wire_state(moving.moved_state),
         moving.direction as usize,
         moving.extending,
         moving.source,

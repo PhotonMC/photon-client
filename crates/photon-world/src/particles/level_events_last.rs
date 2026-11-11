@@ -95,8 +95,7 @@ impl ParticleEngine {
                     self.particles_on_block_faces(pos, "electric_spark", (3, 5), context);
                 }
             }
-            // The wax-on sound is not played here since 26.3.
-            3003 => self.particles_on_block_faces(pos, "wax_on", (3, 5), context),
+            3003 => self.wax_on(pos, context, sounds),
             3004 => self.particles_on_block_faces(pos, "wax_off", (3, 5), context),
             3005 => self.particles_on_block_faces(pos, "scrape", (3, 5), context),
             3006 => self.sculk_charge(pos, data, context, sounds),
@@ -157,6 +156,26 @@ impl ParticleEngine {
             context.level_random,
             &mut context.particle_random,
         );
+    }
+
+    /// Event 3003: wax on the faces of a block, and in 26.2 its sound.
+    fn wax_on<F: FnMut() -> RandomSource>(
+        &mut self,
+        pos: (i32, i32, i32),
+        context: &mut LevelEventContext<'_, F>,
+        sounds: &mut Vec<LocalSound>,
+    ) {
+        self.particles_on_block_faces(pos, "wax_on", (3, 5), context);
+        // The wax-on sound is its own event since 26.3.
+        if photon_core::versions::behaviour::splash_and_wax_events_sound() {
+            let centre = (
+                f64::from(pos.0) + 0.5,
+                f64::from(pos.1) + 0.5,
+                f64::from(pos.2) + 0.5,
+            );
+            let event = (crate::world::WAX_ON_SOUND, LocalSoundSource::Blocks);
+            sounds.push(local_sound(event, (1.0, 1.0), centre, context));
+        }
     }
 
     /// Event 2006: two hundred specks of the dragon's breath flung out of a block, and with a

@@ -409,6 +409,9 @@ pub enum LevelEvent {
     },
 }
 
+/// The sound of wax put on a block.
+pub(crate) const WAX_ON_SOUND: &str = "minecraft:item.honeycomb.wax_on";
+
 impl LevelEvent {
     /// The sound a geyser plays (`Level.playLocalSound` of the blocks' kind); nothing for another
     /// event.
@@ -437,7 +440,7 @@ impl LevelEvent {
             return None;
         };
         Some(local_player::LocalSound::at(
-            "minecraft:item.honeycomb.wax_on",
+            WAX_ON_SOUND,
             local_player::LocalSoundSource::Blocks,
             (1.0, 1.0),
             (

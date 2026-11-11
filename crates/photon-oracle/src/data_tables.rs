@@ -1,5 +1,6 @@
 //! Tables of the data crate that a movement case compares with the reference's own.
 
+use photon_core::ids::BlockStateId;
 use serde_json::{Value, json};
 
 /// The answer for the operation `operation` when it is one of these tables.
@@ -86,19 +87,34 @@ fn game_rules() -> Value {
 fn block_map_colors() -> Value {
     // The map colours and dust colours, as the data crate carries them.
     let (blocks, states, dust) = photon_data::map::map_color_tables();
+    // The reference walks its own registry, so a version that numbers a window of blocks in
+    // another order lists them in that order.
+    let registries = crate::case_ids::registries();
+    let wire = |name: &str| {
+        photon_data::block::registry::block_index(name)
+            .and_then(|index| registries.blocks.to_wire(index as u32))
+    };
+    let mut blocks: Vec<_> = blocks
+        .iter()
+        .filter_map(|entry| wire(entry.0).map(|id| (id, entry)))
+        .collect();
+    blocks.sort_by_key(|(id, _)| *id);
     let rows: Vec<Value> = blocks
         .iter()
-        .filter(|(name, _)| crate::case_ids::registries().has_block(name))
-        .map(|(name, color)| {
+        .map(|(_, (name, color))| {
             let others: Vec<Value> = states
                 .iter()
                 .filter(|(state, _)| {
-                    photon_data::block::registry::block_for_state(crate::case_ids::block_state(
-                        *state as i32,
-                    ))
-                    .is_some_and(|(block, _)| block.name == *name)
+                    // The table's states are canonical; the reference lists its own wire ids.
+                    photon_data::block::registry::block_for_state(BlockStateId(*state as i32))
+                        .is_some_and(|(block, _)| block.name == *name)
                 })
-                .map(|(state, color)| json!([state, color]))
+                .map(|(state, color)| {
+                    json!([
+                        crate::case_ids::wire_state(BlockStateId(*state as i32)),
+                        color
+                    ])
+                })
                 .collect();
             let mut entry = json!({"name": name, "color": color, "states": others});
             if let Some((_, color)) = dust.iter().find(|(block, _)| block == name) {
