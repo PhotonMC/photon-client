@@ -39,6 +39,7 @@ pub(super) fn search_tab_index() -> usize {
         .expect("there is a search tab")
 }
 
+#[cfg(test)]
 pub(super) fn search_tab() -> &'static photon_data::item::creative::CreativeTab {
     CREATIVE_TABS
         .iter()
@@ -71,19 +72,37 @@ pub fn tab_items(tab: usize, operator: bool) -> &'static [CreativeStack] {
     } else if operator && CREATIVE_TABS[tab].kind == TabKind::Search {
         search_list()
     } else {
-        CREATIVE_TABS[tab].items
+        ordered(tab)
     }
+}
+
+/// A tab's own stacks as the active version lists them: the table for the newest version, and for
+/// a version that orders some runs differently its own items in its own order.
+pub fn ordered(tab: usize) -> &'static [CreativeStack] {
+    versioned((tab, false), CREATIVE_TABS[tab].items)
+}
+
+/// What a tab gives the search tab, as the active version lists it.
+pub fn ordered_search_items(tab: usize) -> &'static [CreativeStack] {
+    let entry = &CREATIVE_TABS[tab];
+    if entry.search_items.is_empty() {
+        ordered(tab)
+    } else {
+        versioned((tab, true), entry.search_items)
+    }
+}
+
+fn versioned(key: (usize, bool), table: &'static [CreativeStack]) -> &'static [CreativeStack] {
+    photon_data::version_registries::creative_list(key, table)
 }
 
 /// The search tab's stacks for a player who can use game master blocks: the operator tab gives
 /// its own after everything else.
 pub fn search_list() -> &'static [CreativeStack] {
-    static LIST: std::sync::OnceLock<Vec<CreativeStack>> = std::sync::OnceLock::new();
-    LIST.get_or_init(|| {
-        let mut list = search_tab().items.to_vec();
-        list.extend_from_slice(&OPERATOR_TAB_ITEMS);
-        list
-    })
+    photon_data::version_registries::creative_search_list(
+        ordered(search_tab_index()),
+        &OPERATOR_TAB_ITEMS,
+    )
 }
 
 /// The search tab's items with what the search reads of each: the lines of

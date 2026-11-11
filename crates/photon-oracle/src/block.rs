@@ -266,9 +266,12 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 let stack = |entry: &photon_data::item::creative::CreativeStack| {
                     crate::creative_op::stack_json(entry, &registries)
                 };
+                let stacks = |list: &[_]| list.iter().map(&stack).collect::<Vec<_>>();
                 let tabs: Vec<Value> = CREATIVE_TABS
                     .iter()
-                    .map(|tab| {
+                    .enumerate()
+                    .map(|(index, tab)| {
+                        use photon_game::menus::creative::{ordered, ordered_search_items};
                         json!({
                             "name": tab.name,
                             "type": match tab.kind {
@@ -286,11 +289,8 @@ fn block_result(request: &Value) -> Result<Value, String> {
                             "background": tab.background,
                             "title": tab.title,
                             "icon": stack(&tab.icon),
-                            "items": tab.items.iter().map(&stack).collect::<Vec<_>>(),
-                            "search_items": if tab.search_items.is_empty() { tab.items } else { tab.search_items }
-                                .iter()
-                                .map(&stack)
-                                .collect::<Vec<_>>(),
+                            "items": stacks(ordered(index)),
+                            "search_items": stacks(ordered_search_items(index)),
                         })
                     })
                     .collect();

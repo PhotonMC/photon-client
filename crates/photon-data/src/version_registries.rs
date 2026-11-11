@@ -356,6 +356,68 @@ pub fn component_registered(id: i32) -> bool {
     crate::item::component_types::exists_in(id, photon_core::version::Version::active())
 }
 
+/// The runs of creative tab stacks `version` orders unlike the tables, each in its own order.
+pub fn creative_windows(version: Version) -> &'static [&'static [&'static str]] {
+    match version {
+        Version::V26_2 => &versions::v26_2::CREATIVE_WINDOWS,
+        _ => &[],
+    }
+}
+
+type CreativeLists<K> = std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<K, &'static [crate::item::creative::CreativeStack]>>,
+>;
+
+/// A creative tab's `table` as the active version lists it: the table itself for a version that
+/// orders it like the tables, else the version's own items in its own order. `key` names the
+/// table (the tab and whether it is the tab's search list).
+pub fn creative_list(
+    key: (usize, bool),
+    table: &'static [crate::item::creative::CreativeStack],
+) -> &'static [crate::item::creative::CreativeStack] {
+    static LISTS: CreativeLists<(Version, usize, bool)> = std::sync::OnceLock::new();
+    let version = Version::active();
+    let windows = creative_windows(version);
+    if windows.is_empty() {
+        return table;
+    }
+    let mut lists = LISTS
+        .get_or_init(Default::default)
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    lists.entry((version, key.0, key.1)).or_insert_with(|| {
+        let mut list: Vec<_> = table
+            .iter()
+            .filter(|entry| {
+                crate::item::registry::index(entry.item)
+                    .and_then(|index| ITEMS.get(index))
+                    .is_some_and(|item| item.exists_in(version))
+            })
+            .copied()
+            .collect();
+        crate::item::creative::reorder(&mut list, windows);
+        Vec::leak(list)
+    })
+}
+
+/// The active version's search list for an operator: `search` (already in the version's order)
+/// and then `operator`'s stacks.
+pub fn creative_search_list(
+    search: &[crate::item::creative::CreativeStack],
+    operator: &[crate::item::creative::CreativeStack],
+) -> &'static [crate::item::creative::CreativeStack] {
+    static LISTS: CreativeLists<Version> = std::sync::OnceLock::new();
+    let mut lists = LISTS
+        .get_or_init(Default::default)
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    lists.entry(Version::active()).or_insert_with(|| {
+        let mut list = search.to_vec();
+        list.extend_from_slice(operator);
+        Vec::leak(list)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
