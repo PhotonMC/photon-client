@@ -5,6 +5,7 @@
 use serde_json::{Value, json};
 
 use super::gui;
+mod cartography;
 use crate::bits::{hex, varint};
 
 /// A container screen scenario; `None` fields are left out of the row.
@@ -514,6 +515,7 @@ fn mounts() -> Vec<Value> {
 pub fn container_screen() -> Value {
     let rows = [
         small_menus(),
+        cartography::rows(),
         brewing_and_beacons(),
         styled_titles(),
         crafters_and_lecterns(),

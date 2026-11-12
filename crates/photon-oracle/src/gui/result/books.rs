@@ -188,10 +188,8 @@ pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
         Vec::<photon_render::gui::GuiItemVertex>::new()
     };
     let mut tooltip = |_: &photon_world::ClientItemStackState, _: bool| Vec::new();
-    let (book, tags) = (
-        photon_world::RecipeBook::default(),
-        photon_world::block::tags::ItemTags::default(),
-    );
+    let book = photon_world::RecipeBook::default();
+    let tags = photon_world::block::tags::ItemTags::default();
     let mut draw = photon_gui::screen::ScreenDraw {
         viewer: photon_gui::screen::PlayerView::default(),
         frame: &mut frame,
@@ -201,6 +199,7 @@ pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
         player: &mut player,
         entity: &mut entity,
         tooltip: &mut tooltip,
+        maps: &mut photon_gui::map_view::no_maps,
         lang: &lang,
         book: &book,
         tags: &tags,

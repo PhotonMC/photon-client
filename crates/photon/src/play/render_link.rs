@@ -24,6 +24,21 @@ impl Play {
         self.surface.set_hand_cursor(hand);
     }
 
+    /// The frame goes to the screen, or to a screenshot when one was asked for.
+    pub(super) fn capture_or_submit(
+        &mut self,
+        colour: [f32; 4],
+        view_projection: [[f32; 4]; 4],
+    ) -> Result<()> {
+        if std::mem::take(&mut self.controls.screenshot_pending) {
+            let captured = self.backend.capture_scene(colour, view_projection)?;
+            self.save_screenshot(&captured);
+        } else {
+            self.submit_or_record(colour, view_projection)?;
+        }
+        Ok(())
+    }
+
     /// Submit the frame, saving it too when a recording is on.
     pub(super) fn submit_or_record(
         &mut self,

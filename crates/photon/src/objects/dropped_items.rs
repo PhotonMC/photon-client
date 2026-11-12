@@ -328,6 +328,24 @@ impl WorldItemLayers {
         backend.set_draw(photon_render::vulkan::DrawKind::GroundItems, items)?;
         self.frames.hand_over(backend)
     }
+
+    /// A map as the GUI draws it, readied in the maps' image (`MapRenderer.extractRenderState`).
+    pub fn gui_map(
+        &mut self,
+        id: i32,
+        data: &photon_world::map::MapData,
+        textures: &EntityTextures,
+    ) -> photon_render::gui::GuiMap {
+        self.frames.gui_map(id, data, textures)
+    }
+
+    /// Hand the maps' image to the renderer if a screen's map changed it.
+    pub fn hand_over_maps(
+        &mut self,
+        backend: &mut photon_render::VulkanBackend,
+    ) -> Result<(), photon_render::VulkanError> {
+        self.frames.upload_maps(backend)
+    }
 }
 
 /// The triangles of every item in the world as the ground shows it: those lying about and those

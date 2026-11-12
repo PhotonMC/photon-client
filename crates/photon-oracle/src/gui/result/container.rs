@@ -102,6 +102,9 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     }
     let mut steps = Vec::new();
     let keys = key_steps(row);
+    let seeded = super::map_seed::seeded_map(row)?;
+    // The stand-in for the picture: the whole of a sprite, wherever it is.
+    let mut maps = super::map_seed::drawer(&seeded);
     let mut item_drawer = no_items;
     let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
         photon_render::gui::GuiFigure::default()
@@ -138,20 +141,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         let mut entities = Vec::new();
         let mut entity =
             |_: EntityId, area: (i32, i32, i32, i32), size: f32, offset: f32, mouse: (f32, f32)| {
-                let height = mount_height(row);
-                let view = photon_render::entity::player_renderer::GuiEntityView::new(
-                    area, size, offset, mouse, height,
-                );
-                let [x, y, z, w] = view.rotation_quaternion();
-                entities.push(json!({
-                    "x0": area.0, "y0": area.1, "x1": area.2, "y1": area.3,
-                    "scale": round5(size),
-                    "translation_y": round5(view.translation_y()),
-                    "rotation": [round5(x), round5(y), round5(z), round5(w)],
-                    "body_rot": round5(view.body_rot()),
-                    "y_rot": round5(view.head_yaw()),
-                    "x_rot": round5(view.pitch_degrees()),
-                }));
+                entities.push(mount_view(row, (area, size, offset), mouse));
                 Vec::<photon_render::gui::GuiItemVertex>::new()
             };
         let mut draw = photon_gui::screen::ScreenDraw {
@@ -163,6 +153,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
             player: &mut player,
             entity: &mut entity,
             tooltip: &mut tooltip,
+            maps: &mut maps,
             lang: &lang,
             book: &book,
             tags: &tags,
@@ -179,6 +170,29 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     }
     press_clicks(&mut *screen, &menu, row);
     Ok(json!({"label": row["label"], "steps": steps}))
+}
+
+/// What the screen asks of the mount's model: the box, the scale, the lift (the mount's height)
+/// and the turns, as the reference's `GuiEntityRenderState` reports them.
+fn mount_view(
+    row: &Value,
+    (area, size, offset): ((i32, i32, i32, i32), f32, f32),
+    mouse: (f32, f32),
+) -> Value {
+    let height = mount_height(row);
+    let view = photon_render::entity::player_renderer::GuiEntityView::new(
+        area, size, offset, mouse, height,
+    );
+    let [x, y, z, w] = view.rotation_quaternion();
+    json!({
+        "x0": area.0, "y0": area.1, "x1": area.2, "y1": area.3,
+        "scale": round5(size),
+        "translation_y": round5(view.translation_y()),
+        "rotation": [round5(x), round5(y), round5(z), round5(w)],
+        "body_rot": round5(view.body_rot()),
+        "y_rot": round5(view.head_yaw()),
+        "x_rot": round5(view.pitch_degrees()),
+    })
 }
 
 /// A key step that acts on the screen: `type:` text, or a wheel turn `scroll:<amount>`.

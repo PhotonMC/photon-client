@@ -101,6 +101,7 @@ fn draw_screen(
         player: &mut player,
         entity: &mut entity,
         tooltip: &mut tooltip,
+        maps: &mut photon_gui::map_view::no_maps,
         lang,
         book: &book,
         tags: &tags,

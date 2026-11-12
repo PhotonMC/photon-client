@@ -10,11 +10,11 @@ use photon_render::block_entity::chest::{ChestKind, ChestMaterial, chest_pose, e
 use photon_render::block_entity::shulker_box;
 use photon_render::block_entity::skull::{SkullKind, ground_transformation, wall_transformation};
 use photon_render::entity::layering::Layering;
-use photon_render::entity::mob_model::{mob_vertices_posed, mob_vertices_tinted};
+use photon_render::entity::mob_model::mob_vertices_posed;
 use photon_render::entity::textures::{EntityTextures, TextureRect};
 use photon_render::joml::Pose;
 use photon_render::scene::Vertex;
-use photon_world::{BannerView, DYES, ShulkerBoxView, SkullBlockView};
+use photon_world::{ShulkerBoxView, SkullBlockView};
 
 use crate::mobs::MobModels;
 use crate::overlays::{FrameView, block_light};
@@ -108,7 +108,15 @@ pub fn crumbling(
     (at, stage): ((i32, i32, i32), i32),
 ) -> Vec<Vertex> {
     let mut drawn = Vec::new();
-    block_entity_at(session, (models, textures), view, at, &mut drawn);
+    // A banner's layers are no part of what a destroy overlay covers.
+    if let Some(banner) = session.world().banner_view(at) {
+        let (base, light) = placement(session, view, at);
+        let phase = banner::flag_phase(at, session.world().game_time() as i64, view.partial as f32);
+        drawn = super::banner_draw::banner_parts(models, textures, (&base, light, phase), &banner)
+            .cracked();
+    } else {
+        block_entity_at(session, (models, textures), view, at, &mut drawn);
+    }
     let corner = view.relative([at.0, at.1, at.2]);
     for vertex in &mut drawn {
         let facing =
@@ -216,7 +224,18 @@ fn other_block_entity(
     } else if let Some(banner) = world.banner_view(at) {
         let (base, light) = placement(session, view, at);
         let phase = banner::flag_phase(at, world.game_time() as i64, view.partial as f32);
-        banner_vertices(models, textures, (&base, light, phase), &banner, vertices);
+        let parts =
+            super::banner_draw::banner_parts(models, textures, (&base, light, phase), &banner);
+        // The destroy overlay of an opaque model is drawn with the opaque ones in the versions
+        // that say so, before the translucent layers: those are drawn after it.
+        let after_overlay = photon_core::versions::rules()
+            .render
+            .crumbling_is_drawn_with_solids;
+        let cracked = models.cracked.contains(&at);
+        parts.route(
+            (cracked, after_overlay),
+            (vertices, &mut models.over_cracks),
+        );
     } else if let Some(skull) = world.skull_block_view(at, partial) {
         let (base, light) = placement(session, view, at);
         let drawn = vertices.len();
@@ -445,52 +464,4 @@ pub(super) fn skull_vertices(
     };
     let pose = photon_render::block_entity::skull::block_pose(base, &transformation);
     mob_vertices_posed(model, &pose, rect, (light, false))
-}
-
-/// One banner: its pole and bar, its flag and the layers of the flag, each tinted by its dye and
-/// blended over the one before.
-pub(super) fn banner_vertices(
-    models: &mut MobModels,
-    textures: &EntityTextures,
-    (base, light, phase): (&Pose, i32, f32),
-    banner: &BannerView,
-    vertices: &mut Vec<Vertex>,
-) {
-    let (main, flag) = banner::layers(banner.wall.is_some());
-    let transformation = match banner.wall {
-        Some(facing) => banner::wall_transformation(facing),
-        None => banner::ground_transformation(banner.rotation),
-    };
-    let pose = photon_render::block_entity::skull::block_pose(base, &transformation);
-    if let (Some(rect), Some(pole)) = (textures.rect(banner::BASE_TEXTURE), models.model(main)) {
-        pole.setup_banner_flag(phase);
-        vertices.extend(mob_vertices_posed(pole, &pose, rect, (light, false)));
-    }
-    let Some(cloth) = models.model(flag) else {
-        return;
-    };
-    cloth.setup_banner_flag(phase);
-    if let Some(rect) = textures.rect(banner::BASE_TEXTURE) {
-        vertices.extend(mob_vertices_posed(cloth, &pose, rect, (light, false)));
-    }
-    let dye = |name: &str| {
-        DYES.iter()
-            .position(|candidate| *candidate == name)
-            .and_then(photon_data::entity_type::dye_texture_colour)
-            .map(|colour| colour & 0x00FF_FFFF)
-    };
-    let layers = std::iter::once((banner::PATTERN_BASE_TEXTURE.to_owned(), dye(banner.color)))
-        .chain(
-            banner
-                .patterns
-                .iter()
-                .take(banner::MAX_PATTERNS)
-                .map(|(pattern, color)| (banner::pattern_texture(pattern), dye(color))),
-        );
-    for (texture, colour) in layers {
-        let (Some(rect), Some(colour)) = (textures.rect(&texture), colour) else {
-            continue;
-        };
-        vertices.extend(mob_vertices_tinted(cloth, &pose, rect, light, colour));
-    }
 }

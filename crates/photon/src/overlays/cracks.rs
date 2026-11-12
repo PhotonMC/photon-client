@@ -26,6 +26,7 @@ pub fn cracks(
             *stage = (*stage).max(progress.stage);
         }
     }
+    models.cracked = cracked.keys().copied().collect();
     let mut breaking = Vec::new();
     for (&(x, y, z), &stage) in &cracked {
         let Some(state) = session.world().block_state_at(x, y, z) else {

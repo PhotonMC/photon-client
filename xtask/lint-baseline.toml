@@ -196,8 +196,8 @@
 "crates/photon-game/src/menus/container/slots.rs::ContainerMenu::same_inventory" = 14
 "crates/photon-game/src/menus/container/stacks.rs::ContainerMenu::slot_max_for" = 13
 "crates/photon-game/src/menus/container/transform.rs::ContainerMenu::inputs_changed" = 12
-"crates/photon-game/src/menus/container/transform.rs::ContainerMenu::quick_move_transform" = 43
-"crates/photon-game/src/menus/container/transform.rs::ContainerMenu::transform_may_place" = 25
+"crates/photon-game/src/menus/container/transform.rs::ContainerMenu::quick_move_transform" = 41
+"crates/photon-game/src/menus/container/transform.rs::ContainerMenu::transform_may_place" = 23
 "crates/photon-game/src/menus/container/transform.rs::ContainerMenu::transform_on_take" = 13
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::inventory_tab_click" = 11
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::picker_click" = 15
@@ -483,7 +483,7 @@
 "crates/photon/src/equipment/arm_poses.rs::hand_pose" = 15
 "crates/photon/src/equipment/arm_poses.rs::use_animation" = 12
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 14
-"crates/photon/src/gui/draw.rs::Gui::draw" = 14
+"crates/photon/src/gui/draw.rs::Gui::draw" = 13
 "crates/photon/src/gui/hud.rs::Gui::receive_hud" = 13
 "crates/photon/src/mobs/animals/farm_animals.rs::appearance" = 19
 "crates/photon/src/mobs/animals/farm_animals.rs::pose" = 12
@@ -568,7 +568,7 @@
 "crates/photon-game/src/menus/container/anvil.rs::ContainerMenu::anvil_create_result" = 144
 "crates/photon-game/src/menus/container/bundle.rs::ContainerMenu::bundle_click" = 62
 "crates/photon-game/src/menus/container/clicks.rs::ContainerMenu::do_click" = 299
-"crates/photon-game/src/menus/container/transform.rs::ContainerMenu::quick_move_transform" = 131
+"crates/photon-game/src/menus/container/transform.rs::ContainerMenu::quick_move_transform" = 129
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::slot_clicked" = 69
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::window_click" = 81
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::play" = 67
@@ -652,10 +652,10 @@
 "crates/photon-oracle/src/frog.rs::airborne_model_result" = 268
 "crates/photon-oracle/src/guardian.rs::banner_pose_result" = 96
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::new" = 65
-"crates/photon-oracle/src/gui/result/books.rs::book_view_case" = 78
+"crates/photon-oracle/src/gui/result/books.rs::book_view_case" = 77
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 85
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 61
-"crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 146
+"crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 136
 "crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 67
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 98
 "crates/photon-oracle/src/gui/result/settings.rs::chat_options_screen_case" = 74
@@ -844,7 +844,7 @@
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 81
 "crates/photon/src/controls/social.rs::Controls::social_event" = 80
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 73
-"crates/photon/src/gui/draw.rs::Gui::draw" = 203
+"crates/photon/src/gui/draw.rs::Gui::draw" = 157
 "crates/photon/src/mobs/animals/farm_animals.rs::appearance" = 75
 "crates/photon/src/mobs/animals/felines.rs::remote_felines" = 91
 "crates/photon/src/mobs/animals/foxes.rs::remote_foxes" = 70
@@ -864,7 +864,7 @@
 "crates/photon/src/overlays/light.rs::player_model" = 68
 "crates/photon/src/overlays/wear.rs::remote_players" = 71
 "crates/photon/src/particles.rs::Particles::vertices" = 78
-"crates/photon/src/play/draw.rs::Play::draw" = 74
+"crates/photon/src/play/draw.rs::Play::draw" = 72
 "crates/photon/src/play/ticks.rs::Play::start" = 144
 "crates/photon/src/window_probe/version.rs::model_scene" = 72
 "crates/photon/src/window_probe/world.rs::load_world" = 90
@@ -931,8 +931,8 @@
 photon = 426
 photon-core = 10
 photon-data = 65
-photon-game = 571
-photon-gui = 46
+photon-game = 569
+photon-gui = 43
 photon-net = 35
 photon-protocol = 6
 photon-render = 238

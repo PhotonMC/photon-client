@@ -340,47 +340,6 @@ impl GenericScreen {
             _ => {}
         }
     }
-
-    /// `CartographyTableScreen.extractBackground` without the map drawn.
-    pub(super) fn cartography_preview(
-        &self,
-        draw: &mut ScreenDraw<'_, '_>,
-        menu: &ContainerMenu,
-        (left, top): (i32, i32),
-    ) {
-        let item = |slot: usize| {
-            menu.slots
-                .get(slot)
-                .and_then(Option::as_ref)
-                .and_then(|stack| {
-                    photon_data::item::registry::ITEMS
-                        .get(usize::try_from(stack.item_registry_id().0).ok()?)
-                })
-                .map_or("", |item| item.name)
-        };
-        let extra = item(1);
-        let sprite = |draw: &mut ScreenDraw<'_, '_>, name: &str, x: i32, y: i32, w: i32, h: i32| {
-            draw.frame.sprite(
-                draw.atlas,
-                &format!("container/cartography_table/{name}"),
-                left + x,
-                top + y,
-                w,
-                h,
-            );
-        };
-        if extra == "minecraft:paper" {
-            sprite(draw, "scaled_map", 67, 13, 66, 66);
-        } else if extra == "minecraft:map" {
-            sprite(draw, "duplicated_map", 83, 13, 50, 66);
-            sprite(draw, "duplicated_map", 67, 29, 50, 66);
-        } else if extra == "minecraft:glass_pane" {
-            sprite(draw, "map", 67, 13, 66, 66);
-            sprite(draw, "locked", 118, 60, 10, 14);
-        } else {
-            sprite(draw, "map", 67, 13, 66, 66);
-        }
-    }
 }
 
 /// The brewing stand's (ticks, fuel) and (total ticks, total fuel), the totals fixed before 26.3.

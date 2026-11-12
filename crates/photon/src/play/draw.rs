@@ -433,19 +433,17 @@ impl Play {
             &mut self.controls,
             (&self.block_renderer, &self.biome_tints),
             (
-                &mut self.player_model,
                 frame.locator,
-                (&mut self.mob_models, &mut self.armor, &mut self.worn_layers),
-                &self.entity_textures,
+                crate::gui::ScreenFigures {
+                    player_model: &mut self.player_model,
+                    dressing: (&mut self.mob_models, &mut self.armor, &mut self.worn_layers),
+                    entity_textures: &self.entity_textures,
+                    layers: &mut self.item_layers,
+                },
             ),
         )?;
         let built = Instant::now();
-        if std::mem::take(&mut self.controls.screenshot_pending) {
-            let captured = self.backend.capture_scene(colour, frame.view_projection)?;
-            self.save_screenshot(&captured);
-        } else {
-            self.submit_or_record(colour, frame.view_projection)?;
-        }
+        self.capture_or_submit(colour, frame.view_projection)?;
         self.frames += 1;
         let parts = profile::take_parts();
         if self.profile.is_some() || self.bench.is_some() {
@@ -462,7 +460,7 @@ impl Play {
     }
 
     /// `Screenshot.grab`: the frame goes to `screenshots/`, and the chat says where.
-    fn save_screenshot(&mut self, frame: &photon_render::CapturedFrame) {
+    pub(super) fn save_screenshot(&mut self, frame: &photon_render::CapturedFrame) {
         use photon_game::text::{ClickEvent, Component, Style};
         let saved = crate::screenshot::save(
             &crate::controls::game_directory(),

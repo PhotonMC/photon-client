@@ -41,6 +41,7 @@ mod stored;
 use settings::*;
 mod container;
 mod loom;
+mod map_seed;
 mod packs;
 use container::*;
 mod loading;

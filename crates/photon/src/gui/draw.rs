@@ -4,13 +4,12 @@ use photon_render::window::scale::WindowScale;
 /// A scoreboard sidebar: its title and its lines, in the language's runs.
 type Sidebar = (Vec<photon_game::text::Run>, Vec<SidebarLine>);
 use crate::hud_input::world_partial;
-use photon_core::ids::EntityId;
 use photon_gui::FrameRuns;
 use photon_gui::hud::spectator;
 
 /// What the figures of the screens are drawn with: the mob models, the armor and the layers of
 /// what is held.
-type Dressing<'a> = (
+pub(super) type Dressing<'a> = (
     &'a mut crate::mobs::MobModels,
     &'a mut crate::equipment::armor::Armor,
     &'a mut [ItemLayerCache; 4],
@@ -218,12 +217,7 @@ impl Gui {
         session: &mut PlaySession,
         controls: &mut Controls,
         (renderer, tints): (&BlockRenderer, &BiomeTints),
-        (player_model, locator_camera, (mob_models, armor, held_layers), entity_textures): (
-            &mut PlayerModel,
-            LocatorCamera,
-            Dressing<'_>,
-            &photon_render::entity::textures::EntityTextures,
-        ),
+        (locator_camera, figures): (LocatorCamera, ScreenFigures<'_>),
     ) -> Result<(), Box<dyn std::error::Error>> {
         let size = surface.scale();
         let screen_menu = controls
@@ -231,7 +225,6 @@ impl Gui {
             .is_some()
             .then(|| session.active_menu().clone());
         let session = &*session;
-        let hud_player = session.player();
         let tab = self.tab_list(session, controls);
         let sidebar = self.sidebar_lines(session);
         let mut draw_item = self.items.drawer((renderer, tints));
@@ -365,56 +358,13 @@ impl Gui {
             &mut frame,
             (gui_size, &mut draw_item, &mut menu_tooltip),
         );
-        if let (Some(screen), Some(menu)) = (controls.screen.as_mut(), screen_menu) {
-            let skin = self.player_skin;
-            // Both previews dress what they draw from the same cache, one after the other.
-            let armor = std::cell::RefCell::new(armor);
-            let mut draw_player = preview::drawer(
-                session,
-                (hud_player, player_model),
-                (&armor, entity_textures),
-                (skin, held_layers, (renderer, tints)),
-            );
-            // A mount in the box of its screen, between two ticks as it stands now.
-            let mut draw_entity = |id: EntityId, area, size, offset_y, mouse| {
-                preview::entity_vertices(
-                    (session, id),
-                    (&mut *mob_models, &armor),
-                    entity_textures,
-                    (area, size, offset_y, mouse),
-                )
-            };
-            // A stack's tooltip in words.
-            let world = session.world();
-            let maps = |id: i32| map_info(world, id);
-            let block_tags = |tag: &str| world.block_tag_members(tag);
-            let mut tooltip_lines = Self::stack_tooltip_lines(
-                (&self.lang, &self.registries),
-                controls.options.advanced_item_tooltips,
-                photon_game::tooltip::Context {
-                    maps: &maps,
-                    block_tag_members: &block_tags,
-                    tick_rate: session.tick_rate(),
-                },
-            );
-            let mut draw = ScreenDraw {
-                frame: &mut frame,
-                atlas: &self.atlas,
-                font: &self.font,
-                item: &mut draw_item,
-                player: &mut draw_player,
-                entity: &mut draw_entity,
-                tooltip: &mut tooltip_lines,
-                lang: &self.lang,
-                control_held: controls.mods.control,
-                partial: (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0),
-                widget_tooltips: true,
-                viewer: crate::hud_input::screen_viewer(session),
-                book: session.world().recipe_book(),
-                tags: session.world().block_state_registry().item_tags(),
-            };
-            screen.build(&mut draw, &menu, controls.gui_mouse);
-        }
+        Self::draw_open_screen(
+            (&self.atlas, &self.font, &self.lang, &self.registries),
+            (&mut frame, &mut draw_item),
+            (backend, controls, session),
+            (screen_menu, self.player_skin, partial),
+            (figures, (renderer, tints)),
+        )?;
         Self::draw_late_layers(
             &mut frame,
             (&self.atlas, &self.font, &self.lang),
@@ -476,7 +426,7 @@ impl Gui {
 
 impl Gui {
     /// A stack's tooltip in words, in the context of the level's maps and tick rate.
-    fn stack_tooltip_lines<'a>(
+    pub(super) fn stack_tooltip_lines<'a>(
         (lang, registries): (
             &'a photon_game::text::Lang,
             &'a photon_game::registries::Registries,
@@ -500,7 +450,10 @@ impl Gui {
 }
 
 /// What a map's tooltip reads of the map with this id.
-fn map_info(world: &photon_world::ClientWorld, id: i32) -> Option<photon_game::tooltip::MapInfo> {
+pub(super) fn map_info(
+    world: &photon_world::ClientWorld,
+    id: i32,
+) -> Option<photon_game::tooltip::MapInfo> {
     world.map_data(id).map(|map| photon_game::tooltip::MapInfo {
         scale: map.scale,
         locked: map.locked,

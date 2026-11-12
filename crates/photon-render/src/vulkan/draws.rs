@@ -9,6 +9,8 @@ pub enum DrawKind {
     /// The next frame's entity triangles, placed like the
     /// terrain's, with each vertex's normal in its tint.
     Entities,
+    /// The next frame's entity triangles drawn after the breaking overlay, as [`Self::Entities`].
+    EntitiesOverCracks,
     /// The next frame's glowing layers, as triangles that sample the
     /// entity textures, each vertex's tint its colour.
     EntityGlow,
@@ -211,17 +213,18 @@ impl VulkanBackend {
     fn draw_list_mut(&mut self, kind: DrawKind) -> &mut DrawList {
         match kind {
             DrawKind::Entities => &mut self.entity,
-            DrawKind::EntityGlow => &mut self.flat.glow,
-            DrawKind::EntityMask => &mut self.flat.mask,
             DrawKind::EntityOutline | DrawKind::ItemOutline => {
                 unreachable!("set_draw hands these to the outline chain")
             }
-            DrawKind::EntitySwirl => &mut self.flat.swirl,
-            DrawKind::EntityGlint => &mut self.flat.glint,
             DrawKind::DragonRays => &mut self.rays,
             DrawKind::EndPortal => &mut self.portal,
             DrawKind::GroundItems => &mut self.ground,
-            DrawKind::Shadows
+            DrawKind::EntitiesOverCracks
+            | DrawKind::EntityGlow
+            | DrawKind::EntityMask
+            | DrawKind::EntitySwirl
+            | DrawKind::EntityGlint
+            | DrawKind::Shadows
             | DrawKind::ExperienceOrbs
             | DrawKind::Particles
             | DrawKind::BlockParticles => self.flat_list_mut(kind),
@@ -231,6 +234,11 @@ impl VulkanBackend {
     /// The lists of the shapes drawn flat over the entity textures and the block atlas.
     fn flat_list_mut(&mut self, kind: DrawKind) -> &mut DrawList {
         match kind {
+            DrawKind::EntitiesOverCracks => &mut self.flat.over_cracks,
+            DrawKind::EntityGlow => &mut self.flat.glow,
+            DrawKind::EntityMask => &mut self.flat.mask,
+            DrawKind::EntitySwirl => &mut self.flat.swirl,
+            DrawKind::EntityGlint => &mut self.flat.glint,
             DrawKind::Shadows => &mut self.flat.shadow,
             DrawKind::ExperienceOrbs => &mut self.orb,
             DrawKind::Particles => &mut self.particle,

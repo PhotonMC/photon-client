@@ -44,6 +44,10 @@ pub enum GuiBlend {
     BlockSprite,
     /// A video's current frame, drawn whole over a rectangle.
     Surface,
+    /// A map's picture, from the maps' image.
+    Map,
+    /// A map decoration's sprite, from the entity pictures.
+    MapDecoration,
     /// Items in slots, whose run counts in `GuiFrame::items`.
     Items,
     /// The glints of the items before it, over the depth they wrote; its run counts in
@@ -439,7 +443,9 @@ fn glyph_corners(
 
 mod blur;
 mod items;
+mod map;
 mod overlay;
+pub use map::{GuiMap, GuiMapDecoration};
 mod text;
 mod texture;
 

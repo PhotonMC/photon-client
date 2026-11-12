@@ -97,6 +97,7 @@ fn inventory_effects_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, St
         player: &mut player,
         entity: &mut entity,
         tooltip: &mut tooltip,
+        maps: &mut photon_gui::map_view::no_maps,
         lang: &lang,
         book: &book,
         tags: &tags,

@@ -160,6 +160,10 @@ pub fn hand_layers(
         &std::mem::take(&mut models.water_masks),
     )?;
     backend.set_draw(
+        photon_render::vulkan::DrawKind::EntitiesOverCracks,
+        &std::mem::take(&mut models.over_cracks),
+    )?;
+    backend.set_draw(
         photon_render::vulkan::DrawKind::EntitySwirl,
         &std::mem::take(&mut models.swirl),
     )?;

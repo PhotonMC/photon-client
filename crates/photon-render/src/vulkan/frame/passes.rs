@@ -108,6 +108,9 @@ pub(super) enum Run {
     /// The F3 3D crosshair: lines like the outline, in the hand's view.
     Gizmo,
     Cracks,
+    /// Entity triangles drawn over the cracks (a cracked banner's pattern layers where the
+    /// crack is drawn with the opaque models), with the entities' own pipeline.
+    EntityOverCracks,
     /// The first-person arm.
     Hand,
     /// The items the hand holds, from the block atlas, after the arm.
@@ -184,7 +187,9 @@ impl Run {
             | Self::HeldTranslucent => {
                 &scene.held_pipelines[usize::from(self.is_item_translucent())]
             }
-            Self::Entity | Self::Hand | Self::Particle => &scene.entity_pipelines[0],
+            Self::Entity | Self::EntityOverCracks | Self::Hand | Self::Particle => {
+                &scene.entity_pipelines[0]
+            }
             Self::Mask => &scene.mask_pipeline,
             Self::Shadow | Self::Glow => &scene.shadow_pipeline,
             Self::Dissolve => &scene.dissolve_pipeline,
@@ -223,6 +228,7 @@ impl Run {
             Self::Outline | Self::OutlineBacking | Self::Gizmo => Sampled::Unbound,
             Self::Cracks => Sampled::Crack,
             Self::Entity
+            | Self::EntityOverCracks
             | Self::Mask
             | Self::Shadow
             | Self::Dissolve
@@ -302,6 +308,14 @@ mod tests {
             .filter_map(|pass| pass.stamp_after())
             .collect();
         assert_eq!(stamps, [1, 2, 3, 4, 5, 6, 7]);
+    }
+
+    #[test]
+    fn what_is_drawn_over_the_cracks_is_drawn_like_the_entities() {
+        assert_eq!(Run::EntityOverCracks.sampled(), Sampled::Entity);
+        assert!(!ENTITY_RUNS.contains(&Run::EntityOverCracks));
+        let position = |pass| PASSES.iter().position(|&own| own == pass).unwrap();
+        assert!(position(Pass::Entities) < position(Pass::Cracks));
     }
 
     #[test]

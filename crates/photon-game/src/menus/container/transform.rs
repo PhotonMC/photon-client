@@ -142,11 +142,7 @@ impl ContainerMenu {
                     || has_any_enchantments(stack)
             }
             (MenuKind::Cartography, 0) => has_component(stack, ids::MAP_ID),
-            (MenuKind::Cartography, 1) => {
-                is_item(stack, "minecraft:paper")
-                    || is_item(stack, "minecraft:map")
-                    || is_item(stack, "minecraft:glass_pane")
-            }
+            (MenuKind::Cartography, 1) => super::cartography::extra_of(stack).is_some(),
             (MenuKind::Smithing, 0..=2) => self
                 .accepted
                 .get(index)
@@ -294,9 +290,7 @@ impl ContainerMenu {
                 if index == 2 {
                     self.move_item_stack_to(&mut stack, 3, 39, true)
                 } else if index > 2 {
-                    let is_extra = is_item(&stack, "minecraft:paper")
-                        || is_item(&stack, "minecraft:map")
-                        || is_item(&stack, "minecraft:glass_pane");
+                    let is_extra = super::cartography::extra_of(&stack).is_some();
                     if has_component(&stack, ids::MAP_ID) {
                         self.move_item_stack_to(&mut stack, 0, 1, false)
                     } else if is_extra {

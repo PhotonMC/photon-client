@@ -277,6 +277,10 @@ pub struct MobModels {
     parts: Vec<(usize, photon_render::entity::instancing::Instance)>,
     /// The boats' water patches this frame, which only write the depth.
     pub(crate) water_masks: Vec<Vertex>,
+    /// The block entities with a destroy overlay this frame, and the translucent layers that
+    /// are drawn after the overlay (a cracked banner's patterns).
+    pub(crate) cracked: std::collections::BTreeSet<(i32, i32, i32)>,
+    pub(crate) over_cracks: Vec<Vertex>,
     /// What the energy swirls drew this frame (a charged creeper's).
     pub(crate) swirl: Vec<Vertex>,
     /// What the dissolving entities drew this frame (a dying dragon's body), and where a
@@ -301,6 +305,7 @@ impl MobModels {
     pub(crate) fn clear_layers(&mut self) {
         self.glow.clear();
         self.water_masks.clear();
+        self.over_cracks.clear();
         self.swirl.clear();
         self.dissolve.clear();
         self.rays.clear();
@@ -324,6 +329,8 @@ impl MobModels {
             instanced: Default::default(),
             parts: Vec::new(),
             water_masks: Vec::new(),
+            cracked: std::collections::BTreeSet::new(),
+            over_cracks: Vec::new(),
             swirl: Vec::new(),
             dissolve: Vec::new(),
             dissolve_mask_offset: [0.0; 2],

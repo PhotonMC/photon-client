@@ -101,6 +101,7 @@ pub(super) fn bundle_tooltip_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         player: &mut player,
         entity: &mut entity,
         tooltip: &mut tooltip,
+        maps: &mut photon_gui::map_view::no_maps,
         lang: &lang,
         book: &book,
         tags: &tags,

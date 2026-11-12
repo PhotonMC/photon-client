@@ -613,6 +613,7 @@
         "GuiRecorder.java",
         "GuiScreenOracle.java",
         "GuiSettingsOracle.java",
+        "GuiMapOracle.java",
         "GuiCommandBlockOracle.java",
         "GuiStructureBlockOracle.java",
         "GuiJigsawOracle.java",

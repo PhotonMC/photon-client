@@ -1,4 +1,5 @@
 use super::face_groups::Runs;
+use super::gui_batches::{plain_gui_pipeline, translucent_set};
 use super::*;
 
 const BOTH_STAGES: vk::ShaderStageFlags = vk::ShaderStageFlags::from_raw(
@@ -62,7 +63,10 @@ impl VulkanBackend {
                         self.draw_run(scene, Run::OutlineBacking, &terrain_push);
                         self.draw_run(scene, Run::Outline, &terrain_push);
                     }
-                    Pass::Cracks => self.draw_run(scene, Run::Cracks, &terrain_push),
+                    Pass::Cracks => {
+                        self.draw_run(scene, Run::Cracks, &terrain_push);
+                        self.draw_run(scene, Run::EntityOverCracks, &terrain_push);
+                    }
                     Pass::Translucent => self.record_translucent(scene, &terrain_push, now),
                     Pass::Particles => {
                         for run in PARTICLE_RUNS {
@@ -624,36 +628,5 @@ impl VulkanBackend {
         unsafe {
             self.device.cmd_set_scissor(self.command_buffer, 0, &[area]);
         }
-    }
-}
-
-/// The pipeline of a GUI batch that is not translucent items: the plain one, or the one with the
-/// blend its run asks for.
-fn plain_gui_pipeline(blend: crate::gui::GuiBlend, scene: &SceneResources) -> &Pipeline {
-    match blend {
-        crate::gui::GuiBlend::Invert => &scene.gui_pipelines.invert,
-        crate::gui::GuiBlend::Highlight => &scene.gui_pipelines.highlight,
-        crate::gui::GuiBlend::Vignette | crate::gui::GuiBlend::VignetteBlur => {
-            &scene.gui_pipelines.vignette
-        }
-        crate::gui::GuiBlend::LogoAdd => &scene.gui_pipelines.logo,
-        _ => &scene.gui_pipeline,
-    }
-}
-
-/// The descriptor set a translucent GUI batch samples: the GUI atlas, or for a sprite of the block
-/// atlas that atlas (the pipeline's layout is the same for both).
-fn translucent_set(
-    blend: crate::gui::GuiBlend,
-    gui: vk::DescriptorSet,
-    scene: &SceneResources,
-) -> vk::DescriptorSet {
-    match blend {
-        crate::gui::GuiBlend::BlockSprite => scene.descriptor_set,
-        crate::gui::GuiBlend::Surface => scene.surface_set.unwrap_or(gui),
-        crate::gui::GuiBlend::TranslucentBlur
-        | crate::gui::GuiBlend::VignetteBlur
-        | crate::gui::GuiBlend::LogoAdd => scene.gui_blur.as_ref().map_or(gui, |(set, _)| *set),
-        _ => gui,
     }
 }

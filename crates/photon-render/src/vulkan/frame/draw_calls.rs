@@ -12,6 +12,7 @@ impl FlatDraws {
             Run::Mask => &self.mask,
             Run::Swirl => &self.swirl,
             Run::Glint => &self.glint,
+            Run::EntityOverCracks => &self.over_cracks,
             _ => return None,
         })
     }
@@ -340,9 +341,12 @@ impl VulkanBackend {
             Run::Ground | Run::GroundTranslucent => self.ground_range(run),
             Run::Entity => list(&self.entity),
             Run::Dissolve => list(&self.dissolve),
-            Run::Shadow | Run::Mask | Run::Glow | Run::Swirl | Run::Glint => {
-                list(self.flat.of(run).expect("a flat run"))
-            }
+            Run::Shadow
+            | Run::Mask
+            | Run::Glow
+            | Run::Swirl
+            | Run::Glint
+            | Run::EntityOverCracks => list(self.flat.of(run).expect("a flat run")),
             Run::Rays => list(&self.rays),
             Run::Orb => list(&self.orb),
             Run::Particle => list(&self.particle),

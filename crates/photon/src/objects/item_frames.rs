@@ -185,14 +185,43 @@ impl FrameState {
         }
     }
 
-    /// Hand the maps' image (if it changed) and this frame's quads to the renderer.
-    pub fn hand_over(
+    /// A map as the GUI draws it: its cell of the maps' image readied, and the sprites of its
+    /// decorations looked up among the entity textures.
+    pub fn gui_map(
+        &mut self,
+        id: i32,
+        data: &MapData,
+        textures: &EntityTextures,
+    ) -> photon_render::gui::GuiMap {
+        let slot = self.maps.slot_of(id, data);
+        let (column, row) = (slot % MAP_COLUMNS, slot / MAP_COLUMNS);
+        let (width, height) = (1.0 / MAP_COLUMNS as f32, 1.0 / MAP_ROWS as f32);
+        let cell = [
+            column as f32 * width,
+            row as f32 * height,
+            (column + 1) as f32 * width,
+            (row + 1) as f32 * height,
+        ];
+        photon_gui::map_view::gui_map(id, data, cell, &|texture| textures.rect(texture))
+    }
+
+    /// Hand the maps' image to the renderer if a map came or changed since it last was.
+    pub fn upload_maps(
         &mut self,
         backend: &mut photon_render::VulkanBackend,
     ) -> Result<(), photon_render::VulkanError> {
         if let Some(image) = self.maps.take_image() {
             backend.set_map_texture(&image)?;
         }
+        Ok(())
+    }
+
+    /// Hand the maps' image (if it changed) and this frame's quads to the renderer.
+    pub fn hand_over(
+        &mut self,
+        backend: &mut photon_render::VulkanBackend,
+    ) -> Result<(), photon_render::VulkanError> {
+        self.upload_maps(backend)?;
         let [back, map, decorations] = std::mem::take(&mut self.hand_map);
         backend.set_hand_map_quads((&back, &map, &decorations))?;
         backend.set_map_quads((

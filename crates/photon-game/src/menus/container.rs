@@ -179,6 +179,7 @@ mod anvil;
 mod bar;
 pub use bar::item_bar;
 mod bundle;
+mod cartography;
 #[cfg(test)]
 pub use bundle::fill_bundle_for_test;
 pub use bundle::{
@@ -187,6 +188,7 @@ pub use bundle::{
     selected_item as bundle_selected_item, selected_stack as bundle_selected_stack,
     toggle_bundle_selected,
 };
+pub use cartography::{CartographyLayout, CartographyView, MapFacts, map_id_of};
 mod clicks;
 mod crafter;
 mod loom;

@@ -43,6 +43,7 @@ pub(super) unsafe fn transition(
 }
 
 mod draw_calls;
+mod gui_batches;
 mod passes;
 mod scene;
 mod sync;

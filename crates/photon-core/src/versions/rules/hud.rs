@@ -7,6 +7,10 @@ rules! {
     HudRules {
         /// Keypad digits also count as digits for tab shortcuts (new in 26.3).
         keypad_digits_choose_tabs: since V26_3,
+        /// The cartography table marks a map with paper as unable to grow when it is not an
+        /// extendable map (the item tag) or is at scale 4 or more (26.3); 26.2 looks at the scale
+        /// alone. Proved by the `gui/container` `cartography-*` rows.
+        cartography_scaling_needs_extendable_map: since V26_3,
         /// The game mode switcher (F3+F4) shows the buried treasure map for adventure mode
         /// (26.3); 26.2 shows the plain map.
         switcher_adventure_icon_is_the_treasure_map: since V26_3,

@@ -2,8 +2,7 @@
 //! generic container screen: where their slots are, their textures, the
 //! error marks and previews over the image, and the anvil's name box.
 //!
-//! Not drawn: the cartography table's map (the client has no map data), the
-//! smithing table's armour stand and the enchanting table's book.
+//! Not drawn: the smithing table's armour stand and the enchanting table's book.
 
 use photon_core::ids::ItemId;
 use std::time::Instant;
@@ -331,5 +330,6 @@ fn brewing_progress(
 }
 
 mod anvil;
+mod cartography;
 mod name;
 mod stone;

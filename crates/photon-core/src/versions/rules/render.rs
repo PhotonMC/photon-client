@@ -84,5 +84,10 @@ rules! {
         /// value that lies close to a threshold can fall on either side. Proved by the
         /// `movement/biome-noise` rows at positions where the two disagree.
         biome_noise_is_float: since V26_3,
+        /// The destroy overlay of a block entity's opaque model is drawn with the opaque models,
+        /// before every translucent one, so the translucent pattern layers of a cracked banner
+        /// lie over the crack (26.3); 26.2 draws every overlay after all translucent models, over
+        /// the layers. Source-derived, no golden: the draw log does not carry submit order.
+        crumbling_is_drawn_with_solids: since V26_3,
     }
 }

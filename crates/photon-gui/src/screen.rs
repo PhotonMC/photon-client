@@ -68,6 +68,10 @@ pub type PlayerDrawer<'a> = dyn FnMut((i32, i32, i32, i32), f32, f32, (f32, f32)
 pub type EntityDrawer<'a> =
     dyn FnMut(EntityId, (i32, i32, i32, i32), f32, f32, (f32, f32)) -> Vec<GuiItemVertex> + 'a;
 
+/// The map with an id, as the GUI draws it, once the client has its data; the call also readies the
+/// map's picture for the frame.
+pub type MapDrawer<'a> = dyn FnMut(i32) -> Option<photon_render::gui::GuiMap> + 'a;
+
 /// An item's tooltip as lines of styled text: for a stack, and whether it is
 /// on one of the creative inventory's own slots.
 pub type TooltipLines<'a> =
@@ -84,6 +88,8 @@ pub struct ScreenDraw<'a, 'b> {
     /// Another entity in a screen's box (a mount's).
     pub entity: &'a mut EntityDrawer<'b>,
     pub tooltip: &'a mut TooltipLines<'b>,
+    /// The maps the client has data of.
+    pub maps: &'a mut MapDrawer<'b>,
     /// The language the screens' own texts are read in.
     pub lang: &'a photon_game::text::Lang,
     /// The recipe book and the item tags its recipes are read against.

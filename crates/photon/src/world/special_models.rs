@@ -13,9 +13,8 @@ use photon_render::entity::textures::EntityTextures;
 use photon_render::joml::Pose;
 use photon_render::scene::Vertex;
 
-use super::block_entities::{
-    banner_vertices, bell_vertices, pot_vertices, skull_vertices, statue_vertices,
-};
+use super::banner_draw::banner_vertices;
+use super::block_entities::{bell_vertices, pot_vertices, skull_vertices, statue_vertices};
 use crate::mobs::MobModels;
 
 /// The vertices of a state's special model, from the pose of the block's corner and lit as the

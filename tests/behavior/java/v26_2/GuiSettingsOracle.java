@@ -552,6 +552,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
             set(renderer, "lighting", unsafe.allocateInstance(NoLighting.class));
             set(minecraft, "gameRenderer", renderer);
             set(minecraft, "level", open.scene().level());
+            GuiMapOracle.seed(row, minecraft, open.scene().level());
             set(minecraft, "deltaTracker", new net.minecraft.client.DeltaTracker.Timer(20.0F, 0L, millis -> 50L));
             // What a book asks of the account (whether text is filtered).
             set(minecraft, "userPropertiesFuture", java.util.concurrent.CompletableFuture.completedFuture(

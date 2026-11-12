@@ -8,6 +8,7 @@ pub mod hud;
 pub mod kit;
 pub mod layout;
 pub mod loading_overlay;
+pub mod map_view;
 pub mod options;
 pub mod runs;
 pub mod screen;

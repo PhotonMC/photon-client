@@ -111,6 +111,8 @@ mod layers;
 mod light_screens;
 mod loading;
 mod menu_screens;
+mod open_screen;
+pub use open_screen::ScreenFigures;
 mod preview;
 mod spectator;
 mod title;
