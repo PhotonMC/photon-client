@@ -10,7 +10,7 @@ mod sync;
 
 pub use cache::{CacheError, ModCache, hash_of};
 pub use consent::{CONSENT_FILE, Consent, Record, decide, needs_consent};
-pub use fetch::{FetchError, ensure};
+pub use fetch::{FetchError, ensure, ensure_while};
 pub use manifest::{HELLO_CHANNEL, MODS_CHANNEL, Manifest, ManifestError, ModEntry, hello};
 pub use sync::{Admission, ModSync, Plan, Question, Reason, Refused};
 

@@ -253,3 +253,23 @@ fn a_new_manifest_drops_the_questions_of_the_old_one() {
     assert!(sync.questions().is_empty());
     assert!(sync.answer("ask", true).is_empty());
 }
+
+#[test]
+fn a_stopped_fetch_is_started_again_only_if_the_hash_is_wanted_after_all() {
+    let mut sync = ModSync::new();
+    sync.manifest(&manifest(&[("a", "h1")]), all, none);
+    assert_eq!(sync.wanted_hashes(), ["h1"]);
+    // The manifest changed, the fetch of h1 stops: nothing to start.
+    sync.manifest(&manifest(&[("a", "h2")]), all, none);
+    assert_eq!(sync.wanted_hashes(), ["h2"]);
+    assert!(sync.cancelled("h1").is_empty());
+    // Raced: the newer manifest wants h1 again while the old fetch was stopping.
+    sync.manifest(&manifest(&[("a", "h1")]), all, none);
+    assert_eq!(sync.cancelled("h1").len(), 1);
+    // The new fetch is now the one in flight, so a third manifest does not start another.
+    assert!(
+        sync.manifest(&manifest(&[("a", "h1")]), all, none)
+            .fetch
+            .is_empty()
+    );
+}

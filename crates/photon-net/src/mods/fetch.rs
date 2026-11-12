@@ -9,6 +9,8 @@ use super::manifest::ModEntry;
 use super::sync::Reason;
 
 const TIMEOUT: Duration = Duration::from_secs(20);
+/// The bytes read between two looks at whether the file is still wanted.
+const CHUNK: usize = 32 << 10;
 
 #[derive(Debug)]
 pub enum FetchError {
@@ -18,6 +20,8 @@ pub enum FetchError {
     Mismatch,
     /// More or fewer bytes than the manifest said.
     Size,
+    /// Nobody wants the file any more; the fetch stopped early.
+    Cancelled,
     Cache(CacheError),
 }
 
@@ -25,7 +29,7 @@ impl FetchError {
     /// The word the hello carries for it.
     pub fn reason(&self) -> Reason {
         match self {
-            Self::Unavailable | Self::Cache(CacheError::Io(_)) => Reason::Fetch,
+            Self::Unavailable | Self::Cancelled | Self::Cache(CacheError::Io(_)) => Reason::Fetch,
             Self::Mismatch | Self::Cache(CacheError::Mismatch) => Reason::Hash,
             Self::Size => Reason::Size,
         }
@@ -35,8 +39,22 @@ impl FetchError {
 /// The bytes of `entry`: from `cache` without any network when the hash is there, else fetched,
 /// verified and kept. Blocking; the caller runs it off the game's thread.
 pub fn ensure(cache: &ModCache, entry: &ModEntry) -> Result<Vec<u8>, FetchError> {
+    ensure_while(cache, entry, &|| true)
+}
+
+/// [`ensure`] that stops with [`FetchError::Cancelled`] as soon as `wanted` says nobody needs
+/// the file: before the request and between the chunks of the body, so a manifest that was
+/// replaced wastes at most one chunk.
+pub fn ensure_while(
+    cache: &ModCache,
+    entry: &ModEntry,
+    wanted: &dyn Fn() -> bool,
+) -> Result<Vec<u8>, FetchError> {
     if let Some(bytes) = cache.get(&entry.hash) {
         return Ok(bytes);
+    }
+    if !wanted() {
+        return Err(FetchError::Cancelled);
     }
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(TIMEOUT))
@@ -50,12 +68,18 @@ pub fn ensure(cache: &ModCache, entry: &ModEntry) -> Result<Vec<u8>, FetchError>
         .map_err(|_| FetchError::Unavailable)?;
     let mut bytes = Vec::new();
     // One byte over the size the manifest promised is already a lie.
-    response
-        .body_mut()
-        .as_reader()
-        .take(entry.size + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|_| FetchError::Unavailable)?;
+    let mut body = response.body_mut().as_reader().take(entry.size + 1);
+    let mut chunk = [0u8; CHUNK];
+    loop {
+        if !wanted() {
+            return Err(FetchError::Cancelled);
+        }
+        match body.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(read) => bytes.extend_from_slice(&chunk[..read]),
+            Err(_) => return Err(FetchError::Unavailable),
+        }
+    }
     if bytes.len() as u64 != entry.size {
         return Err(FetchError::Size);
     }
@@ -98,6 +122,66 @@ mod tests {
             }
         });
         (url, count)
+    }
+
+    /// A server that sends `total` bytes slowly, in pieces, so a client can stop in the middle.
+    fn serve_slowly(total: usize) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+        let url = format!("http://{}/m.wasm", listener.local_addr().expect("addr"));
+        std::thread::spawn(move || {
+            let Some(Ok(mut stream)) = listener.incoming().next() else {
+                return;
+            };
+            let mut request = [0u8; 1024];
+            let _ = stream.read(&mut request);
+            let head =
+                format!("HTTP/1.1 200 OK\r\nContent-Length: {total}\r\nConnection: close\r\n\r\n");
+            let _ = stream.write_all(head.as_bytes());
+            for _ in 0..total / 65536 {
+                if stream.write_all(&[1u8; 65536]).is_err() {
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(30));
+            }
+        });
+        url
+    }
+
+    #[test]
+    fn a_file_nobody_wants_is_not_requested_and_not_kept() {
+        let (url, count) = serve(b"module".to_vec(), 1);
+        let (cache, wanted) = (cache("unwanted"), entry(&url, b"module"));
+        let result = ensure_while(&cache, &wanted, &|| false);
+        assert!(matches!(result, Err(FetchError::Cancelled)));
+        assert_eq!(count.load(Ordering::SeqCst), 0);
+        assert!(cache.get(&wanted.hash).is_none());
+    }
+
+    #[test]
+    fn a_fetch_stops_in_the_middle_of_the_body_when_the_file_stops_being_wanted() {
+        let total = 1 << 20;
+        let url = serve_slowly(total);
+        let mut wanted = entry(&url, &vec![1u8; total]);
+        wanted.size = total as u64;
+        let looks = AtomicUsize::new(0);
+        // Wanted for the request and the first chunks, then not any more.
+        let still = || looks.fetch_add(1, Ordering::SeqCst) < 4;
+        let cache = cache("midway");
+        let result = ensure_while(&cache, &wanted, &still);
+        assert!(matches!(result, Err(FetchError::Cancelled)));
+        // The whole body is 32 chunks; it stopped long before.
+        assert!(looks.load(Ordering::SeqCst) <= 8);
+        assert!(cache.get(&wanted.hash).is_none());
+    }
+
+    #[test]
+    fn a_cached_file_is_returned_even_if_nobody_asks_for_it_any_more() {
+        let (cache, wanted) = (
+            cache("cached-unwanted"),
+            entry("http://127.0.0.1:9/x", b"m"),
+        );
+        cache.put(&wanted.hash, b"m").expect("put");
+        assert_eq!(ensure_while(&cache, &wanted, &|| false).expect("hit"), b"m");
     }
 
     fn entry(url: &str, bytes: &[u8]) -> ModEntry {

@@ -5,14 +5,19 @@
 //! [`ModSync`], which does no I/O; this holds the threads and the runtime.
 
 use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::{Arc, Mutex};
 
 use photon_mods::{Compiled, Runtime};
 use photon_net::mods::{
     self, Consent, Manifest, ModCache, ModEntry, ModSync, Question, Reason, decide,
 };
 
-/// What the fetch thread made of one file: compiled code, or why not.
-type Fetched = (String, Result<Compiled, Reason>);
+/// What the fetch thread made of one file: compiled code, or why not; `None` if it stopped
+/// because nobody wanted the file any more.
+type Fetched = (String, Option<Result<Compiled, Reason>>);
+
+/// The hashes the latest manifest waits for, which fetch threads look at to stop early.
+type Wanted = Arc<Mutex<Vec<String>>>;
 
 /// The mods of the connection.
 #[derive(Default)]
@@ -21,6 +26,7 @@ pub(crate) struct ModRuntime {
     sync: ModSync,
     /// Where the fetch threads answer; made with the first manifest.
     answers: Option<(Sender<Fetched>, Receiver<Fetched>)>,
+    wanted: Wanted,
     /// What the player allowed, read from the game directory with the first manifest.
     consent: Option<(Consent, std::path::PathBuf)>,
     /// Who the mods come from, the key of what the player allowed. Empty while the app does not
@@ -65,9 +71,16 @@ impl ModRuntime {
             .map(|(id, hash)| (id.as_str(), hash.as_str()))
             .collect();
         self.runtime.keep_only(&named);
+        self.publish_wanted();
         if !plan.fetch.is_empty() {
             self.start_fetching(plan.fetch, game_dir.join("cache").join("mods"));
         }
+    }
+
+    /// Tells the running fetches which files are still wanted; the others stop.
+    fn publish_wanted(&self) {
+        let hashes = self.sync.wanted_hashes();
+        *self.wanted.lock().unwrap_or_else(|e| e.into_inner()) = hashes;
     }
 
     /// The server the mods come from, as the session knows it; the key of the player's answers.
@@ -109,6 +122,7 @@ impl ModRuntime {
         }
         let cache_dir = dir.join("cache").join("mods");
         let fetch = self.sync.answer(id, granted);
+        self.publish_wanted();
         if !fetch.is_empty() {
             self.start_fetching(fetch, cache_dir);
         }
@@ -126,23 +140,36 @@ impl ModRuntime {
         let (sender, _) = self.answers.get_or_insert_with(channel);
         let sender = sender.clone();
         let for_failure = wanted.clone();
+        let still_wanted = Arc::clone(&self.wanted);
         let spawned = std::thread::Builder::new()
             .name("Mod Fetch".to_owned())
             .spawn(move || {
                 let cache = ModCache::new(cache_dir);
                 for entry in wanted {
+                    let is_wanted = || {
+                        let hashes = still_wanted.lock().unwrap_or_else(|e| e.into_inner());
+                        hashes.contains(&entry.hash)
+                    };
                     // Fetching and compiling both happen here, off the game's thread.
-                    let result = mods::ensure(&cache, &entry)
+                    let result = mods::ensure_while(&cache, &entry, &is_wanted)
                         .map_err(|error| {
-                            log::warn!("mod {} not fetched: {error:?}", entry.id);
-                            error.reason()
+                            if !matches!(error, mods::FetchError::Cancelled) {
+                                log::warn!("mod {} not fetched: {error:?}", entry.id);
+                            }
+                            error
                         })
-                        .and_then(|bytes| {
-                            host.compile(&bytes).map_err(|error| {
-                                log::warn!("mod {} not compiled: {error}", entry.id);
-                                Reason::Load
-                            })
-                        });
+                        .map_or_else(
+                            |error| match error {
+                                mods::FetchError::Cancelled => None,
+                                other => Some(Err(other.reason())),
+                            },
+                            |bytes| {
+                                Some(host.compile(&bytes).map_err(|error| {
+                                    log::warn!("mod {} not compiled: {error}", entry.id);
+                                    Reason::Load
+                                }))
+                            },
+                        );
                     if sender.send((entry.hash, result)).is_err() {
                         return;
                     }
@@ -155,13 +182,26 @@ impl ModRuntime {
 
     fn settle_all(&mut self, entries: &[ModEntry], reason: Reason) {
         for entry in entries {
-            self.settle(&entry.hash, Err(reason));
+            self.settle(&entry.hash, Some(Err(reason)));
         }
     }
 
     /// One file's answer: the mods of the current manifest that wait for it are loaded or
     /// refused; an answer nobody waits for any more does nothing.
-    fn settle(&mut self, hash: &str, result: Result<Compiled, Reason>) {
+    fn settle(&mut self, hash: &str, result: Option<Result<Compiled, Reason>>) {
+        let Some(result) = result else {
+            // The fetch stopped; if a newer manifest wants the file after all, it starts again.
+            let again = self.sync.cancelled(hash);
+            let dir = self
+                .consent
+                .as_ref()
+                .map(|(_, dir)| dir.join("cache").join("mods"));
+            if let (false, Some(cache_dir)) = (again.is_empty(), dir) {
+                self.publish_wanted();
+                self.start_fetching(again, cache_dir);
+            }
+            return;
+        };
         let (compiled, outcome) = match result {
             Ok(compiled) => (Some(compiled), Ok(())),
             Err(reason) => (None, Err(reason)),
@@ -204,6 +244,7 @@ impl ModRuntime {
         self.runtime.keep_only(&[]);
         self.answers = None;
         self.sync.reset();
+        self.publish_wanted();
     }
 }
 

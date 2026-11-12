@@ -210,6 +210,27 @@ impl ModSync {
         if fetch { vec![entry] } else { Vec::new() }
     }
 
+    /// The hashes the latest manifest still waits for: a fetch of any other file may stop.
+    pub fn wanted_hashes(&self) -> Vec<String> {
+        self.pending
+            .iter()
+            .map(|entry| entry.hash.clone())
+            .collect()
+    }
+
+    /// A fetch of `hash` stopped early because nobody wanted it. If a newer manifest wants it
+    /// after all (the two raced), the entry to fetch again is returned.
+    pub fn cancelled(&mut self, hash: &str) -> Vec<ModEntry> {
+        self.in_flight.retain(|h| h != hash);
+        match self.pending.iter().find(|entry| entry.hash == hash) {
+            Some(entry) => {
+                self.in_flight.push(hash.to_owned());
+                vec![entry.clone()]
+            }
+            None => Vec::new(),
+        }
+    }
+
     /// A mod returned by [`ModSync::fetched`] could not be loaded.
     pub fn load_failed(&mut self, id: &str, reason: Reason) {
         self.refused.push(Refused {
