@@ -10,6 +10,7 @@
 //! families keep comparing the tables with the reference.
 
 mod block_older;
+mod blocks;
 pub(crate) mod capture;
 mod component_sets;
 mod compost;
@@ -38,6 +39,10 @@ struct Table {
 }
 
 const TABLES: &[Table] = &[
+    Table {
+        path: "crates/photon-data/src/tables/block/blocks.rs",
+        render: blocks::render,
+    },
     Table {
         path: "crates/photon-data/src/tables/block_older.rs",
         render: block_older::render,

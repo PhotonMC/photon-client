@@ -1,0 +1,38 @@
+# Interim input of `cargo xtask gen` (the main block table, tables/block/blocks.rs).
+#
+# The blocks below were added in 26.2. Every parity capture we have starts at 26.2, so no diff of
+# captures can tell it: the 26.1 comparison that found them has no capture. Each entry names the
+# block and the first version that has it, which must be the oldest captured version, and the
+# generator fails if the block is missing from that capture, if an older captured version has it,
+# or if an entry names a block the newest capture lacks. When a 26.1 capture exists, delete this
+# file: the diff gives these spans.
+
+[first_version]
+"minecraft:sulfur" = "26.2"
+"minecraft:potent_sulfur" = "26.2"
+"minecraft:sulfur_slab" = "26.2"
+"minecraft:sulfur_stairs" = "26.2"
+"minecraft:sulfur_wall" = "26.2"
+"minecraft:polished_sulfur" = "26.2"
+"minecraft:polished_sulfur_slab" = "26.2"
+"minecraft:polished_sulfur_stairs" = "26.2"
+"minecraft:polished_sulfur_wall" = "26.2"
+"minecraft:sulfur_bricks" = "26.2"
+"minecraft:sulfur_brick_slab" = "26.2"
+"minecraft:sulfur_brick_stairs" = "26.2"
+"minecraft:sulfur_brick_wall" = "26.2"
+"minecraft:chiseled_sulfur" = "26.2"
+"minecraft:cinnabar" = "26.2"
+"minecraft:cinnabar_slab" = "26.2"
+"minecraft:cinnabar_stairs" = "26.2"
+"minecraft:cinnabar_wall" = "26.2"
+"minecraft:polished_cinnabar" = "26.2"
+"minecraft:polished_cinnabar_slab" = "26.2"
+"minecraft:polished_cinnabar_stairs" = "26.2"
+"minecraft:polished_cinnabar_wall" = "26.2"
+"minecraft:cinnabar_bricks" = "26.2"
+"minecraft:cinnabar_brick_slab" = "26.2"
+"minecraft:cinnabar_brick_stairs" = "26.2"
+"minecraft:cinnabar_brick_wall" = "26.2"
+"minecraft:chiseled_cinnabar" = "26.2"
+"minecraft:sulfur_spike" = "26.2"

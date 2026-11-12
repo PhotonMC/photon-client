@@ -165,6 +165,8 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
         try {
             var propertiesField = Reflect.field(net.minecraft.world.level.block.state.BlockBehaviour.class, "properties");
             var fresh = net.minecraft.world.level.block.state.BlockBehaviour.Properties.of();
+            var nearPlane = Reflect.field(net.minecraft.world.level.block.Blocks.class,
+                "NEAR_PLANE_INTERSECTS_OUTLINE").get(null);
             var classes = new java.util.LinkedHashMap<String, String>();
             var classTypes = new java.util.HashMap<String, Class<?>>();
             var propertyFields = new java.util.IdentityHashMap<Object, String>();
@@ -217,7 +219,7 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
                 var values = new JsonObject();
                 for (String field : new String[] {
                     "destroyTime", "explosionResistance", "friction", "speedFactor", "jumpFactor",
-                    "bounceRestitution",
+                    "bounceRestitution", "fallDistanceReduction",
                 }) {
                     values.addProperty(field, Oracle.bits((float) declaredValue(declared, field)));
                 }
@@ -233,6 +235,14 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
                     ((net.minecraft.world.level.block.state.properties.NoteBlockInstrument)
                         declaredValue(declared, "instrument")).getSerializedName());
                 values.addProperty("offsetType", offsetType(block.defaultBlockState()));
+                // Which predicate the block names for the view: the near plane test every
+                // translucent-looking copy shares, or the one `Properties.of()` starts with
+                // (a lambda per instance, told by its class). The per-state values cannot tell
+                // them from `always` and from a derived answer.
+                var viewBlocking = declaredValue(declared, "isViewBlocking");
+                values.addProperty("viewBlockingNearPlane", viewBlocking == nearPlane);
+                values.addProperty("viewBlockingDefault",
+                    viewBlocking.getClass() == declaredValue(fresh, "isViewBlocking").getClass());
                 described.add("declared", values);
                 described.addProperty("item", net.minecraft.core.registries.BuiltInRegistries.ITEM
                     .getKey(block.asItem()).toString());

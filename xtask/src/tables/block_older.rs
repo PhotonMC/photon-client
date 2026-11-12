@@ -15,7 +15,7 @@ const FAMILY: &str = "block";
 /// A block's declarations as a capture lists them.
 type Blocks = BTreeMap<String, Value>;
 
-fn blocks(version: &str) -> Result<Blocks, String> {
+pub(super) fn blocks(version: &str) -> Result<Blocks, String> {
     let rows = capture::rows(version, FAMILY, "block/declarations")?;
     let list = rows
         .first()
@@ -31,7 +31,7 @@ fn blocks(version: &str) -> Result<Blocks, String> {
 
 /// The variant of the push reaction a capture names, in the names of either generation: 26.3
 /// renamed all five.
-fn reaction(name: &str) -> Result<&'static str, String> {
+pub(super) fn reaction(name: &str) -> Result<&'static str, String> {
     Ok(match name {
         "NORMAL" | "PUSH_PULL" => "Normal",
         "DESTROY" | "POPPED" => "Destroy",
@@ -43,7 +43,7 @@ fn reaction(name: &str) -> Result<&'static str, String> {
 }
 
 /// The rule that gives the listed value of every state.
-fn rule(values: &Value) -> Result<String, String> {
+pub(super) fn rule(values: &Value) -> Result<String, String> {
     let values: Vec<bool> = values
         .as_array()
         .ok_or("view blocking values")?

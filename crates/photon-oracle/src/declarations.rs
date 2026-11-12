@@ -358,6 +358,19 @@ pub(super) fn vanilla_tags_of(
 
 /// The `Properties` a block declares, as the reference's own fields read back.
 fn declared(block: &photon_data::block::definition::Block) -> Value {
+    let mut fields = declared_common(block);
+    if !crate::case_ids::before_26_3() {
+        use photon_data::block::definition::Rule;
+        let rule = block.declared_view_blocking();
+        fields["fallDistanceReduction"] = json!(bits(block.fall_distance_reduction));
+        fields["viewBlockingNearPlane"] = json!(rule == Rule::NearPlane);
+        fields["viewBlockingDefault"] = json!(rule == Rule::Default);
+    }
+    fields
+}
+
+/// The declared fields every version has.
+fn declared_common(block: &photon_data::block::definition::Block) -> Value {
     json!({
         "destroyTime": bits(block.destroy_time),
         "explosionResistance": bits(block.declared_explosion_resistance()),
