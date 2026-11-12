@@ -10,6 +10,7 @@ mod owner;
 mod registry;
 mod sets;
 mod update;
+mod world;
 
 pub use event::Event;
 pub use events::{ClientEvents, TickEnd, TickStart};
@@ -17,3 +18,4 @@ pub use owner::Owner;
 pub use registry::{Registries, Registry};
 pub use sets::{FrameSet, TickSet};
 pub use update::{ServerNeedsNewerVersion, UpdateChanged, UpdateForServer, UpdateState};
+pub use world::WorldView;

@@ -327,3 +327,29 @@ fn a_load_past_the_pool_is_an_error_not_a_panic() {
     };
     assert!(why.contains("limit"), "{why}");
 }
+
+#[test]
+#[ignore = "about 20 s in a debug build; run with --ignored after changing the pool limits"]
+fn a_large_module_with_a_big_function_table_still_loads() {
+    // Every function in the table has its address taken, which grows the instance's own
+    // bookkeeping; a real mod of a few MiB has thousands.
+    let count = 10_000;
+    let names: Vec<String> = (0..count).map(|n| format!("$f{n}")).collect();
+    let funcs: String = names.iter().map(|name| format!("(func {name})")).collect();
+    let wat = format!(
+        r#"(component
+  (core module $m
+    {funcs}
+    (table {count} funcref)
+    (elem (i32.const 0) func {})
+    (func (export "tick")))
+  (core instance $i (instantiate $m))
+  (func (export "tick") (canon lift (core func $i "tick"))))"#,
+        names.join(" ")
+    );
+    let host = Host::new().unwrap();
+    let mut loaded = host
+        .load(MOD, wat.as_bytes(), &[], Duration::from_secs(10))
+        .expect("a mod this size loads");
+    loaded.tick().unwrap();
+}

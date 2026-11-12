@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use photon_api::Owner;
+use photon_api::{Owner, WorldView};
 use wasmtime::StoreContextMut;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine, InstanceAllocationStrategy, PoolingAllocationConfig, Store};
@@ -21,11 +21,13 @@ const PER_COMPONENT: u32 = 4;
 const CORE_INSTANCES: u32 = 16;
 /// Core instances the pool holds per mod slot: a component is usually a few (main, shims).
 const CORE_PER_MOD: u32 = 4;
-/// Largest an instance's own bookkeeping may be, in bytes (the pool's default is 1 MiB).
-const CORE_INSTANCE_SIZE: usize = 256 << 10;
-const COMPONENT_INSTANCE_SIZE: usize = 64 << 10;
+/// Largest an instance's own bookkeeping may be, in bytes. It grows with the functions a module
+/// takes the address of (32 bytes each), so a large real module needs room; 1 MiB is wasmtime's
+/// default, stated here so it cannot change under us.
+const CORE_INSTANCE_SIZE: usize = 1 << 20;
+const COMPONENT_INSTANCE_SIZE: usize = 1 << 20;
 /// The native stack a mod's calls may use, so deep recursion traps instead of eating the game's.
-const WASM_STACK: usize = 256 << 10;
+const WASM_STACK: usize = 512 << 10;
 
 #[derive(Debug)]
 pub enum HostError {
@@ -85,16 +87,6 @@ pub struct Caps {
     pub sound: bool,
     /// `game.time`: read the level's tick count and day time.
     pub game_time: bool,
-}
-
-/// What the game lets a mod read about the level, as of the tick that is running. A mod sees
-/// it only with `game.time`; it is a copy, so a mod can never change the game through it.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct WorldView {
-    /// The level's game time in ticks, as the server last set it.
-    pub game_time: i64,
-    /// The ticks of the dimension's own clock (the day time), zero if it has none.
-    pub day_time: i64,
 }
 
 /// What a mod's store holds: the effects of the tick that is running.
