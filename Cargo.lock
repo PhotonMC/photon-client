@@ -4016,6 +4016,7 @@ version = "0.1.0"
 dependencies = [
  "flate2",
  "parity-cases",
+ "photon-api",
  "photon-core",
  "photon-update",
  "proc-macro2",
