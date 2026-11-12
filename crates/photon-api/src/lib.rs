@@ -6,6 +6,7 @@
 
 mod event;
 mod events;
+mod mod_api;
 mod owner;
 mod registry;
 mod sets;
@@ -14,6 +15,10 @@ mod world;
 
 pub use event::Event;
 pub use events::{ClientEvents, TickEnd, TickStart};
+pub use mod_api::{
+    CAPABILITIES, Capability, EVENTS_TICK, EXPORTS, Export, FS_MOD_DATA, GAME_TIME, HUD_TEXT,
+    IMPORTS, Import, PLAYER_STATE, SOUND_PLAY, Ty,
+};
 pub use owner::Owner;
 pub use registry::{Registries, Registry};
 pub use sets::{FrameSet, TickSet};

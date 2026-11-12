@@ -23,11 +23,11 @@ pub const TICK_BUDGET: Duration = Duration::from_millis(4);
 /// touch nothing outside the game's own screen and sound. Anything else (files, network, the
 /// player's data) is refused until the client can ask the player.
 pub const GRANTED: &[&str] = &[
-    "events.tick",
-    "hud.text",
-    "sound.play",
-    "game.time",
-    "player.state",
+    photon_api::EVENTS_TICK,
+    photon_api::HUD_TEXT,
+    photon_api::SOUND_PLAY,
+    photon_api::GAME_TIME,
+    photon_api::PLAYER_STATE,
 ];
 
 /// Text a mod asked to have drawn.
@@ -78,14 +78,14 @@ pub fn grant(asked: &[String]) -> Option<Caps> {
 fn grant_with(asked: &[String], stored: bool) -> Option<Caps> {
     asked
         .iter()
-        .all(|cap| GRANTED.contains(&cap.as_str()) || (stored && cap == "fs.mod_data"))
+        .all(|cap| GRANTED.contains(&cap.as_str()) || (stored && cap == photon_api::FS_MOD_DATA))
         .then(|| Caps {
-            mod_data: stored && asked.iter().any(|cap| cap == "fs.mod_data"),
-            tick: asked.iter().any(|cap| cap == "events.tick"),
-            hud_text: asked.iter().any(|cap| cap == "hud.text"),
-            sound: asked.iter().any(|cap| cap == "sound.play"),
-            game_time: asked.iter().any(|cap| cap == "game.time"),
-            player: asked.iter().any(|cap| cap == "player.state"),
+            mod_data: stored && asked.iter().any(|cap| cap == photon_api::FS_MOD_DATA),
+            tick: asked.iter().any(|cap| cap == photon_api::EVENTS_TICK),
+            hud_text: asked.iter().any(|cap| cap == photon_api::HUD_TEXT),
+            sound: asked.iter().any(|cap| cap == photon_api::SOUND_PLAY),
+            game_time: asked.iter().any(|cap| cap == photon_api::GAME_TIME),
+            player: asked.iter().any(|cap| cap == photon_api::PLAYER_STATE),
         })
 }
 

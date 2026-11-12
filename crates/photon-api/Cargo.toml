@@ -5,7 +5,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
-include = ["/Cargo.toml", "/src/**"]
+include = ["/Cargo.toml", "/src/**", "/wit/**"]
 
 [dependencies]
 bevy_ecs.workspace = true

@@ -8,6 +8,7 @@ description = "Repository automation: lint rules, git hooks, the commit gate."
 
 [dependencies]
 flate2.workspace = true
+photon-api.workspace = true
 parity-cases.workspace = true
 photon-core.workspace = true
 photon-update.workspace = true

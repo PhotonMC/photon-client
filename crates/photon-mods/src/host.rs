@@ -5,8 +5,7 @@ use std::time::Duration;
 
 use photon_api::{Owner, PlayerView, WorldView};
 
-use crate::data::{DataError, ModData};
-use wasmtime::StoreContextMut;
+use crate::data::ModData;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine, InstanceAllocationStrategy, PoolingAllocationConfig, Store};
 
@@ -99,15 +98,15 @@ pub struct Caps {
 /// What a mod's store holds: the effects of the tick that is running.
 #[derive(Default)]
 pub struct ModState {
-    data: Option<ModData>,
-    world: WorldView,
-    player: PlayerView,
+    pub(crate) data: Option<ModData>,
+    pub(crate) world: WorldView,
+    pub(crate) player: PlayerView,
     effects: Vec<Effect>,
     dropped: u32,
 }
 
 impl ModState {
-    fn push(&mut self, effect: Effect) {
+    pub(crate) fn push(&mut self, effect: Effect) {
         if self.effects.len() < MAX_EFFECTS {
             self.effects.push(effect);
         } else {
@@ -251,7 +250,7 @@ impl Host {
                 .func_wrap(name, move |_, ()| Ok((answer,)))
                 .map_err(load)?;
         }
-        grant_caps(&mut linker, caps).map_err(load)?;
+        crate::link::link(&mut linker, caps).map_err(load)?;
         let mut store = Store::new(
             &self.engine,
             ModState {
@@ -341,124 +340,6 @@ impl Mod {
             .call(&mut self.store, ())
             .map_err(|e| HostError::Call(trap_name(&e)))
     }
-}
-
-/// `text` cut at a character boundary to at most [`MAX_TEXT`] bytes.
-fn clipped(mut text: String) -> String {
-    if text.len() > MAX_TEXT {
-        let mut end = MAX_TEXT;
-        while !text.is_char_boundary(end) {
-            end -= 1;
-        }
-        text.truncate(end);
-    }
-    text
-}
-
-/// The imports of the granted capabilities. A capability that is not granted is not defined, so
-/// a mod that imports it fails to load.
-fn grant_caps(linker: &mut Linker<ModState>, caps: Caps) -> wasmtime::Result<()> {
-    if caps.hud_text {
-        linker.root().func_wrap(
-            "hud-text",
-            |mut cx: StoreContextMut<'_, ModState>,
-             (x, y, colour, text): (i32, i32, u32, String)| {
-                let text = clipped(text);
-                cx.data_mut().push(Effect::HudText { x, y, colour, text });
-                Ok(())
-            },
-        )?;
-    }
-    if caps.game_time {
-        linker
-            .root()
-            .func_wrap("game-time", |cx: StoreContextMut<'_, ModState>, ()| {
-                Ok((cx.data().world.game_time,))
-            })?;
-        linker
-            .root()
-            .func_wrap("day-time", |cx: StoreContextMut<'_, ModState>, ()| {
-                Ok((cx.data().world.day_time,))
-            })?;
-    }
-    if caps.mod_data {
-        grant_data(linker)?;
-    }
-    if caps.player {
-        grant_player(linker)?;
-    }
-    if caps.sound {
-        linker.root().func_wrap(
-            "play-sound",
-            |mut cx: StoreContextMut<'_, ModState>, (name, volume, pitch): (String, f32, f32)| {
-                let name = clipped(name);
-                let (volume, pitch) = (volume.clamp(0.0, 1.0), pitch.clamp(0.5, 2.0));
-                cx.data_mut().push(Effect::Sound {
-                    name,
-                    volume,
-                    pitch,
-                });
-                Ok(())
-            },
-        )?;
-    }
-    Ok(())
-}
-
-/// The reads of `player.state`: each returns the value the tick started with.
-fn grant_player(linker: &mut Linker<ModState>) -> wasmtime::Result<()> {
-    let root = &mut linker.root();
-    root.func_wrap("player-x", |cx: StoreContextMut<'_, ModState>, ()| {
-        Ok((cx.data().player.x,))
-    })?;
-    root.func_wrap("player-y", |cx: StoreContextMut<'_, ModState>, ()| {
-        Ok((cx.data().player.y,))
-    })?;
-    root.func_wrap("player-z", |cx: StoreContextMut<'_, ModState>, ()| {
-        Ok((cx.data().player.z,))
-    })?;
-    root.func_wrap("player-health", |cx: StoreContextMut<'_, ModState>, ()| {
-        Ok((cx.data().player.health,))
-    })?;
-    root.func_wrap("player-yaw", |cx: StoreContextMut<'_, ModState>, ()| {
-        Ok((cx.data().player.yaw,))
-    })?;
-    root.func_wrap("player-pitch", |cx: StoreContextMut<'_, ModState>, ()| {
-        Ok((cx.data().player.pitch,))
-    })?;
-    Ok(())
-}
-
-/// `data-get`, `data-set` and `data-delete` of `fs.mod_data`. A key that is not valid reads
-/// nothing; `data-set` answers 0 or a [`DataError`] code.
-fn grant_data(linker: &mut Linker<ModState>) -> wasmtime::Result<()> {
-    linker.root().func_wrap(
-        "data-get",
-        |cx: StoreContextMut<'_, ModState>, (key,): (String,)| {
-            Ok((cx.data().data.as_ref().and_then(|data| data.get(&key)),))
-        },
-    )?;
-    linker.root().func_wrap(
-        "data-set",
-        |cx: StoreContextMut<'_, ModState>, (key, value): (String, Vec<u8>)| {
-            let code = match &cx.data().data {
-                Some(data) => data.set(&key, &value).err().map_or(0, |e| e as u32),
-                None => DataError::Unavailable as u32,
-            };
-            Ok((code,))
-        },
-    )?;
-    linker.root().func_wrap(
-        "data-delete",
-        |cx: StoreContextMut<'_, ModState>, (key,): (String,)| {
-            Ok((cx
-                .data()
-                .data
-                .as_ref()
-                .is_some_and(|data| data.delete(&key)),))
-        },
-    )?;
-    Ok(())
 }
 
 /// `interrupt` for a call the clock stopped, `stack overflow` for runaway recursion, else the

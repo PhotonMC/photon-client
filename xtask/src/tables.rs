@@ -1,5 +1,5 @@
 //! `cargo xtask gen [--check]`: the reference tables of `photon-data/src/tables/`, written from
-//! the local reference.
+//! the local reference, and the WIT of the mod API of `photon-api`.
 //!
 //! A generator reads cases of the parity captures (the Java answer, in
 //! `.data/parity/<version>/<family>.jsonl.gz`): the newest version's for the main table, and
@@ -14,6 +14,7 @@ pub(crate) mod capture;
 mod component_sets;
 mod compost;
 mod entity_models;
+mod mod_wit;
 mod text;
 
 use std::fs;
@@ -50,6 +51,10 @@ const TABLES: &[Table] = &[
         render: component_sets::render,
     },
     Table {
+        path: "crates/photon-api/wit/photon-mod.wit",
+        render: mod_wit::render,
+    },
+    Table {
         path: "crates/photon-data/src/tables/entity_models.rs",
         render: entity_models::render,
     },
@@ -77,6 +82,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
     for table in TABLES {
         let text = (table.render)(&versions)?;
         let path = process::root().join(table.path);
+        if let Some(dir) = path.parent() {
+            fs::create_dir_all(dir).map_err(|error| format!("{}: {error}", dir.display()))?;
+        }
         let current = fs::read_to_string(&path).unwrap_or_default();
         if current == text {
             continue;
