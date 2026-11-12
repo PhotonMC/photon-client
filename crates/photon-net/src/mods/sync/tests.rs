@@ -273,3 +273,40 @@ fn a_stopped_fetch_is_started_again_only_if_the_hash_is_wanted_after_all() {
             .is_empty()
     );
 }
+
+#[test]
+fn mods_stopped_at_runtime_owe_one_hello_and_are_refused_as_stopped() {
+    let mut sync = ModSync::new();
+    sync.manifest(&manifest(&[("a", "h1"), ("b", "h2")]), all, none);
+    sync.fetched("h1", Ok(()));
+    sync.fetched("h2", Ok(()));
+    assert!(sync.take_hello_due());
+    sync.runtime_stopped(&[]);
+    assert!(!sync.take_hello_due());
+    sync.runtime_stopped(&[
+        ("a".to_owned(), "h1".to_owned()),
+        ("b".to_owned(), "h2".to_owned()),
+    ]);
+    assert!(sync.take_hello_due());
+    assert!(!sync.take_hello_due());
+    assert_eq!(sync.refused().len(), 2);
+    assert!(sync.refused().iter().all(|r| r.reason == Reason::Stopped));
+    assert_eq!(Reason::Stopped.word(), "stopped");
+}
+
+#[test]
+fn a_stopped_mod_stays_refused_for_the_same_hash_and_loads_for_another() {
+    let mut sync = ModSync::new();
+    sync.take_hello_due();
+    sync.runtime_stopped(&[("a".to_owned(), "h1".to_owned())]);
+    let plan = sync.manifest(&manifest(&[("a", "h1")]), all, none);
+    assert!(plan.fetch.is_empty());
+    assert_eq!(sync.refused()[0].reason, Reason::Stopped);
+    assert!(sync.take_hello_due());
+    let plan = sync.manifest(&manifest(&[("a", "h2")]), all, none);
+    assert_eq!(ids(&plan), ["a"]);
+    assert!(sync.refused().is_empty());
+    sync.reset();
+    let plan = sync.manifest(&manifest(&[("a", "h1")]), all, none);
+    assert_eq!(ids(&plan), ["a"]);
+}

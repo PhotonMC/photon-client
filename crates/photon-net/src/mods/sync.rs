@@ -19,6 +19,8 @@ pub enum Reason {
     Load,
     /// The player has not allowed a capability it needs (or refused it).
     Consent,
+    /// The mod was loaded, then trapped or ran past its allowance and was unloaded.
+    Stopped,
 }
 
 impl Reason {
@@ -31,6 +33,7 @@ impl Reason {
             Self::Fetch => "fetch",
             Self::Load => "load",
             Self::Consent => "consent",
+            Self::Stopped => "stopped",
         }
     }
 }
@@ -80,6 +83,9 @@ pub struct ModSync {
     refused: Vec<Refused>,
     /// Entries of the latest manifest that wait for the player, with what they ask about.
     held: Vec<(ModEntry, Vec<String>)>,
+    /// `(id, hash)` of mods that were unloaded at runtime on this connection; a manifest that
+    /// still names the same pair does not load them again.
+    stopped: Vec<(String, String)>,
     hello_due: bool,
 }
 
@@ -97,6 +103,7 @@ impl ModSync {
             in_flight: Vec::new(),
             refused: Vec::new(),
             held: Vec::new(),
+            stopped: Vec::new(),
             hello_due: true,
         }
     }
@@ -121,6 +128,13 @@ impl ModSync {
         let mut fetch: Vec<ModEntry> = Vec::new();
         for entry in &manifest.mods {
             if is_loaded(&entry.id, &entry.hash) {
+                continue;
+            }
+            if self.has_stopped(&entry.id, &entry.hash) {
+                self.refused.push(Refused {
+                    id: entry.id.clone(),
+                    reason: Reason::Stopped,
+                });
                 continue;
             }
             match admit(entry) {
@@ -229,6 +243,29 @@ impl ModSync {
             }
             None => Vec::new(),
         }
+    }
+
+    fn has_stopped(&self, id: &str, hash: &str) -> bool {
+        self.stopped.iter().any(|(i, h)| i == id && h == hash)
+    }
+
+    /// Mods (`(id, hash)`) were unloaded at runtime. They are refused as `stopped` until their
+    /// hash changes or the connection starts over, and one hello is owed however many there are.
+    pub fn runtime_stopped(&mut self, mods: &[(String, String)]) {
+        if mods.is_empty() {
+            return;
+        }
+        for (id, hash) in mods {
+            if !self.has_stopped(id, hash) {
+                self.stopped.push((id.clone(), hash.clone()));
+            }
+            self.refused.retain(|r| &r.id != id);
+            self.refused.push(Refused {
+                id: id.clone(),
+                reason: Reason::Stopped,
+            });
+        }
+        self.hello_due = true;
     }
 
     /// A mod returned by [`ModSync::fetched`] could not be loaded.

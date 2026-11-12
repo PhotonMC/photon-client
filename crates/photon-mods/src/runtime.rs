@@ -65,6 +65,8 @@ pub struct Runtime {
     pub hud: Vec<HudLine>,
     /// Saves the mods' stores; started with the first mod that has one.
     writer: Option<DataWriter>,
+    /// `(id, hash)` of mods unloaded by a failed tick, until the app takes them.
+    stopped: Vec<(String, String)>,
 }
 
 /// The capabilities `asked` names, if every one of them is granted.
@@ -245,6 +247,12 @@ impl Runtime {
         self.save_data();
         // Dropped mods shift the ones behind them, and the cursor with them.
         let before = failed.iter().filter(|&&index| index < next).count();
+        self.stopped.extend(failed.iter().map(|&index| {
+            (
+                self.loaded[index].id.clone(),
+                self.loaded[index].hash.clone(),
+            )
+        }));
         let mut position = 0;
         self.loaded.retain(|_| {
             position += 1;
@@ -253,6 +261,11 @@ impl Runtime {
         self.cursor = next.saturating_sub(before);
         self.hud = self.loaded.iter().flat_map(|m| m.hud.clone()).collect();
         report
+    }
+
+    /// The mods (`(id, hash)`) that failed a tick and were unloaded since the last call.
+    pub fn take_stopped(&mut self) -> Vec<(String, String)> {
+        std::mem::take(&mut self.stopped)
     }
 
     /// The level as the next tick shows it to mods.

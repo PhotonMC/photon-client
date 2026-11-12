@@ -222,6 +222,14 @@ impl ModRuntime {
         }
     }
 
+    /// One client tick of the mods; a mod that failed it is unloaded and the server is owed a
+    /// hello that names it. The sounds are returned for the app to play.
+    pub(crate) fn tick(&mut self) -> Vec<photon_mods::Effect> {
+        let sounds = self.runtime.tick();
+        self.sync.runtime_stopped(&self.runtime.take_stopped());
+        sounds
+    }
+
     /// Loads what the fetch threads have finished.
     pub(crate) fn load_fetched(&mut self) {
         let Some((_, receiver)) = self.answers.as_ref() else {
@@ -527,4 +535,6 @@ mod tests {
         mods.restart();
         assert_eq!(text(mods.hello("P")), r#"{"v":1,"client":"P","loaded":[]}"#);
     }
+
+    mod stopped;
 }

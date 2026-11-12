@@ -157,7 +157,7 @@ impl Play {
             day_time: self.sky.clock_ticks(&self.session),
         });
         self.gui.mods.runtime.set_player(self.player_view());
-        let sounds = self.gui.mods.runtime.tick();
+        let sounds = self.gui.mods.tick();
         for effect in sounds {
             if let (
                 Effect::Sound {
