@@ -1,6 +1,6 @@
 # ADR 0024: Server-delivered mods
 
-- Status: accepted (2026-11-05); built in the client, server side open
+- Status: accepted (2026-11-05); built in the client and in the `photon-bridge` plugin of `photon-server`
 
 ## Context
 
@@ -20,7 +20,7 @@
 ## Consequences
 
 - A server delivers mods after the join, so the first seconds of a join run without them.
-- The server side (sending the manifest, the hello check) is a `photon-server` plugin; it needs a wasm toolchain that is not set up here and is not built in this repository.
+- The server side (sending the manifest, the hello check) is the `photon-bridge` plugin in the `photon-server` repository, built against Pumpkin's plugin interface 0.1.0. That interface has no channel in the configuration phase and no timer finer than a server tick, so the manifest goes out after the join and the hello check runs every few ticks.
 - Signing is still open (ADR 0006). Until it exists, a manifest is trusted exactly as far as the connection to the server is, and the hash only guards the file against the host that serves it.
 
 ## Addendum (2026-11-06): live-test notes and consent
