@@ -349,6 +349,7 @@ mod motion;
 mod passengers;
 mod rockets;
 mod seeds;
+mod sleepers;
 mod state;
 mod store;
 mod vehicle;

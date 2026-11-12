@@ -25,6 +25,7 @@ mod test_block;
 mod test_instance_block;
 pub use test_block::TestBlockView;
 mod dimension;
+mod dragon_egg;
 mod enchanting;
 mod heightmaps;
 pub use enchanting::EnchantTableView;

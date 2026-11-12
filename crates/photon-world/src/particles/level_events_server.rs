@@ -63,7 +63,7 @@ impl ParticleEngine {
 
     /// `LevelEventHandler.singleBlockTeleportationParticles`: 128 portal specks strewn along the
     /// way from the place the block went to, within a block's width of it.
-    fn teleport_specks<F: FnMut() -> RandomSource>(
+    pub(super) fn teleport_specks<F: FnMut() -> RandomSource>(
         &mut self,
         pos: (i32, i32, i32),
         to: (i32, i32, i32),

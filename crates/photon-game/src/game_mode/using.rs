@@ -275,6 +275,7 @@ impl GameMode {
         pos: (i32, i32, i32),
         aim: Aim,
     ) -> UseResult {
+        ctx.world.touch_dragon_egg(pos);
         if ctx.can_use_game_master_blocks() && ctx.world.command_block_view(pos).is_some() {
             self.opened_command_block = Some(pos);
             return UseResult::Success { swing: true };

@@ -36,3 +36,23 @@ pub fn rows() -> Vec<Value> {
         touched("ore-sparks-glass", ore_blocks("minecraft:redstone_ore", around("minecraft:glass")), &[0]),
     ]
 }
+
+/// A dragon egg touched (`DragonEggBlock.teleport`): a 26.2 client looks for a place to go with the
+/// level's random source and shows the specks itself; a 26.3 client leaves it to the server.
+pub fn egg_rows() -> Vec<Value> {
+    let floor: Vec<Value> =
+        (-3..=3_i64).flat_map(|x| (-3..=3_i64).map(move |z| put(x, 63, z, "minecraft:stone"))).collect();
+    let mut standing = floor;
+    standing.push(put(0, 64, 0, "minecraft:dragon_egg"));
+    let alone = vec![put(0, 64, 0, "minecraft:dragon_egg")];
+    let touch = |label: &str, blocks: Vec<Value>, events: Vec<Value>| {
+        engine_row(label, events).blocks(blocks).ticks(4).seeds(3000).describe(12).row()
+    };
+    vec![
+        touch("egg-touch-floor", standing.clone(), vec![ore_touch(0, (0, 64, 0))]),
+        touch("egg-touch-twice", standing, vec![ore_touch(0, (0, 64, 0)), ore_touch(1, (0, 64, 0))]),
+        // No place to go: a thousand tries draw from the random source, and the event after shows
+        // where it stands.
+        touch("egg-touch-no-place", alone, vec![ore_touch(0, (0, 64, 0)), level_event(1, 2009, (1, 64, 1), 0)]),
+    ]
+}

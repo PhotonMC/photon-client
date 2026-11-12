@@ -380,6 +380,9 @@ pub enum LevelEvent {
     CampfireTick(CampfireSmoke),
     /// A redstone ore touched (`RedStoneOreBlock.spawnParticles`): dust on its open faces.
     OreSparks { pos: (i32, i32, i32) },
+    /// A dragon egg hit or used (`DragonEggBlock.teleport` on a client): it searches for a place
+    /// to go and strews 128 portal specks along the way.
+    EggTeleport { pos: (i32, i32, i32) },
     /// A lit campfire put out (`CampfireBlock.dowse` on a client).
     CampfireDowse { pos: (i32, i32, i32), signal: bool },
     /// Water poured out of a bucket where it evaporates (`BucketItem.emptyContents`): eight

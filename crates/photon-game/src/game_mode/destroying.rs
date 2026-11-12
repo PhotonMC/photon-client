@@ -324,6 +324,7 @@ fn attack_block(
     ) {
         ctx.world.push_ore_sparks(pos);
     }
+    ctx.world.touch_dragon_egg(pos);
     if let Some(write) = rules::attack(state, pos) {
         let position = ctx.player.position();
         ctx.world

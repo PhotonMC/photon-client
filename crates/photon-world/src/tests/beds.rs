@@ -1,6 +1,7 @@
 use super::*;
 
 use photon_core::binary::BlockPos;
+use photon_core::ids::EntityId;
 use photon_data::block::registry::block;
 
 /// A block put in the test chunk: its cell, its name and its properties.
@@ -94,4 +95,34 @@ fn a_roofed_source_is_full_for_the_camera() {
     assert_eq!(roofed, 1.0);
     assert!((open - 8.0 / 9.0).abs() < 1e-6, "{open}");
     assert_eq!(stacked, 1.0);
+}
+
+/// A remote sleeper whose block is no bed stands up on its first tick (26.3); one in a bed lies
+/// over it.
+#[test]
+fn a_sleeper_over_no_bed_stands_up_on_its_first_tick() {
+    let mut world = world_with(&[(1, 1, 1, "minecraft:red_bed", &[("part", "head")])]);
+    for (id, bed) in [(9, at(1, 1, 1)), (10, at(5, 1, 5))] {
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(id),
+            uuid: photon_core::binary::Uuid::new(1, id as u64),
+            type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
+            x: 0.5,
+            y: 1.0,
+            z: 0.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        let mut entity = world.entities_mut().at_mut(EntityId(id)).unwrap();
+        entity.vitals.sleeping_pos = Some(bed);
+        entity.status.pose = ClientEntityPose::Sleeping;
+        entity.ticking = true;
+    }
+    world.tick_entities(false);
+    let sleeper = world.entities().at(EntityId(9)).unwrap();
+    assert_eq!(sleeper.sleeping_pos(), Some(at(1, 1, 1)));
+    let stood = world.entities().at(EntityId(10)).unwrap();
+    assert_eq!(stood.sleeping_pos(), None);
+    assert_eq!(stood.pose(), ClientEntityPose::Standing);
 }

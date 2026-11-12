@@ -17,6 +17,7 @@ mod animate_sulfur;
 mod attract;
 mod breaking_item;
 mod colour;
+mod dragon_egg;
 mod drip;
 mod effects;
 mod elder_guardian;

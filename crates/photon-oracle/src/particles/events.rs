@@ -100,8 +100,13 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
 
 /// An `ore_touch` event: the ore sparks, and an unlit one lights up (`RedStoneOreBlock.attack`).
 fn touch_ore(world: &mut ClientWorld, pos: (i32, i32, i32)) {
-    world.push_ore_sparks(pos);
     let state = world.block_state_or_air(pos.0, pos.1, pos.2);
+    world.touch_dragon_egg(pos);
+    if photon_world::block::rules::is_redstone_ore(
+        photon_world::block::state_or_air(state).block().name,
+    ) {
+        world.push_ore_sparks(pos);
+    }
     if let Some(write) = photon_world::block::rules::attack(state, pos) {
         world.update_block_state(pos.0, pos.1, pos.2, write.state);
     }

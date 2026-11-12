@@ -120,6 +120,7 @@ impl ClientWorld {
         self.throw_sprint_particle(entity_id);
         self.throw_water_splash(entity_id);
         self.throw_eating_particles(entity_id);
+        self.first_tick_in_bed(entity_id);
         self.tick_entity_once(entity_id);
         self.play_tick_sounds(entity_id);
         self.throw_effect_particles(entity_id);

@@ -257,7 +257,9 @@ impl ParticleEngine {
             | LevelEvent::ParrotImitation { .. }
             | LevelEvent::Geyser { .. }
             | LevelEvent::GeyserSound { .. } => self.block_entity_level_event(level_event, context),
-            LevelEvent::OreSparks { .. } | LevelEvent::WaterEvaporates { .. } => {
+            LevelEvent::OreSparks { .. }
+            | LevelEvent::WaterEvaporates { .. }
+            | LevelEvent::EggTeleport { .. } => {
                 self.block_puff_level_event(level_event, context);
                 Vec::new()
             }
@@ -279,6 +281,7 @@ impl ParticleEngine {
         match level_event {
             LevelEvent::OreSparks { pos } => self.redstone_ore_particles(pos, context),
             LevelEvent::WaterEvaporates { pos } => self.water_evaporation(pos, context),
+            LevelEvent::EggTeleport { pos } => self.egg_teleport(pos, context),
             _ => {}
         }
     }

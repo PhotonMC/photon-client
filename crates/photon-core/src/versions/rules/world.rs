@@ -69,6 +69,10 @@ rules! {
         /// block's teleport (2015, 2016, 2017 and 2018) and of a block broken from a face (2019
         /// and 2020) with level events (26.3); a 26.2 client has no such events.
         destroy_and_teleport_level_events: since V26_3,
+        /// A dragon egg that is hit or used searches for a place to go on the client, with the
+        /// level's random source, and shows the portal specks itself (26.2); in 26.3 the server
+        /// tells of the teleport with level event 2015.
+        dragon_egg_teleports_on_client: before V26_3,
         /// A boat above a bubble column tells the one who steers it with entity events 71 (drag
         /// down) and 72 (launch up), which set its motion there (26.3); 26.2 does not tell.
         boat_bubble_column_events: since V26_3,
