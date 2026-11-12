@@ -163,13 +163,33 @@ impl Host {
         &self,
         owner: Owner,
         wasm: &[u8],
+        grants: (&[(&str, u32)], Caps),
+        allowance: Duration,
+    ) -> Result<Mod, HostError> {
+        let compiled = self.compile(wasm)?;
+        self.instantiate(owner, &compiled, grants, allowance)
+    }
+
+    /// Compiles `wasm` (binary or text). This is the slow part of a load, and needs no mod slot
+    /// and no clock, so the app runs it on a thread of its own and instantiates on the game's.
+    pub fn compile(&self, wasm: &[u8]) -> Result<Compiled, HostError> {
+        Component::new(&self.engine, wasm)
+            .map(|component| Compiled { component })
+            .map_err(|e| HostError::Load(e.to_string()))
+    }
+
+    /// Instantiates a compiled mod as `owner`, linking only the imports it was granted. Quick,
+    /// but it takes a slot of the pool and runs the mod's start function.
+    pub fn instantiate(
+        &self,
+        owner: Owner,
+        compiled: &Compiled,
         (grants, caps): (&[(&str, u32)], Caps),
         allowance: Duration,
     ) -> Result<Mod, HostError> {
         self.ensure_clock()?;
         let ticks_allowed = (allowance.as_millis() as u64).max(1);
         let load = |e: wasmtime::Error| HostError::Load(e.to_string());
-        let component = Component::new(&self.engine, wasm).map_err(load)?;
         let mut linker: Linker<ModState> = Linker::new(&self.engine);
         for &(name, answer) in grants {
             linker
@@ -180,8 +200,11 @@ impl Host {
         grant_caps(&mut linker, caps).map_err(load)?;
         let mut store = Store::new(&self.engine, ModState::default());
         // The clock is already running: a start function gets the same allowance as a tick.
+        // The deadline is set before the instance exists, never after.
         store.set_epoch_deadline(ticks_allowed);
-        let instance = linker.instantiate(&mut store, &component).map_err(load)?;
+        let instance = linker
+            .instantiate(&mut store, &compiled.component)
+            .map_err(load)?;
         let tick = instance
             .get_typed_func::<(), ()>(&mut store, "tick")
             .map_err(load)?;
@@ -192,6 +215,13 @@ impl Host {
             ticks_allowed,
         })
     }
+}
+
+/// A mod's code, compiled for one [`Host`] and not yet running. It can cross threads, and one
+/// compile can be instantiated again.
+#[derive(Clone)]
+pub struct Compiled {
+    component: Component,
 }
 
 impl Drop for Host {

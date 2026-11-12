@@ -217,3 +217,57 @@ fn a_flood_of_effects_is_capped_and_counted() {
     assert_eq!(effects.len(), MAX_EFFECTS);
     assert_eq!(dropped as usize, 200 - MAX_EFFECTS);
 }
+
+#[test]
+fn compiling_on_another_thread_then_instantiating_here() {
+    fn shareable<T: Send + Sync>() {}
+    shareable::<Host>();
+    shareable::<Compiled>();
+    let host = std::sync::Arc::new(Host::new().unwrap());
+    let worker = std::sync::Arc::clone(&host);
+    let compiled = std::thread::spawn(move || worker.compile(NEEDS_REGISTRY.as_bytes()))
+        .join()
+        .unwrap()
+        .expect("compile");
+    // Linking happens at instantiation: the grant decides, and one compile serves many mods.
+    assert!(matches!(
+        host.instantiate(MOD, &compiled, (&[], Caps::default()), MS),
+        Err(HostError::Load(why)) if why.contains("registry-read")
+    ));
+    let grants: &[(&str, u32)] = &[("registry-read", 1)];
+    let mut first = host
+        .instantiate(MOD, &compiled, (grants, Caps::default()), MS)
+        .expect("first");
+    let mut second = host
+        .instantiate(MOD, &compiled, (grants, Caps::default()), MS)
+        .expect("second");
+    assert!(first.tick().is_ok() && second.tick().is_ok());
+}
+
+#[test]
+fn bad_code_fails_at_compile_not_at_instantiate() {
+    let host = Host::new().unwrap();
+    assert!(matches!(
+        host.compile(b"not a component"),
+        Err(HostError::Load(_))
+    ));
+}
+
+#[test]
+fn an_endless_start_function_is_stopped_when_instantiating_a_compile() {
+    const ENDLESS_START: &str = r#"(component
+  (core module $m (func $s (loop br 0)) (start $s) (func (export "tick")))
+  (core instance $i (instantiate $m))
+  (func (export "tick") (canon lift (core func $i "tick"))))"#;
+    let host = Host::new().unwrap();
+    let compiled = host.compile(ENDLESS_START.as_bytes()).expect("compile");
+    let started = std::time::Instant::now();
+    let result = host.instantiate(
+        MOD,
+        &compiled,
+        (&[], Caps::default()),
+        Duration::from_millis(20),
+    );
+    assert!(result.is_err());
+    assert!(started.elapsed() < Duration::from_secs(5));
+}

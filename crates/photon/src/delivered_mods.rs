@@ -4,10 +4,11 @@
 
 use std::sync::mpsc::{Receiver, channel};
 
-use photon_mods::Runtime;
+use photon_mods::{Compiled, Runtime};
 use photon_net::mods::{self, Manifest, ModCache, ModEntry};
 
-type Fetched = (ModEntry, std::result::Result<Vec<u8>, mods::FetchError>);
+/// What the fetch thread made of one entry: compiled code, or why not.
+type Fetched = (ModEntry, std::result::Result<Compiled, String>);
 
 /// The mods of the connection.
 #[derive(Default)]
@@ -47,13 +48,27 @@ impl ModRuntime {
         if wanted.is_empty() {
             return;
         }
+        let host = match self.runtime.host() {
+            Ok(host) => host,
+            Err(error) => {
+                log::warn!("mods not started: {error}");
+                self.waiting = 0;
+                return;
+            }
+        };
         let (sender, receiver) = channel();
         let spawned = std::thread::Builder::new()
             .name("Mod Fetch".to_owned())
             .spawn(move || {
                 let cache = ModCache::new(cache_dir);
                 for entry in wanted {
-                    let result = mods::ensure(&cache, &entry);
+                    // Fetching and compiling both happen here, off the game's thread.
+                    let result = mods::ensure(&cache, &entry)
+                        .map_err(|error| format!("not fetched: {error:?}"))
+                        .and_then(|bytes| {
+                            host.compile(&bytes)
+                                .map_err(|error| format!("not compiled: {error}"))
+                        });
                     if sender.send((entry, result)).is_err() {
                         return;
                     }
@@ -75,15 +90,17 @@ impl ModRuntime {
         for (entry, result) in done {
             self.waiting = self.waiting.saturating_sub(1);
             match result {
-                Ok(bytes) => {
-                    let loaded = self
-                        .runtime
-                        .load((&entry.id, &entry.hash), &entry.caps, &bytes);
+                Ok(compiled) => {
+                    let loaded = self.runtime.load_compiled(
+                        (&entry.id, &entry.hash),
+                        &entry.caps,
+                        &compiled,
+                    );
                     if let Err(error) = loaded {
                         log::warn!("mod {} not loaded: {error}", entry.id);
                     }
                 }
-                Err(error) => log::warn!("mod {} not fetched: {error:?}", entry.id),
+                Err(error) => log::warn!("mod {} {error}", entry.id),
             }
         }
         arrived && self.waiting == 0

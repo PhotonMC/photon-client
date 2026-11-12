@@ -1,11 +1,12 @@
 //! The mods of one connection: which are loaded, what each may do, and what they ask for each
 //! tick. Fetching and the connection are the app's business; this holds no network.
 
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use photon_api::Owner;
 
-use crate::{Caps, Effect, Host, HostError, Mod};
+use crate::{Caps, Compiled, Effect, Host, HostError, Mod};
 
 /// What a tick of one mod may take before it is stopped.
 const ALLOWANCE: Duration = Duration::from_millis(20);
@@ -40,7 +41,7 @@ struct Loaded {
 
 #[derive(Default)]
 pub struct Runtime {
-    host: Option<Host>,
+    host: Option<Arc<Host>>,
     loaded: Vec<Loaded>,
     /// Index of the mod that runs first in the next tick (round-robin under the budget).
     cursor: usize,
@@ -78,29 +79,52 @@ impl Runtime {
         self.loaded.iter().map(|m| m.id.as_str()).collect()
     }
 
-    /// Loads one mod with the capabilities it asked for, if all are granted.
+    /// The host every mod of this runtime runs in, made at the first call. The app hands a clone
+    /// to its fetch thread, which compiles with it; the engine is shared, so a compile there
+    /// can be instantiated here.
+    pub fn host(&mut self) -> Result<Arc<Host>, HostError> {
+        if let Some(host) = &self.host {
+            return Ok(Arc::clone(host));
+        }
+        let host = Arc::new(Host::new()?);
+        self.host = Some(Arc::clone(&host));
+        Ok(host)
+    }
+
+    /// Compiles and loads one mod with the capabilities it asked for, if all are granted.
     pub fn load(
         &mut self,
         (id, hash): (&str, &str),
         asked: &[String],
         bytes: &[u8],
     ) -> Result<(), HostError> {
+        grant(asked)
+            .ok_or_else(|| HostError::Load(format!("{id} asks for more than it may have")))?;
+        let compiled = self.host()?.compile(bytes)?;
+        self.load_compiled((id, hash), asked, &compiled)
+    }
+
+    /// Instantiates a mod that was compiled on another thread. Any mod of the same id goes
+    /// first, so its slot is free for the new one.
+    pub fn load_compiled(
+        &mut self,
+        (id, hash): (&str, &str),
+        asked: &[String],
+        compiled: &Compiled,
+    ) -> Result<(), HostError> {
         let caps = grant(asked)
             .ok_or_else(|| HostError::Load(format!("{id} asks for more than it may have")))?;
         let owner = Owner::dynamic(id).ok_or_else(|| HostError::Load("too many mods".into()))?;
-        let host = match self.host.take() {
-            Some(host) => host,
-            None => Host::new()?,
-        };
-        let loaded = host.load_with(owner, bytes, (&[], caps), ALLOWANCE);
-        self.host = Some(host);
         self.loaded.retain(|m| m.id != id);
+        let module = self
+            .host()?
+            .instantiate(owner, compiled, (&[], caps), ALLOWANCE)?;
         self.loaded.push(Loaded {
             id: id.to_owned(),
             hash: hash.to_owned(),
             ticks: caps.tick,
             hud: Vec::new(),
-            module: loaded?,
+            module,
         });
         Ok(())
     }

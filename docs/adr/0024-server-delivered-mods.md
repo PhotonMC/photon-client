@@ -32,3 +32,5 @@ Capabilities that touch the player's machine or data (first `fs.mod_data`) need 
 ## Addendum (2026-11-12): tick budget
 
 All mods together get 4 ms of each client tick (ADR 0006 gives no total); the per-mod allowance stays 20 ms, so one overrunning mod can pass the total by up to that much before it is stopped and unloaded. Mods that did not get to run wait and run first in the next tick, in a fixed turn order, and keep the text they last drew meanwhile. At least one mod runs every tick.
+
+Compiling a mod (the slow part of a load) runs on the fetch thread with the shared engine; only instantiating it, which takes a pool slot and runs the start function under the allowance, happens on the game thread.
