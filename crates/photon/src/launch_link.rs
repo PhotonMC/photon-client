@@ -174,6 +174,8 @@ pub(crate) struct GameLink {
     pub(crate) signin_ready: Option<InPlay>,
     /// The state the player agreed to sign in, to be started.
     pub(crate) signin_agreed: Option<String>,
+    /// The answers to questions about the server's mods, `(id, allowed)`, not yet handed on.
+    pub(crate) mod_answers: Vec<(String, bool)>,
 }
 
 impl GameLink {

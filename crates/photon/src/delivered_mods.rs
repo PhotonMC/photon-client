@@ -92,21 +92,18 @@ impl ModRuntime {
         }
     }
 
+    /// The server the mods come from, as the question names it.
+    pub(crate) fn server(&self) -> &str {
+        &self.server
+    }
+
     /// The questions the player has not answered: mods held back until they are.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "the screen that asks does not exist yet")
-    )]
     pub(crate) fn questions(&self) -> Vec<Question> {
         self.sync.questions()
     }
 
     /// The player's answer about mod `id`: remembered for this server and mod hash, then the mod
     /// is fetched and loaded (a grant) or stays refused (a refusal).
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "the screen that asks does not exist yet")
-    )]
     pub(crate) fn answer(&mut self, id: &str, granted: bool) {
         let Some(question) = self.sync.questions().into_iter().find(|q| q.id == id) else {
             return;

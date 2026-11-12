@@ -177,6 +177,9 @@ impl Controls {
                 | ConfirmTarget::Game(..)
                 | ConfirmTarget::SignIn(_),
             ) => self.agreed(&target, assets),
+            (action, ConfirmTarget::Mod(id)) => {
+                self.answered_mod(id, action == LinkAction::Yes, surface);
+            }
             (action, ConfirmTarget::FriendsList | ConfirmTarget::RemoveFriend(_)) => {
                 self.answer_friends_confirm(action, &target, surface);
             }

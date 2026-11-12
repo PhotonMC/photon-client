@@ -27,6 +27,8 @@ pub enum ConfirmTarget {
     Game(String, String),
     /// A link's question: sign the website's browser (this state) in, once the player agrees.
     SignIn(String),
+    /// A server mod's question: allow or deny the mod with this id.
+    Mod(String),
     /// A link's notice, which only goes away.
     Notice,
 }

@@ -105,6 +105,19 @@ impl Play {
 }
 
 impl Play {
+    /// The player's answers reach the mods, and the next mod waiting for one is asked about.
+    fn ask_about_mods(&mut self) {
+        for (id, granted) in std::mem::take(&mut self.controls.game_link.mod_answers) {
+            self.gui.mods.answer(&id, granted);
+        }
+        let Some(question) = self.gui.mods.questions().into_iter().next() else {
+            return;
+        };
+        let server = self.gui.mods.server().to_owned();
+        self.controls
+            .ask_about_mod((&server, &question), &mut self.surface, &self.screen_assets);
+    }
+
     /// The mods' part of a tick: the server's manifest, mods that finished loading, their tick.
     pub(super) fn tick_mods(&mut self) {
         self.gui.mods.set_server(self.session.server_address());
@@ -121,6 +134,7 @@ impl Play {
             }
         }
         self.gui.mods.load_fetched();
+        self.ask_about_mods();
         self.say_hello();
         self.gui.mods.runtime.set_world(photon_mods::WorldView {
             game_time: self.session.game_time(),

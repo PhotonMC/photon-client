@@ -449,6 +449,7 @@ mod pack_prompt;
 mod packs;
 
 mod game_rules;
+mod mod_consent;
 mod pause;
 mod restrictions;
 mod unattended;
