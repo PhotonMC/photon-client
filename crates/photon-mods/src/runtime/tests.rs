@@ -29,8 +29,8 @@ fn caps(list: &[&str]) -> Vec<String> {
 fn only_the_harmless_capabilities_are_granted() {
     assert!(grant(&caps(&["hud.text", "sound.play", "events.tick"])).is_some());
     assert_eq!(
-        grant(&caps(&["hud.text"])).map(|c| (c.hud_text, c.sound)),
-        Some((true, false))
+        grant(&caps(&["hud.text"])).map(|c| (c.tick, c.hud_text, c.sound)),
+        Some((false, true, false))
     );
     assert!(grant(&caps(&["hud.text", "fs.write"])).is_none());
     assert!(grant(&caps(&["net.connect"])).is_none());
@@ -58,7 +58,7 @@ fn a_loaded_mod_ticks_into_the_hud_and_the_sounds() {
     runtime
         .load(
             ("tycoon", "h1"),
-            &caps(&["hud.text", "sound.play"]),
+            &caps(&["events.tick", "hud.text", "sound.play"]),
             HUD.as_bytes(),
         )
         .expect("load");
@@ -81,7 +81,7 @@ fn a_loaded_mod_ticks_into_the_hud_and_the_sounds() {
 #[test]
 fn an_update_replaces_the_mod_and_a_dropped_mod_goes() {
     let mut runtime = Runtime::default();
-    let both = caps(&["hud.text", "sound.play"]);
+    let both = caps(&["events.tick", "hud.text", "sound.play"]);
     runtime.load(("a", "h1"), &both, HUD.as_bytes()).expect("a");
     runtime.load(("b", "h1"), &both, HUD.as_bytes()).expect("b");
     assert!(runtime.has("a", "h1"));
@@ -102,16 +102,64 @@ fn an_update_replaces_the_mod_and_a_dropped_mod_goes() {
 fn a_mod_that_traps_is_unloaded_and_the_others_keep_running() {
     let mut runtime = Runtime::default();
     runtime
-        .load(("bad", "h"), &[], TRAPS.as_bytes())
+        .load(("bad", "h"), &caps(&["events.tick"]), TRAPS.as_bytes())
         .expect("bad");
     runtime
         .load(
             ("good", "h"),
-            &caps(&["hud.text", "sound.play"]),
+            &caps(&["events.tick", "hud.text", "sound.play"]),
             HUD.as_bytes(),
         )
         .expect("good");
     runtime.tick();
     assert_eq!(runtime.ids(), ["good"]);
     assert_eq!(runtime.hud.len(), 1);
+}
+
+#[test]
+fn a_mod_ticks_only_if_it_asked_for_events_tick() {
+    let mut runtime = Runtime::default();
+    let draw = ["hud.text", "sound.play"];
+    runtime
+        .load(("quiet", "h"), &caps(&draw), HUD.as_bytes())
+        .expect("quiet");
+    runtime.tick();
+    assert!(runtime.hud.is_empty(), "no events.tick, no tick");
+    assert_eq!(runtime.ids(), ["quiet"]);
+    runtime
+        .load(
+            ("loud", "h"),
+            &caps(&["events.tick", "hud.text", "sound.play"]),
+            HUD.as_bytes(),
+        )
+        .expect("loud");
+    runtime.tick();
+    assert_eq!(runtime.hud.len(), 1);
+}
+
+#[test]
+fn a_mod_that_traps_without_events_tick_is_never_called() {
+    let mut runtime = Runtime::default();
+    runtime
+        .load(("bad", "h"), &[], TRAPS.as_bytes())
+        .expect("bad");
+    runtime.tick();
+    assert_eq!(runtime.ids(), ["bad"]);
+}
+
+#[test]
+fn an_unknown_capability_refuses_the_mod_but_not_the_others() {
+    let mut runtime = Runtime::default();
+    let all = caps(&["events.tick", "hud.text", "sound.play"]);
+    runtime.load(("ok", "h"), &all, HUD.as_bytes()).expect("ok");
+    assert!(
+        runtime
+            .load(
+                ("odd", "h"),
+                &caps(&["events.tick", "world.read"]),
+                HUD.as_bytes()
+            )
+            .is_err()
+    );
+    assert_eq!(runtime.ids(), ["ok"]);
 }

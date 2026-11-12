@@ -27,6 +27,8 @@ pub struct HudLine {
 struct Loaded {
     id: String,
     hash: String,
+    /// Whether the mod asked for `events.tick`; one that did not is never ticked.
+    ticks: bool,
     module: Mod,
 }
 
@@ -44,6 +46,7 @@ pub fn grant(asked: &[String]) -> Option<Caps> {
         .iter()
         .all(|cap| GRANTED.contains(&cap.as_str()))
         .then(|| Caps {
+            tick: asked.iter().any(|cap| cap == "events.tick"),
             hud_text: asked.iter().any(|cap| cap == "hud.text"),
             sound: asked.iter().any(|cap| cap == "sound.play"),
         })
@@ -87,18 +90,22 @@ impl Runtime {
         self.loaded.push(Loaded {
             id: id.to_owned(),
             hash: hash.to_owned(),
+            ticks: caps.tick,
             module: loaded?,
         });
         Ok(())
     }
 
-    /// One client tick of every mod. A mod that fails is unloaded. The text lands in
+    /// One client tick of every mod that asked for `events.tick`. A mod that fails is unloaded. The text lands in
     /// [`Runtime::hud`]; the sounds are returned for the app to play.
     pub fn tick(&mut self) -> Vec<Effect> {
         let mut sounds = Vec::new();
         self.hud.clear();
         let hud = &mut self.hud;
         self.loaded.retain_mut(|m| {
+            if !m.ticks {
+                return true;
+            }
             if let Err(error) = m.module.tick() {
                 log::warn!("mod {} stopped: {error}", m.id);
                 return false;

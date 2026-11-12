@@ -148,6 +148,7 @@ fn a_mod_draws_hud_text_only_when_granted() {
         Caps {
             hud_text: true,
             sound: false,
+            ..Caps::default()
         },
     )
     .unwrap();
@@ -173,6 +174,7 @@ fn a_sound_is_clamped_and_needs_its_own_grant() {
     let hud_only = Caps {
         hud_text: true,
         sound: false,
+        ..Caps::default()
     };
     assert!(with_caps(&host, SOUND_MOD, hud_only).is_err());
     let mut loaded = with_caps(
@@ -181,6 +183,7 @@ fn a_sound_is_clamped_and_needs_its_own_grant() {
         Caps {
             hud_text: false,
             sound: true,
+            ..Caps::default()
         },
     )
     .unwrap();
@@ -205,6 +208,7 @@ fn a_flood_of_effects_is_capped_and_counted() {
         Caps {
             hud_text: true,
             sound: false,
+            ..Caps::default()
         },
     )
     .unwrap();

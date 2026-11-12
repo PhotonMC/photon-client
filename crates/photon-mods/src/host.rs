@@ -64,6 +64,9 @@ pub const MAX_TEXT: usize = 256;
 /// The imports a mod may be given beyond its tick, one per capability of ADR 0006.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Caps {
+    /// `events.tick`: the mod's `tick` is called each client tick. Without it the host never
+    /// calls the mod after it is loaded.
+    pub tick: bool,
     /// `hud.text`: draw text on the screen.
     pub hud_text: bool,
     /// `sound.play`: play a sound.
