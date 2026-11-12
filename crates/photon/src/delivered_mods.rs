@@ -240,6 +240,89 @@ mod tests {
         String::from_utf8(payload.expect("a hello")).expect("utf8")
     }
 
+    const HUD_MOD: &str = r#"(component
+  (import "hud-text" (func $hud (param "x" s32) (param "y" s32) (param "colour" u32) (param "text" string)))
+  (core module $mem (memory (export "mem") 1) (data (i32.const 0) "Hi"))
+  (core instance $m (instantiate $mem))
+  (core func $hud_l (canon lower (func $hud) (memory (core memory $m "mem"))))
+  (core module $code
+    (import "h" "hud" (func (param i32 i32 i32 i32 i32)))
+    (func (export "tick")
+      (call 0 (i32.const 3) (i32.const 4) (i32.const 0xFFFFFF) (i32.const 0) (i32.const 2))))
+  (core instance $i (instantiate $code (with "h" (instance (export "hud" (func $hud_l))))))
+  (func (export "tick") (canon lift (core func $i "tick"))))"#;
+
+    fn manifest_of(id: &str, bytes: &[u8], caps: &str) -> Manifest {
+        let (hash, size) = (mods::hash_of(bytes), bytes.len());
+        let text = format!(
+            r#"{{"v":1,"mods":[{{"id":"{id}","hash":"{hash}","size":{size},"url":"http://127.0.0.1:9/m.wasm","caps":[{caps}]}}]}}"#
+        );
+        Manifest::parse(text.as_bytes()).expect("manifest")
+    }
+
+    /// Waits for the fetch thread's answers, as the game's ticks would.
+    fn settle_all_pending(mods: &mut ModRuntime) {
+        let started = std::time::Instant::now();
+        while mods.sync.waiting() > 0 {
+            mods.load_fetched();
+            assert!(started.elapsed() < std::time::Duration::from_secs(30));
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+    }
+
+    #[test]
+    fn a_manifest_goes_through_cache_load_tick_and_hello() {
+        let dir = scratch("flow");
+        let bytes = HUD_MOD.as_bytes();
+        // The file is in the cache, so nothing is fetched (the address is a closed port).
+        ModCache::new(dir.join("cache").join("mods"))
+            .put(&mods::hash_of(bytes), bytes)
+            .expect("cache");
+        let mut mods = ModRuntime::default();
+        assert_eq!(text(mods.hello("P")), r#"{"v":1,"client":"P","loaded":[]}"#);
+        mods.on_manifest(
+            &manifest_of("hud", bytes, r#""events.tick","hud.text""#),
+            &dir,
+        );
+        settle_all_pending(&mut mods);
+        assert_eq!(
+            text(mods.hello("P")),
+            r#"{"v":1,"client":"P","loaded":["hud"]}"#
+        );
+        mods.runtime.tick();
+        assert_eq!(mods.runtime.hud.len(), 1);
+        assert_eq!(
+            (
+                mods.runtime.hud[0].x,
+                mods.runtime.hud[0].y,
+                mods.runtime.hud[0].text.as_str()
+            ),
+            (3, 4, "Hi")
+        );
+        // A manifest that drops the mod unloads it and the hello says so.
+        mods.on_manifest(&Manifest::default(), &dir);
+        assert_eq!(text(mods.hello("P")), r#"{"v":1,"client":"P","loaded":[]}"#);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_mod_that_is_not_valid_code_is_refused_for_load() {
+        let dir = scratch("invalid");
+        let bytes = b"not a component";
+        ModCache::new(dir.join("cache").join("mods"))
+            .put(&mods::hash_of(bytes), bytes)
+            .expect("cache");
+        let mut mods = ModRuntime::default();
+        mods.hello("P");
+        mods.on_manifest(&manifest_of("bad", bytes, ""), &dir);
+        settle_all_pending(&mut mods);
+        assert_eq!(
+            text(mods.hello("P")),
+            r#"{"v":1,"client":"P","loaded":[],"refused":[{"id":"bad","reason":"load"}]}"#
+        );
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
     #[test]
     fn the_first_hello_is_the_join_hello_and_is_sent_once() {
         let mut mods = ModRuntime::default();

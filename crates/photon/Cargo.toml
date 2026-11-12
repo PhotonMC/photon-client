@@ -28,6 +28,7 @@ flate2.workspace = true
 glfw.workspace = true
 
 [dev-dependencies]
+photon-mods = { workspace = true, features = ["wat"] }
 photon-protocol.workspace = true
 
 [lints]

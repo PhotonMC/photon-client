@@ -7,6 +7,11 @@ license.workspace = true
 publish = false
 include = ["/Cargo.toml", "/src/**"]
 
+[features]
+# Lets the host load a guest written as WebAssembly text. Tests turn it on; a release build
+# does not, and then accepts binary components only.
+wat = ["wasmtime/wat"]
+
 [dependencies]
 photon-api.workspace = true
 log.workspace = true

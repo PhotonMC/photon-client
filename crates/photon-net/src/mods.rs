@@ -8,7 +8,7 @@ mod fetch;
 mod manifest;
 mod sync;
 
-pub use cache::{CacheError, ModCache};
+pub use cache::{CacheError, ModCache, hash_of};
 pub use consent::{CONSENT_FILE, Consent, Record, decide, needs_consent};
 pub use fetch::{FetchError, ensure};
 pub use manifest::{HELLO_CHANNEL, MODS_CHANNEL, Manifest, ManifestError, ModEntry, hello};
