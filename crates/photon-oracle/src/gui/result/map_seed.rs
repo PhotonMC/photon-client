@@ -24,7 +24,7 @@ pub(super) fn seeded_map(row: &Value) -> Result<Option<(i32, photon_world::map::
             x: decoration["x"].as_i64().unwrap_or(0) as i8,
             y: decoration["y"].as_i64().unwrap_or(0) as i8,
             rot: decoration["rot"].as_i64().unwrap_or(0) as i8,
-            name: None,
+            name: decoration["name"].as_str().map(name_tag),
         });
     }
     let mut world = photon_world::ClientWorld::default();
@@ -46,15 +46,30 @@ pub(super) fn seeded_map(row: &Value) -> Result<Option<(i32, photon_world::map::
 
 /// The maps a screen asks for: the one the row seeded, as the GUI draws it, with the whole of a
 /// sprite standing in for the picture's place and each decoration's sprite.
-pub(super) fn drawer(
-    seeded: &Option<(i32, photon_world::map::MapData)>,
-) -> impl FnMut(i32) -> Option<photon_render::gui::GuiMap> + '_ {
+pub(super) fn drawer<'a>(
+    seeded: &'a Option<(i32, photon_world::map::MapData)>,
+    lang: &'a photon_game::text::Lang,
+) -> impl FnMut(i32) -> Option<photon_render::gui::GuiMap> + 'a {
     move |id| {
         seeded
             .as_ref()
             .filter(|(seeded_id, _)| *seeded_id == id)
             .map(|(_, data)| {
-                photon_gui::map_view::gui_map(id, data, [0.0; 4], &|_| Some([0.0, 0.0, 1.0, 1.0]))
+                photon_gui::map_view::gui_map(
+                    id,
+                    data,
+                    [0.0; 4],
+                    &|_| Some([0.0, 0.0, 1.0, 1.0]),
+                    lang,
+                )
             })
     }
+}
+
+/// A name as the network carries a plain-text component: a string tag with no root name.
+fn name_tag(text: &str) -> Vec<u8> {
+    let mut bytes = vec![8];
+    bytes.extend_from_slice(&(text.len() as u16).to_be_bytes());
+    bytes.extend_from_slice(text.as_bytes());
+    bytes
 }

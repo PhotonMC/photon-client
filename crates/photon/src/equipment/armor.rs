@@ -91,6 +91,9 @@ pub struct Armor {
     /// The glints of the enchanted pieces drawn since they were last taken
     /// (`RenderTypes.armorEntityGlint`), for the renderer's glint pass.
     pub glint: Vec<Vertex>,
+    /// The layers of enchanted pieces that the reference draws over a glint, taken with the glints
+    /// (see `foil`).
+    pub late: Vec<Vertex>,
     /// The skins of the player heads worn.
     pub head_skins: super::head_skins::HeadSkins,
     /// The compass needles, shared by the caches that draw the local player's stacks.
@@ -105,6 +108,7 @@ pub struct Armor {
 /// colour (`0xRRGGBB`).
 pub type Place<'a> = &'a dyn Fn(&MobModel, TextureRect, Option<u32>) -> Vec<Vertex>;
 
+mod foil;
 mod gates;
 mod parrots;
 mod skull;
@@ -158,6 +162,7 @@ impl Armor {
             trims: TrimData::load(&std::path::Path::new(root).with_file_name("data")),
             trim_names: None,
             glint: Vec::new(),
+            late: Vec::new(),
             head_skins: Default::default(),
             needles: super::needle::SharedNeedles::default(),
             clock: std::time::Instant::now(),
@@ -348,34 +353,17 @@ impl Armor {
                 .get_mut(&name)
                 .expect("the model was just built");
             pose(model);
-            // The glint is on the first layer drawn (`renderFoil`).
-            let mut foil = Values::new(stack.item_registry_id(), stack.patch_bytes()).has_foil();
-            let mut glints = Vec::new();
-            for (texture, colour) in layers {
-                // A layer coloured to nothing is not drawn; white is no colour.
-                let (true, Some(rect)) = (colour != 0, textures.rect(&texture)) else {
-                    continue;
-                };
-                let rgb = colour & 0x00FF_FFFF;
-                let triangles = place(model, rect, (colour != 0xFFFF_FFFF).then_some(rgb));
-                if std::mem::take(&mut foil) {
-                    glints.push((triangles.clone(), rect));
-                }
-                vertices.extend(triangles);
-            }
-            for (triangles, rect) in glints {
-                push_glint(
-                    &mut self.glint,
-                    (&triangles, rect),
-                    (&glint_matrix, textures),
-                );
-            }
-            // The trim, over the layers, undyed (a baby's armor has none).
-            if layer_type != BABY
-                && let Some(rect) = trim.as_deref().and_then(|path| textures.rect(path))
-            {
-                vertices.extend(place(model, rect, None));
-            }
+            let piece = foil::Piece {
+                layers,
+                trim: trim.filter(|_| layer_type != BABY),
+                foil: Values::new(stack.item_registry_id(), stack.patch_bytes()).has_foil(),
+            };
+            let mut sinks = foil::Sinks {
+                vertices: &mut vertices,
+                glint: &mut self.glint,
+                late: &mut self.late,
+            };
+            foil::place_piece(piece, (model, textures, place), &glint_matrix, &mut sinks);
         }
         vertices
     }

@@ -1,5 +1,7 @@
 //! A map the client holds, as the GUI draws it.
 
+use photon_game::text::{Lang, Style};
+use photon_render::gui::TextRun;
 use photon_render::gui::{GuiMap, GuiMapDecoration};
 use photon_world::map::MapData;
 
@@ -11,6 +13,7 @@ pub fn gui_map(
     data: &MapData,
     cell: [f32; 4],
     sprite_uv: &dyn Fn(&str) -> Option<[f32; 4]>,
+    lang: &Lang,
 ) -> GuiMap {
     let decorations = data
         .decorations()
@@ -29,7 +32,10 @@ pub fn gui_map(
                     .unwrap_or(kind.asset)
                     .to_owned(),
                 uv: sprite_uv(kind.texture).unwrap_or([0.0; 4]),
-                name: None,
+                name: decoration
+                    .name
+                    .as_deref()
+                    .and_then(|bytes| name_runs(bytes, lang)),
             })
         })
         .collect();
@@ -41,6 +47,19 @@ pub fn gui_map(
         cell,
         decorations,
     }
+}
+
+/// A decoration's name as runs: the component the network carried, in the default style.
+fn name_runs(mut bytes: &[u8], lang: &Lang) -> Option<Vec<TextRun<'static>>> {
+    let tag = photon_core::nbt::read_any_nbt(&mut bytes).ok()??;
+    let component = photon_game::text::Component::from_nbt(&tag)?;
+    let runs = lang.runs(&component, &Style::default());
+    Some(
+        crate::draw_runs(&runs)
+            .into_iter()
+            .map(TextRun::into_owned)
+            .collect(),
+    )
 }
 
 /// A map drawer for screens with no map data to draw.

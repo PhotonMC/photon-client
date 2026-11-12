@@ -3,10 +3,11 @@
 //! sliver is not shut in. A cauldron, hopper or composter measures the click against its collision
 //! shape first. The newest version has the item.
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use super::aim_at;
 use super::item_on::{north, row};
+use super::placing::uses;
 use crate::movement::world::{put, put_with};
 
 const CUSHION: &str = "minecraft:white_cushion";
@@ -86,9 +87,58 @@ fn special() -> Vec<Value> {
     ]
 }
 
+/// Scaffolding, which the collision walk with no entity asking treats as above and not
+/// descending: its stable shape whatever its state, a slab on top of four posts.
+fn scaffolding() -> Vec<Value> {
+    let block = |bottom: &str, distance: &str| {
+        vec![put_with(
+            0,
+            64,
+            2,
+            "minecraft:scaffolding",
+            &[("bottom", bottom), ("distance", distance), ("waterlogged", "false")],
+        )]
+    };
+    vec![
+        cushion("cushion-on-scaffolding", block("false", "0"), &top(65.0)).row(),
+        // Inside the top slab the sliver is shut in, in a stable block and an unstable bottom one.
+        cushion("cushion-in-scaffolding-top", block("false", "0"), &top(64.9)).row(),
+        cushion("cushion-in-unstable-scaffolding-top", block("true", "3"), &top(64.9)).row(),
+        // Between the posts, below the slab: nothing shuts it in from above, the posts are beside it.
+        cushion("cushion-in-scaffolding-posts", block("false", "0"), &top(64.5)).row(),
+    ]
+}
+
+/// A moving piston block, whose collision shape is what its block entity fills at the progress it
+/// has made: a stone pushed up from the cell the piston head is in, clicked on the head a few
+/// ticks into the move, so the cushion would go in the cell the stone is passing.
+fn moving_piston() -> Vec<Value> {
+    let world = || {
+        vec![
+            put_with(0, 63, 2, "minecraft:piston", &[("facing", "up"), ("extended", "false")]),
+            put(0, 64, 2, "minecraft:stone"),
+        ]
+    };
+    let event = json!({"tick": 0, "x": 0, "y": 63, "z": 2, "b0": 0, "b1": 1});
+    let row_at = |label: &str, wait: usize| {
+        let aim = aim_at((0, 64, 2), "up", (0.5, 65.0, 2.5));
+        let around = [(0, 64, 2), (0, 65, 2), (0, 66, 2)];
+        let click = uses(1, Some(&aim), &around).clicks(1).go();
+        let ticks = [uses(wait, Some(&aim), &around).go(), click, uses(3, Some(&aim), &around).go()].concat();
+        let mut row = super::using(label, world(), ticks).main_hand(CUSHION).count(3).row();
+        row["block_events"] = json!([event.clone()]);
+        row
+    };
+    vec![
+        row_at("cushion-over-moving-stone-1", 1),
+        row_at("cushion-over-moving-stone-2", 2),
+        row_at("cushion-over-moving-stone-3", 3),
+    ]
+}
+
 pub(super) fn rows() -> Vec<Value> {
     if crate::components::is_26_2() {
         return Vec::new();
     }
-    [faces(), surfaces(), covered(), special()].concat()
+    [faces(), surfaces(), covered(), special(), scaffolding(), moving_piston()].concat()
 }

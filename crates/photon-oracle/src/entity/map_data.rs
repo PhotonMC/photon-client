@@ -7,16 +7,8 @@ pub(super) fn map_data_case() -> Result<Value, String> {
             .map(|packed| photon_data::map::packed_color(packed) as i32)
             .collect::<Vec<_>>(),
     })];
-    // 26.3 numbers five more structures after the trial chambers.
-    let present = if crate::case_ids::before_26_3() {
-        photon_data::map::decoration_types().len() - 5
-    } else {
-        photon_data::map::decoration_types().len()
-    };
-    for (id, kind) in photon_data::map::decoration_types()[..present]
-        .iter()
-        .enumerate()
-    {
+    // The played version's types: 26.3 numbers five more structures after the trial chambers.
+    for (id, kind) in photon_data::map::decoration_types().iter().enumerate() {
         let mut row = json!({"label": kind.name, "id": id, "asset": kind.asset,
             "show_on_item_frame": kind.show_on_item_frame,
             "track_count": kind.track_count});

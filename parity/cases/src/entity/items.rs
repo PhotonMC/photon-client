@@ -247,10 +247,17 @@ pub fn glint() -> Vec<Value> {
     .collect::<Vec<Value>>();
     let mut items = entity("item-glint-layers", "glint_layers", matrices.clone());
     items["render_type"] = json!("item");
+    // The glint of trimmed armor, and of a trident or an unpatterned shield.
+    let mut trimmed = entity("trimmed-armor-glint-layers", "glint_layers", matrices.clone());
+    trimmed["render_type"] = json!("trimmed_armor");
+    let mut shield = entity("shield-glint-layers", "glint_layers", matrices.clone());
+    shield["render_type"] = json!("shield");
     vec![
         entity("item-foil", "item_foil", rows),
         entity("glint-layers", "glint_layers", matrices),
         items,
+        trimmed,
+        shield,
         entity("foil-decal-uv", "foil_decal_uv", foil_decal_rows()),
     ]
 }

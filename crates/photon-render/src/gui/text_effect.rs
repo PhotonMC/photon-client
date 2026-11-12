@@ -75,6 +75,38 @@ pub fn effects(
     found
 }
 
+/// The background `Font` puts behind text drawn with a background colour: from a unit left of the
+/// first glyph to the end of the last, and from a unit above the line to nine below its top.
+/// `None` for a clear colour or no glyph.
+pub fn background_effect(
+    font: &Font,
+    runs: &[TextRun],
+    (x, y): (f32, f32),
+    colour: u32,
+) -> Option<TextEffect> {
+    if colour >> 24 == 0 {
+        return None;
+    }
+    let mut pen = x;
+    let mut any = false;
+    for run in runs {
+        for glyph in run
+            .text
+            .chars()
+            .filter_map(|codepoint| font.glyph(codepoint))
+        {
+            pen += glyph.advance(run.bold);
+            any = true;
+        }
+    }
+    any.then_some(TextEffect {
+        rect: (x - 1.0, y - 1.0, pen, y + 9.0),
+        colour,
+        shadow_colour: 0,
+        shadow_offset: 0.0,
+    })
+}
+
 /// `Font.getGlyph`: an obfuscated character other than a space is drawn as a random glyph of the
 /// same width, a new one every frame. Where is advances is the character's own.
 pub(crate) fn obfuscated(

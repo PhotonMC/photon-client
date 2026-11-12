@@ -104,7 +104,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     let keys = key_steps(row);
     let seeded = super::map_seed::seeded_map(row)?;
     // The stand-in for the picture: the whole of a sprite, wherever it is.
-    let mut maps = super::map_seed::drawer(&seeded);
+    let mut maps = super::map_seed::drawer(&seeded, &lang);
     let mut item_drawer = no_items;
     let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
         photon_render::gui::GuiFigure::default()

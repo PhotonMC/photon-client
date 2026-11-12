@@ -54,7 +54,7 @@ impl Gui {
         let mut tooltip_lines = session_tooltips((lang, registries), advanced, session);
         // The map drawer holds the layers until the screen is built.
         {
-            let mut draw_map = session_maps(session, &mut *layers, entity_textures);
+            let mut draw_map = session_maps(session, &mut *layers, (entity_textures, lang));
             let mut draw = ScreenDraw {
                 frame,
                 atlas,
@@ -107,10 +107,10 @@ fn session_tooltips<'a>(
 fn session_maps<'a>(
     session: &'a PlaySession,
     layers: &'a mut WorldItemLayers,
-    textures: &'a EntityTextures,
+    (textures, lang): (&'a EntityTextures, &'a Lang),
 ) -> impl FnMut(i32) -> Option<photon_render::gui::GuiMap> + 'a {
     move |id| {
         let data = session.world().map_data(id)?;
-        Some(layers.gui_map(id, data, textures))
+        Some(layers.gui_map(id, data, (textures, lang)))
     }
 }

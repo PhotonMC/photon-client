@@ -191,7 +191,7 @@ impl FrameState {
         &mut self,
         id: i32,
         data: &MapData,
-        textures: &EntityTextures,
+        (textures, lang): (&EntityTextures, &photon_game::text::Lang),
     ) -> photon_render::gui::GuiMap {
         let slot = self.maps.slot_of(id, data);
         let (column, row) = (slot % MAP_COLUMNS, slot / MAP_COLUMNS);
@@ -202,7 +202,7 @@ impl FrameState {
             (column + 1) as f32 * width,
             (row + 1) as f32 * height,
         ];
-        photon_gui::map_view::gui_map(id, data, cell, &|texture| textures.rect(texture))
+        photon_gui::map_view::gui_map(id, data, cell, &|texture| textures.rect(texture), lang)
     }
 
     /// Hand the maps' image to the renderer if a map came or changed since it last was.

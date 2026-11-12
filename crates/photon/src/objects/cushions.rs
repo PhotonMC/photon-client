@@ -37,15 +37,11 @@ const TEXTURES: [&str; 16] = [
     "entity/cushion/black_cushion",
 ];
 
-/// The paths (under `textures/`) of the textures the cushions wear.
+/// The paths (under `textures/`) of the textures the cushions wear: none in a version without
+/// the cushion's model layer.
 pub fn textures() -> impl Iterator<Item = &'static str> {
-    TEXTURES.into_iter()
-}
-
-/// Whether `name` is a texture only the newest version's assets have: the entity texture atlas
-/// leaves it out when an older version lacks it.
-pub fn is_newer_texture(name: &str) -> bool {
-    TEXTURES.contains(&name) || name.ends_with("boat/poplar")
+    let has_layer = photon_data::entity_model::layer(LAYER).is_some();
+    TEXTURES.into_iter().filter(move |_| has_layer)
 }
 
 /// The texture of the dye colour with this id; an id past the sixteen is none (the reference
@@ -95,7 +91,7 @@ pub fn remote_cushions(
 
 #[cfg(test)]
 mod tests {
-    use super::{TEXTURES, is_newer_texture, texture_of};
+    use super::{TEXTURES, texture_of, textures};
 
     #[test]
     fn a_dye_colour_has_its_texture() {
@@ -107,10 +103,10 @@ mod tests {
     }
 
     #[test]
-    fn only_the_newest_versions_textures_may_be_missing() {
-        assert!(TEXTURES.iter().all(|name| is_newer_texture(name)));
-        assert!(is_newer_texture("entity/boat/poplar"));
-        assert!(is_newer_texture("entity/chest_boat/poplar"));
-        assert!(!is_newer_texture("entity/boat/oak"));
+    fn every_texture_has_a_layer_in_the_newest_version() {
+        // The lists drop a texture whose layer the played version lacks; the newest has them all.
+        assert!(photon_data::entity_model::layer(super::LAYER).is_some());
+        assert_eq!(textures().count(), TEXTURES.len());
+        assert!(crate::objects::boats::textures().any(|name| name == "entity/chest_boat/poplar"));
     }
 }

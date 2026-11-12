@@ -368,6 +368,14 @@ class MovementPlayerOracle extends MovementWorldOracle {
                     camera.setEntity(entity);
                 }
             }
+            // The server's passengers packet: the entity named is on the described one.
+            for (var element : row.getAsJsonArray("entities")) {
+                var described = element.getAsJsonObject();
+                if (described.has("rider")) {
+                    level.getEntity(described.get("rider").getAsInt()).startRiding(
+                        level.getEntity(described.get("id").getAsInt()), true, false);
+                }
+            }
         }
         // A vehicle the player rides, as the server's passengers packet makes it: the player is put
         // aboard and, on a boat, turned the way the boat faces.

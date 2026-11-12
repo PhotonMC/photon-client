@@ -256,7 +256,7 @@ pub fn gui_dressing(
     (state, placement): (&PlayerRenderState, &Placement),
     elytra: [f32; 3],
 ) -> Vec<Vertex> {
-    let glint = armor.glint.len();
+    let (glint, late) = (armor.glint.len(), armor.late.len());
     let mut dressed = wear(armor, worn, slim, textures, (state, placement));
     dressed.extend(armor.wings(
         worn.chest,
@@ -267,6 +267,8 @@ pub fn gui_dressing(
         },
     ));
     armor.glint.truncate(glint);
+    // With no glint to cover, the layers drawn over it are drawn with the rest.
+    dressed.extend(armor.late.drain(late..));
     dressed
 }
 

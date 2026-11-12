@@ -63,8 +63,10 @@ impl ClientWorld {
     }
 
     /// `Cushion.isAnchorBuried`: block collisions leave nothing of the sliver the box rests on.
-    /// Collisions are asked with no entity, so powder snow gives none.
-    fn cushion_is_buried(&self, area: Aabb) -> bool {
+    /// Collisions are asked with no entity: powder snow gives none, scaffolding gives its stable
+    /// shape (the context with no entity is above it and not descending), and a moving piston gives
+    /// what its block entity fills now.
+    pub(crate) fn cushion_is_buried(&self, area: Aabb) -> bool {
         let slice = Aabb::new(
             area.min_x,
             area.min_y,
@@ -77,15 +79,8 @@ impl ClientWorld {
         let Ok(mut exposed) = Shapes::create_from_aabb(slice) else {
             return false;
         };
-        let registry = &self.block_state_registry;
         let colliders = self.collect_block_collisions_with(slice, |state, at| {
-            let powder = crate::block::state(state)
-                .is_some_and(|info| info.block().name.ends_with(":powder_snow"));
-            Some(if powder {
-                Shapes::empty()
-            } else {
-                registry.collision_shape_at(state, at)
-            })
+            Some(self.unattended_collision(state, at))
         });
         for collision in colliders {
             exposed = Shapes::join(&exposed, &collision.shape, BooleanOp::OnlyFirst);
@@ -94,5 +89,21 @@ impl ClientWorld {
             }
         }
         false
+    }
+
+    /// A block's collision shape when no entity asks (`CollisionContext.empty`).
+    fn unattended_collision(
+        &self,
+        state: crate::BlockStateId,
+        at: [i32; 3],
+    ) -> photon_core::shape::VoxelShape {
+        let name = crate::block::state(state).map(|info| info.block().name);
+        match name {
+            Some(name) if name.ends_with(":powder_snow") => Shapes::empty(),
+            Some(name) if name.ends_with(":moving_piston") => {
+                self.moving_piston_collision_shape((at[0], at[1], at[2]), None)
+            }
+            _ => self.block_state_registry.collision_shape_at(state, at),
+        }
     }
 }

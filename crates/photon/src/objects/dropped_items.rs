@@ -334,9 +334,9 @@ impl WorldItemLayers {
         &mut self,
         id: i32,
         data: &photon_world::map::MapData,
-        textures: &EntityTextures,
+        (textures, lang): (&EntityTextures, &photon_game::text::Lang),
     ) -> photon_render::gui::GuiMap {
-        self.frames.gui_map(id, data, textures)
+        self.frames.gui_map(id, data, (textures, lang))
     }
 
     /// Hand the maps' image to the renderer if a screen's map changed it.

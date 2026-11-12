@@ -7,7 +7,8 @@ use super::{aims, facing};
 use crate::movement::world::put;
 
 pub(super) fn rows() -> Vec<Value> {
-    [plain_rows(), tiny_rows(), health_rows(), worn_rows(), placed_rows(), submerged_boat_rows()].concat()
+    [plain_rows(), tiny_rows(), health_rows(), worn_rows(), placed_rows(), submerged_boat_rows(), cushion_attack_rows()]
+        .concat()
 }
 
 /// One use click, then a stretch of ticks with no input.
@@ -22,17 +23,17 @@ fn twice() -> Vec<Value> {
 
 /// A row that clicks the entity with `item` (nothing when it is empty) from the aim `x_rot`.
 fn clicked(label: &str, entity: Value, aim: (&'static str, f64), clicks: Vec<Value>) -> Value {
-    clicked_in(label, entity, aim, (clicks, false))
+    clicked_in(label, vec![entity], aim, (clicks, false))
 }
 
 /// The same, in a thunderstorm when asked.
 fn clicked_in(
     label: &str,
-    entity: Value,
+    entities: Vec<Value>,
     (item, x_rot): (&'static str, f64),
     (clicks, storm): (Vec<Value>, bool),
 ) -> Value {
-    let aimed = facing(label, vec![entity], clicks).x_rot(x_rot);
+    let aimed = facing(label, entities, clicks).x_rot(x_rot);
     let aimed = if storm { aimed.raining(1.0).thundering() } else { aimed };
     if item.is_empty() { aimed.row() } else { aimed.main_hand(item).count(2).row() }
 }
@@ -321,7 +322,24 @@ fn newer_table() -> Vec<Placed> {
         placed("use-cushion-with-cushion", "cushion", "minecraft:white_cushion"),
         placed("use-cushion-empty-handed", "cushion", ""),
         Placed { sneaking: true, ..placed("use-cushion-sneaking", "cushion", "minecraft:stone") },
+        // Someone already sits on it: the click passes.
+        Placed { flags: &["occupied"], ..placed("use-occupied-cushion-with-stone", "cushion", "minecraft:stone") },
+        Placed { flags: &["occupied"], ..placed("use-occupied-cushion-empty-handed", "cushion", "") },
     ]
+}
+
+/// A cushion attacked (26.3): a player who may build skips the attack on it as a hanging
+/// entity does; one who may not (adventure) goes through the attack as the client runs it.
+fn cushion_attack_rows() -> Vec<Value> {
+    if crate::components::is_26_2() {
+        return Vec::new();
+    }
+    let cushion = || super::mob(31, "cushion", 0.5, 64.0, 2.5);
+    let hit = || [aims(2).clicks(1).go(), aims(3).go()].concat();
+    ["survival", "creative", "adventure"]
+        .into_iter()
+        .map(|mode| facing(&format!("attack-cushion-{mode}"), vec![cushion()], hit()).game_mode(mode).row())
+        .collect()
 }
 
 fn placed_rows() -> Vec<Value> {
@@ -332,8 +350,14 @@ fn placed_rows() -> Vec<Value> {
         .map(|row| {
             let [x, y, z] = row.at;
             let mut entity = super::mob(31, row.kind, x, y, z);
-            for flag in row.flags.iter().filter(|flag| **flag != "stormy") {
+            for flag in row.flags.iter().filter(|flag| !matches!(**flag, "stormy" | "occupied")) {
                 entity[*flag] = json!(true);
+            }
+            let mut others = Vec::new();
+            if row.flags.contains(&"occupied") {
+                // A pig on the cushion, out of the way of the click.
+                entity["rider"] = json!(32);
+                others.push(super::mob(32, "pig", 4.5, 64.0, 6.5));
             }
             let clicks = match (row.sneaking, row.clicks_twice) {
                 (true, _) => sneaking_click(),
@@ -341,7 +365,7 @@ fn placed_rows() -> Vec<Value> {
                 _ => once(),
             };
             let storm = row.flags.contains(&"stormy");
-            clicked_in(row.label, entity, (row.item, row.aim), (clicks, storm))
+            clicked_in(row.label, [vec![entity], others].concat(), (row.item, row.aim), (clicks, storm))
         })
         .collect()
 }

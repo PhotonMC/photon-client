@@ -37,16 +37,7 @@ pub(super) fn entity_textures(
             .flatten()
             .map(|name| match texture(root, &name, "entity texture") {
                 Ok(image) => Ok(Some((name, image))),
-                // A map decoration the pack's version does not have (the server may number more
-                // than the installed assets draw) is left out, not fatal; so is a texture of content
-                // only the newest version has, on an older version's assets.
-                Err(error)
-                    if name.starts_with("map/decorations/")
-                        || crate::objects::cushions::is_newer_texture(&name) =>
-                {
-                    log::warn!("{error}");
-                    Ok(None)
-                }
+                // The lists hold the played version's textures only, so a missing file is an error.
                 Err(error) => Err(error),
             })
             .collect::<Result<Vec<_>>>()?

@@ -109,7 +109,7 @@ impl GuiFrame {
         at.translate(dx - width * scale / 2.0, dy + 4.0);
         at.scale(scale, scale);
         let mark = self.mark();
-        self.styled_text_runs(atlas, font, runs, (0, 0), 0xFFFF_FFFF, false);
+        self.styled_text_runs_on(atlas, font, runs, (0, 0), (0xFFFF_FFFF, false, 0x8000_0000));
         self.transform_from(mark, at.m);
     }
 

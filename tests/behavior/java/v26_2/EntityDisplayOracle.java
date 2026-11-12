@@ -913,8 +913,10 @@ class EntityDisplayOracle extends EntityDataOracle {
 
     static JsonObject glintLayers(final JsonObject request) throws Exception {
         var gameState = installGameState();
-        var renderType = request.has("render_type") && request.get("render_type").getAsString().equals("item")
-            ? net.minecraft.client.renderer.rendertype.RenderTypes.glint()
+        var kind = request.has("render_type") ? request.get("render_type").getAsString() : "armor";
+        var renderType = kind.equals("item") ? net.minecraft.client.renderer.rendertype.RenderTypes.glint()
+            : kind.equals("trimmed_armor") ? net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint()
+            : kind.equals("shield") ? net.minecraft.client.renderer.rendertype.RenderTypes.entityGlint()
             : net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();
         var renderTypeState = Reflect.field(net.minecraft.client.renderer.rendertype.RenderType.class, "state");
         var setup = renderTypeState.get(renderType);
@@ -936,7 +938,13 @@ class EntityDisplayOracle extends EntityDataOracle {
         result.addProperty("depth_write", pipeline.getDepthStencilState().writeDepth());
         result.addProperty("cull", pipeline.isCull());
         var found = java.util.regex.Pattern.compile("minecraft:(textures/[a-z_/]+\\.png)").matcher(String.valueOf(renderType));
-        result.addProperty("texture", found.find() ? found.group(1) : String.valueOf(renderType));
+        String texture = null;
+        while (found.find()) {
+            if (texture == null || found.group(1).contains("enchanted_glint")) {
+                texture = found.group(1);
+            }
+        }
+        result.addProperty("texture", texture != null ? texture : String.valueOf(renderType));
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();

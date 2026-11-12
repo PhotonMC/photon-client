@@ -546,6 +546,7 @@ pub(super) fn told_entities(
             world.entities_mut().set_leash_holder(id, holder);
         }
     }
+    crate::movement_watch::seat_riders(world, row)?;
     Ok(())
 }
 

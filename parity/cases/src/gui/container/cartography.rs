@@ -14,7 +14,7 @@ fn map(id: i64, scale: i64, locked: bool, decorated: bool) -> Value {
         json!([
             {"type": "frame", "x": 20, "y": -30, "rot": 4},
             {"type": "mansion", "x": -64, "y": 50, "rot": 8},
-            {"type": "banner_red", "x": 90, "y": 100, "rot": 15},
+            {"type": "banner_red", "x": 90, "y": 100, "rot": 15, "name": "Camp"},
             {"type": "player", "x": 0, "y": 0, "rot": 0},
         ])
     } else {

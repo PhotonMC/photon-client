@@ -111,6 +111,9 @@ pub(super) enum Run {
     /// Entity triangles drawn over the cracks (a cracked banner's pattern layers where the
     /// crack is drawn with the opaque models), with the entities' own pipeline.
     EntityOverCracks,
+    /// Entity triangles drawn after the enchantment glints, with the entities' own pipeline: the
+    /// layers of armor that the reference draws over a glint already blended.
+    EntityLate,
     /// The first-person arm.
     Hand,
     /// The items the hand holds, from the block atlas, after the arm.
@@ -128,7 +131,7 @@ pub(super) enum Run {
 /// What the entities pass draws, in order. The ground items and the entities come first, then the
 /// flat shapes: shadows before what they lie under, the glowing layers, the additive ones, orbs,
 /// maps, and the name tags last.
-pub(super) const ENTITY_RUNS: [Run; 16] = [
+pub(super) const ENTITY_RUNS: [Run; 17] = [
     Run::Ground,
     Run::Entity,
     Run::Mask,
@@ -138,6 +141,7 @@ pub(super) const ENTITY_RUNS: [Run; 16] = [
     Run::Glow,
     Run::Swirl,
     Run::Glint,
+    Run::EntityLate,
     Run::Rays,
     Run::Orb,
     Run::Map,
@@ -187,9 +191,11 @@ impl Run {
             | Self::HeldTranslucent => {
                 &scene.held_pipelines[usize::from(self.is_item_translucent())]
             }
-            Self::Entity | Self::EntityOverCracks | Self::Hand | Self::Particle => {
-                &scene.entity_pipelines[0]
-            }
+            Self::Entity
+            | Self::EntityOverCracks
+            | Self::EntityLate
+            | Self::Hand
+            | Self::Particle => &scene.entity_pipelines[0],
             Self::Mask => &scene.mask_pipeline,
             Self::Shadow | Self::Glow => &scene.shadow_pipeline,
             Self::Dissolve => &scene.dissolve_pipeline,
@@ -229,6 +235,7 @@ impl Run {
             Self::Cracks => Sampled::Crack,
             Self::Entity
             | Self::EntityOverCracks
+            | Self::EntityLate
             | Self::Mask
             | Self::Shadow
             | Self::Dissolve

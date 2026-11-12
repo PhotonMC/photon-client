@@ -579,6 +579,8 @@ pub(super) struct FlatDraws {
     /// What is drawn like the entities but over the block cracks (the pattern layers of a banner
     /// that is being broken, from 26.3 on).
     pub(super) over_cracks: DrawList,
+    /// The entity triangles drawn after the glints.
+    pub(super) late: DrawList,
     /// The mobs drawn from shared meshes (ADR 0016), which sample the entity textures too.
     pub(super) instanced: InstancedDraws,
 }
@@ -592,6 +594,7 @@ impl FlatDraws {
             &mut self.swirl,
             &mut self.glint,
             &mut self.over_cracks,
+            &mut self.late,
         ] {
             list.buffer.clear();
         }

@@ -152,6 +152,10 @@ pub fn hand_layers(
         &std::mem::take(&mut armor.glint),
     )?;
     backend.set_draw(
+        photon_render::vulkan::DrawKind::EntitiesLate,
+        &std::mem::take(&mut armor.late),
+    )?;
+    backend.set_draw(
         photon_render::vulkan::DrawKind::EntityGlow,
         &std::mem::take(&mut models.glow),
     )?;

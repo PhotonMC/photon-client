@@ -4,17 +4,27 @@ use super::*;
 /// moves the texture.
 pub(super) fn glint_layers_result(request: &Value) -> Result<Value, String> {
     use photon_render::render_types::{
-        ARMOR_GLINT_SCALE, ARMOR_GLINT_TEXTURE, ITEM_GLINT_SCALE, ITEM_GLINT_TEXTURE,
-        armor_glint_pipeline, glint_texture_matrix, item_glint_pipeline,
+        ARMOR_GLINT_SCALE, ARMOR_GLINT_TEXTURE, ENTITY_GLINT_SCALE, ITEM_GLINT_SCALE,
+        ITEM_GLINT_TEXTURE, armor_glint_pipeline, glint_texture_matrix, item_glint_pipeline,
+        shield_glint_pipeline, trimmed_armor_glint_pipeline,
     };
-    let (pipeline, texture, scale) = if request["render_type"].as_str() == Some("item") {
-        (item_glint_pipeline(), ITEM_GLINT_TEXTURE, ITEM_GLINT_SCALE)
-    } else {
-        (
+    let (pipeline, texture, scale) = match request["render_type"].as_str() {
+        Some("item") => (item_glint_pipeline(), ITEM_GLINT_TEXTURE, ITEM_GLINT_SCALE),
+        Some("shield") => (
+            shield_glint_pipeline(),
+            ITEM_GLINT_TEXTURE,
+            ENTITY_GLINT_SCALE,
+        ),
+        Some("trimmed_armor") => (
+            trimmed_armor_glint_pipeline(),
+            ARMOR_GLINT_TEXTURE,
+            ARMOR_GLINT_SCALE,
+        ),
+        _ => (
             armor_glint_pipeline(),
             ARMOR_GLINT_TEXTURE,
             ARMOR_GLINT_SCALE,
-        )
+        ),
     };
     let mut rows = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {

@@ -13,16 +13,17 @@ pub struct MapDecorationType {
     pub track_count: bool,
 }
 
-/// The decoration type the server numbers `id`.
+/// The decoration type the server of the played version numbers `id`.
 pub fn decoration_type(id: i32) -> Option<&'static MapDecorationType> {
     usize::try_from(id)
         .ok()
-        .and_then(|index| crate::tables::map_data::MAP_DECORATION_TYPES.get(index))
+        .and_then(|index| decoration_types().get(index))
 }
 
-/// Every decoration type, in the server's numbering.
+/// Every decoration type of the played version, in the server's numbering.
 pub fn decoration_types() -> &'static [MapDecorationType] {
-    &crate::tables::map_data::MAP_DECORATION_TYPES
+    let count = crate::versions::map_decorations::played_count();
+    &crate::tables::map_data::MAP_DECORATION_TYPES[..count]
 }
 
 /// `MapColor.getColorFromPackedId`: the ARGB colour of a packed map colour.

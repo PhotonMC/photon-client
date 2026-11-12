@@ -66,6 +66,19 @@ mod tests {
     }
 
     #[test]
+    fn v26_2_has_neither_the_cushion_nor_the_poplar_boats() {
+        let list = build(Version::V26_2).expect("26.2 has an older table");
+        for id in [
+            "minecraft:cushion#main",
+            "minecraft:boat/poplar#main",
+            "minecraft:chest_boat/poplar#main",
+        ] {
+            assert!(list.iter().all(|layer| layer.id != id), "{id}");
+            assert!(LAYERS.iter().any(|layer| layer.id == id), "{id}");
+        }
+    }
+
+    #[test]
     fn the_newest_version_has_no_older_table() {
         let newest = *Version::ALL.last().expect("a version");
         assert!(build(newest).is_none());

@@ -125,3 +125,18 @@ pub(super) fn apply_species_data(
         }
     }
 }
+
+/// The passengers packet of a row: the entity a described one names as its `rider` sits on it.
+pub(super) fn seat_riders(
+    world: &mut photon_world::ClientWorld,
+    row: &Value,
+) -> Result<(), String> {
+    for described in row["entities"].as_array().into_iter().flatten() {
+        if described.get("rider").is_some() {
+            let vehicle = crate::entity_id_field(described, "id")?;
+            let rider = crate::entity_id_field(described, "rider")?;
+            world.apply_entity_passengers(vehicle, &[rider]);
+        }
+    }
+    Ok(())
+}

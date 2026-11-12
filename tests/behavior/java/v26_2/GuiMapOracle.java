@@ -78,7 +78,9 @@ final class GuiMapOracle extends GuiRecorder {
                 .get(Identifier.withDefaultNamespace(decoration.get("type").getAsString())).orElseThrow();
             decorations.add(new net.minecraft.world.level.saveddata.maps.MapDecoration(type,
                 decoration.get("x").getAsByte(), decoration.get("y").getAsByte(),
-                decoration.get("rot").getAsByte(), java.util.Optional.empty()));
+                decoration.get("rot").getAsByte(), decoration.has("name")
+                ? java.util.Optional.of(net.minecraft.network.chat.Component.literal(decoration.get("name").getAsString()))
+                : java.util.Optional.empty()));
         }
         data.addClientSideDecorations(decorations);
         level.overrideMapData(new net.minecraft.world.level.saveddata.maps.MapId(described.get("id").getAsInt()), data);

@@ -60,9 +60,14 @@ fn model_of(type_name: &str) -> Option<(String, String)> {
     ))
 }
 
-/// The paths (under `textures/`) of the textures the boats wear.
+/// The paths (under `textures/`) of the textures the boats of the played version wear: a wood
+/// the version has no model layer for (26.2 has no poplar) has no texture either.
 pub fn textures() -> impl Iterator<Item = &'static str> {
-    TEXTURES.into_iter()
+    TEXTURES.into_iter().filter(|texture| {
+        let wood = texture.strip_prefix("entity/").unwrap_or(texture);
+        photon_data::entity_model::layer(&format!("{}{wood}#main", concat!("minecraft:", "")))
+            .is_some()
+    })
 }
 
 /// `AbstractBoatRenderer` for the boats the server added.

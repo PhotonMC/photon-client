@@ -109,6 +109,7 @@ mod beds;
 mod block_light;
 mod campfires;
 mod chunks;
+mod cushions;
 mod entities;
 mod frozen;
 mod lids;

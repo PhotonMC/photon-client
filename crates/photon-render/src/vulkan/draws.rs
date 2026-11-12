@@ -29,6 +29,9 @@ pub enum DrawKind {
     Entities,
     /// The next frame's entity triangles drawn after the breaking overlay, as [`Self::Entities`].
     EntitiesOverCracks,
+    /// Entity triangles drawn after the glints, as [`Self::Entities`] (the armor layers the
+    /// reference draws over a glint).
+    EntitiesLate,
     /// The next frame's glowing layers, as triangles that sample the
     /// entity textures, each vertex's tint its colour.
     EntityGlow,
@@ -242,6 +245,7 @@ impl VulkanBackend {
             | DrawKind::EntityMask
             | DrawKind::EntitySwirl
             | DrawKind::EntityGlint
+            | DrawKind::EntitiesLate
             | DrawKind::Shadows
             | DrawKind::ExperienceOrbs
             | DrawKind::Particles
@@ -257,6 +261,7 @@ impl VulkanBackend {
             DrawKind::EntityMask => &mut self.flat.mask,
             DrawKind::EntitySwirl => &mut self.flat.swirl,
             DrawKind::EntityGlint => &mut self.flat.glint,
+            DrawKind::EntitiesLate => &mut self.flat.late,
             DrawKind::Shadows => &mut self.flat.shadow,
             DrawKind::ExperienceOrbs => &mut self.orb,
             DrawKind::Particles => &mut self.particle,

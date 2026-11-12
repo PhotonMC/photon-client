@@ -269,7 +269,36 @@ impl GuiFrame {
         default_colour: u32,
         shadow: bool,
     ) {
-        let effects = effects(font, runs, (x as f32, y as f32), (default_colour, shadow));
+        self.styled_text_runs_on(atlas, font, runs, (x, y), (default_colour, shadow, 0));
+    }
+
+    /// [`Self::styled_text_runs`] over a background of the colour `background` (the last of
+    /// `paint`; clear for none), as `Font` draws it behind the glyphs.
+    pub fn styled_text_runs_on(
+        &mut self,
+        atlas: &GuiAtlas,
+        font: &crate::gui::font::Font,
+        runs: &[TextRun],
+        (x, y): (i32, i32),
+        (default_colour, shadow, background): (u32, bool, u32),
+    ) {
+        let behind = crate::gui::text_effect::background_effect(
+            font,
+            runs,
+            (x as f32, y as f32),
+            background,
+        );
+        let mut effects: Vec<_> = behind.into_iter().collect();
+        effects.extend(self::effects(
+            font,
+            runs,
+            (x as f32, y as f32),
+            (default_colour, shadow),
+        ));
+        let behind = usize::from(behind.is_some());
+        for (corners, _) in effect_quads_deep(atlas, effects[..behind].to_vec()) {
+            self.push_text_quad(corners);
+        }
         self.log_text(
             (x, y),
             runs,
@@ -288,7 +317,7 @@ impl GuiFrame {
         ) {
             self.push_text_quad(corners);
         }
-        for (corners, _) in effect_quads_deep(atlas, effects) {
+        for (corners, _) in effect_quads_deep(atlas, effects[behind..].to_vec()) {
             self.push_text_quad(corners);
         }
     }

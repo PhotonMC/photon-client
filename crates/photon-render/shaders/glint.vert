@@ -11,10 +11,12 @@ invariant gl_Position;
 layout(location = 0) out vec2 out_uv;
 layout(location = 1) flat out vec4 out_rect;
 layout(location = 2) out vec2 out_fog;
+layout(location = 3) flat out float out_own_pass;
 void main() {
     gl_Position = push.view_projection * vec4(in_position, 1.0);
     out_uv = in_uv;
     out_rect = in_tint;
+    out_own_pass = in_shade;
     vec3 offset = in_position - push.camera.xyz;
     out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
 }

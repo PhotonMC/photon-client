@@ -138,6 +138,33 @@ pub fn item_glint_pipeline() -> PipelineState {
     }
 }
 
+/// `RenderPipelines.ENTITY_SOLID_GLINT` (26.3): the glint of a trident or an unpatterned shield,
+/// part of the model's own draw.
+pub const ENTITY_SOLID_GLINT: PipelineState = PipelineState {
+    location: "pipeline/entity_solid_glint",
+    flags: "GLINT",
+    values: "",
+    blend: "NONE",
+    depth_test: "GREATER_THAN_OR_EQUAL",
+    depth_write: true,
+    cull: true,
+};
+
+/// The pipeline the glint of trimmed armor is drawn with in the version being played: the glint
+/// pass in both (`RenderTypes.trimmedArmorGlint` in 26.3, `armorEntityGlint` in 26.2).
+pub fn trimmed_armor_glint_pipeline() -> PipelineState {
+    GLINT_PASS
+}
+
+/// The pipeline the glint of a trident or a shield is drawn with in the version being played.
+pub fn shield_glint_pipeline() -> PipelineState {
+    if photon_core::versions::rules().render.glint_is_own_pass {
+        GLINT_PASS
+    } else {
+        ENTITY_SOLID_GLINT
+    }
+}
+
 /// `ItemFeatureRenderer.ENCHANTED_GLINT_ARMOR`: the texture (under `textures/`) the glint on armor
 /// is drawn in, and the scale of `TextureTransform.ARMOR_ENTITY_GLINT_TEXTURING`.
 pub const ARMOR_GLINT_TEXTURE: &str = "misc/enchanted_glint_armor";
@@ -147,6 +174,10 @@ pub const ARMOR_GLINT_SCALE: f32 = 0.16;
 /// scale of `TextureTransform.GLINT_TEXTURING` (`RenderTypes.glint` and `glintTranslucent`).
 pub const ITEM_GLINT_TEXTURE: &str = "misc/enchanted_glint_item";
 pub const ITEM_GLINT_SCALE: f32 = 8.0;
+
+/// The scale of `TextureTransform.ENTITY_GLINT_TEXTURING`, which a trident's and a shield's glint
+/// moves its texture with.
+pub const ENTITY_GLINT_SCALE: f32 = 0.5;
 
 /// `TextureTransform.setupGlintTexturing`: the matrix (as `Matrix4f.get(float[])` gives it, column
 /// by column) that moves the glint's texture at a time (`Util.getMillis`) and glint speed (the

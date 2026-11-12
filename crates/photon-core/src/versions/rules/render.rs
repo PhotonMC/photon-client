@@ -50,6 +50,11 @@ rules! {
         /// The enchantment glint is a pass of its own over the model (`pipeline/glint`); from
         /// 26.3 it is a switch of the pipeline that draws the model itself.
         glint_is_own_pass: before V26_3,
+        /// The glint of an enchanted armor piece with a trim is drawn after the trim, over every
+        /// layer, as a pass of its own (26.3). Without it (26.2), and in 26.3 for a piece with no
+        /// trim, the glint comes right after the first layer and the layers after it and the trim
+        /// are drawn over it. Source-derived (`EquipmentLayerRenderer`), no golden.
+        trimmed_armor_glint_follows_trim: since V26_3,
         /// The fog colour's brightening (night vision, water vision) scales the channels that are
         /// not the brightest by one over the brightest channel held to at least 0.07 (26.2); 26.3
         /// scales every channel by one over the brightest. Proved by the `movement/fog-data` rows
