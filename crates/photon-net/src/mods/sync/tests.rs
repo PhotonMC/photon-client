@@ -192,3 +192,64 @@ fn the_reasons_are_the_fixed_words() {
         ["capability", "hash", "size", "fetch", "load", "consent"]
     );
 }
+
+fn asks(entry: &ModEntry) -> Admission {
+    if entry.id == "ask" {
+        Admission::Ask(vec!["fs.mod_data".to_owned()])
+    } else {
+        Admission::Load
+    }
+}
+
+#[test]
+fn a_mod_that_needs_an_answer_is_held_and_named_as_refused_for_consent() {
+    let mut sync = ModSync::new();
+    sync.take_hello_due();
+    let plan = sync.manifest(&manifest(&[("ask", "h1"), ("a", "h2")]), asks, none);
+    assert_eq!(ids(&plan), ["a"], "the held mod is not fetched");
+    assert_eq!(
+        sync.questions(),
+        [Question {
+            id: "ask".to_owned(),
+            hash: "h1".to_owned(),
+            caps: vec!["fs.mod_data".to_owned()]
+        }]
+    );
+    assert_eq!(sync.refused()[0].reason, Reason::Consent);
+    // A manifest of only held mods answers at once.
+    sync.fetched("h2", Ok(()));
+    assert!(sync.take_hello_due());
+}
+
+#[test]
+fn a_grant_resumes_the_held_mod_and_a_refusal_ends_it() {
+    let mut sync = ModSync::new();
+    sync.take_hello_due();
+    sync.manifest(&manifest(&[("ask", "h1")]), asks, none);
+    assert!(sync.take_hello_due());
+    let fetch = sync.answer("ask", true);
+    assert_eq!(fetch.len(), 1);
+    assert!(sync.refused().is_empty() && sync.questions().is_empty());
+    assert!(!sync.take_hello_due(), "it is being fetched");
+    assert_eq!(sync.fetched("h1", Ok(())).len(), 1);
+    assert!(sync.take_hello_due());
+
+    sync.manifest(&manifest(&[("ask", "h9")]), asks, none);
+    sync.take_hello_due();
+    assert!(sync.answer("ask", false).is_empty());
+    assert_eq!(sync.refused()[0].reason, Reason::Consent);
+    assert!(sync.questions().is_empty());
+    assert!(sync.take_hello_due());
+    // A second answer to the same question, or one nobody asked, does nothing.
+    assert!(sync.answer("ask", true).is_empty());
+    assert!(sync.answer("nobody", true).is_empty());
+}
+
+#[test]
+fn a_new_manifest_drops_the_questions_of_the_old_one() {
+    let mut sync = ModSync::new();
+    sync.manifest(&manifest(&[("ask", "h1")]), asks, none);
+    sync.manifest(&manifest(&[("a", "h2")]), asks, none);
+    assert!(sync.questions().is_empty());
+    assert!(sync.answer("ask", true).is_empty());
+}

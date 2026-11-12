@@ -43,10 +43,21 @@ pub struct Refused {
 }
 
 /// What the client decides about one manifest entry before fetching it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Admission {
     Load,
     Refuse(Reason),
+    /// The mod needs the player's answer about these capabilities first. It is held back, not
+    /// fetched; while no answer is given the hello names it as refused for `consent`.
+    Ask(Vec<String>),
+}
+
+/// A question for the player: a mod waits for an answer about these capabilities.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Question {
+    pub id: String,
+    pub hash: String,
+    pub caps: Vec<String>,
 }
 
 /// What the app does for a manifest.
@@ -67,6 +78,8 @@ pub struct ModSync {
     /// again.
     in_flight: Vec<String>,
     refused: Vec<Refused>,
+    /// Entries of the latest manifest that wait for the player, with what they ask about.
+    held: Vec<(ModEntry, Vec<String>)>,
     hello_due: bool,
 }
 
@@ -83,6 +96,7 @@ impl ModSync {
             pending: Vec::new(),
             in_flight: Vec::new(),
             refused: Vec::new(),
+            held: Vec::new(),
             hello_due: true,
         }
     }
@@ -103,17 +117,29 @@ impl ModSync {
             .collect();
         self.pending.clear();
         self.refused.clear();
+        self.held.clear();
         let mut fetch: Vec<ModEntry> = Vec::new();
         for entry in &manifest.mods {
             if is_loaded(&entry.id, &entry.hash) {
                 continue;
             }
-            if let Admission::Refuse(reason) = admit(entry) {
-                self.refused.push(Refused {
-                    id: entry.id.clone(),
-                    reason,
-                });
-                continue;
+            match admit(entry) {
+                Admission::Load => {}
+                Admission::Refuse(reason) => {
+                    self.refused.push(Refused {
+                        id: entry.id.clone(),
+                        reason,
+                    });
+                    continue;
+                }
+                Admission::Ask(caps) => {
+                    self.refused.push(Refused {
+                        id: entry.id.clone(),
+                        reason: Reason::Consent,
+                    });
+                    self.held.push((entry.clone(), caps));
+                    continue;
+                }
             }
             if !self.in_flight.contains(&entry.hash) {
                 self.in_flight.push(entry.hash.clone());
@@ -149,6 +175,39 @@ impl ModSync {
                 Vec::new()
             }
         }
+    }
+
+    /// The questions the player has not answered yet, for the latest manifest.
+    pub fn questions(&self) -> Vec<Question> {
+        self.held
+            .iter()
+            .map(|(entry, caps)| Question {
+                id: entry.id.clone(),
+                hash: entry.hash.clone(),
+                caps: caps.clone(),
+            })
+            .collect()
+    }
+
+    /// The player answered the question of mod `id`. A refusal leaves the mod refused for
+    /// `consent`; a grant returns the file to fetch (none if it is being fetched already or
+    /// the question is gone), and the mod is loaded when it arrives like any other.
+    pub fn answer(&mut self, id: &str, granted: bool) -> Vec<ModEntry> {
+        let Some(index) = self.held.iter().position(|(entry, _)| entry.id == id) else {
+            return Vec::new();
+        };
+        let (entry, _) = self.held.remove(index);
+        if !granted {
+            self.hello_due = true;
+            return Vec::new();
+        }
+        self.refused.retain(|r| r.id != id);
+        let fetch = !self.in_flight.contains(&entry.hash);
+        if fetch {
+            self.in_flight.push(entry.hash.clone());
+        }
+        self.pending.push(entry.clone());
+        if fetch { vec![entry] } else { Vec::new() }
     }
 
     /// A mod returned by [`ModSync::fetched`] could not be loaded.

@@ -113,8 +113,8 @@ impl Play {
             }
             match Manifest::parse(&data) {
                 Ok(manifest) => {
-                    let dir = crate::controls::game_directory().join("cache").join("mods");
-                    self.gui.mods.on_manifest(&manifest, dir);
+                    let dir = crate::controls::game_directory();
+                    self.gui.mods.on_manifest(&manifest, &dir);
                 }
                 Err(error) => log::warn!("the server's mod list is wrong: {error:?}"),
             }
