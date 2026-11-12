@@ -35,6 +35,22 @@ impl Controls {
         Ok(())
     }
 
+    /// A scripted Escape on a server mod's question answers no, as the real key does. Whether one
+    /// was up.
+    fn scripted_mod_escape(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) -> bool {
+        if !matches!(self.link_confirm, Some((_, ConfirmTarget::Mod(_)))) {
+            return false;
+        }
+        let escape = glfw::WindowEvent::Key(
+            glfw::Key::Escape,
+            0,
+            glfw::Action::Press,
+            glfw::Modifiers::empty(),
+        );
+        self.host_event(escape, surface, assets);
+        true
+    }
+
     /// A script's step on this tick: the inventory key, a click in the
     /// open screen, the mouse moved or text typed into it, a creative tab
     /// chosen or scrolled, and the attack and use keys. A scripted `attack`
@@ -252,7 +268,10 @@ impl Controls {
     fn scripted_pack_press(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) -> bool {
         let asking = matches!(
             self.link_confirm,
-            Some((_, ConfirmTarget::Pack(_) | ConfirmTarget::Drop(_)))
+            Some((
+                _,
+                ConfirmTarget::Pack(_) | ConfirmTarget::Drop(_) | ConfirmTarget::Mod(_)
+            ))
         );
         if !asking && (self.question_open() || self.pack_screen.is_none()) {
             return false;
@@ -330,7 +349,8 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) -> bool {
-        if self.advancements.is_some() {
+        if self.scripted_mod_escape(surface, assets) {
+        } else if self.advancements.is_some() {
             self.close_advancements(session, surface);
         } else if self.world_screen.take().is_some() {
         } else if self.online_screen.is_some() {
