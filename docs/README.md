@@ -37,5 +37,6 @@ Decisions:
 - [0023 Website sign-in](adr/0023-website-sign-in.md)
 - [0024 Server-delivered mods](adr/0024-server-delivered-mods.md)
 - [0025 Native video on game pages](adr/0025-native-video.md)
+- [0026 Join tickets for Photon servers](adr/0026-join-tickets.md) (proposed)
 
 `records/` holds legacy per-slice parity records that are being converted into case metadata ([ADR 0005](adr/0005-parity-v2.md)).
