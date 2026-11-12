@@ -83,11 +83,24 @@ pub struct Caps {
     pub hud_text: bool,
     /// `sound.play`: play a sound.
     pub sound: bool,
+    /// `game.time`: read the level's tick count and day time.
+    pub game_time: bool,
+}
+
+/// What the game lets a mod read about the level, as of the tick that is running. A mod sees
+/// it only with `game.time`; it is a copy, so a mod can never change the game through it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct WorldView {
+    /// The level's game time in ticks, as the server last set it.
+    pub game_time: i64,
+    /// The ticks of the dimension's own clock (the day time), zero if it has none.
+    pub day_time: i64,
 }
 
 /// What a mod's store holds: the effects of the tick that is running.
 #[derive(Default)]
 pub struct ModState {
+    world: WorldView,
     effects: Vec<Effect>,
     dropped: u32,
 }
@@ -288,6 +301,11 @@ impl Mod {
         )
     }
 
+    /// What the mod reads of the level during its next tick.
+    pub fn set_world(&mut self, world: WorldView) {
+        self.store.data_mut().world = world;
+    }
+
     /// Runs the mod's `tick`; a call that outlasts its allowance is stopped.
     pub fn tick(&mut self) -> Result<(), HostError> {
         self.store.set_epoch_deadline(self.ticks_allowed);
@@ -322,6 +340,18 @@ fn grant_caps(linker: &mut Linker<ModState>, caps: Caps) -> wasmtime::Result<()>
                 Ok(())
             },
         )?;
+    }
+    if caps.game_time {
+        linker
+            .root()
+            .func_wrap("game-time", |cx: StoreContextMut<'_, ModState>, ()| {
+                Ok((cx.data().world.game_time,))
+            })?;
+        linker
+            .root()
+            .func_wrap("day-time", |cx: StoreContextMut<'_, ModState>, ()| {
+                Ok((cx.data().world.day_time,))
+            })?;
     }
     if caps.sound {
         linker.root().func_wrap(

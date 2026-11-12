@@ -110,12 +110,16 @@ impl Sky {
         self.flash_start.take()
     }
 
-    fn tick_end_flash(&mut self, session: &PlaySession) {
-        let clock = self
-            .environment
+    /// The ticks of the dimension's own clock, the day time; zero when it has none.
+    pub fn clock_ticks(&self, session: &PlaySession) -> i64 {
+        self.environment
             .default_clock()
             .and_then(|name| session.clock_ticks(name))
-            .unwrap_or(0);
+            .unwrap_or(0)
+    }
+
+    fn tick_end_flash(&mut self, session: &PlaySession) {
+        let clock = self.clock_ticks(session);
         if let Some(flash) = self.end_flash.as_mut() {
             flash.tick(clock);
             if flash.flash_started_this_tick() {

@@ -121,6 +121,10 @@ impl Play {
         }
         self.gui.mods.load_fetched();
         self.say_hello();
+        self.gui.mods.runtime.set_world(photon_mods::WorldView {
+            game_time: self.session.game_time(),
+            day_time: self.sky.clock_ticks(&self.session),
+        });
         let sounds = self.gui.mods.runtime.tick();
         for effect in sounds {
             if let (

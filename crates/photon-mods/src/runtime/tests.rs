@@ -274,3 +274,58 @@ fn a_mod_that_recurses_forever_is_unloaded_alone() {
     assert_eq!(runtime.ids(), ["good"]);
     assert_eq!(runtime.hud.len(), 1);
 }
+
+const CLOCK: &str = r#"(component
+  (import "game-time" (func $gt (result s64)))
+  (import "day-time" (func $dt (result s64)))
+  (import "hud-text" (func $hud (param "x" s32) (param "y" s32) (param "colour" u32) (param "text" string)))
+  (core module $mem (memory (export "mem") 1) (data (i32.const 0) "T"))
+  (core instance $m (instantiate $mem))
+  (core func $gt_l (canon lower (func $gt)))
+  (core func $dt_l (canon lower (func $dt)))
+  (core func $hud_l (canon lower (func $hud) (memory (core memory $m "mem"))))
+  (core module $code
+    (import "h" "gt" (func (result i64)))
+    (import "h" "dt" (func (result i64)))
+    (import "h" "hud" (func (param i32 i32 i32 i32 i32)))
+    (func (export "tick")
+      (call 2 (i32.wrap_i64 (call 0)) (i32.wrap_i64 (call 1)) (i32.const 0xFFFFFF) (i32.const 0) (i32.const 1))))
+  (core instance $i (instantiate $code (with "h" (instance (export "gt" (func $gt_l)) (export "dt" (func $dt_l)) (export "hud" (func $hud_l))))))
+  (func (export "tick") (canon lift (core func $i "tick"))))"#;
+
+#[test]
+fn game_time_is_read_only_and_follows_the_world_of_each_tick() {
+    let mut runtime = Runtime::default();
+    let asked = caps(&["events.tick", "hud.text", "game.time"]);
+    runtime
+        .load(("clock", "h"), &asked, CLOCK.as_bytes())
+        .expect("clock");
+    runtime.set_world(WorldView {
+        game_time: 1234,
+        day_time: 567,
+    });
+    runtime.tick();
+    // The mod draws the two numbers as the position of its text.
+    assert_eq!(
+        runtime.hud.iter().map(|l| (l.x, l.y)).collect::<Vec<_>>(),
+        [(1234, 567)]
+    );
+    runtime.set_world(WorldView {
+        game_time: 1235,
+        day_time: 568,
+    });
+    runtime.tick();
+    assert_eq!((runtime.hud[0].x, runtime.hud[0].y), (1235, 568));
+}
+
+#[test]
+fn a_mod_cannot_read_the_time_without_asking_for_it() {
+    let mut runtime = Runtime::default();
+    let no_time = caps(&["events.tick", "hud.text"]);
+    assert!(
+        runtime
+            .load(("clock", "h"), &no_time, CLOCK.as_bytes())
+            .is_err()
+    );
+    assert!(runtime.ids().is_empty());
+}

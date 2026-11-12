@@ -5,6 +5,6 @@ mod host;
 mod runtime;
 mod tick;
 
-pub use host::{Caps, Compiled, Effect, Host, HostError, MAX_EFFECTS, MAX_TEXT, Mod};
+pub use host::{Caps, Compiled, Effect, Host, HostError, MAX_EFFECTS, MAX_TEXT, Mod, WorldView};
 pub use runtime::{GRANTED, HudLine, Runtime, TICK_BUDGET, TickReport, grant};
 pub use tick::TickMods;

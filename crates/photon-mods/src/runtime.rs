@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use photon_api::Owner;
 
-use crate::{Caps, Compiled, Effect, Host, HostError, Mod};
+use crate::{Caps, Compiled, Effect, Host, HostError, Mod, WorldView};
 
 /// What a tick of one mod may take before it is stopped.
 const ALLOWANCE: Duration = Duration::from_millis(20);
@@ -18,7 +18,7 @@ pub const TICK_BUDGET: Duration = Duration::from_millis(4);
 /// Capabilities a server may ask for that this client grants without asking the player: they
 /// touch nothing outside the game's own screen and sound. Anything else (files, network, the
 /// player's data) is refused until the client can ask the player.
-pub const GRANTED: &[&str] = &["events.tick", "hud.text", "sound.play"];
+pub const GRANTED: &[&str] = &["events.tick", "hud.text", "sound.play", "game.time"];
 
 /// Text a mod asked to have drawn.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,6 +45,8 @@ pub struct Runtime {
     loaded: Vec<Loaded>,
     /// Index of the mod that runs first in the next tick (round-robin under the budget).
     cursor: usize,
+    /// What mods that asked for `game.time` read in the next tick.
+    world: WorldView,
     /// The text the mods asked for in the last tick.
     pub hud: Vec<HudLine>,
 }
@@ -58,6 +60,7 @@ pub fn grant(asked: &[String]) -> Option<Caps> {
             tick: asked.iter().any(|cap| cap == "events.tick"),
             hud_text: asked.iter().any(|cap| cap == "hud.text"),
             sound: asked.iter().any(|cap| cap == "sound.play"),
+            game_time: asked.iter().any(|cap| cap == "game.time"),
         })
 }
 
@@ -158,7 +161,7 @@ impl Runtime {
                 next = index;
                 break;
             }
-            if run_one(&mut self.loaded[index], &mut report.sounds) {
+            if run_one(&mut self.loaded[index], self.world, &mut report.sounds) {
                 report.ran += 1;
             } else {
                 failed.push(index);
@@ -175,6 +178,11 @@ impl Runtime {
         self.cursor = next.saturating_sub(before);
         self.hud = self.loaded.iter().flat_map(|m| m.hud.clone()).collect();
         report
+    }
+
+    /// The level as the next tick shows it to mods.
+    pub fn set_world(&mut self, world: WorldView) {
+        self.world = world;
     }
 
     /// The id of the mod that runs first in the next tick.
@@ -194,7 +202,8 @@ pub struct TickReport {
 }
 
 /// Runs one mod's tick; false if it failed and must be unloaded.
-fn run_one(m: &mut Loaded, sounds: &mut Vec<Effect>) -> bool {
+fn run_one(m: &mut Loaded, world: WorldView, sounds: &mut Vec<Effect>) -> bool {
+    m.module.set_world(world);
     if let Err(error) = m.module.tick() {
         log::warn!("mod {} stopped: {error}", m.id);
         return false;
