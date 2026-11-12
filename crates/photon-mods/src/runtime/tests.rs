@@ -252,3 +252,25 @@ fn a_failing_mod_does_not_make_the_cursor_skip_the_next_one() {
     assert_eq!(runtime.next_up(), Some("good"));
     assert_eq!(runtime.tick_within(Duration::ZERO).ran, 1);
 }
+
+const RECURSES: &str = r#"(component
+  (core module $m
+    (func $down (param i32) (result i32) (call $down (i32.add (local.get 0) (i32.const 1))))
+    (func (export "tick") (drop (call $down (i32.const 0)))))
+  (core instance $i (instantiate $m))
+  (func (export "tick") (canon lift (core func $i "tick"))))"#;
+
+#[test]
+fn a_mod_that_recurses_forever_is_unloaded_alone() {
+    let mut runtime = Runtime::default();
+    let tick_only = caps(&["events.tick"]);
+    runtime
+        .load(("deep", "h"), &tick_only, RECURSES.as_bytes())
+        .expect("deep");
+    runtime
+        .load(("good", "h"), &tick_cap(), HUD.as_bytes())
+        .expect("good");
+    runtime.tick_within(Duration::from_secs(60));
+    assert_eq!(runtime.ids(), ["good"]);
+    assert_eq!(runtime.hud.len(), 1);
+}

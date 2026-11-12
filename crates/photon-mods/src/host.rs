@@ -14,6 +14,18 @@ const EPOCH_STEP: Duration = Duration::from_millis(1);
 const MOD_SLOTS: u32 = 400;
 /// Each mod's linear memory may grow to this many bytes.
 const MEMORY_BUDGET: usize = 16 << 20;
+/// Table elements one mod may hold (a mod's function table is a few thousand at most).
+const TABLE_ELEMENTS: usize = 20_000;
+/// Most memories, tables and core instances one component may make.
+const PER_COMPONENT: u32 = 4;
+const CORE_INSTANCES: u32 = 16;
+/// Core instances the pool holds per mod slot: a component is usually a few (main, shims).
+const CORE_PER_MOD: u32 = 4;
+/// Largest an instance's own bookkeeping may be, in bytes (the pool's default is 1 MiB).
+const CORE_INSTANCE_SIZE: usize = 256 << 10;
+const COMPONENT_INSTANCE_SIZE: usize = 64 << 10;
+/// The native stack a mod's calls may use, so deep recursion traps instead of eating the game's.
+const WASM_STACK: usize = 256 << 10;
 
 #[derive(Debug)]
 pub enum HostError {
@@ -90,6 +102,26 @@ impl ModState {
     }
 }
 
+/// The pooling allocator's limits: `slots` mods at once, each within fixed bounds. A load past the
+/// last slot, or a mod that asks for more than a bound, fails with an error, nothing else.
+fn pool_limits(slots: u32) -> PoolingAllocationConfig {
+    let mut pool = PoolingAllocationConfig::default();
+    pool.total_component_instances(slots);
+    pool.total_core_instances(slots.saturating_mul(CORE_PER_MOD));
+    pool.total_memories(slots);
+    pool.total_tables(slots.saturating_mul(2));
+    pool.max_memory_size(MEMORY_BUDGET);
+    pool.table_elements(TABLE_ELEMENTS);
+    pool.max_memories_per_component(PER_COMPONENT);
+    pool.max_tables_per_component(PER_COMPONENT);
+    pool.max_memories_per_module(PER_COMPONENT);
+    pool.max_tables_per_module(PER_COMPONENT);
+    pool.max_core_instances_per_component(CORE_INSTANCES);
+    pool.max_core_instance_size(CORE_INSTANCE_SIZE);
+    pool.max_component_instance_size(COMPONENT_INSTANCE_SIZE);
+    pool
+}
+
 /// The engine every mod runs in, and the thread that keeps its clock.
 pub struct Host {
     engine: Engine,
@@ -112,13 +144,8 @@ impl Host {
         // for 400 slots, measured); with them 400 slots reserve about 6.6 GB.
         config.memory_reservation(MEMORY_BUDGET as u64);
         config.memory_guard_size(64 << 10);
-        let mut pool = PoolingAllocationConfig::default();
-        pool.total_component_instances(slots);
-        pool.total_core_instances(slots);
-        pool.total_memories(slots);
-        pool.total_tables(slots);
-        pool.max_memory_size(MEMORY_BUDGET);
-        config.allocation_strategy(InstanceAllocationStrategy::Pooling(pool));
+        config.max_wasm_stack(WASM_STACK);
+        config.allocation_strategy(InstanceAllocationStrategy::Pooling(pool_limits(slots)));
         let engine = Engine::new(&config).map_err(|e| HostError::Engine(e.to_string()))?;
         Ok(Self {
             engine,
@@ -314,10 +341,12 @@ fn grant_caps(linker: &mut Linker<ModState>, caps: Caps) -> wasmtime::Result<()>
     Ok(())
 }
 
-/// `interrupt` for a call the clock stopped, else the error's own words.
+/// `interrupt` for a call the clock stopped, `stack overflow` for runaway recursion, else the
+/// error's own words.
 fn trap_name(error: &wasmtime::Error) -> String {
     match error.downcast_ref::<wasmtime::Trap>() {
         Some(wasmtime::Trap::Interrupt) => "interrupt".to_owned(),
+        Some(wasmtime::Trap::StackOverflow) => "stack overflow".to_owned(),
         _ => error.to_string(),
     }
 }

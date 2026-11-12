@@ -34,3 +34,5 @@ Capabilities that touch the player's machine or data (first `fs.mod_data`) need 
 All mods together get 4 ms of each client tick (ADR 0006 gives no total); the per-mod allowance stays 20 ms, so one overrunning mod can pass the total by up to that much before it is stopped and unloaded. Mods that did not get to run wait and run first in the next tick, in a fixed turn order, and keep the text they last drew meanwhile. At least one mod runs every tick.
 
 Compiling a mod (the slow part of a load) runs on the fetch thread with the shared engine; only instantiating it, which takes a pool slot and runs the start function under the allowance, happens on the game thread.
+
+Limits per mod, beyond the 16 MiB of memory: 20000 table elements, at most 4 memories, 4 tables and 16 core instances per component, 256 KiB of wasm stack (deep recursion traps as `stack overflow` and unloads only that mod). A load past the pool of 400 mods fails with an error naming the limit.

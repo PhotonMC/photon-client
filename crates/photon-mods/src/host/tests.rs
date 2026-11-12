@@ -271,3 +271,59 @@ fn an_endless_start_function_is_stopped_when_instantiating_a_compile() {
     assert!(result.is_err());
     assert!(started.elapsed() < Duration::from_secs(5));
 }
+
+const TABLE_GROW: &str = r#"(component
+  (core module $m
+    (table 1 funcref)
+    (func (export "tick")
+      ;; a modest growth is allowed, a huge one must be refused with -1, not trap or allocate
+      (if (i32.eq (table.grow (ref.null func) (i32.const 100)) (i32.const -1)) (then unreachable))
+      (if (i32.ne (table.grow (ref.null func) (i32.const 1000000)) (i32.const -1)) (then unreachable))))
+  (core instance $i (instantiate $m))
+  (func (export "tick") (canon lift (core func $i "tick"))))"#;
+
+const BIG_TABLE: &str = r#"(component
+  (core module $m (table 1000000 funcref) (func (export "tick")))
+  (core instance $i (instantiate $m))
+  (func (export "tick") (canon lift (core func $i "tick"))))"#;
+
+const RECURSES: &str = r#"(component
+  (core module $m
+    (func $down (param i32) (result i32) (call $down (i32.add (local.get 0) (i32.const 1))))
+    (func (export "tick") (drop (call $down (i32.const 0)))))
+  (core instance $i (instantiate $m))
+  (func (export "tick") (canon lift (core func $i "tick"))))"#;
+
+#[test]
+fn a_table_cannot_grow_past_the_limit() {
+    let host = Host::new().unwrap();
+    let mut loaded = host.load(MOD, TABLE_GROW.as_bytes(), &[], MS).unwrap();
+    loaded
+        .tick()
+        .expect("growth past the limit is refused, not fatal");
+    assert!(host.load(MOD, BIG_TABLE.as_bytes(), &[], MS).is_err());
+}
+
+#[test]
+fn runaway_recursion_traps_on_the_wasm_stack() {
+    let host = Host::new().unwrap();
+    let mut loaded = host.load(MOD, RECURSES.as_bytes(), &[], MS).unwrap();
+    let Err(HostError::Call(why)) = loaded.tick() else {
+        panic!("recursion returned");
+    };
+    assert!(why.contains("stack"), "{why}");
+    // The host and its other mods are fine.
+    let mut other = host.load(MOD, EMPTY.as_bytes(), &[], MS).unwrap();
+    assert!(other.tick().is_ok());
+}
+
+#[test]
+fn a_load_past_the_pool_is_an_error_not_a_panic() {
+    let host = Host::with_slots(2).unwrap();
+    let _a = host.load(MOD, EMPTY.as_bytes(), &[], MS).unwrap();
+    let _b = host.load(MOD, EMPTY.as_bytes(), &[], MS).unwrap();
+    let Err(HostError::Load(why)) = host.load(MOD, EMPTY.as_bytes(), &[], MS) else {
+        panic!("a third mod fitted");
+    };
+    assert!(why.contains("limit"), "{why}");
+}
