@@ -245,21 +245,24 @@ pub fn glint() -> Vec<Value> {
         json!({"label": format!("glint-matrix-{millis}-{}", float_text(*speed)), "millis": millis, "speed": speed})
     })
     .collect::<Vec<Value>>();
-    let mut items = entity("item-glint-layers", "glint_layers", matrices.clone());
-    items["render_type"] = json!("item");
-    // The glint of trimmed armor, and of a trident or an unpatterned shield.
-    let mut trimmed = entity("trimmed-armor-glint-layers", "glint_layers", matrices.clone());
-    trimmed["render_type"] = json!("trimmed_armor");
-    let mut shield = entity("shield-glint-layers", "glint_layers", matrices.clone());
-    shield["render_type"] = json!("shield");
-    vec![
-        entity("item-foil", "item_foil", rows),
-        entity("glint-layers", "glint_layers", matrices),
-        items,
-        trimmed,
-        shield,
-        entity("foil-decal-uv", "foil_decal_uv", foil_decal_rows()),
-    ]
+    // Each render type a glint is drawn with: items, trimmed armor, a trident or an unpatterned
+    // shield, a patterned shield and an item whose sprite has translucent texels.
+    let types = [
+        ("item-glint-layers", "item"),
+        ("trimmed-armor-glint-layers", "trimmed_armor"),
+        ("shield-glint-layers", "shield"),
+        ("patterned-shield-glint-layers", "patterned_shield"),
+        ("item-translucent-glint-layers", "item_translucent"),
+    ];
+    let mut out =
+        vec![entity("item-foil", "item_foil", rows), entity("glint-layers", "glint_layers", matrices.clone())];
+    for (case, render_type) in types {
+        let mut row = entity(case, "glint_layers", matrices.clone());
+        row["render_type"] = json!(render_type);
+        out.push(row);
+    }
+    out.push(entity("foil-decal-uv", "foil_decal_uv", foil_decal_rows()));
+    out
 }
 
 /// Stacks as a block entity's tag writes them (a vault's display item): the glint and the potion

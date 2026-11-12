@@ -107,6 +107,18 @@ pub const ITEM_GLINT: PipelineState = PipelineState {
     cull: true,
 };
 
+/// `RenderPipelines.ITEM_TRANSLUCENT_GLINT` (26.3): the item pipeline with the glint in its own
+/// shader, blended like any translucent item.
+pub const ITEM_TRANSLUCENT_GLINT: PipelineState = PipelineState {
+    location: "pipeline/item_translucent_glint",
+    flags: "GLINT",
+    values: "ALPHA_CUTOUT=0.1,",
+    blend: "TRANSLUCENT",
+    depth_test: "GREATER_THAN_OR_EQUAL",
+    depth_write: true,
+    cull: true,
+};
+
 /// `RenderPipelines.GLINT`: before 26.3 the glint is a pass of its own over the model, armor and
 /// item alike: blended onto what is there (`BlendFunction.GLINT`), drawn only where the model
 /// wrote its depth, on both faces, and not written to the depth.
@@ -149,6 +161,23 @@ pub const ENTITY_SOLID_GLINT: PipelineState = PipelineState {
     depth_write: true,
     cull: true,
 };
+
+/// The pipeline the glint of an item with translucent texels is drawn with in the version being
+/// played: before 26.3 the glint pass (`RenderTypes.glintTranslucent`, used only under shader
+/// transparency, which this client does not have).
+pub fn item_translucent_glint_pipeline() -> PipelineState {
+    if photon_core::versions::rules().render.glint_is_own_pass {
+        GLINT_PASS
+    } else {
+        ITEM_TRANSLUCENT_GLINT
+    }
+}
+
+/// The pipeline the glint of a shield with patterns is drawn with: the glint pass in both
+/// versions (`RenderTypes.patternedShieldGlint` in 26.3, `entityGlint` in 26.2).
+pub fn patterned_shield_glint_pipeline() -> PipelineState {
+    GLINT_PASS
+}
 
 /// The pipeline the glint of trimmed armor is drawn with in the version being played: the glint
 /// pass in both (`RenderTypes.trimmedArmorGlint` in 26.3, `armorEntityGlint` in 26.2).

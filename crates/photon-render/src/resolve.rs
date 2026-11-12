@@ -58,6 +58,12 @@ pub trait AssetSource: Sync {
         true
     }
 
+    /// The sprites an atlas definition (`atlases/<atlas>.json`) lists, by full id; none when the
+    /// source has no atlas definitions.
+    fn atlas_sprites(&self, _atlas: &str) -> Vec<Identifier> {
+        Vec::new()
+    }
+
     /// The texture section of one sprite's metadata, if the sprite has one.
     ///
     /// Absent metadata is not an error: every field has a default, and the

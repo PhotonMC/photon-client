@@ -5,6 +5,9 @@
 //! test below reads the fixture and compares every item against this table;
 //! regenerate the rows from the fixture's `equippable` (component
 //! `EQUIPPABLE`), grouped by value, when the version changes.
+//!
+//! The values are the same in 26.2 and 26.3 (the test also reads 26.2's local capture when it
+//! exists), so one table serves every version; a version that differs needs its own table.
 
 /// `Equippable.allowedEntities`: an entity type tag, or the types listed.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,16 +75,34 @@ mod tests {
         text
     }
 
-    /// Every item's own `allowed_entities` in the reference's dump is this table's.
+    /// Every item's own `allowed_entities` in the reference's dump is this table's, in every
+    /// version that has a dump: the committed one of 26.3, and 26.2's from the local capture when
+    /// present (the component holds the same values in both, so the table serves both versions).
     #[test]
     fn matches_the_reference_dump() {
-        const PATCHES: &str =
+        use photon_core::version::Version;
+        let committed =
             include_str!("../../../../tests/behavior/fixtures/item-default-patches.txt");
-        // The dump was captured from 26.3, so its ids are that version's wire ids.
-        let dump_registries = photon_data::version_registries::VersionRegistries::of(
-            photon_core::version::Version::V26_3,
-        );
-        for line in PATCHES.lines() {
+        let older = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../.data/parity/fixtures/26.2/item-default-patches.txt"
+        ))
+        .ok();
+        let dumps = [
+            (Some(committed.to_owned()), Version::V26_3),
+            (older, Version::V26_2),
+        ];
+        for (patches, version) in dumps {
+            // A missing local capture is skipped, not counted as proof.
+            let Some(patches) = patches else { continue };
+            check_dump(&patches, version);
+        }
+    }
+
+    fn check_dump(patches: &str, version: photon_core::version::Version) {
+        // The dump's ids are its version's wire ids.
+        let dump_registries = photon_data::version_registries::VersionRegistries::of(version);
+        for line in patches.lines() {
             let (name, wire) = line.split_once(' ').expect("a name and its bytes");
             let bytes: Vec<u8> = (0..wire.len())
                 .step_by(2)
@@ -126,7 +147,7 @@ mod tests {
                         ),
                     })
                 });
-            assert_eq!(allowed_entities(name), dumped, "{name}");
+            assert_eq!(allowed_entities(name), dumped, "{name} in {version:?}");
         }
     }
 }

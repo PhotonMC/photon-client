@@ -2,7 +2,7 @@
 
 use photon_core::ids::BlockStateId;
 use photon_render::block::biome_tint::BiomeTints;
-use photon_render::block::world_mesh::{BlockRenderer, ItemLayer};
+use photon_render::block::world_mesh::{BlockRenderer, ItemLayer, StackFoil, stack_foil};
 use photon_render::item_model::{ItemState, ItemTints, ItemUse};
 use photon_render::model::DisplayContext;
 use photon_render::objects::item::item_glint_vertices;
@@ -53,11 +53,66 @@ pub struct ItemLayerCache {
 struct Glint {
     /// The glint's texture matrix now and the texture's place in the packed image.
     moving: Option<([f32; 16], [f32; 4])>,
+    /// The matrix of the entity glint (`TextureTransform.ENTITY_GLINT_TEXTURING`) now.
+    entity_matrix: [f32; 16],
     vertices: Vec<Vertex>,
     /// The special foil's coordinates of the stack [`ItemLayerCache::get`] gave last, if it has
-    /// that foil: a compass or a clock.
+    /// that foil (a compass or a clock), or the coordinates its model draws its own glint with.
     decal: Option<Vec<[f32; 2]>>,
+    /// The stack gave last draws its glint with the entity glint's matrix (a shield, a trident).
+    entity: bool,
+    /// The stack gave last draws no glint whatever its flag (a special renderer that ignores it).
+    hidden: bool,
     tags: Option<std::sync::Arc<photon_world::block::tags::ItemTags>>,
+}
+
+impl Glint {
+    /// What the layers of the stack drawn last say: the decal of a special foil, or the glint kind
+    /// the layers share.
+    fn set_foil(&mut self, special: Option<Vec<[f32; 2]>>, foil: StackFoil) {
+        self.entity = false;
+        self.hidden = false;
+        self.decal = special.filter(|corners| !corners.is_empty());
+        match foil {
+            StackFoil::Standard => {}
+            StackFoil::Entity(corners) => {
+                self.entity = true;
+                self.decal = Some(corners).filter(|corners| !corners.is_empty());
+            }
+            StackFoil::None => self.hidden = true,
+        }
+    }
+
+    /// Take the glint the layers of the stack drawn last say: their kind, or the decal of a special
+    /// foil (a compass, a clock) when they are standard.
+    fn follow_layers(
+        &mut self,
+        layers: &[ItemLayer],
+        (item, context): (photon_core::ids::ItemId, DisplayContext),
+    ) {
+        let foil = stack_foil(layers);
+        let special = (foil == StackFoil::Standard
+            && self.moving.is_some()
+            && has_special_foil(item, self.tags.as_deref()))
+        .then(|| {
+            photon_render::objects::item::foil_decal_corners(layers, foil_pose_scale(context))
+        });
+        self.set_foil(special, foil);
+    }
+
+    /// The matrix the glint of the stack drawn last moves with.
+    fn matrix_of(&self, item: [f32; 16]) -> [f32; 16] {
+        if self.entity {
+            self.entity_matrix
+        } else {
+            item
+        }
+    }
+
+    /// Whether the stack drawn last draws a glint: its flag, unless its model ignores it.
+    fn shows(&self, stack: &ClientItemStackState) -> bool {
+        !self.hidden && shows_foil(stack)
+    }
 }
 
 /// How the frame's item glints move, where their texture is and which items have the special
@@ -65,6 +120,8 @@ struct Glint {
 #[derive(Clone)]
 pub struct GlintFrame {
     pub matrix: [f32; 16],
+    /// The matrix of the entity glint, which a shield's and a trident's glint moves with.
+    pub entity_matrix: [f32; 16],
     pub texture: Option<[f32; 4]>,
     /// The item tags the server sent: `minecraft:compasses` is one of them.
     pub tags: std::sync::Arc<photon_world::block::tags::ItemTags>,
@@ -124,6 +181,7 @@ impl ItemLayerCache {
     /// texture is; without it no glint is drawn.
     pub fn set_glint(&mut self, frame: &GlintFrame) {
         self.glint.moving = frame.texture.map(|texture| (frame.matrix, texture));
+        self.glint.entity_matrix = frame.entity_matrix;
         self.glint.tags = Some(frame.tags.clone());
         self.quick_charge = frame.quick_charge;
         self.trim_materials = frame.trim_materials.clone();
@@ -176,7 +234,8 @@ impl ItemLayerCache {
         let Some((matrix, texture)) = self.glint.moving else {
             return;
         };
-        if shows_foil(stack) {
+        let matrix = self.glint.matrix_of(matrix);
+        if self.glint.shows(stack) {
             self.glint.vertices.extend(item_glint_vertices(
                 drawn,
                 &matrix,
@@ -200,8 +259,9 @@ impl ItemLayerCache {
         let layers = self.get_in_use(stack, ticks, (renderer, tints));
         photon_render::gui::items::item_vertices(layers, x, y, out);
         let drawn = out.len() - first;
-        let foil = shows_foil(stack);
+        let foil = self.glint.shows(stack);
         if let (true, Some((matrix, texture))) = (foil, self.glint.moving) {
+            let matrix = self.glint.matrix_of(matrix);
             let glint = photon_render::gui::items::glint_vertices(
                 &out[first..],
                 &matrix,
@@ -381,7 +441,7 @@ impl ItemLayerCache {
         if photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
             .removes(photon_data::item::component_types::ITEM_MODEL)
         {
-            self.glint.decal = None;
+            self.glint.set_foil(None, StackFoil::Standard);
             return &[];
         }
         let context = self.context;
@@ -426,10 +486,8 @@ impl ItemLayerCache {
             variants.len() - 1
         };
         let layers = &variants[index].1;
-        self.glint.decal = (self.glint.moving.is_some()
-            && has_special_foil(stack.item_registry_id(), self.glint.tags.as_deref()))
-        .then(|| photon_render::objects::item::foil_decal_corners(layers, foil_pose_scale(context)))
-        .filter(|corners| !corners.is_empty());
+        self.glint
+            .follow_layers(layers, (stack.item_registry_id(), context));
         layers
     }
 }
@@ -509,5 +567,26 @@ mod special_foil_tests {
         assert!(has_special_foil(clock, Some(&without)));
         assert!(has_special_foil(clock, None));
         assert!(!has_special_foil(compass, None));
+    }
+}
+
+#[cfg(test)]
+mod entity_foil_tests {
+    use super::*;
+
+    #[test]
+    fn a_shield_or_trident_glint_moves_with_the_entity_matrix_and_the_rest_with_the_items() {
+        let mut glint = Glint {
+            entity_matrix: [2.0; 16],
+            ..Glint::default()
+        };
+        glint.set_foil(None, StackFoil::Entity(vec![[0.25, 0.5]]));
+        assert_eq!(glint.matrix_of([1.0; 16]), [2.0; 16]);
+        assert_eq!(glint.decal, Some(vec![[0.25, 0.5]]));
+        assert!(!glint.hidden);
+        glint.set_foil(None, StackFoil::None);
+        assert!(glint.hidden && glint.decal.is_none());
+        glint.set_foil(None, StackFoil::Standard);
+        assert_eq!(glint.matrix_of([1.0; 16]), [1.0; 16]);
     }
 }

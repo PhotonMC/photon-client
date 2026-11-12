@@ -73,29 +73,108 @@ pub(crate) fn is_decorated_pot_state(state_id: BlockStateId) -> bool {
 }
 
 /// `PotDecorations.CODEC` of a pot's `sherds`: the items set in its back, left, right and front
-/// (a brick is no decoration); none for a tag that has no list of items.
+/// (a brick is no decoration); none for a tag whose `sherds` does not decode. 26.2 stores a list
+/// of at most four items; 26.3 a compound with an optional item stack template for each side (a
+/// bare item name, or a compound with the item's `id` and a `count` of 1 to 99).
 pub(super) fn pot_sherds(tag: &[u8]) -> [Option<String>; 4] {
     use photon_core::nbt::FieldValue;
     let mut input = tag;
     let Ok(Some(fields)) = photon_core::nbt::read_nbt(&mut input) else {
         return Default::default();
     };
-    let Some(FieldValue::List(items)) = fields
+    let Some(sherds) = fields
         .iter()
         .find(|field| field.key == "sherds")
         .map(|field| &field.value)
     else {
         return Default::default();
     };
+    let decoded = match sherds {
+        FieldValue::Compound(sides)
+            if photon_core::versions::rules()
+                .world
+                .pot_sherds_are_templates =>
+        {
+            template_sherds(sides)
+        }
+        FieldValue::List(items)
+            if !photon_core::versions::rules()
+                .world
+                .pot_sherds_are_templates =>
+        {
+            list_sherds(items)
+        }
+        _ => None,
+    };
+    decoded.unwrap_or_default()
+}
+
+/// Whether the name is an item of the registry (`Item.CODEC` fails on any other).
+fn is_item(name: &str) -> bool {
+    let Ok(full) = photon_core::identifier::Identifier::parse(name) else {
+        return false;
+    };
+    let full = full.as_string();
+    photon_data::item::registry::ITEMS
+        .iter()
+        .any(|item| item.name == full)
+}
+
+/// 26.2's list: up to four item names, a brick standing for a side with none; a longer list or an
+/// element that is no item fails the whole codec.
+fn list_sherds(items: &[photon_core::nbt::FieldValue]) -> Option<[Option<String>; 4]> {
+    use photon_core::nbt::FieldValue;
+    if items.len() > 4 {
+        return None;
+    }
     let mut sherds: [Option<String>; 4] = Default::default();
     for (slot, item) in sherds.iter_mut().zip(items) {
-        if let FieldValue::Str(name) = item
-            && name != "minecraft:brick"
-        {
+        let FieldValue::Str(name) = item else {
+            return None;
+        };
+        if !is_item(name) {
+            return None;
+        }
+        if name != "minecraft:brick" {
             *slot = Some(name.clone());
         }
     }
-    sherds
+    Some(sherds)
+}
+
+/// 26.3's compound: each side absent or an item stack template; a side that does not decode
+/// fails the whole codec. The template's components are not read.
+fn template_sherds(sides: &[photon_core::nbt::Field]) -> Option<[Option<String>; 4]> {
+    let mut sherds: [Option<String>; 4] = Default::default();
+    for (slot, key) in sherds.iter_mut().zip(["back", "left", "right", "front"]) {
+        let Some(side) = sides.iter().find(|field| field.key == key) else {
+            continue;
+        };
+        *slot = Some(template_item(&side.value)?);
+    }
+    Some(sherds)
+}
+
+/// The item of an `ItemStackTemplate.CODEC` value.
+fn template_item(value: &photon_core::nbt::FieldValue) -> Option<String> {
+    use photon_core::nbt::FieldValue;
+    let name = match value {
+        FieldValue::Str(name) => name,
+        FieldValue::Compound(fields) => {
+            if let Some(count) = fields.iter().find(|field| field.key == "count") {
+                let count = photon_core::nbt::numeric_nbt_value(&count.value)?;
+                if !(1..=99).contains(&count) {
+                    return None;
+                }
+            }
+            match &fields.iter().find(|field| field.key == "id")?.value {
+                FieldValue::Str(name) => name,
+                _ => return None,
+            }
+        }
+        _ => return None,
+    };
+    is_item(name).then(|| name.clone())
 }
 
 /// Whether a block state is a lectern's.
@@ -517,4 +596,68 @@ pub struct SignView<'a> {
     pub rotation: i32,
     /// The block entity's tag, which carries the text.
     pub tag: Option<&'a [u8]>,
+}
+
+#[cfg(test)]
+mod sherd_tests {
+    use super::*;
+    use photon_core::nbt::{Field, FieldValue};
+
+    fn text(name: &str) -> FieldValue {
+        FieldValue::Str(name.to_owned())
+    }
+
+    fn side(key: &str, value: FieldValue) -> Field {
+        Field {
+            key: key.to_owned(),
+            value,
+        }
+    }
+
+    #[test]
+    fn a_26_2_list_holds_up_to_four_items_and_a_brick_stands_for_none() {
+        let list = [
+            text("minecraft:brick"),
+            text("minecraft:arms_up_pottery_sherd"),
+        ];
+        assert_eq!(
+            list_sherds(&list),
+            Some([
+                None,
+                Some("minecraft:arms_up_pottery_sherd".to_owned()),
+                None,
+                None
+            ])
+        );
+        // A fifth item, or one that is no item, fails the whole codec.
+        assert_eq!(list_sherds(&vec![text("minecraft:brick"); 5]), None);
+        assert_eq!(list_sherds(&[text("minecraft:no_such_item")]), None);
+    }
+
+    #[test]
+    fn a_26_3_compound_gives_each_side_a_name_or_a_template_and_a_bad_side_fails_all() {
+        let template = FieldValue::Compound(vec![
+            side("id", text("minecraft:heart_pottery_sherd")),
+            side("count", FieldValue::Int(1)),
+        ]);
+        let sides = [
+            side("front", template),
+            side("left", text("minecraft:brick")),
+        ];
+        assert_eq!(
+            template_sherds(&sides),
+            Some([
+                None,
+                Some("minecraft:brick".to_owned()),
+                None,
+                Some("minecraft:heart_pottery_sherd".to_owned())
+            ])
+        );
+        let zero = FieldValue::Compound(vec![
+            side("id", text("minecraft:brick")),
+            side("count", FieldValue::Int(0)),
+        ]);
+        assert_eq!(template_sherds(&[side("back", zero)]), None);
+        assert_eq!(template_sherds(&[side("back", FieldValue::Int(3))]), None);
+    }
 }

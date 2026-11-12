@@ -96,6 +96,66 @@ fn limit_rows() -> Vec<Value> {
 }
 
 /// The atlases of the special models, the paintings, the particles and the sky.
+/// The sprites of the shield atlas (the missing texture and every shield texture, all 64 by 64),
+/// stitched as the game stitches it with no mip levels: a shield's glint reads its coordinates
+/// from this layout.
+fn shield_atlas_row() -> Value {
+    const NAMES: [&str; 45] = [
+        "base",
+        "border",
+        "bricks",
+        "circle",
+        "creeper",
+        "cross",
+        "curly_border",
+        "diagonal_left",
+        "diagonal_right",
+        "diagonal_up_left",
+        "diagonal_up_right",
+        "flower",
+        "flow",
+        "globe",
+        "gradient",
+        "gradient_up",
+        "guster",
+        "half_horizontal_bottom",
+        "half_horizontal",
+        "half_vertical",
+        "half_vertical_right",
+        "mojang",
+        "piglin",
+        "rhombus",
+        "shield_base_nopattern",
+        "shield_base",
+        "skull",
+        "small_stripes",
+        "square_bottom_left",
+        "square_bottom_right",
+        "square_top_left",
+        "square_top_right",
+        "straight_cross",
+        "stripe_bottom",
+        "stripe_center",
+        "stripe_downleft",
+        "stripe_downright",
+        "stripe_left",
+        "stripe_middle",
+        "stripe_right",
+        "stripe_top",
+        "triangle_bottom",
+        "triangles_bottom",
+        "triangles_top",
+        "triangle_top",
+    ];
+    let mut listed = vec![sprite("minecraft:missingno", 16, 16)];
+    listed.extend(NAMES.iter().map(|name| sprite(&format!("minecraft:entity/shield/{name}"), 64, 64)));
+    row(
+        "shield-patterns-atlas",
+        &listed,
+        &Atlas { max_width: 16384, max_height: 16384, mip_level: 0, anisotropy_bit: 0 },
+    )
+}
+
 fn special_atlases() -> Vec<Value> {
     let hex = |text: &str| text.bytes().map(|byte| format!("{byte:02x}")).collect::<String>();
     let file = |id: &str, text: &str| json!({"id": id, "hex": hex(text)});
@@ -124,7 +184,7 @@ fn special_atlases() -> Vec<Value> {
 }
 
 pub fn cases() -> Vec<Value> {
-    let rows = [ordering_rows(), limit_rows()].concat();
+    let rows = [ordering_rows(), limit_rows(), vec![shield_atlas_row()]].concat();
     // The sprites the game's own definition of the GUI atlas lists, which the stitcher then places.
     let hex = |text: &str| text.bytes().map(|byte| format!("{byte:02x}")).collect::<String>();
     let file = |id: &str, text: &str| json!({"id": id, "hex": hex(text)});

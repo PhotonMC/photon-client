@@ -47,6 +47,7 @@ impl BlockRenderer {
                     mesh: model_mesh(&drawn, rect),
                     side_lit: false,
                     transform: None,
+                    foil: LayerFoil::None,
                 },
             ));
         }

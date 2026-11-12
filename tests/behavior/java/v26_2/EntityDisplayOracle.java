@@ -917,6 +917,8 @@ class EntityDisplayOracle extends EntityDataOracle {
         var renderType = kind.equals("item") ? net.minecraft.client.renderer.rendertype.RenderTypes.glint()
             : kind.equals("trimmed_armor") ? net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint()
             : kind.equals("shield") ? net.minecraft.client.renderer.rendertype.RenderTypes.entityGlint()
+            : kind.equals("patterned_shield") ? net.minecraft.client.renderer.rendertype.RenderTypes.entityGlint()
+            : kind.equals("item_translucent") ? net.minecraft.client.renderer.rendertype.RenderTypes.glintTranslucent()
             : net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();
         var renderTypeState = Reflect.field(net.minecraft.client.renderer.rendertype.RenderType.class, "state");
         var setup = renderTypeState.get(renderType);
@@ -933,7 +935,8 @@ class EntityDisplayOracle extends EntityDataOracle {
         result.addProperty("values", text.toString());
         var blend = pipeline.getColorTargetState().blendFunction();
         result.addProperty("blend", blend.isEmpty() ? "NONE"
-            : blend.get().equals(com.mojang.blaze3d.pipeline.BlendFunction.GLINT) ? "GLINT" : "OTHER");
+            : blend.get().equals(com.mojang.blaze3d.pipeline.BlendFunction.GLINT) ? "GLINT"
+            : blend.get().equals(com.mojang.blaze3d.pipeline.BlendFunction.TRANSLUCENT) ? "TRANSLUCENT" : "OTHER");
         result.addProperty("depth_test", pipeline.getDepthStencilState().depthTest().name());
         result.addProperty("depth_write", pipeline.getDepthStencilState().writeDepth());
         result.addProperty("cull", pipeline.isCull());

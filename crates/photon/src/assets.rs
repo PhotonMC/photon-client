@@ -225,6 +225,13 @@ impl photon_render::AssetSource for StackAssets {
         listed.is_empty() || listed.contains(&name.as_string())
     }
 
+    fn atlas_sprites(&self, atlas: &str) -> Vec<photon_core::identifier::Identifier> {
+        photon_render::atlas_sources::sprite_ids(&*self.stack, atlas)
+            .iter()
+            .filter_map(|id| photon_core::identifier::Identifier::parse(id).ok())
+            .collect()
+    }
+
     fn model(&self, name: &photon_core::identifier::Identifier) -> Option<String> {
         if name.namespace() == "minecraft" && name.path() == "builtin/missing" {
             return Some(MISSING_MODEL.to_owned());

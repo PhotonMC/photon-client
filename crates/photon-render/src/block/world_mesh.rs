@@ -39,9 +39,14 @@ pub struct BlockRenderer {
     pub skipped: Vec<(String, String)>,
     /// The sprites that models name and no atlas definition lists, drawn as the missing texture.
     pub unlisted: Vec<String>,
+    /// The sprites of the `shield_patterns` atlas and where its stitching puts them: what a
+    /// shield's glint takes its coordinates from.
+    pub(super) shield_rects: BTreeMap<String, [f32; 4]>,
 }
 
 mod conduit;
+mod entity_foil;
+pub use entity_foil::{LayerFoil, StackFoil, stack_foil};
 mod listing;
 pub use conduit::ConduitMeshes;
 mod fluid;

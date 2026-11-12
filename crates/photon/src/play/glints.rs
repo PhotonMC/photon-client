@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::equipment::item_layers::GlintFrame;
-use photon_render::render_types::{ITEM_GLINT_SCALE, ITEM_GLINT_TEXTURE};
+use photon_render::render_types::{ENTITY_GLINT_SCALE, ITEM_GLINT_SCALE, ITEM_GLINT_TEXTURE};
 
 impl Play {
     /// `GameRenderer`'s options state: the glint's speed and strength as the options hold them.
@@ -47,6 +47,7 @@ impl Play {
         self.set_needle_frame();
         GlintFrame {
             matrix: self.armor.glint_matrix_scaled(ITEM_GLINT_SCALE),
+            entity_matrix: self.armor.glint_matrix_scaled(ENTITY_GLINT_SCALE),
             texture: self.entity_textures.rect(ITEM_GLINT_TEXTURE),
             tags: self
                 .session

@@ -92,6 +92,7 @@ impl BlockRenderer {
             mesh,
             side_lit: model.gui_light == crate::model::GuiLight::Side,
             transform: model.display.get(context),
+            foil: LayerFoil::Standard,
         })
     }
 
@@ -118,6 +119,7 @@ impl BlockRenderer {
                 mesh,
                 side_lit: model.gui_light == crate::model::GuiLight::Side,
                 transform: model.display.get(context),
+                foil: super::entity_foil::special_foil(special, &part, &self.shield_rects),
             });
         }
         out
@@ -409,6 +411,8 @@ pub struct ItemLayer {
     pub side_lit: bool,
     /// The context's display transform; `None` is no transform.
     pub transform: Option<crate::model::ItemTransform>,
+    /// How the layer draws its glint.
+    pub foil: LayerFoil,
 }
 
 #[cfg(test)]

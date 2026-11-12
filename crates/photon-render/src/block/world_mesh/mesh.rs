@@ -22,15 +22,7 @@ impl BlockRenderer {
                     .and_then(|text| crate::block::blockstate::parse_block_state(&text))
             })
             .collect();
-        model_cache.prefetch(
-            source,
-            files
-                .iter()
-                .flatten()
-                .flat_map(variant_lists)
-                .flatten()
-                .map(|variant| variant.model.clone()),
-        );
+        prefetch_variant_models(source, &mut model_cache, &files);
         let frame_files = item_frame_files(source, &mut model_cache);
         let mut blockstates = BTreeMap::new();
         let mut models: BTreeMap<String, ResolvedModel> = BTreeMap::new();
@@ -85,6 +77,7 @@ impl BlockRenderer {
             atlas,
             skipped,
             unlisted,
+            shield_rects: super::entity_foil::shield_rects(source, bit),
         })
     }
 
@@ -185,6 +178,7 @@ impl BlockRenderer {
                 mesh,
                 side_lit: true,
                 transform: None,
+                foil: LayerFoil::Standard,
             },
             crate::entity::block::block_light_coords(info.light_emission, info.emissive_rendering),
         ))
@@ -524,6 +518,23 @@ pub(super) fn add_face(
         mesh.translucent_indices
             .extend([base, base + 3, base + 2, base, base + 2, base + 1]);
     }
+}
+
+/// Read the models every variant of every blockstate file names, in parallel.
+fn prefetch_variant_models(
+    source: &impl AssetSource,
+    cache: &mut crate::resolve::ModelCache,
+    files: &[Option<crate::block::blockstate::BlockStateFile>],
+) {
+    cache.prefetch(
+        source,
+        files
+            .iter()
+            .flatten()
+            .flat_map(variant_lists)
+            .flatten()
+            .map(|variant| variant.model.clone()),
+    );
 }
 
 /// The sprites named by no block model, so they are asked for by name: the fluid renderer's, the

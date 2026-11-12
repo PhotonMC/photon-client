@@ -50,6 +50,9 @@ rules! {
         /// The local player's own tick pushes it out of the blocks around it even while it rides
         /// a vehicle (26.2); from 26.3 a passenger is left alone.
         passenger_is_pushed_out_of_blocks: before V26_3,
+        /// A decorated pot's `sherds` tag is a compound with an item stack template for each side
+        /// (26.3); 26.2 stores a list of at most four item names, a brick for a side with none.
+        pot_sherds_are_templates: since V26_3,
         /// Swings use the older timing rules (before 26.3).
         legacy_swing: before V26_3,
         /// Using a shelf answers with a plain success, which swings (before 26.3).

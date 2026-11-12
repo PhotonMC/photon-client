@@ -919,6 +919,8 @@ class EntityDisplayOracle extends EntityDataOracle {
         var renderType = kind.equals("item") ? net.minecraft.client.renderer.rendertype.RenderTypes.itemCutoutGlint(net.minecraft.resources.Identifier.withDefaultNamespace("textures/misc/enchanted_glint_item.png"))
             : kind.equals("trimmed_armor") ? net.minecraft.client.renderer.rendertype.RenderTypes.trimmedArmorGlint()
             : kind.equals("shield") ? net.minecraft.client.renderer.rendertype.RenderTypes.entitySolidGlint(net.minecraft.resources.Identifier.withDefaultNamespace("textures/entity/trident.png"))
+            : kind.equals("patterned_shield") ? net.minecraft.client.renderer.rendertype.RenderTypes.patternedShieldGlint()
+            : kind.equals("item_translucent") ? net.minecraft.client.renderer.rendertype.RenderTypes.itemTranslucentGlint(net.minecraft.resources.Identifier.withDefaultNamespace("textures/misc/enchanted_glint_item.png"))
             : net.minecraft.client.renderer.rendertype.RenderTypes.armorCutoutNoCullGlint(net.minecraft.resources.Identifier.withDefaultNamespace("textures/misc/enchanted_glint_armor.png"));
         var renderTypeState = Reflect.field(net.minecraft.client.renderer.rendertype.RenderType.class, "state");
         var setup = renderTypeState.get(renderType);
@@ -935,7 +937,8 @@ class EntityDisplayOracle extends EntityDataOracle {
         result.addProperty("values", text.toString());
         var blend = pipeline.getColorTargetStates().get(0).blendFunction();
         result.addProperty("blend", blend.isEmpty() ? "NONE"
-            : blend.get().equals(com.mojang.renderpearl.api.pipeline.BlendFunction.GLINT) ? "GLINT" : "OTHER");
+            : blend.get().equals(com.mojang.renderpearl.api.pipeline.BlendFunction.GLINT) ? "GLINT"
+            : blend.get().equals(com.mojang.renderpearl.api.pipeline.BlendFunction.TRANSLUCENT) ? "TRANSLUCENT" : "OTHER");
         result.addProperty("depth_test", pipeline.getDepthStencilState().depthTest().name());
         result.addProperty("depth_write", Boolean.valueOf(pipeline.getDepthStencilState().writeDepth()));
         result.addProperty("cull", pipeline.isCull());
