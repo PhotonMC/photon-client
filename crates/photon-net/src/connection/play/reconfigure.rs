@@ -95,6 +95,7 @@ impl PlaySession {
             cookies: self.state.cookies.clone(),
             packs: self.state.packs.clone(),
             server_brand: self.state.server_brand.clone(),
+            server_address: self.state.server_address.clone(),
             custom_report_details: self.state.custom_report_details.clone(),
             // `CommonListenerCookie.serverLinks` goes on to the configuration listener.
             server_links: self.state.server_links.clone(),

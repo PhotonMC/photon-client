@@ -70,6 +70,15 @@ impl ModRuntime {
         }
     }
 
+    /// The server the mods come from, as the session knows it; the key of the player's answers.
+    /// Without one (none known) nothing is remembered and every question is asked again.
+    pub(crate) fn set_server(&mut self, server: Option<&str>) {
+        let server = server.unwrap_or_default();
+        if self.server != server {
+            server.clone_into(&mut self.server);
+        }
+    }
+
     /// The questions the player has not answered: mods held back until they are.
     #[cfg_attr(
         not(test),
@@ -312,6 +321,25 @@ mod tests {
         assert_eq!(
             hello,
             r#"{"v":1,"client":"P","loaded":[],"refused":[{"id":"m","reason":"fetch"}]}"#
+        );
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_grant_is_kept_for_the_server_the_session_names() {
+        let dir = scratch("keyed");
+        let mut mods = ModRuntime::default();
+        mods.set_server(Some("play.example.org:25565"));
+        mods.on_manifest(&manifest(r#""fs.mod_data""#), &dir);
+        mods.answer("m", true);
+        let kept = Consent::load(&dir);
+        assert!(
+            kept.answers("play.example.org:25565", &"ab".repeat(32))
+                .is_some()
+        );
+        assert!(
+            kept.answers("other.example.org:25565", &"ab".repeat(32))
+                .is_none()
         );
         let _ = std::fs::remove_dir_all(dir);
     }

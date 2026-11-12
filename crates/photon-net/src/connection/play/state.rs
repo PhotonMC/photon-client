@@ -195,6 +195,12 @@ impl PlaySession {
     }
 
     /// `ClientPacketListener.serverBrand`.
+    /// The address the player connected to, as `host:port` in lower case; after a transfer, the
+    /// address it was sent on to.
+    pub fn server_address(&self) -> Option<&str> {
+        self.state.server_address.as_deref()
+    }
+
     pub fn server_brand(&self) -> Option<&str> {
         self.state.server_brand.as_deref()
     }

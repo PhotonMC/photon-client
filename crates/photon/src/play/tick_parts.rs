@@ -107,6 +107,7 @@ impl Play {
 impl Play {
     /// The mods' part of a tick: the server's manifest, mods that finished loading, their tick.
     pub(super) fn tick_mods(&mut self) {
+        self.gui.mods.set_server(self.session.server_address());
         for (channel, data) in self.session.take_photon_payloads() {
             if channel != MODS_CHANNEL {
                 continue;

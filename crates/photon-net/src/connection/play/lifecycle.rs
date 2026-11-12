@@ -26,6 +26,13 @@ fn transfer_state(state: ConnectionState) -> ConnectionState {
     }
 }
 
+/// The address of a connection as `host:port` in lower case, the key of what the player allowed
+/// that server's mods: the host name the player used, else the IP.
+pub(super) fn server_key(address: SocketAddr, host: Option<&str>) -> String {
+    let name = host.map_or_else(|| address.ip().to_string(), str::to_owned);
+    format!("{}:{}", name.trim_end_matches('.'), address.port()).to_lowercase()
+}
+
 /// The version the next connection speaks. A server that sends the client on is one of the same
 /// network, so the version stays; any other is asked.
 fn connection_version(
@@ -379,6 +386,7 @@ impl PlaySession {
                 login_stage: carried.login_stage.clone(),
                 ..ConnectionState::default()
             };
+            state.server_address = Some(server_key(address, host.as_deref()));
             state.reach(crate::connection::state::stage::CONNECTING);
             state.version = connection_version(&carried, (address, host.as_deref()), timeout);
             let opened = open_play_connection(

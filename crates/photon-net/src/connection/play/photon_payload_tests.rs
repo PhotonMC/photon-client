@@ -34,6 +34,13 @@ fn payload(channel: &str, data: &[u8]) -> Vec<u8> {
 fn play_against(
     serve: impl FnOnce(Transport) + Send + 'static,
 ) -> (PlaySession, std::thread::JoinHandle<()>) {
+    play_against_state(ConnectionState::default(), serve)
+}
+
+fn play_against_state(
+    state: ConnectionState,
+    serve: impl FnOnce(Transport) + Send + 'static,
+) -> (PlaySession, std::thread::JoinHandle<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
     let address = listener.local_addr().expect("address");
     let server = std::thread::spawn(move || {
@@ -46,13 +53,7 @@ fn play_against(
         crate::connection::play::version_tests::registries(),
     );
     (
-        PlaySession::assemble(
-            stream,
-            None,
-            incoming,
-            ConnectionState::default(),
-            ("Tester", false),
-        ),
+        PlaySession::assemble(stream, None, incoming, state, ("Tester", false)),
         server,
     )
 }
@@ -98,5 +99,27 @@ fn the_hello_goes_to_the_server_as_a_serverbound_custom_payload() {
     session
         .send_photon_payload("photon:hello", b"{\"v\":1}")
         .expect("send");
+    server.join().expect("server");
+}
+
+#[test]
+fn the_server_key_is_the_name_the_player_used_with_its_port() {
+    use super::lifecycle::server_key;
+    let ip: SocketAddr = "203.0.113.7:25566".parse().expect("address");
+    assert_eq!(server_key(ip, None), "203.0.113.7:25566");
+    assert_eq!(
+        server_key(ip, Some("Play.Example.ORG.")),
+        "play.example.org:25566"
+    );
+}
+
+#[test]
+fn a_session_reports_the_address_its_state_carries() {
+    let state = ConnectionState {
+        server_address: Some("play.example.org:25565".to_owned()),
+        ..ConnectionState::default()
+    };
+    let (session, server) = play_against_state(state, |_| {});
+    assert_eq!(session.server_address(), Some("play.example.org:25565"));
     server.join().expect("server");
 }
