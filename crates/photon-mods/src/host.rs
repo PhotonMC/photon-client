@@ -80,7 +80,8 @@ pub const MAX_TEXT: usize = 256;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Caps {
     /// `events.tick`: the mod's `tick` is called each client tick. Without it the host never
-    /// calls the mod after it is loaded.
+    /// calls the mod after it is loaded, and its `tick` export is not needed. With it the export
+    /// is required, and a component without one is refused at load.
     pub tick: bool,
     /// `hud.text`: draw text on the screen.
     pub hud_text: bool,
@@ -264,9 +265,14 @@ impl Host {
         let instance = linker
             .instantiate(&mut store, &compiled.component)
             .map_err(load)?;
-        let tick = instance
-            .get_typed_func::<(), ()>(&mut store, "tick")
-            .map_err(load)?;
+        // The export is required exactly when the mod asked for `events.tick`; otherwise it is
+        // used if it happens to be there and never needed.
+        let tick = instance.get_typed_func::<(), ()>(&mut store, "tick");
+        let tick = if caps.tick {
+            Some(tick.map_err(load)?)
+        } else {
+            tick.ok()
+        };
         Ok(Mod {
             owner,
             store,
@@ -301,7 +307,7 @@ impl Drop for Host {
 pub struct Mod {
     owner: Owner,
     store: Store<ModState>,
-    tick: wasmtime::component::TypedFunc<(), ()>,
+    tick: Option<wasmtime::component::TypedFunc<(), ()>>,
     ticks_allowed: u64,
 }
 
@@ -330,14 +336,17 @@ impl Mod {
         self.store.data_mut().player = player;
     }
 
-    /// Runs the mod's `tick`; a call that outlasts its allowance is stopped.
+    /// Runs the mod's `tick`; a call that outlasts its allowance is stopped. A mod without the
+    /// export (it did not ask for `events.tick`) does nothing.
     pub fn tick(&mut self) -> Result<(), HostError> {
+        let Some(tick) = self.tick else {
+            return Ok(());
+        };
         if let Some(data) = &self.store.data().data {
             data.new_tick();
         }
         self.store.set_epoch_deadline(self.ticks_allowed);
-        self.tick
-            .call(&mut self.store, ())
+        tick.call(&mut self.store, ())
             .map_err(|e| HostError::Call(trap_name(&e)))
     }
 }

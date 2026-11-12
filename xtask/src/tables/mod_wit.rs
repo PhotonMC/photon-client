@@ -33,8 +33,9 @@ pub fn render(_: &Versions) -> Result<String, String> {
          // capabilities by name; the host refuses a component that imports a function whose\n\
          // capability it did not ask for, and no `wasi:*` import is linked. Each capability has a\n\
          // world, `cap-<name with dashes>`; a guest includes the worlds of the capabilities it asks\n\
-         // for, and `photon-mod` is all of them. The host requires the export `tick` of every mod,\n\
-         // and calls it only for a mod that asked for `events.tick`.\n",
+         // for, and `photon-mod` is all of them. The export `tick` is required exactly when the mod asks\n\
+         // for `events.tick` (world `cap-events-tick`); a mod without that capability needs no\n\
+         // `tick` and is never called.\n",
     );
     out.push_str(&format!("package {PACKAGE};\n"));
     for cap in CAPABILITIES {

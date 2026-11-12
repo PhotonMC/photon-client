@@ -30,6 +30,29 @@ fn an_empty_tick_returns() {
     assert_eq!(loaded.owner(), MOD);
 }
 
+const NO_TICK: &str = r#"(component
+  (core module $m (func (export "other")))
+  (core instance $i (instantiate $m)))"#;
+
+#[test]
+fn a_mod_without_events_tick_needs_no_tick_export() {
+    let host = Host::new().unwrap();
+    let mut loaded = with_caps(&host, NO_TICK, Caps::default()).unwrap();
+    assert!(loaded.tick().is_ok());
+}
+
+#[test]
+fn a_mod_with_events_tick_must_export_tick() {
+    let host = Host::new().unwrap();
+    let caps = Caps {
+        tick: true,
+        ..Caps::default()
+    };
+    let refused = with_caps(&host, NO_TICK, caps);
+    assert!(matches!(refused, Err(HostError::Load(_))));
+    assert!(with_caps(&host, EMPTY, caps).is_ok());
+}
+
 #[test]
 fn an_import_that_was_not_granted_is_refused() {
     let host = Host::new().unwrap();
