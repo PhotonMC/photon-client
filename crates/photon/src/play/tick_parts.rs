@@ -105,6 +105,22 @@ impl Play {
 }
 
 impl Play {
+    /// What mods with `player.state` read: the local player, zeros before there is one.
+    fn player_view(&self) -> photon_mods::PlayerView {
+        let Some(player) = self.session.player() else {
+            return photon_mods::PlayerView::default();
+        };
+        let (position, (yaw, pitch)) = (player.position(), player.rotation());
+        photon_mods::PlayerView {
+            x: position.x,
+            y: position.y,
+            z: position.z,
+            health: player.health(),
+            yaw,
+            pitch,
+        }
+    }
+
     /// The player's answers reach the mods, and the next mod waiting for one is asked about.
     fn ask_about_mods(&mut self) {
         for (id, granted) in std::mem::take(&mut self.controls.game_link.mod_answers) {
@@ -140,6 +156,7 @@ impl Play {
             game_time: self.session.game_time(),
             day_time: self.sky.clock_ticks(&self.session),
         });
+        self.gui.mods.runtime.set_player(self.player_view());
         let sounds = self.gui.mods.runtime.tick();
         for effect in sounds {
             if let (

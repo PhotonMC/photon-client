@@ -18,4 +18,4 @@ pub use owner::Owner;
 pub use registry::{Registries, Registry};
 pub use sets::{FrameSet, TickSet};
 pub use update::{ServerNeedsNewerVersion, UpdateChanged, UpdateForServer, UpdateState};
-pub use world::WorldView;
+pub use world::{PlayerView, WorldView};

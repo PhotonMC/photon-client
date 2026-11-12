@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use photon_api::{Owner, WorldView};
+use photon_api::{Owner, PlayerView, WorldView};
 
 use crate::data::{DataError, ModData};
 use wasmtime::StoreContextMut;
@@ -89,6 +89,8 @@ pub struct Caps {
     pub sound: bool,
     /// `game.time`: read the level's tick count and day time.
     pub game_time: bool,
+    /// `player.state`: read the local player's place, health and look.
+    pub player: bool,
     /// `fs.mod_data`: a private key-value store. The player must have allowed it, and the mod
     /// must be given its [`ModData`] when it is instantiated.
     pub mod_data: bool,
@@ -99,6 +101,7 @@ pub struct Caps {
 pub struct ModState {
     data: Option<ModData>,
     world: WorldView,
+    player: PlayerView,
     effects: Vec<Effect>,
     dropped: u32,
 }
@@ -323,6 +326,11 @@ impl Mod {
         self.store.data_mut().world = world;
     }
 
+    /// What the mod reads of the local player during its next tick.
+    pub fn set_player(&mut self, player: PlayerView) {
+        self.store.data_mut().player = player;
+    }
+
     /// Runs the mod's `tick`; a call that outlasts its allowance is stopped.
     pub fn tick(&mut self) -> Result<(), HostError> {
         if let Some(data) = &self.store.data().data {
@@ -376,6 +384,9 @@ fn grant_caps(linker: &mut Linker<ModState>, caps: Caps) -> wasmtime::Result<()>
     if caps.mod_data {
         grant_data(linker)?;
     }
+    if caps.player {
+        grant_player(linker)?;
+    }
     if caps.sound {
         linker.root().func_wrap(
             "play-sound",
@@ -391,6 +402,30 @@ fn grant_caps(linker: &mut Linker<ModState>, caps: Caps) -> wasmtime::Result<()>
             },
         )?;
     }
+    Ok(())
+}
+
+/// The reads of `player.state`: each returns the value the tick started with.
+fn grant_player(linker: &mut Linker<ModState>) -> wasmtime::Result<()> {
+    let root = &mut linker.root();
+    root.func_wrap("player-x", |cx: StoreContextMut<'_, ModState>, ()| {
+        Ok((cx.data().player.x,))
+    })?;
+    root.func_wrap("player-y", |cx: StoreContextMut<'_, ModState>, ()| {
+        Ok((cx.data().player.y,))
+    })?;
+    root.func_wrap("player-z", |cx: StoreContextMut<'_, ModState>, ()| {
+        Ok((cx.data().player.z,))
+    })?;
+    root.func_wrap("player-health", |cx: StoreContextMut<'_, ModState>, ()| {
+        Ok((cx.data().player.health,))
+    })?;
+    root.func_wrap("player-yaw", |cx: StoreContextMut<'_, ModState>, ()| {
+        Ok((cx.data().player.yaw,))
+    })?;
+    root.func_wrap("player-pitch", |cx: StoreContextMut<'_, ModState>, ()| {
+        Ok((cx.data().player.pitch,))
+    })?;
     Ok(())
 }
 
