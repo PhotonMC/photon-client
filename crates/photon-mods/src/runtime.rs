@@ -6,7 +6,9 @@ use std::time::{Duration, Instant};
 
 use photon_api::Owner;
 
-use crate::{Caps, Compiled, Effect, Host, HostError, Mod, WorldView};
+use std::path::PathBuf;
+
+use crate::{Caps, Compiled, DataWriter, Effect, Host, HostError, Mod, ModData, WorldView};
 
 /// What a tick of one mod may take before it is stopped.
 const ALLOWANCE: Duration = Duration::from_millis(20);
@@ -37,6 +39,8 @@ struct Loaded {
     /// The text it drew in the last tick it ran.
     hud: Vec<HudLine>,
     module: Mod,
+    /// The mod's store and the file it is saved to, if it has `fs.mod_data`.
+    data: Option<(PathBuf, ModData)>,
 }
 
 #[derive(Default)]
@@ -49,14 +53,22 @@ pub struct Runtime {
     world: WorldView,
     /// The text the mods asked for in the last tick.
     pub hud: Vec<HudLine>,
+    /// Saves the mods' stores; started with the first mod that has one.
+    writer: Option<DataWriter>,
 }
 
 /// The capabilities `asked` names, if every one of them is granted.
 pub fn grant(asked: &[String]) -> Option<Caps> {
+    grant_with(asked, false)
+}
+
+/// [`grant`], with `fs.mod_data` too when the app has a store to give (the player allowed it).
+fn grant_with(asked: &[String], stored: bool) -> Option<Caps> {
     asked
         .iter()
-        .all(|cap| GRANTED.contains(&cap.as_str()))
+        .all(|cap| GRANTED.contains(&cap.as_str()) || (stored && cap == "fs.mod_data"))
         .then(|| Caps {
+            mod_data: stored && asked.iter().any(|cap| cap == "fs.mod_data"),
             tick: asked.iter().any(|cap| cap == "events.tick"),
             hud_text: asked.iter().any(|cap| cap == "hud.text"),
             sound: asked.iter().any(|cap| cap == "sound.play"),
@@ -68,6 +80,7 @@ impl Runtime {
     /// Unloads every mod that is not in `wanted` (id and hash): a mod the server dropped, or
     /// updated, goes, and its slot is free for the new one.
     pub fn keep_only(&mut self, wanted: &[(&str, &str)]) {
+        self.save_data();
         self.loaded
             .retain(|m| wanted.contains(&(m.id.as_str(), m.hash.as_str())));
     }
@@ -111,25 +124,73 @@ impl Runtime {
     /// first, so its slot is free for the new one.
     pub fn load_compiled(
         &mut self,
-        (id, hash): (&str, &str),
+        mod_id: (&str, &str),
         asked: &[String],
         compiled: &Compiled,
     ) -> Result<(), HostError> {
-        let caps = grant(asked)
+        self.load_stored(mod_id, asked, compiled, None)
+    }
+
+    /// [`Runtime::load_compiled`] for a mod the player allowed `fs.mod_data`: its store is read
+    /// from `store` (an empty one if there is no file) and saved there as the mod changes it.
+    /// A mod that asks for `fs.mod_data` without a `store` is refused.
+    pub fn load_stored(
+        &mut self,
+        (id, hash): (&str, &str),
+        asked: &[String],
+        compiled: &Compiled,
+        store: Option<PathBuf>,
+    ) -> Result<(), HostError> {
+        let caps = grant_with(asked, store.is_some())
             .ok_or_else(|| HostError::Load(format!("{id} asks for more than it may have")))?;
         let owner = Owner::dynamic(id).ok_or_else(|| HostError::Load("too many mods".into()))?;
+        self.save_data();
         self.loaded.retain(|m| m.id != id);
-        let module = self
-            .host()?
-            .instantiate(owner, compiled, (&[], caps), ALLOWANCE)?;
+        let data = store
+            .filter(|_| caps.mod_data)
+            .map(|path| (ModData::load(&path), path));
+        let module = self.host()?.instantiate_with_data(
+            owner,
+            compiled,
+            (&[], caps),
+            data.as_ref().map(|(data, _)| data.clone()),
+            ALLOWANCE,
+        )?;
         self.loaded.push(Loaded {
             id: id.to_owned(),
             hash: hash.to_owned(),
             ticks: caps.tick,
             hud: Vec::new(),
             module,
+            data: data.map(|(data, path)| (path, data)),
         });
+        // A start function may have written already.
+        self.save_data();
         Ok(())
+    }
+
+    /// Hands what the mods changed in their stores to the writer thread, which saves it; never
+    /// waits for the disk.
+    pub fn save_data(&mut self) {
+        let changed: Vec<(PathBuf, Vec<u8>)> = self
+            .loaded
+            .iter()
+            .filter_map(|m| m.data.as_ref())
+            .filter_map(|(path, data)| Some((path.clone(), data.take_changes()?)))
+            .collect();
+        if changed.is_empty() {
+            return;
+        }
+        if self.writer.is_none() {
+            self.writer = DataWriter::new().ok();
+        }
+        let Some(writer) = &self.writer else {
+            log::warn!("mod data is not saved: no thread to write it");
+            return;
+        };
+        for (path, bytes) in changed {
+            writer.submit(path, bytes);
+        }
     }
 
     /// One client tick of every mod that asked for `events.tick`, within [`TICK_BUDGET`]. A mod
@@ -168,6 +229,8 @@ impl Runtime {
             }
             next = (index + 1) % count;
         }
+        // What the mods stored this tick goes to the writer before a failed mod is dropped.
+        self.save_data();
         // Dropped mods shift the ones behind them, and the cursor with them.
         let before = failed.iter().filter(|&&index| index < next).count();
         let mut position = 0;
@@ -188,6 +251,14 @@ impl Runtime {
     /// The id of the mod that runs first in the next tick.
     pub fn next_up(&self) -> Option<&str> {
         self.loaded.get(self.cursor).map(|m| m.id.as_str())
+    }
+}
+
+impl Drop for Runtime {
+    /// What the mods stored since the last tick is saved before the writer thread is stopped,
+    /// which finishes what it has queued.
+    fn drop(&mut self) {
+        self.save_data();
     }
 }
 
@@ -222,5 +293,7 @@ fn run_one(m: &mut Loaded, world: WorldView, sounds: &mut Vec<Effect>) -> bool {
     true
 }
 
+#[cfg(test)]
+mod data_tests;
 #[cfg(test)]
 mod tests;

@@ -39,11 +39,11 @@ fn is_local(capability: &str) -> bool {
     photon_mods::GRANTED.contains(&capability)
 }
 
-/// The capabilities of `entry` the host links imports for: those the client grants itself. The
-/// ones the player was asked about (`fs.mod_data`) have no import yet, so they link nothing.
+/// The capabilities of `entry` the host links imports for: those the client grants itself, and
+/// `fs.mod_data` when the entry is being loaded (so the player allowed it).
 fn linked(entry: &ModEntry) -> Vec<String> {
-    let local = entry.caps.iter().filter(|cap| is_local(cap));
-    local.cloned().collect()
+    let wanted = |cap: &&String| is_local(cap) || cap.as_str() == "fs.mod_data";
+    entry.caps.iter().filter(wanted).cloned().collect()
 }
 
 impl ModRuntime {
@@ -205,9 +205,16 @@ impl ModRuntime {
         };
         for entry in self.sync.fetched(hash, outcome) {
             let Some(compiled) = &compiled else { continue };
-            let loaded =
-                self.runtime
-                    .load_compiled((&entry.id, &entry.hash), &linked(&entry), compiled);
+            let store = self
+                .consent
+                .as_ref()
+                .map(|(_, dir)| photon_mods::data_path(dir, &self.server, &entry.id));
+            let loaded = self.runtime.load_stored(
+                (&entry.id, &entry.hash),
+                &linked(&entry),
+                compiled,
+                store,
+            );
             if let Err(error) = loaded {
                 log::warn!("mod {} not loaded: {error}", entry.id);
                 self.sync.load_failed(&entry.id, Reason::Load);
@@ -417,6 +424,43 @@ mod tests {
         let mut later = on_server();
         later.on_manifest(&manifest(r#""fs.mod_data""#), &dir);
         assert!(later.questions().is_empty());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    const DATA_MOD: &str = r#"(component
+  (import "data-set" (func $set (param "key" string) (param "value" (list u8)) (result u32)))
+  (core module $mem (memory (export "mem") 1) (data (i32.const 0) "kv"))
+  (core instance $m (instantiate $mem))
+  (core func $set_l (canon lower (func $set) (memory (core memory $m "mem"))))
+  (core module $code
+    (import "h" "set" (func (param i32 i32 i32 i32) (result i32)))
+    (func (export "tick")
+      (drop (call 0 (i32.const 0) (i32.const 1) (i32.const 1) (i32.const 1)))))
+  (core instance $i (instantiate $code (with "h" (instance (export "set" (func $set_l))))))
+  (func (export "tick") (canon lift (core func $i "tick"))))"#;
+
+    #[test]
+    fn a_mod_the_player_allowed_keeps_its_data_in_a_file_of_the_server_and_the_mod() {
+        let dir = scratch("data");
+        let bytes = DATA_MOD.as_bytes();
+        ModCache::new(dir.join("cache").join("mods"))
+            .put(&mods::hash_of(bytes), bytes)
+            .expect("cache");
+        let mut mods = on_server();
+        mods.hello("P");
+        let manifest = manifest_of("store", bytes, r#""events.tick","fs.mod_data""#);
+        mods.on_manifest(&manifest, &dir);
+        assert_eq!(mods.questions().len(), 1);
+        mods.answer("store", true);
+        settle_all_pending(&mut mods);
+        assert_eq!(mods.runtime.ids(), ["store"]);
+        mods.runtime.tick();
+        drop(mods);
+        let path = photon_mods::data_path(&dir, "play.example.org:25565", "store");
+        assert_eq!(
+            photon_mods::ModData::load(&path).get("k"),
+            Some(b"v".to_vec())
+        );
         let _ = std::fs::remove_dir_all(dir);
     }
 

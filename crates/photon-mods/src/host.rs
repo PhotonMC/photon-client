@@ -4,6 +4,8 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 use photon_api::{Owner, WorldView};
+
+use crate::data::{DataError, ModData};
 use wasmtime::StoreContextMut;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine, InstanceAllocationStrategy, PoolingAllocationConfig, Store};
@@ -87,11 +89,15 @@ pub struct Caps {
     pub sound: bool,
     /// `game.time`: read the level's tick count and day time.
     pub game_time: bool,
+    /// `fs.mod_data`: a private key-value store. The player must have allowed it, and the mod
+    /// must be given its [`ModData`] when it is instantiated.
+    pub mod_data: bool,
 }
 
 /// What a mod's store holds: the effects of the tick that is running.
 #[derive(Default)]
 pub struct ModState {
+    data: Option<ModData>,
     world: WorldView,
     effects: Vec<Effect>,
     dropped: u32,
@@ -216,7 +222,20 @@ impl Host {
         &self,
         owner: Owner,
         compiled: &Compiled,
+        grants: (&[(&str, u32)], Caps),
+        allowance: Duration,
+    ) -> Result<Mod, HostError> {
+        self.instantiate_with_data(owner, compiled, grants, None, allowance)
+    }
+
+    /// [`Host::instantiate`] for a mod that may keep data: `data` is what its `fs.mod_data`
+    /// imports read and write, which the caller saves.
+    pub fn instantiate_with_data(
+        &self,
+        owner: Owner,
+        compiled: &Compiled,
         (grants, caps): (&[(&str, u32)], Caps),
+        data: Option<ModData>,
         allowance: Duration,
     ) -> Result<Mod, HostError> {
         self.ensure_clock()?;
@@ -230,7 +249,13 @@ impl Host {
                 .map_err(load)?;
         }
         grant_caps(&mut linker, caps).map_err(load)?;
-        let mut store = Store::new(&self.engine, ModState::default());
+        let mut store = Store::new(
+            &self.engine,
+            ModState {
+                data,
+                ..ModState::default()
+            },
+        );
         // The clock is already running: a start function gets the same allowance as a tick.
         // The deadline is set before the instance exists, never after.
         store.set_epoch_deadline(ticks_allowed);
@@ -300,6 +325,9 @@ impl Mod {
 
     /// Runs the mod's `tick`; a call that outlasts its allowance is stopped.
     pub fn tick(&mut self) -> Result<(), HostError> {
+        if let Some(data) = &self.store.data().data {
+            data.new_tick();
+        }
         self.store.set_epoch_deadline(self.ticks_allowed);
         self.tick
             .call(&mut self.store, ())
@@ -345,6 +373,9 @@ fn grant_caps(linker: &mut Linker<ModState>, caps: Caps) -> wasmtime::Result<()>
                 Ok((cx.data().world.day_time,))
             })?;
     }
+    if caps.mod_data {
+        grant_data(linker)?;
+    }
     if caps.sound {
         linker.root().func_wrap(
             "play-sound",
@@ -360,6 +391,38 @@ fn grant_caps(linker: &mut Linker<ModState>, caps: Caps) -> wasmtime::Result<()>
             },
         )?;
     }
+    Ok(())
+}
+
+/// `data-get`, `data-set` and `data-delete` of `fs.mod_data`. A key that is not valid reads
+/// nothing; `data-set` answers 0 or a [`DataError`] code.
+fn grant_data(linker: &mut Linker<ModState>) -> wasmtime::Result<()> {
+    linker.root().func_wrap(
+        "data-get",
+        |cx: StoreContextMut<'_, ModState>, (key,): (String,)| {
+            Ok((cx.data().data.as_ref().and_then(|data| data.get(&key)),))
+        },
+    )?;
+    linker.root().func_wrap(
+        "data-set",
+        |cx: StoreContextMut<'_, ModState>, (key, value): (String, Vec<u8>)| {
+            let code = match &cx.data().data {
+                Some(data) => data.set(&key, &value).err().map_or(0, |e| e as u32),
+                None => DataError::Unavailable as u32,
+            };
+            Ok((code,))
+        },
+    )?;
+    linker.root().func_wrap(
+        "data-delete",
+        |cx: StoreContextMut<'_, ModState>, (key,): (String,)| {
+            Ok((cx
+                .data()
+                .data
+                .as_ref()
+                .is_some_and(|data| data.delete(&key)),))
+        },
+    )?;
     Ok(())
 }
 
