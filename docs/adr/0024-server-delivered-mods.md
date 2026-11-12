@@ -28,3 +28,7 @@
 `item_model` naming a registry item works live, definition ids that exist only in a pack (`items/<namespace>/<name>.json`) work live too; an id nothing defines draws the missing model (a full cube with the missing texture on every face), checked live (a cube in the hand, the missing texture in the hotbar), not yet against Java
 
 Capabilities that touch the player's machine or data (first `fs.mod_data`) need a prompt before the mod loads. The prompt shows the server name, the mod name, its hash and the capability, and the answer is remembered per server and mod hash. Game-local capabilities load without a prompt.
+
+## Addendum (2026-11-12): tick budget
+
+All mods together get 4 ms of each client tick (ADR 0006 gives no total); the per-mod allowance stays 20 ms, so one overrunning mod can pass the total by up to that much before it is stopped and unloaded. Mods that did not get to run wait and run first in the next tick, in a fixed turn order, and keep the text they last drew meanwhile. At least one mod runs every tick.

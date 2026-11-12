@@ -163,3 +163,92 @@ fn an_unknown_capability_refuses_the_mod_but_not_the_others() {
     );
     assert_eq!(runtime.ids(), ["ok"]);
 }
+
+const ENDLESS: &str = r#"(component
+  (core module $m (func (export "tick") (loop br 0)))
+  (core instance $i (instantiate $m))
+  (func (export "tick") (canon lift (core func $i "tick"))))"#;
+
+fn tick_cap() -> Vec<String> {
+    caps(&["events.tick", "hud.text", "sound.play"])
+}
+
+#[test]
+fn a_spent_budget_defers_the_rest_and_they_go_first_next_tick() {
+    let mut runtime = Runtime::default();
+    for id in ["a", "b", "c"] {
+        runtime
+            .load((id, "h"), &tick_cap(), HUD.as_bytes())
+            .expect(id);
+    }
+    // A zero budget lets exactly one mod run per tick, in turn.
+    let mut order = Vec::new();
+    for _ in 0..6 {
+        order.push(runtime.next_up().unwrap().to_owned());
+        let report = runtime.tick_within(Duration::ZERO);
+        assert_eq!((report.ran, report.deferred), (1, 2));
+    }
+    assert_eq!(order, ["a", "b", "c", "a", "b", "c"]);
+    // A generous budget runs everyone.
+    let report = runtime.tick_within(Duration::from_secs(60));
+    assert_eq!((report.ran, report.deferred), (3, 0));
+    assert_eq!(report.sounds.len(), 3);
+    assert_eq!(runtime.hud.len(), 3);
+}
+
+#[test]
+fn a_mod_that_waits_keeps_its_text() {
+    let mut runtime = Runtime::default();
+    for id in ["a", "b"] {
+        runtime
+            .load((id, "h"), &tick_cap(), HUD.as_bytes())
+            .expect(id);
+    }
+    runtime.tick_within(Duration::from_secs(60));
+    assert_eq!(runtime.hud.len(), 2);
+    runtime.tick_within(Duration::ZERO);
+    assert_eq!(runtime.hud.len(), 2, "the mod that waited did not blink");
+}
+
+#[test]
+fn slow_mods_cannot_stall_a_tick_and_do_not_starve_the_cheap_ones() {
+    let mut runtime = Runtime::default();
+    let tick_only = caps(&["events.tick"]);
+    for n in 0..5 {
+        let id = format!("slow{n}");
+        runtime
+            .load((&id, "h"), &tick_only, ENDLESS.as_bytes())
+            .expect("slow");
+    }
+    runtime
+        .load(("cheap", "h"), &tick_cap(), HUD.as_bytes())
+        .expect("cheap");
+    let mut ticks = 0;
+    while runtime.ids().iter().any(|id| id.starts_with("slow")) {
+        let before = std::time::Instant::now();
+        runtime.tick_within(Duration::from_millis(4));
+        // One overrunning mod is cut at its own allowance; the others wait.
+        assert!(before.elapsed() < Duration::from_secs(5));
+        ticks += 1;
+        assert!(ticks <= 6, "every slow mod is unloaded after its one run");
+    }
+    assert_eq!(runtime.ids(), ["cheap"]);
+    runtime.tick_within(Duration::from_millis(4));
+    assert_eq!(runtime.hud.len(), 1);
+}
+
+#[test]
+fn a_failing_mod_does_not_make_the_cursor_skip_the_next_one() {
+    let mut runtime = Runtime::default();
+    runtime
+        .load(("bad", "h"), &caps(&["events.tick"]), TRAPS.as_bytes())
+        .expect("bad");
+    runtime
+        .load(("good", "h"), &tick_cap(), HUD.as_bytes())
+        .expect("good");
+    let report = runtime.tick_within(Duration::ZERO);
+    assert_eq!(report.ran, 0);
+    assert_eq!(runtime.ids(), ["good"]);
+    assert_eq!(runtime.next_up(), Some("good"));
+    assert_eq!(runtime.tick_within(Duration::ZERO).ran, 1);
+}
