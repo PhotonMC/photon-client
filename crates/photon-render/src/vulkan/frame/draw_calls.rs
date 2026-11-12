@@ -156,11 +156,12 @@ impl VulkanBackend {
         if sampled != Sampled::Unbound && set.is_none() {
             return;
         }
-        let mut push = [0.0_f32; 47];
+        let mut push = [0.0_f32; 48];
         push[..40].copy_from_slice(&base[..40]);
         push[44] = base[44];
         push[45] = base[45];
-        push[46] = self.glint_strength;
+        push[46] = self.glint.strength;
+        push[47] = f32::from(u8::from(self.glint.in_base_draw));
         let bytes = match run {
             Run::Ground
             | Run::GroundTranslucent
@@ -180,8 +181,9 @@ impl VulkanBackend {
                 push[17] = extent.height as f32;
                 184
             }
-            // The glint shader reads its strength after the boss's two values.
-            Run::Glint | Run::HandGlint => 188,
+            // The glint shader reads its strength and its version's fog rule after the boss's
+            // two values.
+            Run::Glint | Run::HandGlint => 192,
             _ => 184,
         };
         // SAFETY: recording (see `# Safety`); the pipeline, set and buffer belong to `scene` and
@@ -221,11 +223,12 @@ impl VulkanBackend {
         if draws.batches.is_empty() {
             return;
         }
-        let mut push = [0.0_f32; 47];
+        let mut push = [0.0_f32; 48];
         push[..40].copy_from_slice(&base[..40]);
         push[44] = base[44];
         push[45] = base[45];
-        push[46] = self.glint_strength;
+        push[46] = self.glint.strength;
+        push[47] = f32::from(u8::from(self.glint.in_base_draw));
         // SAFETY: recording (see `# Safety`); the pipeline, set and both buffers are live, and each
         // batch lies in the buffers the frame was handed.
         unsafe {
@@ -383,7 +386,7 @@ impl VulkanBackend {
         let (Some(buffer), Some(set)) = (list.buffer.as_ref(), set) else {
             return;
         };
-        let mut push = [0.0_f32; 47];
+        let mut push = [0.0_f32; 48];
         push[..40].copy_from_slice(&base[..40]);
         push[44] = base[44];
         push[45] = base[45];

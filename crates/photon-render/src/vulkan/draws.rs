@@ -2,6 +2,24 @@
 
 use super::*;
 
+/// How the enchantment glints are drawn: `glintStrength` (how bright), and whether the version
+/// played draws a glint as part of its surface's own draw, which fogs it with the surface (see
+/// `glint.frag`).
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct GlintState {
+    pub(super) strength: f32,
+    pub(super) in_base_draw: bool,
+}
+
+impl Default for GlintState {
+    fn default() -> Self {
+        Self {
+            strength: 0.75,
+            in_base_draw: false,
+        }
+    }
+}
+
 /// A kind of draw whose triangles the caller hands over each frame as [`Vertex`] values, and
 /// [`VulkanBackend::set_draw`] takes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -321,7 +339,13 @@ impl VulkanBackend {
 
     /// `glintStrength` (`Options.glintStrength`), what the glints are scaled by.
     pub fn set_glint_strength(&mut self, strength: f32) {
-        self.glint_strength = strength;
+        self.glint.strength = strength;
+    }
+
+    /// Whether the glint is part of its surface's own draw (`RenderPipelines.ITEM_CUTOUT_GLINT`
+    /// and its kin, since 26.3) rather than a pass of its own over it.
+    pub fn set_glint_in_base_draw(&mut self, merged: bool) {
+        self.glint.in_base_draw = merged;
     }
 
     /// Hand over the next frame's F3 3D crosshair (empty for none), in view space.

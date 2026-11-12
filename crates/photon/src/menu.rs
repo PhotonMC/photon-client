@@ -34,6 +34,7 @@ mod input;
 pub(crate) mod panorama;
 mod pings;
 mod resume;
+mod scripted;
 mod version;
 pub(crate) use version::{holding, release};
 mod video;
@@ -106,7 +107,7 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
     let mut client = Client::open((width, height))?;
     // The window's first frame, before the interface loads: plain, not a logo.
     let _ = client.backend.draw_scene([0.0, 0.0, 0.0, 1.0], IDENTITY);
-    let mut scripted_join = env::var_os("PHOTON_SCRIPT").is_some();
+    let mut scripted_join = env::var_os("PHOTON_SCRIPT").is_some() && !scripted::is_set();
     // Dev only: the addresses a scripted run joins after each `leave`, in turn.
     let mut hops: std::collections::VecDeque<SocketAddr> = env::var("PHOTON_HOPS")
         .ok()
@@ -440,11 +441,13 @@ impl Menu {
             .unwrap_or(10);
         let capture_joining = env::var_os("PHOTON_CAPTURE_JOINING").is_some();
         let mut frames = 0;
+        scripted::begin();
         while !client.surface.should_close() && !crate::updates::restart_requested() {
             let frame_start = Instant::now();
             crate::updates::poll();
             crate::updates::log_newer_servers();
-            for event in client.surface.poll() {
+            let injected = scripted::frame(&client.surface);
+            for event in injected.into_iter().chain(client.surface.poll()) {
                 if let Some(choice) = self.handle(event, client)? {
                     return Ok(choice);
                 }

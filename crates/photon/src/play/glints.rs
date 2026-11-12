@@ -11,6 +11,8 @@ impl Play {
         self.armor.glint_speed = options.glint_speed;
         self.backend
             .set_glint_strength(options.glint_strength as f32);
+        self.backend
+            .set_glint_in_base_draw(!photon_core::versions::rules().render.glint_is_own_pass);
     }
 
     /// The arms of the local player that hold a rod with its bobber out.

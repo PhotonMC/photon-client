@@ -111,7 +111,7 @@ impl VulkanBackend {
                 hand: DrawList::default(),
                 held_counts: [0; 3],
                 lines: LineDraws::default(),
-                glint_strength: 0.75,
+                glint: Default::default(),
                 breaking: DrawList::default(),
                 hand_projection: [[0.0; 4]; 4],
                 gui_buffer: DynamicBuffer::default(),

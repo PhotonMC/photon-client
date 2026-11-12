@@ -554,7 +554,7 @@ impl VulkanBackend {
         let push = [
             2.0 / self.gui_size[0],
             2.0 / self.gui_size[1],
-            self.glint_strength,
+            self.glint.strength,
             0.0,
         ];
         let push = [(BOTH_STAGES, 0, &as_bytes(&push)[..16])];
