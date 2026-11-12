@@ -3,6 +3,7 @@
 use photon_core::json::{JsonObject, JsonValue, parse_object};
 
 use super::MAX_MOD_BYTES;
+use super::sync::Refused;
 use crate::account::is_this_machine;
 
 /// The channel a server names its mods on.
@@ -135,8 +136,10 @@ fn valid_capability(cap: &str) -> bool {
 }
 
 /// The `photon:hello` payload: the client says it is Photon, which payload version it speaks and
-/// which mods it has loaded (ids), so a server can gate on it and on what loaded.
-pub fn hello(client: &str, loaded: &[&str]) -> Vec<u8> {
+/// which mods it has loaded (ids), so a server can gate on it and on what loaded. `refused`
+/// names each mod the client did not run with a short fixed reason; the field is left out when
+/// nothing was refused.
+pub fn hello(client: &str, loaded: &[&str], refused: &[Refused]) -> Vec<u8> {
     let list: Vec<String> = loaded.iter().map(|id| format!("\"{id}\"")).collect();
     let client: String = client
         .chars()
@@ -144,11 +147,28 @@ pub fn hello(client: &str, loaded: &[&str]) -> Vec<u8> {
         .filter(|c| *c != '"' && *c != '\\')
         .take(64)
         .collect();
+    let refused = refused_json(refused);
     format!(
-        "{{\"v\":1,\"client\":\"{client}\",\"loaded\":[{}]}}",
+        "{{\"v\":1,\"client\":\"{client}\",\"loaded\":[{}]{refused}}}",
         list.join(",")
     )
     .into_bytes()
+}
+
+/// `,"refused":[...]`, or nothing when no mod was refused.
+fn refused_json(refused: &[Refused]) -> String {
+    if refused.is_empty() {
+        return String::new();
+    }
+    let items: Vec<String> = refused
+        .iter()
+        .take(MAX_MODS)
+        .map(|r| {
+            let (id, reason) = (&r.id, r.reason.word());
+            format!("{{\"id\":\"{id}\",\"reason\":\"{reason}\"}}")
+        })
+        .collect();
+    format!(",\"refused\":[{}]", items.join(","))
 }
 
 #[cfg(test)]
@@ -202,11 +222,33 @@ mod tests {
 
     #[test]
     fn the_hello_names_the_client_and_what_loaded() {
-        let text = String::from_utf8(hello("Photon 0.1 \"x\"", &["a", "b"])).expect("utf8");
+        let text = String::from_utf8(hello("Photon 0.1 \"x\"", &["a", "b"], &[])).expect("utf8");
         assert_eq!(
             text,
             r#"{"v":1,"client":"Photon 0.1 x","loaded":["a","b"]}"#
         );
         assert!(parse_object(&text).is_some());
+    }
+
+    #[test]
+    fn refused_mods_are_named_with_a_reason() {
+        use super::super::sync::Reason;
+        let refused = [
+            Refused {
+                id: "odd".to_owned(),
+                reason: Reason::Capability,
+            },
+            Refused {
+                id: "big".to_owned(),
+                reason: Reason::Size,
+            },
+        ];
+        let text = String::from_utf8(hello("Photon", &["a"], &refused)).expect("utf8");
+        assert_eq!(
+            text,
+            r#"{"v":1,"client":"Photon","loaded":["a"],"refused":[{"id":"odd","reason":"capability"},{"id":"big","reason":"size"}]}"#
+        );
+        let object = parse_object(&text).expect("json");
+        assert_eq!(object.array("refused").map(|list| list.len()), Some(2));
     }
 }

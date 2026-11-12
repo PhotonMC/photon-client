@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use super::cache::{CacheError, ModCache, hash_of};
 use super::manifest::ModEntry;
+use super::sync::Reason;
 
 const TIMEOUT: Duration = Duration::from_secs(20);
 
@@ -13,9 +14,22 @@ const TIMEOUT: Duration = Duration::from_secs(20);
 pub enum FetchError {
     /// The address did not answer, or answered with an error.
     Unavailable,
-    /// More bytes than the manifest said, or bytes that are not the hash.
+    /// The bytes are not the hash the manifest named.
     Mismatch,
+    /// More or fewer bytes than the manifest said.
+    Size,
     Cache(CacheError),
+}
+
+impl FetchError {
+    /// The word the hello carries for it.
+    pub fn reason(&self) -> Reason {
+        match self {
+            Self::Unavailable | Self::Cache(CacheError::Io(_)) => Reason::Fetch,
+            Self::Mismatch | Self::Cache(CacheError::Mismatch) => Reason::Hash,
+            Self::Size => Reason::Size,
+        }
+    }
 }
 
 /// The bytes of `entry`: from `cache` without any network when the hash is there, else fetched,
@@ -42,7 +56,10 @@ pub fn ensure(cache: &ModCache, entry: &ModEntry) -> Result<Vec<u8>, FetchError>
         .take(entry.size + 1)
         .read_to_end(&mut bytes)
         .map_err(|_| FetchError::Unavailable)?;
-    if bytes.len() as u64 != entry.size || hash_of(&bytes) != entry.hash {
+    if bytes.len() as u64 != entry.size {
+        return Err(FetchError::Size);
+    }
+    if hash_of(&bytes) != entry.hash {
         return Err(FetchError::Mismatch);
     }
     cache.put(&entry.hash, &bytes).map_err(FetchError::Cache)?;
@@ -137,7 +154,7 @@ mod tests {
         wanted.size = 10;
         assert!(matches!(
             ensure(&cache("long"), &wanted),
-            Err(FetchError::Mismatch)
+            Err(FetchError::Size)
         ));
     }
 }

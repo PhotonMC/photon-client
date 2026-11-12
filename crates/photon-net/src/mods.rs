@@ -5,10 +5,12 @@
 mod cache;
 mod fetch;
 mod manifest;
+mod sync;
 
 pub use cache::{CacheError, ModCache};
 pub use fetch::{FetchError, ensure};
 pub use manifest::{HELLO_CHANNEL, MODS_CHANNEL, Manifest, ManifestError, ModEntry, hello};
+pub use sync::{Admission, ModSync, Plan, Reason, Refused};
 
 /// The most bytes one mod may have.
 pub const MAX_MOD_BYTES: u64 = 8 << 20;

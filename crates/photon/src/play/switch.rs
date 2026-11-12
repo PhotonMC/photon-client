@@ -41,6 +41,8 @@ impl Play {
     /// old level is closed, and nothing of the old level stays.
     pub(super) fn reset_level(&mut self) -> Result<()> {
         if self.session.take_reconfigured() {
+            // The mods end with the connection (ADR 0024): the server delivers them again.
+            self.gui.mods.restart();
             self.close_screens();
             // `Hud.onDisconnected`: the toasts go with the level.
             self.gui.clear_toasts();

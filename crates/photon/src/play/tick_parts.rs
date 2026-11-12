@@ -107,7 +107,6 @@ impl Play {
 impl Play {
     /// The mods' part of a tick: the server's manifest, mods that finished loading, their tick.
     pub(super) fn tick_mods(&mut self) {
-        let mut tell = !self.gui.mods.said_hello;
         for (channel, data) in self.session.take_photon_payloads() {
             if channel != MODS_CHANNEL {
                 continue;
@@ -115,16 +114,13 @@ impl Play {
             match Manifest::parse(&data) {
                 Ok(manifest) => {
                     let dir = crate::controls::game_directory().join("cache").join("mods");
-                    self.gui.mods.on_manifest(manifest, dir);
-                    tell = self.gui.mods.waiting == 0;
+                    self.gui.mods.on_manifest(&manifest, dir);
                 }
                 Err(error) => log::warn!("the server's mod list is wrong: {error:?}"),
             }
         }
-        tell |= self.gui.mods.load_fetched();
-        if tell {
-            self.say_hello();
-        }
+        self.gui.mods.load_fetched();
+        self.say_hello();
         let sounds = self.gui.mods.runtime.tick();
         for effect in sounds {
             if let (
@@ -141,16 +137,18 @@ impl Play {
         }
     }
 
-    /// Tells the server this is Photon and which mods are loaded.
+    /// Tells the server this is Photon, which mods are loaded and which were refused, when a
+    /// hello is due.
     fn say_hello(&mut self) {
         let client = format!("Photon {}", env!("CARGO_PKG_VERSION"));
-        let payload = mods::hello(&client, &self.gui.mods.runtime.ids());
+        let Some(payload) = self.gui.mods.hello(&client) else {
+            return;
+        };
         if let Err(error) = self
             .session
             .send_photon_payload(mods::HELLO_CHANNEL, &payload)
         {
             log::warn!("hello not sent: {error:?}");
         }
-        self.gui.mods.said_hello = true;
     }
 }
